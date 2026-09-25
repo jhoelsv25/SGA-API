@@ -4,4 +4,6 @@ node_modules/
 pnpm-lock.yaml
 *.svg
 .husky/
+.agents/
 coverage/
+skills-lock.json
