@@ -1,3 +1,6 @@
+// Garantizar que todo el runtime de Node.js opere en UTC
+process.env.TZ = "UTC";
+
 import { ValidationPipe } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { NestFactory } from "@nestjs/core";
@@ -5,7 +8,7 @@ import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import { WinstonModule } from "nest-winston";
 import { AppModule } from "./app.module";
-import { LoggingInterceptor } from "./common";
+import { GlobalHttpExceptionFilter, LoggingInterceptor } from "./common";
 import { getCorsConfig, getWinstonLoggerConfig, setupSwagger } from "./config";
 
 async function bootstrap() {
@@ -34,6 +37,9 @@ async function bootstrap() {
       },
     }),
   );
+
+  // Filtro global para captura y estandarización de errores
+  app.useGlobalFilters(new GlobalHttpExceptionFilter());
 
   // Interceptor global para trazabilidad y auditoría de peticiones HTTP
   app.useGlobalInterceptors(new LoggingInterceptor());
