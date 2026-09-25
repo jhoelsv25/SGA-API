@@ -1,13 +1,17 @@
 import { ValidationPipe } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { NestFactory } from "@nestjs/core";
-import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
+import { WinstonModule } from "nest-winston";
 import { AppModule } from "./app.module";
+import { LoggingInterceptor } from "./common";
+import { getCorsConfig, getWinstonLoggerConfig, setupSwagger } from "./config";
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    logger: WinstonModule.createLogger(getWinstonLoggerConfig()),
+  });
   const configService = app.get(ConfigService);
 
   // Seguridad HTTP Headers
@@ -31,24 +35,14 @@ async function bootstrap() {
     }),
   );
 
-  // Configuración de CORS
-  const frontendUrl = configService.get<string>("FRONTEND_URL", "http://localhost:3001");
-  app.enableCors({
-    origin: frontendUrl,
-    credentials: true,
-  });
+  // Interceptor global para trazabilidad y auditoría de peticiones HTTP
+  app.useGlobalInterceptors(new LoggingInterceptor());
 
-  // Documentación OpenAPI / Swagger
-  const swaggerConfig = new DocumentBuilder()
-    .setTitle("SGA API")
-    .setDescription("Documentación interactiva de la API del Sistema SGA")
-    .setVersion("1.0")
-    .addBearerAuth()
-    .addCookieAuth("access_token")
-    .build();
+  // Configuración modular de CORS
+  app.enableCors(getCorsConfig(configService));
 
-  const document = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup("api/docs", app, document);
+  // Documentación modular OpenAPI / Swagger
+  setupSwagger(app);
 
   const port = configService.get<number>("PORT", 3000);
   await app.listen(port);

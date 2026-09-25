@@ -14,6 +14,7 @@ export default tseslint.config(
       ".husky/**",
       ".agents/**",
       "coverage/**",
+      "logs/**",
     ],
   },
   eslint.configs.recommended,
