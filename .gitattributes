@@ -1,0 +1,5 @@
+# Forzar LF en todo el repo (evita que Git de Windows convierta a CRLF)
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.ico binary
