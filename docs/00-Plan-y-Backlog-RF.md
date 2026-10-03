@@ -43,8 +43,8 @@
 | [RF-007](requerimientos/RF-007_Personas_Docentes_Estudiantes_Apoderados/V1/RF-007_Personas_Docentes_Estudiantes_Apoderados.md) | Comunidad | Personas: docentes, estudiantes y apoderados | Alta | — | Con pendientes | P-01, P-02 | 0 % | 0 % | Por desarrollar |
 | [RF-008](requerimientos/RF-008_Secciones_Carga_Academica_y_Horarios/V1/RF-008_Secciones_Carga_Academica_y_Horarios.md) | Organización | Secciones, carga académica y horarios | Alta | CSP | Con pendientes | P-03, P-04 | 0 % | 0 % | Por desarrollar |
 | [RF-009](requerimientos/RF-009_Matricula_Retiro_y_Traslado/V1/RF-009_Matricula_Retiro_y_Traslado.md) | Matrícula | Matrícula, retiro y traslado | Alta | ISA | Redactado | — | 0 % | 0 % | Por desarrollar |
-| RF-010 | Asistencia | Marcación y asistencia de estudiantes | Media | — | Por redactar | — | 0 % | 0 % | Por desarrollar |
-| RF-011 | Seguimiento docente | Registro de sesión de clase | Alta | **CSP** | Por redactar | — | 0 % | 0 % | Por desarrollar |
+| [RF-010](requerimientos/RF-010_Marcacion_y_Asistencia_de_Estudiantes/V1/RF-010_Marcacion_y_Asistencia_de_Estudiantes.md) | Asistencia | Marcación y asistencia de estudiantes | Media | — | Redactado | — | 0 % | 0 % | Por desarrollar |
+| [RF-011](requerimientos/RF-011_Registro_de_Sesion_de_Clase/V1/RF-011_Registro_de_Sesion_de_Clase.md) | Seguimiento docente | Registro de sesión de clase | Alta | **CSP** | Con pendientes | P-04, P-05, P-06, P-07, P-08 | 0 % | 0 % | Por desarrollar |
 | RF-012 | Seguimiento docente | Supervisión y ausencias del docente | Alta | **CSP** | Por redactar | — | 0 % | 0 % | Por desarrollar |
 | RF-013 | Seguimiento docente | Consolidado y ficha de seguimiento docente | Alta | **CSP** | Por redactar | — | 0 % | 0 % | Por desarrollar |
 | RF-014 | Libretas | Libretas del SIAGIE | Alta | **ISA** | Por redactar | — | 0 % | 0 % | Por desarrollar |
@@ -59,8 +59,8 @@
 
 | Concepto | Valor |
 |---|---|
-| RF redactados | 9 / 20 |
-| RF con pendientes | 2 |
+| RF redactados | 11 / 20 |
+| RF con pendientes | 3 |
 | RF completados | 0 / 20 |
 | Avance promedio Back | 0 % |
 | Avance promedio Front | 0 % |
@@ -73,6 +73,8 @@ Una fila por cada actualización. La más reciente arriba.
 
 | Fecha | RF | Capa | Antes | Después | Qué se hizo | Escenarios pendientes |
 |---|---|---|---|---|---|---|
+| 2026-10-03 | RF-011 | Documento | Por redactar | Con pendientes | Redacción V1 (kiosko de sesiones, justificación por subdirector) | — |
+| 2026-10-03 | RF-010 | Documento | Por redactar | Redactado | Redacción V1 (asistencia por sesión) | — |
 | 2026-10-03 | RF-009 | Documento | Por redactar | Redactado | Redacción V1 | — |
 | 2026-10-03 | RF-001 a RF-008 | Documento | Por redactar | Redactado / Con pendientes | Redacción V1 con la skill Gherkin | — |
 
