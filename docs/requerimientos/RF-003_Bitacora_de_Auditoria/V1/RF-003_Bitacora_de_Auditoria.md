@@ -28,8 +28,8 @@
 - **Solo consulta.** Este RF trata de consultar la bitácora; el registro lo hace automáticamente cada RF.
 - **Quién consulta.** Solo los roles con el permiso de consulta de la bitácora; por defecto, el Administrador.
 - **Listado.** Ordenado del más reciente al más antiguo, paginado de 50 en 50. Por defecto muestra los últimos 7 días.
-- **Filtros.** Rango de fechas, usuario, acción y entidad. El rango máximo de una consulta es de 31 días, para que la pantalla responda rápido. _(Supuesto.)_
-- **Conservación.** Los registros se conservan de forma indefinida. _(Supuesto.)_
+- **Filtros.** Rango de fechas, usuario, acción y entidad. El rango máximo de una consulta es de 31 días, para que la pantalla responda rápido.
+- **Conservación.** Los registros se guardan para siempre; nunca se borran.
 - **Operación 100% en línea.**
 
 ## Mensajes del requerimiento
@@ -50,7 +50,8 @@
 
 ## Acuerdos y puntos abiertos
 
-- **Valores por confirmar.** Rango máximo de consulta (31 días) y conservación indefinida.
+- **Rango de consulta (acordado).** Máximo 31 días por búsqueda.
+- **Conservación (acordado).** Los registros se guardan para siempre.
 
 ## Historia de Usuario 1: Consulta de la bitácora
 

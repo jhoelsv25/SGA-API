@@ -13,12 +13,12 @@
 - **Una cuenta por persona.** Toda cuenta pertenece a una persona del padrón y tiene un único rol. El inicio de sesión se hace con **Nombre de usuario** y **Contraseña**.
 - **Estados de la cuenta.** Solo una cuenta `activo` puede iniciar sesión. Una cuenta `bloqueado` o `inactivo` es rechazada con su propio mensaje.
 - **Mensaje genérico ante credenciales incorrectas.** Si el usuario no existe o la contraseña no coincide, el sistema muestra el mismo mensaje, para no revelar qué usuarios existen.
-- **Bloqueo por intentos fallidos.** Tras **5 intentos fallidos consecutivos** la cuenta pasa a `bloqueado`. Un inicio de sesión exitoso reinicia el contador. Solo el Administrador puede desbloquear (`RF-002`). _(Supuesto: 5 intentos.)_
+- **Bloqueo por intentos fallidos.** Tras **5 intentos fallidos consecutivos** la cuenta pasa a `bloqueado`. Un inicio de sesión exitoso reinicia el contador. Solo el Administrador puede desbloquear (`RF-002`).
 - **Cambio obligatorio de contraseña.** Una cuenta nueva o con la contraseña restablecida por el Administrador debe cambiarla en su primer ingreso, antes de usar cualquier otra opción.
-- **Política de contraseña.** Mínimo 8 caracteres, con al menos una letra y un número, y distinta de la contraseña actual. _(Supuesto.)_
+- **Política de contraseña.** Mínimo 8 caracteres, con al menos una letra y un número, y distinta de la contraseña actual.
 - **Contraseñas cifradas.** La contraseña se guarda solo como hash; nunca se muestra ni se envía en texto plano.
-- **Recuperación de contraseña.** El usuario con correo registrado en su ficha puede pedir un enlace de restablecimiento, válido por **30 minutos** y de un solo uso. Quien no tiene correo debe pedir al Administrador que restablezca su contraseña (`RF-002`). _(Supuesto: 30 minutos.)_
-- **Sesiones.** Cada ingreso crea una sesión con fecha y hora de inicio, dirección IP y navegador. La sesión expira tras **30 minutos sin actividad**. _(Supuesto.)_ Un usuario puede tener sesiones abiertas en varios dispositivos.
+- **Recuperación de contraseña.** El usuario con correo registrado en su ficha puede pedir un enlace de restablecimiento, válido por **30 minutos** y de un solo uso. Quien no tiene correo debe pedir al Administrador que restablezca su contraseña (`RF-002`).
+- **Sesiones.** Cada ingreso crea una sesión con fecha y hora de inicio, dirección IP y navegador. La sesión expira tras **30 minutos sin actividad**. Un usuario puede tener sesiones abiertas en varios dispositivos.
 - **Mis sesiones.** El usuario puede ver sus sesiones abiertas y cerrar cualquiera de ellas, o todas menos la actual.
 - **Menú según rol.** Al ingresar, el usuario ve el menú que corresponde a los permisos de su rol (`RF-002`).
 - **Operación 100% en línea.** Sin conexión no se puede iniciar sesión.
@@ -48,7 +48,7 @@
 
 ## Acuerdos y puntos abiertos
 
-- **Valores por confirmar.** Número de intentos (5), vigencia del enlace (30 min), expiración por inactividad (30 min) y política de contraseña. Si se aprueban, quedan como parámetros del sistema.
+- **Valores de seguridad (acordado).** 5 intentos fallidos, enlace de recuperación de 30 minutos, expiración por inactividad de 30 minutos y contraseña de mínimo 8 caracteres con letras y números. Quedan como parámetros del sistema.
 - **Formato del nombre de usuario.** Por definir en `RF-002`: se propone el DNI para docentes y personal, y el código SIAGIE para estudiantes.
 
 ## Historia de Usuario 1: Inicio de sesión
