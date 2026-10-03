@@ -8,8 +8,10 @@ import {
 } from "@nestjs/terminus";
 import { PostgresHealthIndicator } from "./postgres.health";
 import { RedisHealthIndicator } from "./redis.health";
+import { Public } from "../../common/decorators";
 
 @ApiTags("Health")
+@Public()
 @Controller("health")
 export class HealthController {
   constructor(
