@@ -26,7 +26,7 @@
 - **Restablecer contraseña.** El Administrador puede generar una nueva contraseña temporal para cualquier cuenta. La cuenta queda marcada para cambio obligatorio y se cierran sus sesiones abiertas.
 - **Sin eliminación física.** Las cuentas no se borran; se desactivan. La bitácora siempre conserva quién hizo cada acción.
 - **El Administrador no puede quitarse su propio acceso.** No puede desactivar su propia cuenta ni cambiar su propio rol.
-- **Roles del sistema.** Los roles Administrador, Director, Secretaria, Docente, Estudiante y Apoderado vienen precargados y son **roles del sistema**: no se eliminan ni se renombran, pero sí se pueden ajustar sus permisos (excepto el Administrador, que siempre tiene todos).
+- **Roles del sistema.** Los roles Administrador, Director, Subdirector, Soporte TI, Secretaria, Docente, Estudiante y Apoderado vienen precargados y son **roles del sistema**: no se eliminan ni se renombran, pero sí se pueden ajustar sus permisos (excepto el Administrador, que siempre tiene todos).
 - **Roles adicionales.** El Administrador puede crear otros roles (por ejemplo, Coordinador o Auxiliar). El nombre del rol es único. Un rol con cuentas asignadas no se puede desactivar.
 - **Permisos.** Son las acciones del sistema (por ejemplo, `sesiones.registrar` o `libretas.subir`), agrupadas por módulo. El catálogo de permisos lo define el sistema y el Administrador **solo los asigna** a los roles; no los crea ni los borra.
 - **Módulos y menú.** Los módulos agrupan las opciones del menú. El menú tiene dos niveles en la misma estructura:

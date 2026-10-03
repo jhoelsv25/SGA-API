@@ -9,7 +9,7 @@
 
 ## Consideraciones y supuestos de negocio
 
-- **Propósito.** Permitir que cada miembro de la comunidad educativa (administrador, director, secretaria, docente, estudiante y apoderado) entre al sistema con su propia cuenta y vea solo lo que su rol permite.
+- **Propósito.** Permitir que cada miembro de la comunidad educativa (administrador, director, subdirector, soporte TI, secretaria, docente, estudiante y apoderado) entre al sistema con su propia cuenta y vea solo lo que su rol permite.
 - **Una cuenta por persona.** Toda cuenta pertenece a una persona del padrón y tiene un único rol. El inicio de sesión se hace con **Nombre de usuario** y **Contraseña**.
 - **Estados de la cuenta.** Solo una cuenta `activo` puede iniciar sesión. Una cuenta `bloqueado` o `inactivo` es rechazada con su propio mensaje.
 - **Mensaje genérico ante credenciales incorrectas.** Si el usuario no existe o la contraseña no coincide, el sistema muestra el mismo mensaje, para no revelar qué usuarios existen.
@@ -44,7 +44,7 @@
 - **Consulta de la bitácora.** Corresponde a `RF-003`.
 - **Inicio de sesión con Google, Microsoft u otros proveedores externos.** No se contempla.
 - **Doble factor de autenticación (2FA).** No se contempla.
-- **Ingreso al kiosko de marcación con QR/PIN.** No es un inicio de sesión; corresponde a `RF-010`.
+- **Uso de los kioskos (marcación y firma de sesiones) con código + PIN.** No es un inicio de sesión; corresponde a `RF-010` y `RF-011`. La autorización de los equipos corresponde a `RF-004`.
 
 ## Acuerdos y puntos abiertos
 

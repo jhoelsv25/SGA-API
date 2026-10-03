@@ -1,0 +1,100 @@
+---
+name: actualizar-backlog-rf
+description: Actualiza el avance de los Requerimientos Funcionales (RF) en el backlog vivo del SGA Colegio (SGA-API/docs/00-Plan-y-Backlog-RF.md) cada vez que se implementa, avanza, prueba o termina parte de un RF en SGA-API (backend NestJS) (capa Back). Úsala SIEMPRE al cerrar una tarea de desarrollo que toque un RF ("ya terminé el login", "avancé el registro de sesiones", "implementa el RF-011", "¿cuánto falta del RF-007?"), al resolver un pendiente de PENDIENTES.md, o cuando el usuario pida ver o recalcular el avance.
+---
+
+# Habilidad: Actualizar el avance del backlog de RF (capa Back)
+
+El backlog vivo del proyecto es **`docs/00-Plan-y-Backlog-RF.md`**. Es la fuente de verdad del avance:
+cada RF tiene una columna **Back %**, una **Front %** y un **Estado**. Esta skill se usa
+en **SGA-API (backend NestJS)**, así que solo actualiza la columna **Back %** (la otra capa la
+actualiza la misma skill en SGA-WEB (frontend)).
+
+Archivos relacionados:
+
+| Archivo | Para qué |
+|---|---|
+| `docs/00-Plan-y-Backlog-RF.md` | Tabla de RF con avance y registro de avance |
+| `docs/requerimientos/RF-XXX_Nombre/V*/RF-XXX_Nombre.md` | Especificación del RF (escenarios Gherkin). Usar la **versión más alta** |
+| `docs/requerimientos/PENDIENTES.md` | Preguntas abiertas al colegio que pueden bloquear un RF |
+
+## Cuándo actuar
+
+1. **Al terminar una tarea de desarrollo** que implemente o modifique comportamiento de un RF
+   (aunque el usuario no lo pida): antes de dar la tarea por cerrada, actualizar el backlog.
+2. Cuando el usuario pregunte **cuánto falta** de un RF o del proyecto.
+3. Cuando se **resuelva un pendiente** (P-XX) o se cree una nueva versión de un RF.
+
+Si la tarea no toca ningún RF (refactor interno, configuración, dependencias), no se actualiza;
+decirlo en una línea.
+
+## Paso 1 — Identificar el RF
+
+Deducirlo de lo implementado (módulo, pantalla, endpoint) comparándolo con la columna
+*Requerimiento* del backlog y con los escenarios del RF. Si el trabajo toca varios RF,
+actualizar cada uno. Si no es claro a qué RF pertenece, **preguntar** antes de escribir.
+
+## Paso 2 — Medir el avance con los escenarios (no a ojo)
+
+El porcentaje se calcula sobre los **escenarios Gherkin** del RF (`### Escenario:`), no por
+sensación:
+
+1. Leer el RF (versión más alta) y listar sus escenarios.
+2. Marcar cuáles **aplican a la capa Back**:
+   - Aplican al **Back** los escenarios con reglas de negocio, validaciones del servidor,
+     estados, permisos, rechazos ("el servidor lo rechaza"), cálculos, procesos automáticos
+     ("Como sistema"), auditoría y persistencia.
+   - No aplican los que son solo de presentación (colores, vista previa, disposición de la pantalla).
+3. Marcar cuáles están **implementados y verificados** en SGA-API (backend NestJS). "Verificado" = existe una
+   prueba que lo cubre o se comprobó ejecutando la aplicación. Un escenario escrito pero sin
+   verificar cuenta como **no implementado**.
+4. **Back % = escenarios implementados y verificados ÷ escenarios que aplican a la capa × 100**,
+   redondeado al entero.
+
+Mostrar al usuario la lista en el chat antes de escribir, así:
+
+```
+RF-011 — capa Back (9 de 14 escenarios = 64 %)
+✅ Firmar ingreso con código y PIN          (test: sesiones.service.spec.ts)
+✅ Firma fuera de horario
+⬜ Sesión no firmada al cierre del día      ← falta
+⬜ Bloque doble                              ← bloqueado por P-04
+```
+
+## Paso 3 — Actualizar el backlog
+
+En `docs/00-Plan-y-Backlog-RF.md`:
+
+1. **Fila del RF en la tabla "Backlog de RF y avance":** cambiar solo la columna **Back %**.
+2. **Estado** de la fila, según ambas columnas:
+   - `Por desarrollar` → Back y Front en 0 %.
+   - `En desarrollo` → alguna entre 1 % y 99 %.
+   - `Completado` → Back **y** Front al 100 %.
+   - `Bloqueado` → no se puede avanzar porque un escenario depende de un pendiente (P-XX) sin respuesta. Indicar el P-XX en la columna *Pendientes*.
+3. **Resumen de avance:** recalcular RF completados, y el promedio de Back % y de Front % de los 20 RF.
+4. **Registro de avance:** agregar **una fila arriba** (la más reciente primero):
+   `| AAAA-MM-DD | RF-XXX | Back | 40 % | 64 % | qué se hizo en una frase | escenarios que faltan |`
+5. Actualizar **Última actualización** en la cabecera con la fecha de hoy.
+
+No tocar la columna de la otra capa, ni el texto de los RF, ni otras secciones.
+
+## Paso 4 — Pendientes y versiones
+
+- Si al implementar aparece una duda de negocio que el RF no resuelve, **no inventar la regla**:
+  agregarla como nueva fila `P-XX` en `PENDIENTES.md` y poner el RF en `Bloqueado` solo si
+  impide avanzar.
+- Si se resolvió un pendiente, marcarlo `Resuelto` con la respuesta en `PENDIENTES.md`, poner el
+  *Documento* del RF en `Con pendientes` → `V2` cuando se haya generado la nueva versión
+  (con la skill de redacción de RF), y quitar el P-XX de la columna *Pendientes*.
+
+## Paso 5 — Informar
+
+Cerrar con una línea: `RF-011: Back 40 % → 64 % (En desarrollo). Faltan 5 escenarios: …`
+
+## Reglas que no se negocian
+
+1. El porcentaje sale **siempre** de contar escenarios; nunca se estima.
+2. Un escenario sin verificar no suma.
+3. Nunca bajar un porcentaje sin explicar por qué (por ejemplo, el RF pasó a V2 y tiene escenarios nuevos).
+4. Solo se edita la columna de la capa propia (**Back**).
+5. Fechas en formato `AAAA-MM-DD`.
