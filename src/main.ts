@@ -4,6 +4,7 @@ process.env.TZ = "UTC";
 import { ValidationPipe } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { NestFactory } from "@nestjs/core";
+import compression from "compression";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import { WinstonModule } from "nest-winston";
@@ -16,6 +17,9 @@ async function bootstrap() {
     logger: WinstonModule.createLogger(getWinstonLoggerConfig()),
   });
   const configService = app.get(ConfigService);
+
+  // Compresión de respuestas HTTP (gzip)
+  app.use(compression());
 
   // Seguridad HTTP Headers
   app.use(helmet());
