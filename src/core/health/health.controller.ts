@@ -6,6 +6,7 @@ import {
   HealthCheckService,
   MemoryHealthIndicator,
 } from "@nestjs/terminus";
+import { PostgresHealthIndicator } from "./postgres.health";
 import { RedisHealthIndicator } from "./redis.health";
 
 @ApiTags("Health")
@@ -15,6 +16,7 @@ export class HealthController {
     private readonly health: HealthCheckService,
     private readonly memory: MemoryHealthIndicator,
     private readonly redis: RedisHealthIndicator,
+    private readonly postgres: PostgresHealthIndicator,
   ) {}
 
   @Get()
@@ -38,6 +40,8 @@ export class HealthController {
       () => this.memory.checkRSS("memory_rss", 500 * 1024 * 1024),
       // Verifica disponibilidad de Redis
       () => this.redis.isHealthy("redis"),
+      // Verifica disponibilidad de PostgreSQL
+      () => this.postgres.isHealthy("postgres"),
     ]);
   }
 }
