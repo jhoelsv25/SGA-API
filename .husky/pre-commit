@@ -1,6 +1,7 @@
 # En Git de Windows (SourceTree) pnpm no existe: se omite lint-staged en vez de bloquear el commit
 if command -v pnpm >/dev/null 2>&1; then
   pnpm exec lint-staged
+  pnpm test
 else
-  echo "husky: pnpm no encontrado, se omite lint-staged (ejecuta 'pnpm lint' desde WSL)"
+  echo "husky: pnpm no encontrado, se omite lint-staged y tests (ejecuta 'pnpm lint' y 'pnpm test' desde WSL)"
 fi
