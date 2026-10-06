@@ -3,9 +3,9 @@ import { ConfigModule } from "@nestjs/config";
 import { APP_GUARD } from "@nestjs/core";
 import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
-import { JwtAuthGuard } from "./common/guards";
+import { JwtAuthGuard, RolesGuard } from "./common/guards";
 import { CoreModule } from "./core";
-import { AuthModule } from "./features/auth";
+import { FeaturesModule } from "./features/features.module";
 
 @Module({
   imports: [
@@ -13,7 +13,7 @@ import { AuthModule } from "./features/auth";
       isGlobal: true,
     }),
     CoreModule,
-    AuthModule,
+    FeaturesModule,
   ],
   controllers: [AppController],
   providers: [
@@ -21,6 +21,10 @@ import { AuthModule } from "./features/auth";
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
     },
   ],
 })
