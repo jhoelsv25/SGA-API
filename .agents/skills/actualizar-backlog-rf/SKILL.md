@@ -55,7 +55,7 @@ Mostrar al usuario la lista en el chat antes de escribir, así:
 
 ```
 RF-011 — capa Back (9 de 14 escenarios = 64 %)
-✅ Firmar ingreso con código y PIN          (test: sesiones.service.spec.ts)
+✅ Firmar ingreso con código y PIN          (test: test/features/sesiones/sesiones.service.spec.ts)
 ✅ Firma fuera de horario
 ⬜ Sesión no firmada al cierre del día      ← falta
 ⬜ Bloque doble                              ← bloqueado por P-04

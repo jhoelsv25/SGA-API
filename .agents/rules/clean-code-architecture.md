@@ -54,3 +54,13 @@ src/
   - `ConflictException` (409)
   - `InternalServerErrorException` (500)
 - **Nunca tragues errores silenciosamente**: En bloques `try/catch`, registra el error o relánzalo como una excepción HTTP comprensible para el cliente.
+
+## 5. Arquitectura y Ubicación de Tests (`test/`)
+
+- Toda la suite de pruebas unitarias, de integración y end-to-end reside en la carpeta raíz `test/`.
+- La estructura dentro de `test/` refleja como espejo la de `src/features/` y `src/common/`:
+  - `test/features/<modulo>/<modulo>.service.spec.ts`
+  - `test/features/<modulo>/<modulo>.controller.spec.ts`
+  - `test/features/<modulo>/services/<sub-servicio>.spec.ts`
+  - `test/features/<modulo>/utils/<util>.spec.ts`
+- Husky pre-commit ejecuta `pnpm test` de forma obligatoria en cada commit para garantizar cero regresiones y pruebas 100% limpias.

@@ -74,9 +74,14 @@ export class AuthController {
   async logout(
     @ExtractToken() token: string | undefined,
     @Res({ passthrough: true }) res: Response,
+    @ClientInfo() client?: ClientInfoData,
   ): Promise<{ message: string }> {
     if (token) {
-      await this.authService.logout(token);
+      if (client?.ip) {
+        await this.authService.logout(token, client.ip);
+      } else {
+        await this.authService.logout(token);
+      }
     }
 
     clearAuthCookie(res);

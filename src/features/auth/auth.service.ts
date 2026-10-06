@@ -1,5 +1,12 @@
-import { BadRequestException, Injectable, Logger, UnauthorizedException } from "@nestjs/common";
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  Optional,
+  UnauthorizedException,
+} from "@nestjs/common";
 import * as bcrypt from "bcryptjs";
+import { AuditService } from "../../common/services/audit.service";
 import { AuthModuleDto, AuthResponseDto, CurrentUserDto } from "./dto/auth-response.dto";
 import { ChangePasswordDto } from "./dto/change-password.dto";
 import { ForgotPasswordDto } from "./dto/forgot-password.dto";
@@ -16,6 +23,7 @@ export class AuthService {
   constructor(
     private readonly authRepository: AuthRepository,
     private readonly sessionService: SessionService,
+    @Optional() private readonly auditService?: AuditService,
   ) {}
 
   async login(dto: LoginDto, ipAddress?: string, userAgent?: string): Promise<AuthResponseDto> {
@@ -55,6 +63,15 @@ export class AuthService {
       rememberMe: dto.rememberMe,
       ipAddress,
       userAgent,
+    });
+
+    await this.auditService?.log({
+      usuarioId: user.id,
+      accion: "iniciar_sesion",
+      tabla: "usuarios",
+      registroId: user.id,
+      valorNuevo: { rememberMe: dto.rememberMe },
+      direccionIp: ipAddress,
     });
 
     return {
@@ -128,8 +145,22 @@ export class AuthService {
     };
   }
 
-  async logout(token?: string): Promise<void> {
+  async logout(token?: string, ipAddress?: string): Promise<void> {
     if (!token) return;
+    try {
+      const payload = this.sessionService.verifyAccessToken(token);
+      if (payload?.sub) {
+        await this.auditService?.log({
+          usuarioId: payload.sub,
+          accion: "cerrar_sesion",
+          tabla: "usuarios",
+          registroId: payload.sub,
+          direccionIp: ipAddress,
+        });
+      }
+    } catch {
+      // Token may be expired or already revoked, continue to revoke
+    }
     await this.sessionService.revokeSession(token);
   }
 
@@ -194,6 +225,15 @@ export class AuthService {
       await this.sessionService.revokeOtherSessions(user.id, currentToken);
     }
 
+    await this.auditService?.log({
+      usuarioId: user.id,
+      accion: "actualizar",
+      tabla: "usuarios",
+      registroId: user.id,
+      valorAnterior: { contrasenaCambiada: false },
+      valorNuevo: { contrasenaCambiada: true, debeCambiarContrasena: false },
+    });
+
     return {
       message: "Contraseña actualizada exitosamente.",
     };
@@ -233,6 +273,16 @@ export class AuthService {
 
       if (mustLock) {
         this.logger.warn(`Usuario ${user.nombreUsuario} bloqueado tras 5 intentos fallidos`);
+
+        await this.auditService?.log({
+          usuarioId: null, // Sistema
+          accion: "actualizar",
+          tabla: "usuarios",
+          registroId: user.id,
+          valorAnterior: { estado: user.estado, intentosFallidos: user.intentosFallidos },
+          valorNuevo: { estado: "bloqueado", intentosFallidos: attempts },
+        });
+
         throw new UnauthorizedException(
           "Tu cuenta ha sido bloqueada por superar el límite de intentos fallidos.",
         );
