@@ -1,8 +1,4 @@
-import {
-  PermissionCatalogItemDto,
-  RoleDetailResponseDto,
-  RoleResponseDto,
-} from "../dto/role-response.dto";
+import { RoleDetailResponseDto, RoleResponseDto } from "../dto/role-response.dto";
 
 export interface CreateRoleData {
   nombre: string;
@@ -23,7 +19,8 @@ export interface IRolesRepository {
   create(data: CreateRoleData): Promise<RoleResponseDto>;
   update(id: string, data: UpdateRoleData): Promise<RoleResponseDto>;
   countAssignedUsers(rolId: string): Promise<number>;
-  getAllPermissions(): Promise<PermissionCatalogItemDto[]>;
-  assignPermissions(rolId: string, permissionIds: string[]): Promise<void>;
-  getAllPermissionIds(): Promise<string[]>;
+  /** RF-002 V2: cuántos de los IDs son opciones de menú vigentes. */
+  countMenusVigentes(menuIds: string[]): Promise<number>;
+  /** RF-002 V2: reemplaza los menús del rol. */
+  assignMenus(rolId: string, menuIds: string[], actorId: string): Promise<void>;
 }

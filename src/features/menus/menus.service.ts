@@ -159,7 +159,6 @@ export class MenusService {
     const created = await this.menusRepository.createMenuItem({
       moduloId: dto.moduloId,
       menuPadreId: dto.menuPadreId,
-      permisoId: dto.permisoId ?? null,
       nombre: dto.nombre,
       ruta: dto.ruta.trim(),
       icono: dto.icono,
@@ -176,7 +175,6 @@ export class MenusService {
         nombre: created.nombre,
         ruta: created.ruta,
         contenedorId: created.menuPadreId,
-        permisoId: created.permisoId,
       },
       direccionIp: ip,
     });

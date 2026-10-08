@@ -40,28 +40,6 @@ export const modulos = pgTable(
   (table) => [unique("uq_modulos_codigo").on(table.codigo)],
 );
 
-export const permisos = pgTable(
-  "permisos",
-  {
-    id: uuid().defaultRandom().primaryKey().notNull(),
-    moduloId: uuid("modulo_id").notNull(),
-    codigo: varchar({ length: 100 }).notNull(),
-    nombre: varchar({ length: 100 }).notNull(),
-    descripcion: varchar({ length: 255 }),
-    creadoEn: timestamp("creado_en", { precision: 0, mode: "string" })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-  },
-  (table) => [
-    foreignKey({
-      columns: [table.moduloId],
-      foreignColumns: [modulos.id],
-      name: "fk_permisos_modulo",
-    }),
-    unique("uq_permisos_codigo").on(table.codigo),
-  ],
-);
-
 export const roles = pgTable(
   "roles",
   {
@@ -86,7 +64,6 @@ export const menus = pgTable(
     id: uuid().defaultRandom().primaryKey().notNull(),
     menuPadreId: uuid("menu_padre_id"),
     moduloId: uuid("modulo_id").notNull(),
-    permisoId: uuid("permiso_id"),
     nombre: varchar({ length: 100 }).notNull(),
     ruta: varchar({ length: 255 }),
     icono: varchar({ length: 50 }),
@@ -113,11 +90,6 @@ export const menus = pgTable(
       columns: [table.menuPadreId],
       foreignColumns: [table.id],
       name: "fk_menus_padre",
-    }),
-    foreignKey({
-      columns: [table.permisoId],
-      foreignColumns: [permisos.id],
-      name: "fk_menus_permiso",
     }),
     check(
       "ck_menus_tipo",
@@ -221,9 +193,9 @@ export const usuarios = pgTable(
   ],
 );
 
-// RF-001 / RF-002 V2: un usuario puede tener varios perfiles (roles). Uno es el
-// principal (con el que inicia sesión). Retirar un perfil = vigente false (historial).
-// usuarios.rol_id se mantiene sincronizado con el perfil principal hasta la V2 del RF-002.
+// RF-001 / RF-002 V2: un usuario puede tener varios roles. Uno es el principal
+// (con el que inicia sesión). Quitar un rol = vigente false (historial).
+// usuarios.rol_id se mantiene sincronizado con el rol principal.
 export const usuarioRoles = pgTable(
   "usuario_roles",
   {
@@ -274,6 +246,122 @@ export const usuarioRoles = pgTable(
       "ck_usuario_roles_retiro",
       sql`vigente OR (retirado_por_id IS NOT NULL AND retirado_en IS NOT NULL)`,
     ),
+  ],
+);
+
+// RF-002 V2: menús (opciones) que puede ver y usar cada rol (Roles-Menú).
+// Reemplaza a permisos/rol_permisos: el acceso se da solo por menú.
+export const rolMenus = pgTable(
+  "rol_menus",
+  {
+    rolId: uuid("rol_id").notNull(),
+    menuId: uuid("menu_id").notNull(),
+    asignadoPorId: uuid("asignado_por_id"),
+    asignadoEn: timestamp("asignado_en", { precision: 0, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.rolId, table.menuId], name: "pk_rol_menus" }),
+    foreignKey({
+      columns: [table.rolId],
+      foreignColumns: [roles.id],
+      name: "fk_rol_menus_rol",
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [table.menuId],
+      foreignColumns: [menus.id],
+      name: "fk_rol_menus_menu",
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [table.asignadoPorId],
+      foreignColumns: [usuarios.id],
+      name: "fk_rol_menus_asignado",
+    }),
+  ],
+);
+
+// RF-002 V2 (HU4): puestos del personal. El cargo NO da accesos (eso es del rol);
+// sirve para reportes, firmas e historial laboral, y sugiere roles.
+export const cargos = pgTable(
+  "cargos",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    nombre: varchar({ length: 80 }).notNull(),
+    descripcion: varchar({ length: 255 }),
+    vigente: boolean().default(true).notNull(),
+    creadoEn: timestamp("creado_en", { precision: 0, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    actualizadoEn: timestamp("actualizado_en", { precision: 0, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [unique("uq_cargos_nombre").on(table.nombre)],
+);
+
+// RF-002 V2 (HU4): roles que se sugieren al asignar un cargo (solo sugerencia).
+export const cargoRolesSugeridos = pgTable(
+  "cargo_roles_sugeridos",
+  {
+    cargoId: uuid("cargo_id").notNull(),
+    rolId: uuid("rol_id").notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.cargoId, table.rolId], name: "pk_cargo_roles_sugeridos" }),
+    foreignKey({
+      columns: [table.cargoId],
+      foreignColumns: [cargos.id],
+      name: "fk_cargo_roles_cargo",
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [table.rolId],
+      foreignColumns: [roles.id],
+      name: "fk_cargo_roles_rol",
+    }).onDelete("cascade"),
+  ],
+);
+
+// RF-007 V3: cargo vigente de cada persona (uno solo) y su historial con fechas.
+// Se crea aquí porque RF-002 necesita saber si un cargo está en uso; los endpoints
+// de asignación a personas son del RF-007.
+export const personaCargos = pgTable(
+  "persona_cargos",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    personaId: uuid("persona_id").notNull(),
+    cargoId: uuid("cargo_id").notNull(),
+    fechaInicio: date("fecha_inicio").notNull(),
+    fechaFin: date("fecha_fin"),
+    esPrincipal: boolean("es_principal").default(true).notNull(),
+    vigente: boolean().default(true).notNull(),
+    registradoPorId: uuid("registrado_por_id"),
+    creadoEn: timestamp("creado_en", { precision: 0, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    // RF-002 V3: un solo cargo vigente por persona (el resto es historial)
+    uniqueIndex("ux_persona_cargos_vigente")
+      .on(table.personaId)
+      .where(sql`vigente`),
+    foreignKey({
+      columns: [table.personaId],
+      foreignColumns: [personas.id],
+      name: "fk_persona_cargos_persona",
+    }),
+    foreignKey({
+      columns: [table.cargoId],
+      foreignColumns: [cargos.id],
+      name: "fk_persona_cargos_cargo",
+    }),
+    foreignKey({
+      columns: [table.registradoPorId],
+      foreignColumns: [usuarios.id],
+      name: "fk_persona_cargos_registrado",
+    }),
+    check("ck_persona_cargos_fechas", sql`fecha_fin IS NULL OR fecha_fin >= fecha_inicio`),
+    check("ck_persona_cargos_vigente", sql`vigente OR fecha_fin IS NOT NULL`),
   ],
 );
 
@@ -2006,36 +2094,6 @@ export const institucion = pgTable(
       "ck_institucion_tipo_gestion",
       sql`(tipo_gestion)::text = ANY ((ARRAY['publica'::character varying, 'privada'::character varying, 'convenio'::character varying])::text[])`,
     ),
-  ],
-);
-
-export const parametrosSistema = pgTable("parametros_sistema", {
-  clave: varchar({ length: 100 }).primaryKey().notNull(),
-  valor: text().notNull(),
-  descripcion: varchar({ length: 255 }),
-  actualizadoEn: timestamp("actualizado_en", { precision: 0, mode: "string" })
-    .default(sql`CURRENT_TIMESTAMP`)
-    .notNull(),
-});
-
-export const rolPermisos = pgTable(
-  "rol_permisos",
-  {
-    rolId: uuid("rol_id").notNull(),
-    permisoId: uuid("permiso_id").notNull(),
-  },
-  (table) => [
-    foreignKey({
-      columns: [table.permisoId],
-      foreignColumns: [permisos.id],
-      name: "fk_rol_permisos_permiso",
-    }).onDelete("cascade"),
-    foreignKey({
-      columns: [table.rolId],
-      foreignColumns: [roles.id],
-      name: "fk_rol_permisos_rol",
-    }).onDelete("cascade"),
-    primaryKey({ columns: [table.rolId, table.permisoId], name: "pk_rol_permisos" }),
   ],
 );
 

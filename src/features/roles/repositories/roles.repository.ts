@@ -1,12 +1,8 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, count, eq, ilike, isNull, sql, type SQL } from "drizzle-orm";
+import { and, count, eq, ilike, inArray, isNull, sql, type SQL } from "drizzle-orm";
 import { Database, DRIZZLE } from "../../../core/database";
-import { modulos, permisos, roles, rolPermisos, usuarios } from "../../../core/database/schema";
-import {
-  PermissionCatalogItemDto,
-  RoleDetailResponseDto,
-  RoleResponseDto,
-} from "../dto/role-response.dto";
+import { menus, roles, rolMenus, usuarioRoles, usuarios } from "../../../core/database/schema";
+import { RoleDetailResponseDto, RoleResponseDto } from "../dto/role-response.dto";
 import {
   CreateRoleData,
   IRolesRepository,
@@ -37,15 +33,17 @@ export class RolesRepository implements IRolesRepository {
       .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(roles.nombre);
 
-    // Obtener conteo de usuarios por cada rol
+    // Conteo de cuentas por rol: RF-002 V2, cuenta los roles vigentes
+    // (principal o adicional) de usuario_roles
     const counts = await this.db
       .select({
-        rolId: usuarios.rolId,
-        count: count(usuarios.id),
+        rolId: usuarioRoles.rolId,
+        count: count(usuarioRoles.usuarioId),
       })
-      .from(usuarios)
-      .where(isNull(usuarios.eliminadoEn))
-      .groupBy(usuarios.rolId);
+      .from(usuarioRoles)
+      .innerJoin(usuarios, eq(usuarioRoles.usuarioId, usuarios.id))
+      .where(and(eq(usuarioRoles.vigente, true), isNull(usuarios.eliminadoEn)))
+      .groupBy(usuarioRoles.rolId);
 
     const countsMap = new Map<string, number>();
     for (const c of counts) {
@@ -67,20 +65,11 @@ export class RolesRepository implements IRolesRepository {
 
     const userCountResult = await this.countAssignedUsers(id);
 
-    // Obtener permisos asignados
-    let assignedPermisos: string[] = [];
-
-    if (role.nombre === "Administrador") {
-      // El Administrador siempre tiene todos los permisos vigentes
-      assignedPermisos = await this.getAllPermissionIds();
-    } else {
-      const assigned = await this.db
-        .select({ permisoId: rolPermisos.permisoId })
-        .from(rolPermisos)
-        .where(eq(rolPermisos.rolId, id));
-
-      assignedPermisos = assigned.map((p) => p.permisoId);
-    }
+    // RF-002 V2 (Roles-Menú): opciones de menú asignadas al rol
+    const asignados = await this.db
+      .select({ menuId: rolMenus.menuId })
+      .from(rolMenus)
+      .where(eq(rolMenus.rolId, id));
 
     return {
       id: role.id,
@@ -91,7 +80,7 @@ export class RolesRepository implements IRolesRepository {
       usuariosCount: userCountResult,
       creadoEn: role.creadoEn,
       actualizadoEn: role.actualizadoEn,
-      permisos: assignedPermisos,
+      menus: asignados.map((m) => m.menuId),
     };
   }
 
@@ -176,56 +165,40 @@ export class RolesRepository implements IRolesRepository {
   }
 
   async countAssignedUsers(rolId: string): Promise<number> {
+    // RF-002 V2: cuentas que tienen este rol vigente, sea principal o adicional
     const [result] = await this.db
-      .select({ count: count(usuarios.id) })
-      .from(usuarios)
-      .where(and(eq(usuarios.rolId, rolId), isNull(usuarios.eliminadoEn)));
+      .select({ count: count(usuarioRoles.usuarioId) })
+      .from(usuarioRoles)
+      .innerJoin(usuarios, eq(usuarioRoles.usuarioId, usuarios.id))
+      .where(
+        and(
+          eq(usuarioRoles.rolId, rolId),
+          eq(usuarioRoles.vigente, true),
+          isNull(usuarios.eliminadoEn),
+        ),
+      );
 
     return Number(result?.count ?? 0);
   }
 
-  async getAllPermissions(): Promise<PermissionCatalogItemDto[]> {
-    const perms = await this.db
-      .select({
-        id: permisos.id,
-        codigo: permisos.codigo,
-        nombre: permisos.nombre,
-        descripcion: permisos.descripcion,
-        moduloId: permisos.moduloId,
-        moduloNombre: modulos.nombre,
-        moduloCodigo: modulos.codigo,
-      })
-      .from(permisos)
-      .innerJoin(modulos, eq(permisos.moduloId, modulos.id))
-      .where(eq(modulos.vigente, true))
-      .orderBy(modulos.orden, permisos.codigo);
+  async countMenusVigentes(menuIds: string[]): Promise<number> {
+    if (menuIds.length === 0) return 0;
+    const [result] = await this.db
+      .select({ total: count(menus.id) })
+      .from(menus)
+      .where(and(inArray(menus.id, menuIds), eq(menus.vigente, true)));
 
-    return perms;
+    return Number(result?.total ?? 0);
   }
 
-  async getAllPermissionIds(): Promise<string[]> {
-    const perms = await this.db
-      .select({ id: permisos.id })
-      .from(permisos)
-      .innerJoin(modulos, eq(permisos.moduloId, modulos.id))
-      .where(eq(modulos.vigente, true));
-
-    return perms.map((p) => p.id);
-  }
-
-  async assignPermissions(rolId: string, permissionIds: string[]): Promise<void> {
+  async assignMenus(rolId: string, menuIds: string[], actorId: string): Promise<void> {
     await this.db.transaction(async (tx) => {
-      // Eliminar permisos actuales del rol
-      await tx.delete(rolPermisos).where(eq(rolPermisos.rolId, rolId));
+      await tx.delete(rolMenus).where(eq(rolMenus.rolId, rolId));
 
-      // Insertar nuevos permisos
-      if (permissionIds.length > 0) {
-        await tx.insert(rolPermisos).values(
-          permissionIds.map((pId) => ({
-            rolId,
-            permisoId: pId,
-          })),
-        );
+      if (menuIds.length > 0) {
+        await tx
+          .insert(rolMenus)
+          .values(menuIds.map((menuId) => ({ rolId, menuId, asignadoPorId: actorId })));
       }
     });
   }

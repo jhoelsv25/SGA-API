@@ -43,13 +43,6 @@ export class UpdateMenuDto {
   orden?: number;
 
   @ApiPropertyOptional({
-    description: "ID del permiso requerido",
-  })
-  @IsOptional()
-  @IsUUID("4")
-  permisoId?: string;
-
-  @ApiPropertyOptional({
     description: "ID del contenedor padre",
   })
   @IsOptional()

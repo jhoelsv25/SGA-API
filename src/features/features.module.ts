@@ -4,6 +4,7 @@ import { AuditModule } from "./audit";
 import { AuthModule } from "./auth";
 import { CalendarioModule } from "./calendario";
 import { CursosModule } from "./cursos";
+import { CargosModule } from "./cargos";
 import { EquiposModule } from "./equipos";
 import { GradosModule } from "./grados";
 import { InstitucionModule } from "./institucion";
@@ -30,6 +31,7 @@ import { VariablesSistemaModule } from "./variables-sistema";
     GradosModule,
     CursosModule,
     PlanEstudiosModule,
+    CargosModule,
   ],
   exports: [
     AuthModule,
@@ -46,6 +48,7 @@ import { VariablesSistemaModule } from "./variables-sistema";
     GradosModule,
     CursosModule,
     PlanEstudiosModule,
+    CargosModule,
   ],
 })
 export class FeaturesModule {}

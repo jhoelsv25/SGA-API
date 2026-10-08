@@ -23,7 +23,7 @@ export class UserPersonaDto {
   @ApiPropertyOptional({ description: "Correo electrónico" })
   correo?: string | null;
 
-  @ApiPropertyOptional({ description: "URL de foto de perfil" })
+  @ApiPropertyOptional({ description: "URL de foto de rol" })
   fotoUrl?: string | null;
 }
 
@@ -78,10 +78,19 @@ export class UserCreatedResponseDto {
   usuario!: UserResponseDto;
 
   @ApiProperty({
-    description: "Contraseña temporal autogenerada (se muestra UNA SOLA VEZ)",
+    description:
+      "Contraseña temporal autogenerada (se muestra UNA SOLA VEZ). null si la persona ya tenía cuenta",
     example: "Temp2026!aB",
+    nullable: true,
+    type: String,
   })
-  tempPassword!: string;
+  tempPassword!: string | null;
+
+  @ApiProperty({
+    description:
+      "RF-002 V3: true si la persona ya tenía cuenta y solo se le agregaron cargo y roles",
+  })
+  cuentaExistente!: boolean;
 }
 
 export class TempPasswordResetResponseDto {

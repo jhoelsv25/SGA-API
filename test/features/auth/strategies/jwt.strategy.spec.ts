@@ -38,7 +38,7 @@ describe("JwtStrategy (RF-001: Validación de Token y Sesión)", () => {
   beforeEach(async () => {
     const mockRepo = {
       findUserById: jest.fn(),
-      findUserProfiles: jest.fn().mockResolvedValue([]),
+      findUserRoles: jest.fn().mockResolvedValue([]),
     };
 
     const mockConfig = {
@@ -105,20 +105,20 @@ describe("JwtStrategy (RF-001: Validación de Token y Sesión)", () => {
       );
     });
 
-    it("RF-001 V2: rechaza el token si su perfil activo ya no está asignado", async () => {
+    it("RF-001 V2: rechaza el token si su rol activo ya no está asignado", async () => {
       authRepository.findUserById.mockResolvedValue(mockUserRecord);
-      authRepository.findUserProfiles.mockResolvedValue([
-        { rolId: "otro-perfil", nombre: "Apoderado", esSistema: false, esPrincipal: true },
+      authRepository.findUserRoles.mockResolvedValue([
+        { rolId: "otro-rol", nombre: "Apoderado", esSistema: false, esPrincipal: true },
       ]);
 
       await expect(strategy.validate(mockPayload)).rejects.toThrow(
-        "Su perfil ya no está asignado. Ingrese nuevamente.",
+        "Su rol ya no está asignado. Ingrese nuevamente.",
       );
     });
 
-    it("RF-001 V2: usa el perfil activo del token cuando sigue asignado", async () => {
+    it("RF-001 V2: usa el rol activo del token cuando sigue asignado", async () => {
       authRepository.findUserById.mockResolvedValue(mockUserRecord);
-      authRepository.findUserProfiles.mockResolvedValue([
+      authRepository.findUserRoles.mockResolvedValue([
         { rolId: "x", nombre: "Docente", esSistema: false, esPrincipal: true },
         { rolId: mockPayload.roleId, nombre: "Apoderado", esSistema: false, esPrincipal: false },
       ]);

@@ -23,7 +23,7 @@ import { AuthResponseDto } from "./dto/auth-response.dto";
 import { ChangePasswordDto } from "./dto/change-password.dto";
 import { ForgotPasswordDto } from "./dto/forgot-password.dto";
 import { LoginDto } from "./dto/login.dto";
-import { SwitchProfileDto } from "./dto/switch-profile.dto";
+import { SwitchRoleDto } from "./dto/switch-role.dto";
 import type { AuthenticatedUser } from "./interfaces/jwt-payload.interface";
 import { clearAuthCookie, setAuthCookie } from "./utils";
 
@@ -56,7 +56,7 @@ export class AuthController {
   @Get("check-token")
   @ApiBearerAuth()
   @ApiCookieAuth()
-  @ApiOperation({ summary: "Verificar validez del token y obtener perfil del usuario actual" })
+  @ApiOperation({ summary: "Verificar validez del token y obtener rol del usuario actual" })
   @ApiResponse({
     status: 200,
     description: "Token válido, datos de usuario y módulos retornados",
@@ -67,27 +67,27 @@ export class AuthController {
     return this.authService.checkToken(user.id, user.roleId);
   }
 
-  @Post("switch-profile")
+  @Post("switch-role")
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiCookieAuth()
   @ApiOperation({
-    summary: "Cambiar el perfil activo sin volver a iniciar sesión (RF-001 V2)",
+    summary: "Cambiar el rol activo sin volver a iniciar sesión (RF-001 V2)",
   })
   @ApiResponse({
     status: 200,
-    description: "Perfil cambiado; se emite un token nuevo con el perfil elegido",
+    description: "Rol cambiado; se emite un token nuevo con el rol elegido",
     type: AuthResponseDto,
   })
-  @ApiResponse({ status: 403, description: "El usuario no tiene asignado ese perfil" })
-  async switchProfile(
+  @ApiResponse({ status: 403, description: "El usuario no tiene asignado ese rol" })
+  async switchRole(
     @CurrentUser() user: AuthenticatedUser,
     @ExtractToken() token: string | undefined,
-    @Body() dto: SwitchProfileDto,
+    @Body() dto: SwitchRoleDto,
     @ClientInfo() client: ClientInfoData,
     @Res({ passthrough: true }) res: Response,
   ): Promise<AuthResponseDto> {
-    const result = await this.authService.switchProfile(
+    const result = await this.authService.switchRole(
       user.id,
       dto,
       token,

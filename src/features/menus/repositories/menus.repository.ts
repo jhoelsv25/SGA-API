@@ -1,7 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { and, eq, ilike, type SQL } from "drizzle-orm";
 import { Database, DRIZZLE } from "../../../core/database";
-import { menus, modulos, permisos, rolPermisos } from "../../../core/database/schema";
+import { menus, modulos, rolMenus } from "../../../core/database/schema";
 import {
   MenuItemResponseDto,
   MenuOptionResponseDto,
@@ -134,7 +134,6 @@ export class MenusRepository implements IMenusRepository {
         id: menus.id,
         menuPadreId: menus.menuPadreId,
         moduloId: menus.moduloId,
-        permisoId: menus.permisoId,
         nombre: menus.nombre,
         ruta: menus.ruta,
         icono: menus.icono,
@@ -156,7 +155,6 @@ export class MenusRepository implements IMenusRepository {
         id: menus.id,
         menuPadreId: menus.menuPadreId,
         moduloId: menus.moduloId,
-        permisoId: menus.permisoId,
         nombre: menus.nombre,
         ruta: menus.ruta,
         icono: menus.icono,
@@ -178,7 +176,6 @@ export class MenusRepository implements IMenusRepository {
       .values({
         moduloId: data.moduloId,
         menuPadreId: data.menuPadreId ?? null,
-        permisoId: data.permisoId ?? null,
         nombre: data.nombre.trim(),
         ruta: data.ruta?.trim() ?? null,
         icono: data.icono?.trim() ?? null,
@@ -196,9 +193,6 @@ export class MenusRepository implements IMenusRepository {
 
     if (data.menuPadreId !== undefined) {
       updateValues.menuPadreId = data.menuPadreId;
-    }
-    if (data.permisoId !== undefined) {
-      updateValues.permisoId = data.permisoId;
     }
     if (data.nombre !== undefined) {
       updateValues.nombre = data.nombre.trim();
@@ -259,14 +253,12 @@ export class MenusRepository implements IMenusRepository {
       .where(and(eq(menus.esContenedor, true), eq(menus.vigente, true)))
       .orderBy(menus.orden);
 
-    // 3. Obtener opciones vigentes con datos del permiso
+    // 3. Obtener opciones vigentes
     const activeOptions = await this.db
       .select({
         id: menus.id,
         moduloId: menus.moduloId,
         menuPadreId: menus.menuPadreId,
-        permisoId: menus.permisoId,
-        permisoCodigo: permisos.codigo,
         nombre: menus.nombre,
         ruta: menus.ruta,
         icono: menus.icono,
@@ -274,28 +266,23 @@ export class MenusRepository implements IMenusRepository {
         vigente: menus.vigente,
       })
       .from(menus)
-      .leftJoin(permisos, eq(menus.permisoId, permisos.id))
       .where(and(eq(menus.esContenedor, false), eq(menus.vigente, true)))
       .orderBy(menus.orden);
 
-    // 4. Si no es admin, obtener lista de permisos asignados al rol
-    let allowedPermissionIds = new Set<string>();
+    // 4. RF-002 V2 (Roles-Menú): el rol ve solo las opciones que tiene asignadas;
+    // el Administrador ve todas
+    let asignados = new Set<string>();
     if (!esAdmin) {
-      const rolePerms = await this.db
-        .select({ permisoId: rolPermisos.permisoId })
-        .from(rolPermisos)
-        .where(eq(rolPermisos.rolId, rolId));
+      const rows = await this.db
+        .select({ menuId: rolMenus.menuId })
+        .from(rolMenus)
+        .where(eq(rolMenus.rolId, rolId));
 
-      allowedPermissionIds = new Set(rolePerms.map((rp) => rp.permisoId));
+      asignados = new Set(rows.map((r) => r.menuId));
     }
 
     // 5. Filtrar opciones visibles
-    // "Una opción se muestra si el rol del usuario tiene el permiso que la opción exige, o si no exige ninguno."
-    const visibleOptions = activeOptions.filter((opt) => {
-      if (esAdmin) return true;
-      if (!opt.permisoId) return true; // No exige permiso
-      return allowedPermissionIds.has(opt.permisoId);
-    });
+    const visibleOptions = activeOptions.filter((opt) => esAdmin || asignados.has(opt.id));
 
     // Agrupar opciones por contenedor (menuPadreId)
     const optionsByContainer = new Map<string, MenuOptionResponseDto[]>();
@@ -308,8 +295,6 @@ export class MenusRepository implements IMenusRepository {
         ruta: opt.ruta,
         icono: opt.icono,
         orden: opt.orden,
-        permisoId: opt.permisoId,
-        permisoCodigo: opt.permisoCodigo,
         vigente: opt.vigente,
       });
       optionsByContainer.set(opt.menuPadreId, list);

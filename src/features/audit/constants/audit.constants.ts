@@ -1,5 +1,5 @@
 export const MODULE_TABLES_MAP: Record<string, string[]> = {
-  seguridad: ["usuarios", "roles", "rol_permisos", "bitacora", "sesiones_usuario"],
+  seguridad: ["usuarios", "roles", "rol_menus", "bitacora", "sesiones_usuario"],
   academico: [
     "cursos",
     "areas_curriculares",
