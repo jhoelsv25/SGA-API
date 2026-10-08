@@ -56,6 +56,13 @@ export class CurrentUserDto {
 
   @ApiPropertyOptional({ example: "Docente", description: "Rol activo en esta sesión" })
   activeRoleName?: string;
+
+  @ApiPropertyOptional({
+    type: [String],
+    description:
+      "Rutas de menú del rol activo. Registrar en el calendario exige /admin/calendario.",
+  })
+  menuRoutes?: string[];
 }
 
 export class AuthModuleDto {

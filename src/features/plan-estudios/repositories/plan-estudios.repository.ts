@@ -155,29 +155,32 @@ export class PlanEstudiosRepository implements IPlanEstudiosRepository {
   }
 
   async copyPlan(origenGradoId: string, destinoGradoId: string): Promise<PlanEstudioItemDto[]> {
-    // Obtener cursos activos del origen
-    const sourceRows = await this.db
-      .select({
-        plan: planEstudios,
-        curso: cursos,
-      })
-      .from(planEstudios)
-      .innerJoin(cursos, eq(planEstudios.cursoId, cursos.id))
-      .where(and(eq(planEstudios.gradoId, origenGradoId), isNull(cursos.eliminadoEn)));
+    return this.db.transaction(async (tx) => {
+      // Obtener cursos activos del origen dentro de la transacción
+      const sourceRows = await tx
+        .select({
+          plan: planEstudios,
+          curso: cursos,
+        })
+        .from(planEstudios)
+        .innerJoin(cursos, eq(planEstudios.cursoId, cursos.id))
+        .where(and(eq(planEstudios.gradoId, origenGradoId), isNull(cursos.eliminadoEn)));
 
-    if (sourceRows.length === 0) {
-      return [];
-    }
+      if (sourceRows.length === 0) {
+        return [];
+      }
 
-    const valuesToInsert = sourceRows.map((r) => ({
-      gradoId: destinoGradoId,
-      cursoId: r.plan.cursoId,
-      horasSemanales: r.plan.horasSemanales,
-      activo: true,
-    }));
+      const valuesToInsert = sourceRows.map((r) => ({
+        gradoId: destinoGradoId,
+        cursoId: r.plan.cursoId,
+        horasSemanales: r.plan.horasSemanales,
+        activo: true,
+      }));
 
-    await this.db.insert(planEstudios).values(valuesToInsert);
+      await tx.insert(planEstudios).values(valuesToInsert);
 
-    return this.findByGradoId(destinoGradoId);
+      // Leer el plan resultante fuera de la transacción para el JOIN con cursos
+      return this.findByGradoId(destinoGradoId);
+    });
   }
 }

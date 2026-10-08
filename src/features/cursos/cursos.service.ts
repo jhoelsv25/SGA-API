@@ -122,10 +122,6 @@ export class CursosService {
     return updated;
   }
 
-  async deactivate(id: string, actorId: string, ip?: string): Promise<CursoResponseDto> {
-    return this.desactivar(id, actorId, ip);
-  }
-
   async reactivar(id: string, actorId: string, ip?: string): Promise<CursoResponseDto> {
     const existing = await this.findById(id);
 
@@ -156,9 +152,5 @@ export class CursosService {
     });
 
     return updated;
-  }
-
-  async reactivate(id: string, actorId: string, ip?: string): Promise<CursoResponseDto> {
-    return this.reactivar(id, actorId, ip);
   }
 }

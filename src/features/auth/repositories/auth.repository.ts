@@ -216,6 +216,18 @@ export class AuthRepository implements IAuthRepository {
     return result;
   }
 
+  async getMenuRoutes(rolId: string, esSistema: boolean): Promise<string[]> {
+    const rows = esSistema
+      ? await this.db.select({ ruta: menus.ruta }).from(menus).where(eq(menus.vigente, true))
+      : await this.db
+          .select({ ruta: menus.ruta })
+          .from(rolMenus)
+          .innerJoin(menus, eq(rolMenus.menuId, menus.id))
+          .where(and(eq(rolMenus.rolId, rolId), eq(menus.vigente, true)));
+
+    return rows.flatMap((row) => (row.ruta ? [row.ruta] : []));
+  }
+
   async updatePassword(userId: string, newHash: string): Promise<void> {
     await this.db
       .update(usuarios)

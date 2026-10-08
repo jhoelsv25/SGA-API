@@ -430,10 +430,10 @@ export class AuthService {
 
     const persona = await this.authRepository.findPersonaById(user.personaId);
     const inst = await this.authRepository.findInstitution();
-    const modules = await this.authRepository.getUserModules(
-      activeRole.rolId,
-      activeRole.esSistema,
-    );
+    const [modules, menuRoutes] = await Promise.all([
+      this.authRepository.getUserModules(activeRole.rolId, activeRole.esSistema),
+      this.authRepository.getMenuRoutes(activeRole.rolId, activeRole.esSistema),
+    ]);
 
     const userDto: CurrentUserDto = {
       id: user.id,
@@ -451,6 +451,7 @@ export class AuthService {
       institutionName: inst?.nombre ?? undefined,
       avatarUrl: persona?.fotoUrl ?? undefined,
       mustChangePassword: user.debeCambiarContrasena,
+      menuRoutes,
     };
 
     return { userDto, modules, activeRole };

@@ -47,4 +47,5 @@ export interface IAuthRepository {
   closeOtherSessions(userId: string, currentTokenHash: string): Promise<void>;
   updatePassword(userId: string, newHash: string): Promise<void>;
   getUserModules(rolId: string, esSistema: boolean): Promise<AuthModuleDto[]>;
+  getMenuRoutes(rolId: string, esSistema: boolean): Promise<string[]>;
 }

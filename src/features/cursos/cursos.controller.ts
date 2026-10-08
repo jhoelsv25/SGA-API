@@ -86,7 +86,7 @@ export class CursosController {
     @CurrentUser() user: AuthenticatedUser,
     @ClientInfo() clientInfo: ClientInfoData,
   ): Promise<CursoResponseDto> {
-    return this.service.deactivate(id, user.id, clientInfo.ip);
+    return this.service.desactivar(id, user.id, clientInfo.ip);
   }
 
   @Patch(":id/reactivar")
@@ -103,6 +103,6 @@ export class CursosController {
     @CurrentUser() user: AuthenticatedUser,
     @ClientInfo() clientInfo: ClientInfoData,
   ): Promise<CursoResponseDto> {
-    return this.service.reactivate(id, user.id, clientInfo.ip);
+    return this.service.reactivar(id, user.id, clientInfo.ip);
   }
 }

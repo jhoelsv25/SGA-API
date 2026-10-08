@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
-import { IsIn, IsOptional, IsString, Matches, MaxLength } from "class-validator";
+import { IsIn, IsNotEmpty, IsOptional, IsString, Matches, MaxLength } from "class-validator";
 import { AREAS_CURRICULARES, type AreaCurricular } from "../constants/areas-curriculares.constant";
 
 export class UpdateCursoDto {
@@ -10,6 +10,7 @@ export class UpdateCursoDto {
   })
   @IsOptional()
   @IsString({ message: "El código debe ser un texto." })
+  @IsNotEmpty({ message: "El código no puede estar vacío." })
   @MaxLength(20, { message: "El código no puede exceder 20 caracteres." })
   codigo?: string;
 
