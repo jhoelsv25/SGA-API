@@ -6,13 +6,12 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import * as bcrypt from "bcryptjs";
-import { and, eq, isNull } from "drizzle-orm";
 import { AuditService } from "../../common/services/audit.service";
 import { Database, DRIZZLE } from "../../core/database";
-import { personas } from "../../core/database/schema";
 import type { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface";
 import { RolesRepository } from "../roles/repositories/roles.repository";
-import { BCRYPT_SALT_ROUNDS, TEMP_PASSWORD_LENGTH } from "./constants";
+import { BCRYPT_SALT_ROUNDS, TEMP_PASSWORD_LENGTH, USER_ROLE_MESSAGES } from "./constants";
+import { AddUserRoleDto, UserRoleAssignmentDto } from "./dto/user-role.dto";
 import { ChangeUserRoleDto } from "./dto/change-user-role.dto";
 import { CreateUserDto } from "./dto/create-user.dto";
 import { UpdateUsernameDto } from "./dto/update-username.dto";
@@ -52,61 +51,104 @@ export class UsersService {
     return user;
   }
 
+  /**
+   * RF-002 V3: registro único. Persona (del padrón o nueva) → cargo → cuenta → roles,
+   * en una sola transacción. Si la persona ya tiene cuenta, solo se le agregan el
+   * cargo y los roles que le falten (no se crea otra cuenta).
+   */
   async create(dto: CreateUserDto, actorId: string, ip?: string): Promise<UserCreatedResponseDto> {
-    // 1. Validar que la persona existe en el padrón
-    const [persona] = await this.db
-      .select({ id: personas.id })
-      .from(personas)
-      .where(and(eq(personas.id, dto.personaId), isNull(personas.eliminadoEn)))
-      .limit(1);
-
-    if (!persona) {
-      throw new NotFoundException("La persona seleccionada no existe en el padrón.");
+    // 1. Persona: se indica una del padrón o una nueva, no ambas
+    if (Boolean(dto.personaId) === Boolean(dto.persona)) {
+      throw new BadRequestException(USER_ROLE_MESSAGES.PERSONA_REQUIRED);
     }
 
-    // 2. Validar que la persona no tenga ya una cuenta vigente
-    const existingPersonaUser = await this.usersRepository.findUserByPersonaId(dto.personaId);
-    if (existingPersonaUser) {
-      throw new ConflictException("Esta persona ya tiene una cuenta en el sistema.");
+    let personaId = dto.personaId;
+    let numeroDocumento: string;
+    if (dto.personaId) {
+      const persona = await this.usersRepository.findPersonaById(dto.personaId);
+      if (!persona) {
+        throw new NotFoundException("La persona seleccionada no existe en el padrón.");
+      }
+      numeroDocumento = persona.numeroDocumento;
+    } else {
+      const nueva = dto.persona!;
+      // Padrón único: si el documento ya existe, se reutiliza la persona
+      const existente = await this.usersRepository.findPersonaByDocumento(
+        nueva.tipoDocumento,
+        nueva.numeroDocumento,
+      );
+      if (existente) {
+        personaId = existente.id;
+      } else if (nueva.correo && (await this.usersRepository.existeCorreo(nueva.correo))) {
+        throw new ConflictException(USER_ROLE_MESSAGES.CORREO_REPETIDO);
+      }
+      numeroDocumento = nueva.numeroDocumento.trim();
     }
 
-    // 3. Validar que el nombre de usuario no esté repetido
-    const existingUsername = await this.usersRepository.findUserByUsername(dto.nombreUsuario);
-    if (existingUsername) {
-      throw new ConflictException("El nombre de usuario ya está en uso.");
+    // 2. Cargo obligatorio (formal; los accesos los dan los roles)
+    if (!(await this.usersRepository.isCargoVigente(dto.cargoId))) {
+      throw new NotFoundException(USER_ROLE_MESSAGES.CARGO_NOT_FOUND);
     }
 
-    // 4. Validar que el rol exista
-    const role = await this.rolesRepository.findById(dto.rolId);
-    if (!role || !role.activo) {
-      throw new NotFoundException("El rol seleccionado no existe o no está activo.");
+    // 3. Roles: los indicados o, si no se indican, los sugeridos por el cargo
+    let rolIds = dto.rolIds ?? [];
+    if (rolIds.length > 0) {
+      for (const rolId of rolIds) {
+        const role = await this.rolesRepository.findById(rolId);
+        if (!role || !role.activo) {
+          throw new NotFoundException(USER_ROLE_MESSAGES.ROLE_NOT_FOUND);
+        }
+      }
+    } else {
+      rolIds = await this.usersRepository.findRolesSugeridosActivos(dto.cargoId);
+      if (rolIds.length === 0) {
+        throw new BadRequestException(USER_ROLE_MESSAGES.CARGO_SIN_ROLES);
+      }
     }
 
-    // 5. Generar contraseña temporal segura y su hash
-    const tempPassword = generateTemporaryPassword(TEMP_PASSWORD_LENGTH);
-    const contrasenaHash = await bcrypt.hash(tempPassword, BCRYPT_SALT_ROUNDS);
+    // 4. Cuenta: si la persona ya tiene una, se reutiliza
+    const cuentaExistente = personaId
+      ? await this.usersRepository.findUserByPersonaId(personaId)
+      : null;
 
-    // 6. Crear la cuenta
-    const user = await this.usersRepository.create({
-      personaId: dto.personaId,
-      rolId: dto.rolId,
-      nombreUsuario: dto.nombreUsuario,
+    let tempPassword: string | null = null;
+    let contrasenaHash: string | undefined;
+    const nombreUsuario = (dto.nombreUsuario ?? numeroDocumento).trim();
+
+    if (!cuentaExistente) {
+      const existingUsername = await this.usersRepository.findUserByUsername(nombreUsuario);
+      if (existingUsername) {
+        throw new ConflictException("El nombre de usuario ya está en uso.");
+      }
+      tempPassword = generateTemporaryPassword(TEMP_PASSWORD_LENGTH);
+      contrasenaHash = await bcrypt.hash(tempPassword, BCRYPT_SALT_ROUNDS);
+    }
+
+    // 5. Registro único en una transacción
+    const usuarioId = await this.usersRepository.registrarCuenta({
+      personaId,
+      nuevaPersona: personaId ? undefined : dto.persona,
+      cargoId: dto.cargoId,
+      rolIds,
+      usuarioExistenteId: cuentaExistente?.id,
+      nombreUsuario,
       contrasenaHash,
+      actorId,
     });
 
-    // 7. Perfil principal en usuario_roles (RF-001 V2: varios perfiles por usuario)
-    await this.usersRepository.syncPrincipalProfile(user.id, dto.rolId, actorId);
+    const user = (await this.usersRepository.findUserById(usuarioId))!;
 
-    // 8. Auditoría
+    // 6. Auditoría
     await this.auditService.log({
       usuarioId: actorId,
-      accion: "crear",
+      accion: cuentaExistente ? "actualizar" : "crear",
       tabla: "usuarios",
       registroId: user.id,
       valorNuevo: {
         nombreUsuario: user.nombreUsuario,
         personaId: user.persona.id,
-        rolId: user.rol.id,
+        cargoId: dto.cargoId,
+        rolIds,
         estado: user.estado,
       },
       direccionIp: ip,
@@ -115,6 +157,7 @@ export class UsersService {
     return {
       usuario: user,
       tempPassword,
+      cuentaExistente: Boolean(cuentaExistente),
     };
   }
 
@@ -139,8 +182,8 @@ export class UsersService {
     }
 
     const updated = await this.usersRepository.update(id, { rolId: dto.rolId });
-    // RF-001 V2: el perfil principal en usuario_roles sigue a usuarios.rol_id
-    await this.usersRepository.syncPrincipalProfile(id, dto.rolId, actorUser.id);
+    // RF-001 V2: el rol principal en usuario_roles sigue a usuarios.rol_id
+    await this.usersRepository.syncPrincipalRole(id, dto.rolId, actorUser.id);
 
     await this.auditService.log({
       usuarioId: actorUser.id,
@@ -153,6 +196,115 @@ export class UsersService {
     });
 
     return updated;
+  }
+
+  // ── RF-002 V2 (HU1): varios roles por cuenta ──────────────────────────
+
+  async listRoles(id: string, includeRetired = false): Promise<UserRoleAssignmentDto[]> {
+    await this.findUserById(id);
+    return this.usersRepository.findRoles(id, includeRetired);
+  }
+
+  async addRole(
+    id: string,
+    dto: AddUserRoleDto,
+    actorUser: AuthenticatedUser,
+    ip?: string,
+  ): Promise<UserRoleAssignmentDto[]> {
+    await this.findUserById(id);
+
+    const role = await this.rolesRepository.findById(dto.rolId);
+    if (!role || !role.activo) {
+      throw new NotFoundException(USER_ROLE_MESSAGES.ROLE_NOT_FOUND);
+    }
+
+    const vigentes = await this.usersRepository.findRoles(id, false);
+    if (vigentes.some((p) => p.rolId === dto.rolId)) {
+      throw new ConflictException(USER_ROLE_MESSAGES.ALREADY_ASSIGNED);
+    }
+
+    await this.usersRepository.addRole(id, dto.rolId, actorUser.id);
+
+    await this.auditService.log({
+      usuarioId: actorUser.id,
+      accion: "crear",
+      tabla: "usuario_roles",
+      registroId: id,
+      valorNuevo: { rolId: role.id, rolNombre: role.nombre, esPrincipal: false },
+      direccionIp: ip,
+    });
+
+    return this.usersRepository.findRoles(id, false);
+  }
+
+  async setPrincipalRole(
+    id: string,
+    rolId: string,
+    actorUser: AuthenticatedUser,
+    ip?: string,
+  ): Promise<UserRoleAssignmentDto[]> {
+    await this.findUserById(id);
+
+    const vigentes = await this.usersRepository.findRoles(id, false);
+    const target = vigentes.find((p) => p.rolId === rolId);
+    if (!target) {
+      throw new NotFoundException(USER_ROLE_MESSAGES.NOT_ASSIGNED);
+    }
+
+    const anterior = vigentes.find((p) => p.esPrincipal);
+    if (!target.esPrincipal) {
+      await this.usersRepository.setPrincipalRole(id, rolId);
+
+      await this.auditService.log({
+        usuarioId: actorUser.id,
+        accion: "actualizar",
+        tabla: "usuario_roles",
+        registroId: id,
+        valorAnterior: { rolPrincipal: anterior?.rolNombre ?? null },
+        valorNuevo: { rolPrincipal: target.rolNombre },
+        direccionIp: ip,
+      });
+    }
+
+    return this.usersRepository.findRoles(id, false);
+  }
+
+  async retireRole(
+    id: string,
+    rolId: string,
+    actorUser: AuthenticatedUser,
+    ip?: string,
+  ): Promise<UserRoleAssignmentDto[]> {
+    await this.findUserById(id);
+
+    const vigentes = await this.usersRepository.findRoles(id, false);
+    const target = vigentes.find((p) => p.rolId === rolId);
+    if (!target) {
+      throw new NotFoundException(USER_ROLE_MESSAGES.NOT_ASSIGNED);
+    }
+    if (actorUser.id === id && target.rolNombre === "Administrador") {
+      throw new BadRequestException(USER_ROLE_MESSAGES.SELF_ADMIN);
+    }
+    if (vigentes.length === 1) {
+      throw new BadRequestException(USER_ROLE_MESSAGES.LAST_ROLE);
+    }
+    if (target.esPrincipal) {
+      throw new BadRequestException(USER_ROLE_MESSAGES.RETIRE_PRINCIPAL);
+    }
+
+    await this.usersRepository.retireRole(id, rolId, actorUser.id);
+
+    await this.auditService.log({
+      usuarioId: actorUser.id,
+      accion: "actualizar",
+      tabla: "usuario_roles",
+      registroId: id,
+      valorAnterior: { rolId, rolNombre: target.rolNombre, vigente: true },
+      valorNuevo: { rolId, rolNombre: target.rolNombre, vigente: false },
+      direccionIp: ip,
+    });
+
+    return this.usersRepository.findRoles(id, false);
   }
 
   async unlock(id: string, actorId: string, ip?: string): Promise<UserResponseDto> {

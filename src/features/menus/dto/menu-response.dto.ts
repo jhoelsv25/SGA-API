@@ -39,12 +39,6 @@ export class MenuOptionResponseDto {
   @ApiProperty({ description: "Orden dentro del contenedor" })
   orden!: number;
 
-  @ApiPropertyOptional({ description: "ID del permiso requerido" })
-  permisoId?: string | null;
-
-  @ApiPropertyOptional({ description: "Código del permiso requerido" })
-  permisoCodigo?: string | null;
-
   @ApiProperty({ description: "Vigencia de la opción" })
   vigente!: boolean;
 }
@@ -104,9 +98,6 @@ export class MenuItemResponseDto {
 
   @ApiProperty({ description: "ID del módulo" })
   moduloId!: string;
-
-  @ApiPropertyOptional({ description: "ID del permiso (si aplica)" })
-  permisoId?: string | null;
 
   @ApiProperty({ description: "Nombre" })
   nombre!: string;

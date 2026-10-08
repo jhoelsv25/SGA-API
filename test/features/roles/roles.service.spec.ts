@@ -1,7 +1,6 @@
-import { BadRequestException, ConflictException } from "@nestjs/common";
+import { BadRequestException, ConflictException, NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { AuditService } from "@/common/services/audit.service";
-import { CacheService } from "@/core/cache";
 import { RolesRepository } from "@/features/roles/repositories/roles.repository";
 import { RolesService } from "@/features/roles/roles.service";
 
@@ -20,9 +19,8 @@ describe("RolesService (RF-002: HU 2)", () => {
       create: jest.fn(),
       update: jest.fn(),
       countAssignedUsers: jest.fn(),
-      getAllPermissions: jest.fn(),
-      assignPermissions: jest.fn(),
-      getAllPermissionIds: jest.fn(),
+      countMenusVigentes: jest.fn(),
+      assignMenus: jest.fn(),
     };
 
     const mockAudit = {
@@ -100,7 +98,7 @@ describe("RolesService (RF-002: HU 2)", () => {
         activo: true,
         creadoEn: "2026-10-05T00:00:00Z",
         actualizadoEn: "2026-10-05T00:00:00Z",
-        permisos: [],
+        menus: [],
       });
 
       // Act & Assert
@@ -120,7 +118,7 @@ describe("RolesService (RF-002: HU 2)", () => {
         activo: true,
         creadoEn: "2026-10-05T00:00:00Z",
         actualizadoEn: "2026-10-05T00:00:00Z",
-        permisos: [],
+        menus: [],
       });
       repository.countAssignedUsers.mockResolvedValue(3);
 
@@ -141,7 +139,7 @@ describe("RolesService (RF-002: HU 2)", () => {
         activo: true,
         creadoEn: "2026-10-05T00:00:00Z",
         actualizadoEn: "2026-10-05T00:00:00Z",
-        permisos: [],
+        menus: [],
       });
 
       // Act & Assert
@@ -151,115 +149,72 @@ describe("RolesService (RF-002: HU 2)", () => {
     });
   });
 
-  describe("assignPermissions()", () => {
-    it("should throw BadRequestException when modifying permissions of Administrator (Escenario: Permisos del Administrador)", async () => {
-      // Arrange
-      repository.findById.mockResolvedValue({
-        id: "rol-admin",
-        nombre: "Administrador",
-        esSistema: true,
-        activo: true,
-        creadoEn: "2026-10-05T00:00:00Z",
-        actualizadoEn: "2026-10-05T00:00:00Z",
-        permisos: ["p1", "p2"],
-      });
+  describe("assignMenus() (RF-002 V2: Roles-Menú)", () => {
+    const rolDocente = {
+      id: "rol-docente",
+      nombre: "Docente",
+      esSistema: true,
+      activo: true,
+      creadoEn: "2026-10-05T00:00:00Z",
+      actualizadoEn: "2026-10-05T00:00:00Z",
+      menus: ["m-viejo"],
+    };
 
-      // Act & Assert
-      await expect(
-        service.assignPermissions("rol-admin", { permisoIds: ["p1"] }, "admin-id"),
-      ).rejects.toThrow(
-        new BadRequestException("No se pueden modificar los permisos del rol Administrador."),
-      );
-    });
-
-    it("should assign permissions to a role and log audit (Escenario: Asignar permisos a un rol)", async () => {
+    it("Asignar menús a un rol: reemplaza sus opciones y lo audita", async () => {
       // Arrange
-      repository.findById.mockResolvedValue({
-        id: "rol-docente",
-        nombre: "Docente",
-        esSistema: true,
-        activo: true,
-        creadoEn: "2026-10-05T00:00:00Z",
-        actualizadoEn: "2026-10-05T00:00:00Z",
-        permisos: [],
-      });
-      repository.assignPermissions.mockResolvedValue(undefined);
+      repository.findById.mockResolvedValue(rolDocente);
+      repository.countMenusVigentes.mockResolvedValue(2);
 
       // Act
-      const result = await service.assignPermissions(
+      const result = await service.assignMenus(
         "rol-docente",
-        { permisoIds: ["permiso-1", "permiso-2"] },
+        { menuIds: ["m1", "m2", "m1"] },
         "admin-id",
         "127.0.0.1",
       );
 
       // Assert
       expect(result.count).toBe(2);
-      expect(repository.assignPermissions).toHaveBeenCalledWith("rol-docente", [
-        "permiso-1",
-        "permiso-2",
-      ]);
+      expect(repository.assignMenus).toHaveBeenCalledWith("rol-docente", ["m1", "m2"], "admin-id");
       expect(auditService.log).toHaveBeenCalledWith(
-        expect.objectContaining({ accion: "actualizar", tabla: "rol_permisos" }),
+        expect.objectContaining({
+          accion: "actualizar",
+          tabla: "rol_menus",
+          valorAnterior: { menus: ["m-viejo"] },
+          valorNuevo: { menus: ["m1", "m2"] },
+        }),
       );
     });
-  });
 
-  describe("getPermissionsCatalog()", () => {
-    it("should return permissions directly from repository when cacheService is undefined", async () => {
-      const mockCatalog = [
-        {
-          id: "p1",
-          codigo: "usuarios.ver",
-          nombre: "Ver usuarios",
-          descripcion: "Permite ver usuarios",
-          moduloId: "m1",
-          moduloNombre: "Seguridad",
-          moduloCodigo: "seguridad",
-        },
-      ];
-      repository.getAllPermissions.mockResolvedValue(mockCatalog);
+    it("Menú inexistente o no vigente: rechaza la asignación", async () => {
+      repository.findById.mockResolvedValue(rolDocente);
+      repository.countMenusVigentes.mockResolvedValue(1);
 
-      const result = await service.getPermissionsCatalog();
-
-      expect(result).toEqual(mockCatalog);
-      expect(repository.getAllPermissions).toHaveBeenCalledTimes(1);
+      await expect(
+        service.assignMenus("rol-docente", { menuIds: ["m1", "m9"] }, "admin-id"),
+      ).rejects.toThrow(new BadRequestException("Uno de los menús no existe o no está vigente."));
+      expect(repository.assignMenus).not.toHaveBeenCalled();
     });
 
-    it("should use cacheService.getOrSet when cacheService is provided", async () => {
-      const mockCatalog = [
-        {
-          id: "p1",
-          codigo: "usuarios.ver",
-          nombre: "Ver usuarios",
-          descripcion: "Permite ver usuarios",
-          moduloId: "m1",
-          moduloNombre: "Seguridad",
-          moduloCodigo: "seguridad",
-        },
-      ];
-      const mockCacheService: Partial<Record<keyof CacheService, jest.Mock>> = {
-        getOrSet: jest
-          .fn()
-          .mockImplementation((_key: string, factory: () => Promise<unknown>): Promise<unknown> =>
-            factory(),
-          ),
-      };
+    it("Menús del Administrador: no se modifican, ya ve todo", async () => {
+      repository.findById.mockResolvedValue({
+        ...rolDocente,
+        id: "rol-admin",
+        nombre: "Administrador",
+      });
 
-      const serviceWithCache = new RolesService(
-        repository,
-        auditService,
-        mockCacheService as unknown as CacheService,
+      await expect(
+        service.assignMenus("rol-admin", { menuIds: ["m1"] }, "admin-id"),
+      ).rejects.toThrow(
+        new BadRequestException("El rol Administrador tiene acceso a todos los menús."),
       );
-      repository.getAllPermissions.mockResolvedValue(mockCatalog);
+    });
 
-      const result = await serviceWithCache.getPermissionsCatalog();
+    it("Rol inexistente: NotFoundException", async () => {
+      repository.findById.mockResolvedValue(null);
 
-      expect(result).toEqual(mockCatalog);
-      expect(mockCacheService.getOrSet).toHaveBeenCalledWith(
-        "catalog:permissions",
-        expect.any(Function),
-        86400,
+      await expect(service.assignMenus("x", { menuIds: [] }, "admin-id")).rejects.toThrow(
+        new NotFoundException("Rol no encontrado."),
       );
     });
   });

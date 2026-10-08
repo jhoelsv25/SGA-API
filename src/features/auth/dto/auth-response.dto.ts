@@ -1,13 +1,13 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 
-export class ProfileDto {
+export class AuthRoleDto {
   @ApiProperty({ example: "550e8400-e29b-41d4-a716-446655440000" })
   id!: string;
 
   @ApiProperty({ example: "Docente" })
   name!: string;
 
-  @ApiProperty({ example: true, description: "Perfil con el que inicia sesión" })
+  @ApiProperty({ example: true, description: "Rol con el que inicia sesión" })
   isPrincipal!: boolean;
 }
 
@@ -46,16 +46,16 @@ export class CurrentUserDto {
   mustChangePassword?: boolean;
 
   @ApiPropertyOptional({
-    type: [ProfileDto],
-    description: "Perfiles vigentes del usuario (RF-001 V2: puede tener varios)",
+    type: [AuthRoleDto],
+    description: "Roles vigentes del usuario (RF-001 V2: puede tener varios)",
   })
-  profiles?: ProfileDto[];
+  userRoles?: AuthRoleDto[];
 
   @ApiPropertyOptional({ example: "550e8400-e29b-41d4-a716-446655440000" })
-  activeProfileId?: string;
+  activeRoleId?: string;
 
-  @ApiPropertyOptional({ example: "Docente", description: "Perfil activo en esta sesión" })
-  activeProfileName?: string;
+  @ApiPropertyOptional({ example: "Docente", description: "Rol activo en esta sesión" })
+  activeRoleName?: string;
 }
 
 export class AuthModuleDto {

@@ -5,10 +5,9 @@ import {
   institucion,
   menus,
   modulos,
-  permisos,
   personas,
   roles,
-  rolPermisos,
+  rolMenus,
   sesiones,
   usuarioRoles,
   usuarios,
@@ -17,7 +16,7 @@ import { AuthModuleDto } from "../dto/auth-response.dto";
 import type {
   IAuthRepository,
   InstitutionSummary,
-  PerfilRecord,
+  UsuarioRolRecord,
   PersonaRecord,
   RolRecord,
   SessionData,
@@ -80,8 +79,8 @@ export class AuthRepository implements IAuthRepository {
     return role ?? null;
   }
 
-  /** Perfiles vigentes del usuario, el principal primero. */
-  async findUserProfiles(userId: string): Promise<PerfilRecord[]> {
+  /** Roles vigentes del usuario, el principal primero. */
+  async findUserRoles(userId: string): Promise<UsuarioRolRecord[]> {
     return this.db
       .select({
         rolId: usuarioRoles.rolId,
@@ -190,10 +189,10 @@ export class AuthRepository implements IAuthRepository {
         icono: modulos.icono,
         orden: modulos.orden,
       })
-      .from(rolPermisos)
-      .innerJoin(permisos, eq(rolPermisos.permisoId, permisos.id))
-      .innerJoin(modulos, eq(permisos.moduloId, modulos.id))
-      .where(and(eq(rolPermisos.rolId, rolId), eq(modulos.vigente, true)))
+      .from(rolMenus)
+      .innerJoin(menus, eq(rolMenus.menuId, menus.id))
+      .innerJoin(modulos, eq(menus.moduloId, modulos.id))
+      .where(and(eq(rolMenus.rolId, rolId), eq(menus.vigente, true), eq(modulos.vigente, true)))
       .orderBy(modulos.orden);
 
     const result: AuthModuleDto[] = [];

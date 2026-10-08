@@ -56,12 +56,4 @@ export class CreateMenuOptionDto {
   @IsInt({ message: "El orden debe ser un número entero" })
   @Min(1, { message: "El orden debe ser mayor o igual a 1" })
   orden!: number;
-
-  @ApiPropertyOptional({
-    description: "ID del permiso requerido para visualizar y acceder a esta opción",
-    example: "c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e8f",
-  })
-  @IsOptional()
-  @IsUUID("4", { message: "El ID del permiso debe ser un UUID válido" })
-  permisoId?: string;
 }

@@ -3,7 +3,6 @@ import {
   Controller,
   Delete,
   Get,
-  Header,
   Param,
   ParseBoolPipe,
   ParseUUIDPipe,
@@ -14,17 +13,13 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { ClientInfo, type ClientInfoData, CurrentUser, Roles } from "../../common/decorators";
 import type { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface";
-import { AssignPermissionsDto } from "./dto/assign-permissions.dto";
+import { AssignMenusDto } from "./dto/assign-menus.dto";
 import { CreateRoleDto } from "./dto/create-role.dto";
-import {
-  PermissionCatalogItemDto,
-  RoleDetailResponseDto,
-  RoleResponseDto,
-} from "./dto/role-response.dto";
+import { RoleDetailResponseDto, RoleResponseDto } from "./dto/role-response.dto";
 import { UpdateRoleDto } from "./dto/update-role.dto";
 import { RolesService } from "./roles.service";
 
-@ApiTags("Seguridad - Roles y Permisos")
+@ApiTags("Seguridad - Roles y menús")
 @ApiBearerAuth()
 @Roles("Administrador")
 @Controller("roles")
@@ -38,14 +33,6 @@ export class RolesController {
     @Query("soloActivos", new ParseBoolPipe({ optional: true })) soloActivos?: boolean,
   ): Promise<RoleResponseDto[]> {
     return this.rolesService.findAll(soloActivos);
-  }
-
-  @Get("permissions")
-  @Header("Cache-Control", "public, max-age=86400, stale-while-revalidate=43200")
-  @ApiOperation({ summary: "Obtener catálogo completo de permisos agrupados por módulo" })
-  @ApiResponse({ status: 200, type: [PermissionCatalogItemDto] })
-  async getPermissionsCatalog(): Promise<PermissionCatalogItemDto[]> {
-    return this.rolesService.getPermissionsCatalog();
   }
 
   @Get(":id")
@@ -89,15 +76,16 @@ export class RolesController {
     return this.rolesService.delete(id, user.id, client.ip);
   }
 
-  @Put(":id/permissions")
-  @ApiOperation({ summary: "Asignar permisos a un rol" })
+  @Put(":id/menus")
+  @ApiOperation({ summary: "Asignar las opciones de menú del rol (Roles-Menú, RF-002 V2)" })
   @ApiResponse({ status: 200 })
-  async assignPermissions(
+  @ApiResponse({ status: 400, description: "Rol Administrador o menú no vigente" })
+  async assignMenus(
     @Param("id", ParseUUIDPipe) id: string,
-    @Body() dto: AssignPermissionsDto,
+    @Body() dto: AssignMenusDto,
     @CurrentUser() user: AuthenticatedUser,
     @ClientInfo() client: ClientInfoData,
   ): Promise<{ message: string; count: number }> {
-    return this.rolesService.assignPermissions(id, dto, user.id, client.ip);
+    return this.rolesService.assignMenus(id, dto, user.id, client.ip);
   }
 }

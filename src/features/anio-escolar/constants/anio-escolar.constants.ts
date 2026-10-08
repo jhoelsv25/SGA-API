@@ -22,7 +22,8 @@ export const TIPOS_SUSPENDEN_POR_DEFECTO: ReadonlySet<TipoEvento> = new Set([
 
 export const NOMBRES_BIMESTRE = ["I", "II", "III", "IV"] as const;
 
-export const PERMISO_CALENDARIO_REGISTRAR = "calendario:registrar";
+// RF-003: registrar eventos exige que el rol tenga el menú del calendario (Roles-Menú)
+export const MENU_CALENDARIO = "/admin/calendario";
 
 export const ZONA_HORARIA_COLEGIO = "America/Lima";
 

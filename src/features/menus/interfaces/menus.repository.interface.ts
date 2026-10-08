@@ -23,7 +23,6 @@ export interface UpdateModuleData {
 export interface CreateMenuData {
   moduloId: string;
   menuPadreId?: string | null;
-  permisoId?: string | null;
   nombre: string;
   ruta?: string | null;
   icono?: string | null;
@@ -34,7 +33,6 @@ export interface CreateMenuData {
 
 export interface UpdateMenuData {
   menuPadreId?: string | null;
-  permisoId?: string | null;
   nombre?: string;
   ruta?: string | null;
   icono?: string | null;

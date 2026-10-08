@@ -17,11 +17,11 @@ import {
   VAR_LONGITUD_CONTRASENA,
 } from "./constants";
 import { AuthModuleDto, AuthResponseDto, CurrentUserDto } from "./dto/auth-response.dto";
-import { SwitchProfileDto } from "./dto/switch-profile.dto";
+import { SwitchRoleDto } from "./dto/switch-role.dto";
 import { ChangePasswordDto } from "./dto/change-password.dto";
 import { ForgotPasswordDto } from "./dto/forgot-password.dto";
 import { LoginDto } from "./dto/login.dto";
-import type { PerfilRecord, UsuarioRecord } from "./interfaces/auth-repository.interface";
+import type { UsuarioRolRecord, UsuarioRecord } from "./interfaces/auth-repository.interface";
 import type { JwtPayload } from "./interfaces/jwt-payload.interface";
 import { AuthRepository } from "./repositories/auth.repository";
 import { SessionService } from "./services/session.service";
@@ -55,15 +55,15 @@ export class AuthService {
     // 4. Reiniciar intentos fallidos
     await this.authRepository.resetLoginAttempts(user.id);
 
-    // 5. Cargar perfil y permisos: ingresa con su perfil principal (RF-001 V2)
-    const { userDto, modules, activeProfile } = await this.buildUserProfile(user);
+    // 5. Cargar rol y permisos: ingresa con su rol principal (RF-001 V2)
+    const { userDto, modules, activeRole } = await this.buildUserRole(user);
 
     // 6. Generar token y persistir sesión mediante SessionService
     const payload: JwtPayload = {
       sub: user.id,
       username: user.nombreUsuario,
-      roleId: activeProfile.rolId,
-      role: activeProfile.nombre,
+      roleId: activeRole.rolId,
+      role: activeRole.nombre,
       personaId: user.personaId,
     };
 
@@ -101,7 +101,7 @@ export class AuthService {
 
     this.assertUserIsActive(user);
 
-    const { userDto, modules } = await this.buildUserProfile(user, activeRoleId);
+    const { userDto, modules } = await this.buildUserRole(user, activeRoleId);
 
     return {
       user: userDto,
@@ -128,14 +128,14 @@ export class AuthService {
     // 3. Revocar sesión anterior
     await this.sessionService.revokeSession(oldToken);
 
-    // 4. Construir perfil (conserva el perfil activo si sigue asignado) y generar nuevo token
-    const { userDto, modules, activeProfile } = await this.buildUserProfile(user, payload.roleId);
+    // 4. Construir rol (conserva el rol activo si sigue asignado) y generar nuevo token
+    const { userDto, modules, activeRole } = await this.buildUserRole(user, payload.roleId);
 
     const newPayload: JwtPayload = {
       sub: user.id,
       username: user.nombreUsuario,
-      roleId: activeProfile.rolId,
-      role: activeProfile.nombre,
+      roleId: activeRole.rolId,
+      role: activeRole.nombre,
       personaId: user.personaId,
     };
 
@@ -157,12 +157,12 @@ export class AuthService {
   }
 
   /**
-   * RF-001 V2: cambia el perfil activo sin volver a pedir la contraseña.
-   * Emite un token nuevo con el perfil elegido y cierra la sesión del token anterior.
+   * RF-001 V2: cambia el rol activo sin volver a pedir la contraseña.
+   * Emite un token nuevo con el rol elegido y cierra la sesión del token anterior.
    */
-  async switchProfile(
+  async switchRole(
     userId: string,
-    dto: SwitchProfileDto,
+    dto: SwitchRoleDto,
     oldToken?: string,
     ipAddress?: string,
     userAgent?: string,
@@ -173,19 +173,19 @@ export class AuthService {
     }
     this.assertUserIsActive(user);
 
-    const profiles = await this.resolveProfiles(user);
-    const target = profiles.find((p) => p.rolId === dto.roleId);
+    const roles = await this.resolveRoles(user);
+    const target = roles.find((p) => p.rolId === dto.roleId);
     if (!target) {
-      throw new ForbiddenException("No tiene asignado ese perfil.");
+      throw new ForbiddenException("No tiene asignado ese rol.");
     }
 
-    const { userDto, modules, activeProfile } = await this.buildUserProfile(user, target.rolId);
+    const { userDto, modules, activeRole } = await this.buildUserRole(user, target.rolId);
 
     const payload: JwtPayload = {
       sub: user.id,
       username: user.nombreUsuario,
-      roleId: activeProfile.rolId,
-      role: activeProfile.nombre,
+      roleId: activeRole.rolId,
+      role: activeRole.nombre,
       personaId: user.personaId,
     };
 
@@ -206,12 +206,12 @@ export class AuthService {
       accion: "actualizar",
       tabla: "usuario_roles",
       registroId: user.id,
-      valorNuevo: { perfilActivo: activeProfile.nombre, perfilActivoId: activeProfile.rolId },
+      valorNuevo: { rolActivo: activeRole.nombre, rolActivoId: activeRole.rolId },
       direccionIp: ipAddress,
     });
 
     return {
-      message: `Perfil cambiado a ${activeProfile.nombre}.`,
+      message: `Rol cambiado a ${activeRole.nombre}.`,
       accessToken,
       user: userDto,
       modules,
@@ -398,12 +398,12 @@ export class AuthService {
   }
 
   /**
-   * Perfiles vigentes del usuario (tabla usuario_roles), el principal primero.
+   * Roles vigentes del usuario (tabla usuario_roles), el principal primero.
    * Si aún no tiene filas (datos previos a la migración 0002), usa usuarios.rol_id.
    */
-  private async resolveProfiles(user: UsuarioRecord): Promise<PerfilRecord[]> {
-    const profiles = await this.authRepository.findUserProfiles(user.id);
-    if (profiles.length > 0) return profiles;
+  private async resolveRoles(user: UsuarioRecord): Promise<UsuarioRolRecord[]> {
+    const roles = await this.authRepository.findUserRoles(user.id);
+    if (roles.length > 0) return roles;
 
     const role = await this.authRepository.findRoleById(user.rolId);
     return role
@@ -411,28 +411,28 @@ export class AuthService {
       : [];
   }
 
-  private async buildUserProfile(
+  private async buildUserRole(
     user: UsuarioRecord,
     requestedRoleId?: string,
   ): Promise<{
     userDto: CurrentUserDto;
     modules: AuthModuleDto[];
-    activeProfile: PerfilRecord;
+    activeRole: UsuarioRolRecord;
   }> {
-    const profiles = await this.resolveProfiles(user);
-    const activeProfile =
-      profiles.find((p) => p.rolId === requestedRoleId) ??
-      profiles.find((p) => p.esPrincipal) ??
-      profiles[0];
-    if (!activeProfile) {
-      throw new UnauthorizedException("La cuenta no tiene perfiles asignados.");
+    const roles = await this.resolveRoles(user);
+    const activeRole =
+      roles.find((p) => p.rolId === requestedRoleId) ??
+      roles.find((p) => p.esPrincipal) ??
+      roles[0];
+    if (!activeRole) {
+      throw new UnauthorizedException("La cuenta no tiene roles asignados.");
     }
 
     const persona = await this.authRepository.findPersonaById(user.personaId);
     const inst = await this.authRepository.findInstitution();
     const modules = await this.authRepository.getUserModules(
-      activeProfile.rolId,
-      activeProfile.esSistema,
+      activeRole.rolId,
+      activeRole.esSistema,
     );
 
     const userDto: CurrentUserDto = {
@@ -443,16 +443,16 @@ export class AuthService {
       lastName: persona
         ? `${persona.apellidoPaterno} ${persona.apellidoMaterno ?? ""}`.trim()
         : undefined,
-      roles: profiles.map((p) => p.nombre),
-      profiles: profiles.map((p) => ({ id: p.rolId, name: p.nombre, isPrincipal: p.esPrincipal })),
-      activeProfileId: activeProfile.rolId,
-      activeProfileName: activeProfile.nombre,
+      roles: roles.map((p) => p.nombre),
+      userRoles: roles.map((p) => ({ id: p.rolId, name: p.nombre, isPrincipal: p.esPrincipal })),
+      activeRoleId: activeRole.rolId,
+      activeRoleName: activeRole.nombre,
       institutionId: inst?.id ?? undefined,
       institutionName: inst?.nombre ?? undefined,
       avatarUrl: persona?.fotoUrl ?? undefined,
       mustChangePassword: user.debeCambiarContrasena,
     };
 
-    return { userDto, modules, activeProfile };
+    return { userDto, modules, activeRole };
   }
 }

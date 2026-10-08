@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { AnioEscolarModule } from "./anio-escolar";
 import { AuditModule } from "./audit";
 import { AuthModule } from "./auth";
+import { CargosModule } from "./cargos";
 import { EquiposModule } from "./equipos";
 import { InstitucionModule } from "./institucion";
 import { MenusModule } from "./menus";
@@ -22,6 +23,7 @@ import { VariablesSistemaModule } from "./variables-sistema";
     EquiposModule,
     VariablesSistemaModule,
     AnioEscolarModule,
+    CargosModule,
   ],
   exports: [
     AuthModule,
@@ -34,6 +36,7 @@ import { VariablesSistemaModule } from "./variables-sistema";
     EquiposModule,
     VariablesSistemaModule,
     AnioEscolarModule,
+    CargosModule,
   ],
 })
 export class FeaturesModule {}

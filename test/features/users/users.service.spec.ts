@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException } from "@nestjs/common";
+import { BadRequestException, ConflictException, NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { AuditService } from "@/common/services/audit.service";
 import { DRIZZLE } from "@/core/database";
@@ -55,9 +55,18 @@ describe("UsersService (RF-002: HU 1)", () => {
       findUserById: jest.fn(),
       findUserByPersonaId: jest.fn(),
       findUserByUsername: jest.fn(),
-      create: jest.fn(),
       update: jest.fn(),
-      syncPrincipalProfile: jest.fn(),
+      syncPrincipalRole: jest.fn(),
+      findPersonaById: jest.fn(),
+      findPersonaByDocumento: jest.fn(),
+      existeCorreo: jest.fn().mockResolvedValue(false),
+      isCargoVigente: jest.fn().mockResolvedValue(true),
+      findRolesSugeridosActivos: jest.fn(),
+      registrarCuenta: jest.fn(),
+      findRoles: jest.fn(),
+      addRole: jest.fn(),
+      setPrincipalRole: jest.fn(),
+      retireRole: jest.fn(),
       findUsers: jest.fn(),
       closeAllUserSessions: jest.fn().mockResolvedValue(undefined),
     };
@@ -90,93 +99,204 @@ describe("UsersService (RF-002: HU 1)", () => {
     auditService = module.get(AuditService);
   });
 
-  describe("create()", () => {
-    it("should create user with active state, temporary password and log audit (Escenario: Crear una cuenta)", async () => {
-      // Arrange
-      mockDb.select.mockReturnValue({
-        from: jest.fn().mockReturnValue({
-          where: jest.fn().mockReturnValue({
-            limit: jest.fn().mockResolvedValue([{ id: "persona-1" }]),
-          }),
-        }),
-      });
+  describe("create() — RF-002 V3: registro único", () => {
+    const rolActivo = (id: string, nombre: string) => ({
+      id,
+      nombre,
+      esSistema: true,
+      activo: true,
+      creadoEn: "2026-10-05T00:00:00Z",
+      actualizadoEn: "2026-10-05T00:00:00Z",
+      menus: [],
+    });
 
+    const nuevaPersona = {
+      tipoDocumento: "dni",
+      numeroDocumento: "09876543",
+      nombres: "Diego",
+      apellidoPaterno: "Ramos",
+      sexo: "M",
+    };
+
+    beforeEach(() => {
       usersRepository.findUserByPersonaId.mockResolvedValue(null);
       usersRepository.findUserByUsername.mockResolvedValue(null);
-      rolesRepository.findById.mockResolvedValue({
-        id: "rol-docente",
-        nombre: "Docente",
-        esSistema: true,
-        activo: true,
-        creadoEn: "2026-10-05T00:00:00Z",
-        actualizadoEn: "2026-10-05T00:00:00Z",
-        permisos: [],
-      });
-      usersRepository.create.mockResolvedValue(dummyUser);
+      usersRepository.registrarCuenta.mockResolvedValue(dummyUser.id);
+      usersRepository.findUserById.mockResolvedValue(dummyUser);
+    });
 
-      // Act
+    it("Registrar personal nuevo: crea persona, cargo, cuenta y el rol sugerido del cargo", async () => {
+      usersRepository.findPersonaByDocumento.mockResolvedValue(null);
+      usersRepository.findRolesSugeridosActivos.mockResolvedValue(["rol-director"]);
+
       const result = await service.create(
-        { personaId: "persona-1", rolId: "rol-docente", nombreUsuario: "48123456" },
+        { persona: nuevaPersona, cargoId: "cargo-director" },
         currentAdmin.id,
         "127.0.0.1",
       );
 
-      // Assert
-      expect(result.usuario.id).toBe(dummyUser.id);
-      expect(result.tempPassword).toBeDefined();
-      expect(result.tempPassword.length).toBeGreaterThanOrEqual(10);
-      // RF-001 V2: el perfil elegido queda como principal en usuario_roles
-      expect(usersRepository.syncPrincipalProfile).toHaveBeenCalledWith(
-        dummyUser.id,
-        expect.any(String),
-        expect.anything(),
-      );
+      expect(usersRepository.registrarCuenta).toHaveBeenCalledWith({
+        personaId: undefined,
+        nuevaPersona,
+        cargoId: "cargo-director",
+        rolIds: ["rol-director"],
+        usuarioExistenteId: undefined,
+        nombreUsuario: "09876543",
+        contrasenaHash: expect.any(String) as string,
+        actorId: currentAdmin.id,
+      });
+      expect(result.cuentaExistente).toBe(false);
+      expect(result.tempPassword?.length).toBeGreaterThanOrEqual(10);
       expect(auditService.log).toHaveBeenCalledWith(
         expect.objectContaining({ accion: "crear", tabla: "usuarios" }),
       );
     });
 
-    it("should throw ConflictException when persona already has an active account (Escenario: Persona que ya tiene cuenta)", async () => {
-      // Arrange
-      mockDb.select.mockReturnValue({
-        from: jest.fn().mockReturnValue({
-          where: jest.fn().mockReturnValue({
-            limit: jest.fn().mockResolvedValue([{ id: "persona-1" }]),
-          }),
-        }),
+    it("Persona ya registrada: reutiliza la persona por su documento", async () => {
+      usersRepository.findPersonaByDocumento.mockResolvedValue({
+        id: "persona-1",
+        numeroDocumento: "09876543",
       });
+      usersRepository.findRolesSugeridosActivos.mockResolvedValue(["rol-soporte"]);
 
-      usersRepository.findUserByPersonaId.mockResolvedValue(dummyUser);
+      await service.create({ persona: nuevaPersona, cargoId: "cargo-ti" }, currentAdmin.id);
 
-      // Act & Assert
-      await expect(
-        service.create(
-          { personaId: "persona-1", rolId: "rol-docente", nombreUsuario: "48123456" },
-          currentAdmin.id,
-        ),
-      ).rejects.toThrow(new ConflictException("Esta persona ya tiene una cuenta en el sistema."));
+      expect(usersRepository.registrarCuenta).toHaveBeenCalledWith(
+        expect.objectContaining({ personaId: "persona-1", nuevaPersona: undefined }),
+      );
     });
 
-    it("should throw ConflictException when username already in use (Escenario: Nombre de usuario repetido)", async () => {
-      // Arrange
-      mockDb.select.mockReturnValue({
-        from: jest.fn().mockReturnValue({
-          where: jest.fn().mockReturnValue({
-            limit: jest.fn().mockResolvedValue([{ id: "persona-1" }]),
-          }),
-        }),
+    it("Persona que ya tiene cuenta: no crea otra ni genera contraseña, solo agrega roles", async () => {
+      usersRepository.findPersonaById.mockResolvedValue({
+        id: "persona-1",
+        numeroDocumento: "48123456",
       });
+      usersRepository.findUserByPersonaId.mockResolvedValue(dummyUser);
+      rolesRepository.findById.mockResolvedValue(rolActivo("rol-docente", "Docente"));
 
-      usersRepository.findUserByPersonaId.mockResolvedValue(null);
-      usersRepository.findUserByUsername.mockResolvedValue(dummyUser);
+      const result = await service.create(
+        { personaId: "persona-1", cargoId: "cargo-ti", rolIds: ["rol-docente"] },
+        currentAdmin.id,
+      );
 
-      // Act & Assert
+      expect(usersRepository.registrarCuenta).toHaveBeenCalledWith(
+        expect.objectContaining({
+          usuarioExistenteId: dummyUser.id,
+          contrasenaHash: undefined,
+          rolIds: ["rol-docente"],
+        }),
+      );
+      expect(usersRepository.findUserByUsername).not.toHaveBeenCalled();
+      expect(result.tempPassword).toBeNull();
+      expect(result.cuentaExistente).toBe(true);
+    });
+
+    it("Roles indicados: usa esos roles en el orden dado (el primero es el principal)", async () => {
+      usersRepository.findPersonaById.mockResolvedValue({
+        id: "persona-1",
+        numeroDocumento: "48123456",
+      });
+      rolesRepository.findById.mockImplementation((id: string) =>
+        Promise.resolve(rolActivo(id, id)),
+      );
+
+      await service.create(
+        { personaId: "persona-1", cargoId: "cargo-ti", rolIds: ["rol-soporte", "rol-admin"] },
+        currentAdmin.id,
+      );
+
+      expect(usersRepository.findRolesSugeridosActivos).not.toHaveBeenCalled();
+      expect(usersRepository.registrarCuenta).toHaveBeenCalledWith(
+        expect.objectContaining({ rolIds: ["rol-soporte", "rol-admin"] }),
+      );
+    });
+
+    it("Cargo sin roles sugeridos: pide indicar al menos un rol", async () => {
+      usersRepository.findPersonaById.mockResolvedValue({
+        id: "persona-1",
+        numeroDocumento: "48123456",
+      });
+      usersRepository.findRolesSugeridosActivos.mockResolvedValue([]);
+
+      await expect(
+        service.create({ personaId: "persona-1", cargoId: "cargo-psicologo" }, currentAdmin.id),
+      ).rejects.toThrow(
+        new BadRequestException("El cargo no tiene roles sugeridos. Indique al menos un rol."),
+      );
+      expect(usersRepository.registrarCuenta).not.toHaveBeenCalled();
+    });
+
+    it("Rechaza si el cargo no existe o no está vigente", async () => {
+      usersRepository.findPersonaById.mockResolvedValue({
+        id: "persona-1",
+        numeroDocumento: "48123456",
+      });
+      usersRepository.isCargoVigente.mockResolvedValue(false);
+
+      await expect(
+        service.create({ personaId: "persona-1", cargoId: "cargo-x" }, currentAdmin.id),
+      ).rejects.toThrow(
+        new NotFoundException("El cargo seleccionado no existe o no está vigente."),
+      );
+      expect(usersRepository.registrarCuenta).not.toHaveBeenCalled();
+    });
+
+    it("Rechaza un rol inexistente o inactivo", async () => {
+      usersRepository.findPersonaById.mockResolvedValue({
+        id: "persona-1",
+        numeroDocumento: "48123456",
+      });
+      rolesRepository.findById.mockResolvedValue(null);
+
       await expect(
         service.create(
-          { personaId: "persona-1", rolId: "rol-docente", nombreUsuario: "48123456" },
+          { personaId: "persona-1", cargoId: "cargo-ti", rolIds: ["rol-x"] },
           currentAdmin.id,
         ),
+      ).rejects.toThrow(new NotFoundException("El rol seleccionado no existe o no está activo."));
+    });
+
+    it("Sin persona o con persona y datos nuevos a la vez: lo rechaza", async () => {
+      await expect(service.create({ cargoId: "cargo-ti" }, currentAdmin.id)).rejects.toThrow(
+        new BadRequestException("Seleccione una persona del padrón o registre una nueva."),
+      );
+      await expect(
+        service.create(
+          { personaId: "persona-1", persona: nuevaPersona, cargoId: "cargo-ti" },
+          currentAdmin.id,
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("Persona inexistente en el padrón: NotFoundException", async () => {
+      usersRepository.findPersonaById.mockResolvedValue(null);
+
+      await expect(
+        service.create({ personaId: "persona-x", cargoId: "cargo-ti" }, currentAdmin.id),
+      ).rejects.toThrow(new NotFoundException("La persona seleccionada no existe en el padrón."));
+    });
+
+    it("Correo repetido en una persona nueva: ConflictException", async () => {
+      usersRepository.findPersonaByDocumento.mockResolvedValue(null);
+      usersRepository.existeCorreo.mockResolvedValue(true);
+
+      await expect(
+        service.create(
+          { persona: { ...nuevaPersona, correo: "diego@colegio.edu.pe" }, cargoId: "cargo-ti" },
+          currentAdmin.id,
+        ),
+      ).rejects.toThrow(new ConflictException("El correo ya está registrado para otra persona."));
+    });
+
+    it("Nombre de usuario repetido: no guarda nada (registro incompleto no deja datos a medias)", async () => {
+      usersRepository.findPersonaByDocumento.mockResolvedValue(null);
+      usersRepository.findRolesSugeridosActivos.mockResolvedValue(["rol-director"]);
+      usersRepository.findUserByUsername.mockResolvedValue(dummyUser);
+
+      await expect(
+        service.create({ persona: nuevaPersona, cargoId: "cargo-director" }, currentAdmin.id),
       ).rejects.toThrow(new ConflictException("El nombre de usuario ya está en uso."));
+      expect(usersRepository.registrarCuenta).not.toHaveBeenCalled();
     });
   });
 
@@ -200,7 +320,7 @@ describe("UsersService (RF-002: HU 1)", () => {
         activo: true,
         creadoEn: "2026-10-05T00:00:00Z",
         actualizadoEn: "2026-10-05T00:00:00Z",
-        permisos: [],
+        menus: [],
       });
       usersRepository.update.mockResolvedValue({
         ...dummyUser,
@@ -216,8 +336,8 @@ describe("UsersService (RF-002: HU 1)", () => {
 
       // Assert
       expect(updated.rol.nombre).toBe("Director");
-      // RF-001 V2: el nuevo perfil pasa a ser el principal en usuario_roles
-      expect(usersRepository.syncPrincipalProfile).toHaveBeenCalledWith(
+      // RF-001 V2: el nuevo rol pasa a ser el principal en usuario_roles
+      expect(usersRepository.syncPrincipalRole).toHaveBeenCalledWith(
         dummyUser.id,
         "rol-director",
         currentAdmin.id,
@@ -343,6 +463,146 @@ describe("UsersService (RF-002: HU 1)", () => {
       expect(result).toBe(mockResult);
       expect(result.nextCursor).toBe("mock-next-cursor");
       expect(result.hasMore).toBe(true);
+    });
+  });
+
+  describe("RF-002 V2 (HU1): varios roles por cuenta", () => {
+    const rol = (rolId: string, rolNombre: string, esPrincipal: boolean) => ({
+      id: `asig-${rolId}`,
+      rolId,
+      rolNombre,
+      esPrincipal,
+      vigente: true,
+      asignadoEn: "2026-10-09 10:00:00",
+      asignadoPor: "admin",
+      retiradoEn: null,
+      retiradoPor: null,
+    });
+    const docente = rol("rol-docente", "Docente", true);
+    const apoderado = rol("rol-apoderado", "Apoderado", false);
+
+    beforeEach(() => {
+      usersRepository.findUserById.mockResolvedValue(dummyUser);
+    });
+
+    it("Asignar un segundo rol: lo agrega como no principal y lo audita", async () => {
+      // Arrange
+      rolesRepository.findById.mockResolvedValue({
+        id: "rol-apoderado",
+        nombre: "Apoderado",
+        esSistema: true,
+        activo: true,
+        creadoEn: "",
+        actualizadoEn: "",
+        menus: [],
+      });
+      usersRepository.findRoles
+        .mockResolvedValueOnce([docente])
+        .mockResolvedValueOnce([docente, apoderado]);
+
+      // Act
+      const result = await service.addRole(dummyUser.id, { rolId: "rol-apoderado" }, currentAdmin);
+
+      // Assert
+      expect(usersRepository.addRole).toHaveBeenCalledWith(
+        dummyUser.id,
+        "rol-apoderado",
+        currentAdmin.id,
+      );
+      expect(result).toHaveLength(2);
+      expect(auditService.log).toHaveBeenCalledWith(
+        expect.objectContaining({ accion: "crear", tabla: "usuario_roles" }),
+      );
+    });
+
+    it("Asignar un rol que ya tiene: rechaza con ConflictException", async () => {
+      rolesRepository.findById.mockResolvedValue({
+        id: "rol-docente",
+        nombre: "Docente",
+        esSistema: true,
+        activo: true,
+        creadoEn: "",
+        actualizadoEn: "",
+        menus: [],
+      });
+      usersRepository.findRoles.mockResolvedValue([docente]);
+
+      await expect(
+        service.addRole(dummyUser.id, { rolId: "rol-docente" }, currentAdmin),
+      ).rejects.toThrow(new ConflictException("La cuenta ya tiene ese rol."));
+      expect(usersRepository.addRole).not.toHaveBeenCalled();
+    });
+
+    it("Cambiar el rol principal: marca el nuevo principal y lo audita", async () => {
+      usersRepository.findRoles.mockResolvedValue([docente, apoderado]);
+
+      await service.setPrincipalRole(dummyUser.id, "rol-apoderado", currentAdmin);
+
+      expect(usersRepository.setPrincipalRole).toHaveBeenCalledWith(dummyUser.id, "rol-apoderado");
+      expect(auditService.log).toHaveBeenCalledWith(
+        expect.objectContaining({
+          valorAnterior: { rolPrincipal: "Docente" },
+          valorNuevo: { rolPrincipal: "Apoderado" },
+        }),
+      );
+    });
+
+    it("Cambiar a principal un rol no asignado: rechaza con NotFoundException", async () => {
+      usersRepository.findRoles.mockResolvedValue([docente]);
+
+      await expect(
+        service.setPrincipalRole(dummyUser.id, "rol-director", currentAdmin),
+      ).rejects.toThrow(new NotFoundException("La cuenta no tiene ese rol."));
+    });
+
+    it("Retirar un rol con historial: lo retira dejando quién y cuándo", async () => {
+      usersRepository.findRoles.mockResolvedValue([docente, apoderado]);
+
+      await service.retireRole(dummyUser.id, "rol-apoderado", currentAdmin);
+
+      expect(usersRepository.retireRole).toHaveBeenCalledWith(
+        dummyUser.id,
+        "rol-apoderado",
+        currentAdmin.id,
+      );
+      expect(auditService.log).toHaveBeenCalledWith(
+        expect.objectContaining({
+          valorNuevo: expect.objectContaining({ vigente: false }) as Record<string, unknown>,
+        }),
+      );
+    });
+
+    it("Dejar una cuenta sin roles: rechaza retirar el único rol", async () => {
+      usersRepository.findRoles.mockResolvedValue([docente]);
+
+      await expect(service.retireRole(dummyUser.id, "rol-docente", currentAdmin)).rejects.toThrow(
+        new BadRequestException("La cuenta debe tener al menos un rol."),
+      );
+      expect(usersRepository.retireRole).not.toHaveBeenCalled();
+    });
+
+    it("Retirar el rol principal: pide marcar otro como principal primero", async () => {
+      usersRepository.findRoles.mockResolvedValue([docente, apoderado]);
+
+      await expect(service.retireRole(dummyUser.id, "rol-docente", currentAdmin)).rejects.toThrow(
+        new BadRequestException(
+          "No puede retirar el rol principal. Marque otro rol como principal primero.",
+        ),
+      );
+    });
+
+    it("Autoprotección: el Administrador no puede retirarse su propio rol Administrador", async () => {
+      usersRepository.findUserById.mockResolvedValue({ ...dummyUser, id: currentAdmin.id });
+      usersRepository.findRoles.mockResolvedValue([
+        rol("rol-admin-uuid", "Administrador", true),
+        apoderado,
+      ]);
+
+      await expect(
+        service.retireRole(currentAdmin.id, "rol-admin-uuid", currentAdmin),
+      ).rejects.toThrow(
+        new BadRequestException("No puede retirarse el rol Administrador a sí mismo."),
+      );
     });
   });
 });

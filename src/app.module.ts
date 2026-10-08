@@ -3,8 +3,8 @@ import { ConfigModule } from "@nestjs/config";
 import { APP_GUARD } from "@nestjs/core";
 import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
-import { JwtAuthGuard, PermissionsGuard, RolesGuard } from "./common/guards";
-import { RolePermissionsService } from "./common/services/role-permissions.service";
+import { JwtAuthGuard, MenuAccessGuard, RolesGuard } from "./common/guards";
+import { RolMenusService } from "./common/services/rol-menus.service";
 import { CoreModule } from "./core";
 import { FeaturesModule } from "./features/features.module";
 
@@ -27,10 +27,10 @@ import { FeaturesModule } from "./features/features.module";
       provide: APP_GUARD,
       useClass: RolesGuard,
     },
-    RolePermissionsService,
+    RolMenusService,
     {
       provide: APP_GUARD,
-      useClass: PermissionsGuard,
+      useClass: MenuAccessGuard,
     },
   ],
 })

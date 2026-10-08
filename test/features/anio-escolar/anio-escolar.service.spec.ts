@@ -6,8 +6,8 @@ import {
 } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import { AuditService } from "@/common/services/audit.service";
-import { PermissionsGuard } from "@/common/guards/permissions.guard";
-import { RolePermissionsService } from "@/common/services/role-permissions.service";
+import { MenuAccessGuard } from "@/common/guards/menu-access.guard";
+import { RolMenusService } from "@/common/services/rol-menus.service";
 import { MENSAJES } from "@/features/anio-escolar/constants";
 import { AniosAcademicosService } from "@/features/anio-escolar/anios.service";
 import { CalendarioService } from "@/features/anio-escolar/calendario.service";
@@ -497,17 +497,17 @@ describe("CalendarioService (RF-005)", () => {
   });
 });
 
-describe("PermissionsGuard (RF-005 calendario)", () => {
-  let guard: PermissionsGuard;
+describe("MenuAccessGuard (RF-005 calendario, Roles-Menú)", () => {
+  let guard: MenuAccessGuard;
   let reflector: jest.Mocked<Pick<Reflector, "getAllAndOverride">>;
-  let permisos: jest.Mocked<Pick<RolePermissionsService, "hasAll">>;
+  let rolMenus: jest.Mocked<Pick<RolMenusService, "tieneMenu">>;
 
   beforeEach(() => {
     reflector = { getAllAndOverride: jest.fn() };
-    permisos = { hasAll: jest.fn() };
-    guard = new PermissionsGuard(
+    rolMenus = { tieneMenu: jest.fn() };
+    guard = new MenuAccessGuard(
       reflector as unknown as Reflector,
-      permisos as unknown as RolePermissionsService,
+      rolMenus as unknown as RolMenusService,
     );
   });
 
@@ -524,23 +524,33 @@ describe("PermissionsGuard (RF-005 calendario)", () => {
     await expect(guard.canActivate(contexto({ role: "Docente", roleId: "rol-1" }))).resolves.toBe(
       true,
     );
-    expect(permisos.hasAll).not.toHaveBeenCalled();
+    expect(rolMenus.tieneMenu).not.toHaveBeenCalled();
   });
 
-  it("deja registrar al administrador sin consultar el permiso", async () => {
-    reflector.getAllAndOverride.mockReturnValue(["calendario:registrar"]);
+  it("deja registrar al administrador sin consultar sus menús", async () => {
+    reflector.getAllAndOverride.mockReturnValue("/admin/calendario");
     await expect(
       guard.canActivate(contexto({ role: "Administrador", roleId: "rol-admin" })),
     ).resolves.toBe(true);
-    expect(permisos.hasAll).not.toHaveBeenCalled();
+    expect(rolMenus.tieneMenu).not.toHaveBeenCalled();
   });
 
-  it("rechaza registrar, editar o eliminar si el perfil no tiene el permiso", async () => {
-    reflector.getAllAndOverride.mockReturnValue(["calendario:registrar"]);
-    permisos.hasAll.mockResolvedValue(false);
+  it("deja registrar si el rol tiene asignado el menú del calendario", async () => {
+    reflector.getAllAndOverride.mockReturnValue("/admin/calendario");
+    rolMenus.tieneMenu.mockResolvedValue(true);
+
+    await expect(
+      guard.canActivate(contexto({ role: "Director", roleId: "rol-director" })),
+    ).resolves.toBe(true);
+    expect(rolMenus.tieneMenu).toHaveBeenCalledWith("rol-director", "/admin/calendario");
+  });
+
+  it("rechaza registrar, editar o eliminar si el rol no tiene el menú", async () => {
+    reflector.getAllAndOverride.mockReturnValue("/admin/calendario");
+    rolMenus.tieneMenu.mockResolvedValue(false);
 
     await expect(
       guard.canActivate(contexto({ role: "Docente", roleId: "rol-docente" })),
-    ).rejects.toThrow(new ForbiddenException("No tiene permiso para realizar esta acción."));
+    ).rejects.toThrow(new ForbiddenException("Su rol no tiene acceso a esta opción."));
   });
 });

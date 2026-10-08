@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -8,6 +9,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  ParseBoolPipe,
   Put,
   Query,
 } from "@nestjs/common";
@@ -17,6 +19,7 @@ import type { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface
 import { ChangeUserRoleDto } from "./dto/change-user-role.dto";
 import { CreateUserDto } from "./dto/create-user.dto";
 import { UpdateUsernameDto } from "./dto/update-username.dto";
+import { AddUserRoleDto, UserRoleAssignmentDto } from "./dto/user-role.dto";
 import { UserQueryDto } from "./dto/user-query.dto";
 import {
   PaginatedUsersResponseDto,
@@ -84,6 +87,62 @@ export class UsersController {
     @ClientInfo() client: ClientInfoData,
   ): Promise<UserResponseDto> {
     return this.usersService.changeRole(id, dto, user, client.ip);
+  }
+
+  @Get(":id/roles")
+  @ApiOperation({
+    summary: "Roles de la cuenta (RF-002 V2); con historial=true incluye los retirados",
+  })
+  @ApiResponse({ status: 200, type: [UserRoleAssignmentDto] })
+  async listRoles(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Query("historial", new ParseBoolPipe({ optional: true })) historial?: boolean,
+  ): Promise<UserRoleAssignmentDto[]> {
+    return this.usersService.listRoles(id, historial ?? false);
+  }
+
+  @Post(":id/roles")
+  @ApiOperation({ summary: "Asignar un rol adicional a la cuenta (RF-002 V2)" })
+  @ApiResponse({ status: 201, type: [UserRoleAssignmentDto] })
+  @ApiResponse({ status: 409, description: "La cuenta ya tiene ese rol" })
+  async addRole(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: AddUserRoleDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @ClientInfo() client: ClientInfoData,
+  ): Promise<UserRoleAssignmentDto[]> {
+    return this.usersService.addRole(id, dto, user, client.ip);
+  }
+
+  @Patch(":id/roles/:rolId/principal")
+  @ApiOperation({ summary: "Marcar un rol de la cuenta como principal (RF-002 V2)" })
+  @ApiResponse({ status: 200, type: [UserRoleAssignmentDto] })
+  @ApiResponse({ status: 404, description: "La cuenta no tiene ese rol" })
+  async setPrincipalRole(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Param("rolId", ParseUUIDPipe) rolId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @ClientInfo() client: ClientInfoData,
+  ): Promise<UserRoleAssignmentDto[]> {
+    return this.usersService.setPrincipalRole(id, rolId, user, client.ip);
+  }
+
+  @Delete(":id/roles/:rolId")
+  @ApiOperation({
+    summary: "Retirar un rol de la cuenta; queda en el historial (RF-002 V2)",
+  })
+  @ApiResponse({ status: 200, type: [UserRoleAssignmentDto] })
+  @ApiResponse({
+    status: 400,
+    description: "Último rol, rol principal o autorretiro del rol Administrador",
+  })
+  async retireRole(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Param("rolId", ParseUUIDPipe) rolId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @ClientInfo() client: ClientInfoData,
+  ): Promise<UserRoleAssignmentDto[]> {
+    return this.usersService.retireRole(id, rolId, user, client.ip);
   }
 
   @Put(":id/username")

@@ -26,33 +26,10 @@ export class RoleResponseDto {
   actualizadoEn!: string;
 }
 
-export class PermissionCatalogItemDto {
-  @ApiProperty({ description: "ID único del permiso" })
-  id!: string;
-
-  @ApiProperty({ description: "Código del permiso (ej. sesiones.registrar)" })
-  codigo!: string;
-
-  @ApiProperty({ description: "Nombre legible del permiso" })
-  nombre!: string;
-
-  @ApiPropertyOptional({ description: "Descripción del permiso" })
-  descripcion?: string | null;
-
-  @ApiProperty({ description: "ID del módulo al que pertenece" })
-  moduloId!: string;
-
-  @ApiProperty({ description: "Nombre del módulo" })
-  moduloNombre!: string;
-
-  @ApiProperty({ description: "Código del módulo" })
-  moduloCodigo!: string;
-}
-
 export class RoleDetailResponseDto extends RoleResponseDto {
   @ApiProperty({
-    description: "Lista de IDs de permisos asignados",
+    description: "RF-002 V2: IDs de las opciones de menú asignadas al rol",
     type: [String],
   })
-  permisos!: string[];
+  menus!: string[];
 }

@@ -89,8 +89,8 @@ describe("AuthService (RF-001: Acceso al Sistema)", () => {
       closeOtherSessions: jest.fn(),
       updatePassword: jest.fn(),
       getUserModules: jest.fn(),
-      // Sin filas en usuario_roles: usa usuarios.rol_id como perfil principal (respaldo)
-      findUserProfiles: jest.fn().mockResolvedValue([]),
+      // Sin filas en usuario_roles: usa usuarios.rol_id como rol principal (respaldo)
+      findUserRoles: jest.fn().mockResolvedValue([]),
     };
 
     const mockSession = {
@@ -125,7 +125,7 @@ describe("AuthService (RF-001: Acceso al Sistema)", () => {
 
   describe("HU 1: Inicio de sesión", () => {
     describe("Escenario: Ingreso exitoso", () => {
-      it("debe autenticar al usuario activo con credenciales correctas, resetear intentos y retornar perfil con token", async () => {
+      it("debe autenticar al usuario activo con credenciales correctas, resetear intentos y retornar rol con token", async () => {
         authRepository.findUserByUsername.mockResolvedValue(mockUser);
         (bcrypt.compare as jest.Mock).mockResolvedValue(true);
         authRepository.resetLoginAttempts.mockResolvedValue(undefined);
@@ -353,7 +353,7 @@ describe("AuthService (RF-001: Acceso al Sistema)", () => {
 
   describe("HU 4: Sesiones y Token", () => {
     describe("Escenario: checkToken", () => {
-      it("debe retornar perfil del usuario activo al verificar token", async () => {
+      it("debe retornar rol del usuario activo al verificar token", async () => {
         authRepository.findUserById.mockResolvedValue(mockUser);
         authRepository.findPersonaById.mockResolvedValue(mockPersona);
         authRepository.findRoleById.mockResolvedValue(mockRole);
@@ -419,32 +419,32 @@ describe("AuthService (RF-001: Acceso al Sistema)", () => {
     });
   });
 
-  describe("RF-001 V2: Varios perfiles y valores configurables", () => {
-    const perfilDocente = {
+  describe("RF-001 V2: Varios roles y valores configurables", () => {
+    const rolDocente = {
       rolId: "rol-docente",
       nombre: "Docente",
       esSistema: false,
       esPrincipal: true,
     };
-    const perfilApoderado = {
+    const rolApoderado = {
       rolId: "rol-apoderado",
       nombre: "Apoderado",
       esSistema: false,
       esPrincipal: false,
     };
 
-    const prepararPerfil = (perfiles: (typeof perfilDocente)[]) => {
-      authRepository.findUserProfiles.mockResolvedValue(perfiles);
+    const prepararRol = (roles: (typeof rolDocente)[]) => {
+      authRepository.findUserRoles.mockResolvedValue(roles);
       authRepository.findPersonaById.mockResolvedValue(mockPersona);
       authRepository.findInstitution.mockResolvedValue(mockInstitution);
       authRepository.getUserModules.mockResolvedValue([]);
       sessionService.generateAccessToken.mockReturnValue("jwt_nuevo");
     };
 
-    it("CP-RF001-23 Ingreso con varios perfiles: entra con el principal y devuelve todos sus perfiles", async () => {
+    it("CP-RF001-23 Ingreso con varios roles: entra con el principal y devuelve todos sus roles", async () => {
       authRepository.findUserByUsername.mockResolvedValue(mockUser);
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
-      prepararPerfil([perfilDocente, perfilApoderado]);
+      prepararRol([rolDocente, rolApoderado]);
 
       const result = await authService.login({
         username: "jdoe",
@@ -457,18 +457,18 @@ describe("AuthService (RF-001: Acceso al Sistema)", () => {
         false,
       );
       expect(authRepository.getUserModules).toHaveBeenCalledWith("rol-docente", false);
-      expect(result.user.activeProfileName).toBe("Docente");
-      expect(result.user.profiles).toEqual([
+      expect(result.user.activeRoleName).toBe("Docente");
+      expect(result.user.userRoles).toEqual([
         { id: "rol-docente", name: "Docente", isPrincipal: true },
         { id: "rol-apoderado", name: "Apoderado", isPrincipal: false },
       ]);
     });
 
-    it("CP-RF001-24 Cambiar de perfil: emite token con el nuevo perfil y revoca el anterior", async () => {
+    it("CP-RF001-24 Cambiar de rol: emite token con el nuevo rol y revoca el anterior", async () => {
       authRepository.findUserById.mockResolvedValue(mockUser);
-      prepararPerfil([perfilDocente, perfilApoderado]);
+      prepararRol([rolDocente, rolApoderado]);
 
-      const result = await authService.switchProfile(
+      const result = await authService.switchRole(
         mockUser.id,
         { roleId: "rol-apoderado" },
         "jwt_anterior",
@@ -480,36 +480,36 @@ describe("AuthService (RF-001: Acceso al Sistema)", () => {
         false,
       );
       expect(authRepository.getUserModules).toHaveBeenCalledWith("rol-apoderado", false);
-      expect(result.user.activeProfileId).toBe("rol-apoderado");
-      expect(result.message).toBe("Perfil cambiado a Apoderado.");
+      expect(result.user.activeRoleId).toBe("rol-apoderado");
+      expect(result.message).toBe("Rol cambiado a Apoderado.");
     });
 
-    it("Cambiar a un perfil no asignado: rechaza con ForbiddenException", async () => {
+    it("Cambiar a un rol no asignado: rechaza con ForbiddenException", async () => {
       authRepository.findUserById.mockResolvedValue(mockUser);
-      prepararPerfil([perfilDocente]);
+      prepararRol([rolDocente]);
 
       await expect(
-        authService.switchProfile(mockUser.id, { roleId: "rol-director" }, "jwt_anterior"),
-      ).rejects.toThrow(new ForbiddenException("No tiene asignado ese perfil."));
+        authService.switchRole(mockUser.id, { roleId: "rol-director" }, "jwt_anterior"),
+      ).rejects.toThrow(new ForbiddenException("No tiene asignado ese rol."));
       expect(sessionService.revokeSession).not.toHaveBeenCalled();
     });
 
-    it("CP-RF001-25 Usuario con un solo perfil: devuelve un único perfil (el frontend oculta «Cambiar perfil»)", async () => {
+    it("CP-RF001-25 Usuario con un solo rol: devuelve un único rol (el frontend oculta «Cambiar rol»)", async () => {
       authRepository.findUserById.mockResolvedValue(mockUser);
-      prepararPerfil([perfilDocente]);
+      prepararRol([rolDocente]);
 
       const result = await authService.checkToken(mockUser.id, "rol-docente");
 
-      expect(result.user.profiles).toHaveLength(1);
+      expect(result.user.userRoles).toHaveLength(1);
     });
 
-    it("checkToken conserva el perfil activo del token si sigue asignado", async () => {
+    it("checkToken conserva el rol activo del token si sigue asignado", async () => {
       authRepository.findUserById.mockResolvedValue(mockUser);
-      prepararPerfil([perfilDocente, perfilApoderado]);
+      prepararRol([rolDocente, rolApoderado]);
 
       const result = await authService.checkToken(mockUser.id, "rol-apoderado");
 
-      expect(result.user.activeProfileName).toBe("Apoderado");
+      expect(result.user.activeRoleName).toBe("Apoderado");
     });
 
     it("P-10 Intentos configurables: bloquea al llegar a seguridad.intentos_fallidos_bloqueo (3)", async () => {

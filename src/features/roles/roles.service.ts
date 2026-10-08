@@ -3,30 +3,20 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
-  Optional,
 } from "@nestjs/common";
 import { AuditService } from "../../common/services/audit.service";
-import { CacheService } from "../../core/cache";
 import { esRolDelSistema } from "./constants/roles.constants";
-import { AssignPermissionsDto } from "./dto/assign-permissions.dto";
+import { AssignMenusDto } from "./dto/assign-menus.dto";
 import { CreateRoleDto } from "./dto/create-role.dto";
-import {
-  PermissionCatalogItemDto,
-  RoleDetailResponseDto,
-  RoleResponseDto,
-} from "./dto/role-response.dto";
+import { RoleDetailResponseDto, RoleResponseDto } from "./dto/role-response.dto";
 import { UpdateRoleDto } from "./dto/update-role.dto";
 import { RolesRepository } from "./repositories/roles.repository";
-
-export const PERMISSIONS_CATALOG_CACHE_KEY = "catalog:permissions";
-export const PERMISSIONS_CATALOG_CACHE_TTL = 86400; // 24 horas
 
 @Injectable()
 export class RolesService {
   constructor(
     private readonly rolesRepository: RolesRepository,
     private readonly auditService: AuditService,
-    @Optional() private readonly cacheService?: CacheService,
   ) {}
 
   async findAll(soloActivos?: boolean): Promise<RoleResponseDto[]> {
@@ -157,20 +147,10 @@ export class RolesService {
     return { message: "Rol desactivado exitosamente" };
   }
 
-  async getPermissionsCatalog(): Promise<PermissionCatalogItemDto[]> {
-    if (this.cacheService) {
-      return this.cacheService.getOrSet(
-        PERMISSIONS_CATALOG_CACHE_KEY,
-        () => this.rolesRepository.getAllPermissions(),
-        PERMISSIONS_CATALOG_CACHE_TTL,
-      );
-    }
-    return this.rolesRepository.getAllPermissions();
-  }
-
-  async assignPermissions(
+  /** RF-002 V2 (Roles-Menú): define qué opciones de menú ve y usa el rol. */
+  async assignMenus(
     rolId: string,
-    dto: AssignPermissionsDto,
+    dto: AssignMenusDto,
     actorId: string,
     ip?: string,
   ): Promise<{ message: string; count: number }> {
@@ -180,23 +160,26 @@ export class RolesService {
     }
 
     if (role.nombre === "Administrador") {
-      throw new BadRequestException("No se pueden modificar los permisos del rol Administrador.");
+      throw new BadRequestException("El rol Administrador tiene acceso a todos los menús.");
     }
 
-    await this.rolesRepository.assignPermissions(rolId, dto.permisoIds);
+    const menuIds = [...new Set(dto.menuIds)];
+    if ((await this.rolesRepository.countMenusVigentes(menuIds)) !== menuIds.length) {
+      throw new BadRequestException("Uno de los menús no existe o no está vigente.");
+    }
+
+    await this.rolesRepository.assignMenus(rolId, menuIds, actorId);
 
     await this.auditService.log({
       usuarioId: actorId,
       accion: "actualizar",
-      tabla: "rol_permisos",
+      tabla: "rol_menus",
       registroId: rolId,
-      valorNuevo: { permisosCount: dto.permisoIds.length },
+      valorAnterior: { menus: role.menus },
+      valorNuevo: { menus: menuIds },
       direccionIp: ip,
     });
 
-    return {
-      message: "Permisos asignados exitosamente al rol",
-      count: dto.permisoIds.length,
-    };
+    return { message: "Menús asignados al rol.", count: menuIds.length };
   }
 }

@@ -10,10 +10,10 @@ import {
   Query,
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from "@nestjs/swagger";
-import { ClientInfo, type ClientInfoData, CurrentUser, Permissions } from "../../common/decorators";
+import { ClientInfo, type ClientInfoData, CurrentUser, MenuAccess } from "../../common/decorators";
 import type { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface";
 import { CalendarioService } from "./calendario.service";
-import { PERMISO_CALENDARIO_REGISTRAR } from "./constants";
+import { MENU_CALENDARIO } from "./constants";
 import {
   CalendarioConsultaResponseDto,
   CreateEventoCalendarioDto,
@@ -43,7 +43,7 @@ export class CalendarioController {
   }
 
   @Post()
-  @Permissions(PERMISO_CALENDARIO_REGISTRAR)
+  @MenuAccess(MENU_CALENDARIO)
   @ApiOperation({ summary: "Registrar feriado, suspensión o actividad" })
   @ApiResponse({ status: 201, type: EventoCalendarioResponseDto })
   create(
@@ -55,7 +55,7 @@ export class CalendarioController {
   }
 
   @Patch(":id")
-  @Permissions(PERMISO_CALENDARIO_REGISTRAR)
+  @MenuAccess(MENU_CALENDARIO)
   @ApiOperation({ summary: "Editar un evento del calendario" })
   @ApiResponse({ status: 200, type: EventoCalendarioResponseDto })
   update(
@@ -68,7 +68,7 @@ export class CalendarioController {
   }
 
   @Delete(":id")
-  @Permissions(PERMISO_CALENDARIO_REGISTRAR)
+  @MenuAccess(MENU_CALENDARIO)
   @ApiOperation({ summary: "Eliminar un evento del calendario" })
   @ApiResponse({ status: 200 })
   remove(

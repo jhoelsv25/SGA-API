@@ -1,11 +1,12 @@
 import { relations } from "drizzle-orm/relations";
 import {
   modulos,
-  permisos,
   menus,
   personas,
   usuarios,
   roles,
+  rolMenus,
+  usuarioRoles,
   sesiones,
   aniosAcademicos,
   periodosAcademicos,
@@ -43,23 +44,12 @@ import {
   comentariosPublicacion,
   mensajesChat,
   actividadAula,
-  rolPermisos,
   estudianteApoderados,
   equiposAutorizados,
   variablesSistema,
 } from "./tables";
 
-export const permisosRelations = relations(permisos, ({ one, many }) => ({
-  modulo: one(modulos, {
-    fields: [permisos.moduloId],
-    references: [modulos.id],
-  }),
-  menus: many(menus),
-  rolPermisos: many(rolPermisos),
-}));
-
 export const modulosRelations = relations(modulos, ({ many }) => ({
-  permisos: many(permisos),
   menus: many(menus),
 }));
 
@@ -76,10 +66,7 @@ export const menusRelations = relations(menus, ({ one, many }) => ({
   menus: many(menus, {
     relationName: "menus_menuPadreId_menus_id",
   }),
-  permiso: one(permisos, {
-    fields: [menus.permisoId],
-    references: [permisos.id],
-  }),
+  rolMenus: many(rolMenus),
 }));
 
 export const usuariosRelations = relations(usuarios, ({ one, many }) => ({
@@ -133,7 +120,19 @@ export const personasRelations = relations(personas, ({ many }) => ({
 
 export const rolesRelations = relations(roles, ({ many }) => ({
   usuarios: many(usuarios),
-  rolPermisos: many(rolPermisos),
+  usuarioRoles: many(usuarioRoles),
+  rolMenus: many(rolMenus),
+}));
+
+export const rolMenusRelations = relations(rolMenus, ({ one }) => ({
+  role: one(roles, {
+    fields: [rolMenus.rolId],
+    references: [roles.id],
+  }),
+  menu: one(menus, {
+    fields: [rolMenus.menuId],
+    references: [menus.id],
+  }),
 }));
 
 export const sesionesRelations = relations(sesiones, ({ one }) => ({
@@ -591,17 +590,6 @@ export const actividadAulaRelations = relations(actividadAula, ({ one }) => ({
   tarea: one(tareas, {
     fields: [actividadAula.tareaId],
     references: [tareas.id],
-  }),
-}));
-
-export const rolPermisosRelations = relations(rolPermisos, ({ one }) => ({
-  permiso: one(permisos, {
-    fields: [rolPermisos.permisoId],
-    references: [permisos.id],
-  }),
-  role: one(roles, {
-    fields: [rolPermisos.rolId],
-    references: [roles.id],
   }),
 }));
 

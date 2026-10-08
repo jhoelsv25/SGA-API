@@ -1,21 +1,36 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, eq, ilike, isNull, or, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, isNull, or, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { Database, DRIZZLE } from "../../../core/database";
-import { personas, roles, sesiones, usuarioRoles, usuarios } from "../../../core/database/schema";
+import {
+  cargoRolesSugeridos,
+  cargos,
+  personaCargos,
+  personas,
+  roles,
+  sesiones,
+  usuarioRoles,
+  usuarios,
+} from "../../../core/database/schema";
 import {
   PaginatedUsersResponseDto,
   UserPersonaDto,
   UserResponseDto,
 } from "../dto/user-response.dto";
 import { UserQueryDto } from "../dto/user-query.dto";
+import { UserRoleAssignmentDto } from "../dto/user-role.dto";
 import { decodeCursor, encodeCursor } from "../../../common/utils";
 import {
-  CreateUserData,
   DbUserProcedureExecutionResult,
   IUsersRepository,
+  PersonaBasica,
+  RegistrarCuentaData,
   UpdateUserData,
   UserCursorPayload,
 } from "../interfaces/users.repository.interface";
+
+/** RF-002 V3: cargos que no son de personal; ceden ante un cargo de personal. */
+const CARGOS_NO_PERSONAL = ["Estudiante", "Apoderado(a)"];
 
 @Injectable()
 export class UsersRepository implements IUsersRepository {
@@ -101,26 +116,174 @@ export class UsersRepository implements IUsersRepository {
     return result ? this.mapUserResult(result) : null;
   }
 
-  async create(data: CreateUserData): Promise<UserResponseDto> {
-    const [created] = await this.db
-      .insert(usuarios)
-      .values({
-        personaId: data.personaId,
-        rolId: data.rolId,
-        nombreUsuario: data.nombreUsuario.trim(),
-        contrasenaHash: data.contrasenaHash,
-        debeCambiarContrasena: true,
-        estado: "activo",
-        intentosFallidos: 0,
-      })
-      .returning();
+  async findPersonaById(id: string): Promise<PersonaBasica | null> {
+    const [row] = await this.db
+      .select({ id: personas.id, numeroDocumento: personas.numeroDocumento })
+      .from(personas)
+      .where(and(eq(personas.id, id), isNull(personas.eliminadoEn)))
+      .limit(1);
 
-    return (await this.findUserById(created.id))!;
+    return row ?? null;
   }
 
-  async syncPrincipalProfile(userId: string, rolId: string, actorId: string | null): Promise<void> {
+  async findPersonaByDocumento(
+    tipoDocumento: string,
+    numeroDocumento: string,
+  ): Promise<PersonaBasica | null> {
+    const [row] = await this.db
+      .select({ id: personas.id, numeroDocumento: personas.numeroDocumento })
+      .from(personas)
+      .where(
+        and(
+          eq(personas.tipoDocumento, tipoDocumento),
+          eq(personas.numeroDocumento, numeroDocumento.trim()),
+          isNull(personas.eliminadoEn),
+        ),
+      )
+      .limit(1);
+
+    return row ?? null;
+  }
+
+  async existeCorreo(correo: string): Promise<boolean> {
+    const [row] = await this.db
+      .select({ id: personas.id })
+      .from(personas)
+      .where(and(ilike(personas.correo, correo.trim()), isNull(personas.eliminadoEn)))
+      .limit(1);
+
+    return Boolean(row);
+  }
+
+  async isCargoVigente(cargoId: string): Promise<boolean> {
+    const [row] = await this.db
+      .select({ id: cargos.id })
+      .from(cargos)
+      .where(and(eq(cargos.id, cargoId), eq(cargos.vigente, true)))
+      .limit(1);
+
+    return Boolean(row);
+  }
+
+  async findRolesSugeridosActivos(cargoId: string): Promise<string[]> {
+    const rows = await this.db
+      .select({ rolId: cargoRolesSugeridos.rolId })
+      .from(cargoRolesSugeridos)
+      .innerJoin(roles, eq(cargoRolesSugeridos.rolId, roles.id))
+      .where(and(eq(cargoRolesSugeridos.cargoId, cargoId), eq(roles.activo, true)))
+      .orderBy(roles.nombre);
+
+    return rows.map((r) => r.rolId);
+  }
+
+  async registrarCuenta(data: RegistrarCuentaData): Promise<string> {
+    return this.db.transaction(async (tx) => {
+      // 1. Persona: la del padrón o una nueva
+      let personaId = data.personaId;
+      if (!personaId) {
+        const p = data.nuevaPersona!;
+        const [creada] = await tx
+          .insert(personas)
+          .values({
+            tipoDocumento: p.tipoDocumento,
+            numeroDocumento: p.numeroDocumento.trim(),
+            nombres: p.nombres.trim(),
+            apellidoPaterno: p.apellidoPaterno.trim(),
+            apellidoMaterno: p.apellidoMaterno?.trim() || null,
+            sexo: p.sexo,
+            correo: p.correo?.trim() || null,
+            celular: p.celular?.trim() || null,
+          })
+          .returning({ id: personas.id });
+        personaId = creada.id;
+      }
+
+      // 2. Cargo: uno solo vigente. Se conserva el que tenga, salvo que sea
+      //    Estudiante o Apoderado(a) y el nuevo sea un cargo de personal.
+      const [actual] = await tx
+        .select({ id: personaCargos.id, cargoId: personaCargos.cargoId, nombre: cargos.nombre })
+        .from(personaCargos)
+        .innerJoin(cargos, eq(personaCargos.cargoId, cargos.id))
+        .where(and(eq(personaCargos.personaId, personaId), eq(personaCargos.vigente, true)))
+        .limit(1);
+
+      const [nuevo] = await tx
+        .select({ nombre: cargos.nombre })
+        .from(cargos)
+        .where(eq(cargos.id, data.cargoId))
+        .limit(1);
+
+      const reemplazar =
+        actual &&
+        actual.cargoId !== data.cargoId &&
+        CARGOS_NO_PERSONAL.includes(actual.nombre) &&
+        !CARGOS_NO_PERSONAL.includes(nuevo.nombre);
+
+      if (reemplazar) {
+        await tx
+          .update(personaCargos)
+          .set({
+            vigente: false,
+            esPrincipal: false,
+            fechaFin: sql`GREATEST(${personaCargos.fechaInicio}, CURRENT_DATE)`,
+          })
+          .where(eq(personaCargos.id, actual.id));
+      }
+
+      if (!actual || reemplazar) {
+        await tx.insert(personaCargos).values({
+          personaId,
+          cargoId: data.cargoId,
+          fechaInicio: sql`CURRENT_DATE`,
+          esPrincipal: true,
+          registradoPorId: data.actorId,
+        });
+      }
+
+      // 3. Cuenta: se reutiliza la vigente o se crea con el primer rol como principal
+      let usuarioId = data.usuarioExistenteId;
+      if (!usuarioId) {
+        const [creado] = await tx
+          .insert(usuarios)
+          .values({
+            personaId,
+            rolId: data.rolIds[0],
+            nombreUsuario: data.nombreUsuario!.trim(),
+            contrasenaHash: data.contrasenaHash!,
+            debeCambiarContrasena: true,
+            estado: "activo",
+            intentosFallidos: 0,
+          })
+          .returning({ id: usuarios.id });
+        usuarioId = creado.id;
+      }
+
+      // 4. Roles: solo se agregan los que la cuenta aún no tiene vigentes
+      const rolesVigentes = await tx
+        .select({ rolId: usuarioRoles.rolId })
+        .from(usuarioRoles)
+        .where(and(eq(usuarioRoles.usuarioId, usuarioId), eq(usuarioRoles.vigente, true)));
+      const yaTiene = new Set(rolesVigentes.map((r) => r.rolId));
+
+      const nuevos = data.rolIds.filter((rolId) => !yaTiene.has(rolId));
+      if (nuevos.length > 0) {
+        await tx.insert(usuarioRoles).values(
+          nuevos.map((rolId) => ({
+            usuarioId: usuarioId,
+            rolId,
+            esPrincipal: !data.usuarioExistenteId && rolId === data.rolIds[0],
+            asignadoPorId: data.actorId,
+          })),
+        );
+      }
+
+      return usuarioId;
+    });
+  }
+
+  async syncPrincipalRole(userId: string, rolId: string, actorId: string | null): Promise<void> {
     await this.db.transaction(async (tx) => {
-      // 1. Retirar el perfil principal anterior si es otro (historial: vigente false)
+      // 1. Retirar el rol principal anterior si es otro (historial: vigente false)
       await tx
         .update(usuarioRoles)
         .set({
@@ -138,7 +301,7 @@ export class UsersRepository implements IUsersRepository {
           ),
         );
 
-      // 2. Marcar como principal el perfil si ya estaba asignado, o asignarlo
+      // 2. Marcar como principal el rol si ya estaba asignado, o asignarlo
       const [vigente] = await tx
         .select({ id: usuarioRoles.id })
         .from(usuarioRoles)
@@ -165,6 +328,96 @@ export class UsersRepository implements IUsersRepository {
         });
       }
     });
+  }
+
+  async findRoles(userId: string, includeRetired: boolean): Promise<UserRoleAssignmentDto[]> {
+    const asignador = alias(usuarios, "asignador");
+    const retirador = alias(usuarios, "retirador");
+
+    const conditions = [eq(usuarioRoles.usuarioId, userId)];
+    if (!includeRetired) conditions.push(eq(usuarioRoles.vigente, true));
+
+    const rows = await this.db
+      .select({
+        id: usuarioRoles.id,
+        rolId: usuarioRoles.rolId,
+        rolNombre: roles.nombre,
+        esPrincipal: usuarioRoles.esPrincipal,
+        vigente: usuarioRoles.vigente,
+        asignadoEn: usuarioRoles.asignadoEn,
+        asignadoPor: asignador.nombreUsuario,
+        retiradoEn: usuarioRoles.retiradoEn,
+        retiradoPor: retirador.nombreUsuario,
+      })
+      .from(usuarioRoles)
+      .innerJoin(roles, eq(usuarioRoles.rolId, roles.id))
+      .leftJoin(asignador, eq(usuarioRoles.asignadoPorId, asignador.id))
+      .leftJoin(retirador, eq(usuarioRoles.retiradoPorId, retirador.id))
+      .where(and(...conditions))
+      .orderBy(
+        desc(usuarioRoles.vigente),
+        desc(usuarioRoles.esPrincipal),
+        desc(usuarioRoles.asignadoEn),
+      );
+
+    return rows;
+  }
+
+  async addRole(userId: string, rolId: string, actorId: string): Promise<void> {
+    await this.db.insert(usuarioRoles).values({
+      usuarioId: userId,
+      rolId,
+      esPrincipal: false,
+      asignadoPorId: actorId,
+    });
+  }
+
+  async setPrincipalRole(userId: string, rolId: string): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      await tx
+        .update(usuarioRoles)
+        .set({ esPrincipal: false })
+        .where(
+          and(
+            eq(usuarioRoles.usuarioId, userId),
+            eq(usuarioRoles.vigente, true),
+            eq(usuarioRoles.esPrincipal, true),
+          ),
+        );
+      await tx
+        .update(usuarioRoles)
+        .set({ esPrincipal: true })
+        .where(
+          and(
+            eq(usuarioRoles.usuarioId, userId),
+            eq(usuarioRoles.rolId, rolId),
+            eq(usuarioRoles.vigente, true),
+          ),
+        );
+      // usuarios.rol_id sigue al rol principal (compatibilidad con la V1)
+      await tx
+        .update(usuarios)
+        .set({ rolId, actualizadoEn: sql`CURRENT_TIMESTAMP` })
+        .where(eq(usuarios.id, userId));
+    });
+  }
+
+  async retireRole(userId: string, rolId: string, actorId: string): Promise<void> {
+    await this.db
+      .update(usuarioRoles)
+      .set({
+        vigente: false,
+        esPrincipal: false,
+        retiradoPorId: actorId,
+        retiradoEn: sql`CURRENT_TIMESTAMP`,
+      })
+      .where(
+        and(
+          eq(usuarioRoles.usuarioId, userId),
+          eq(usuarioRoles.rolId, rolId),
+          eq(usuarioRoles.vigente, true),
+        ),
+      );
   }
 
   async update(id: string, data: UpdateUserData): Promise<UserResponseDto> {
