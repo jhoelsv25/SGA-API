@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query } from "@nestjs/common";
+import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { ClientInfo, type ClientInfoData, CurrentUser, Roles } from "../../common/decorators";
 import type { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface";
@@ -32,7 +32,7 @@ export class CursosController {
     description: "Detalle del curso",
     type: CursoResponseDto,
   })
-  async findById(@Param("id") id: string): Promise<CursoResponseDto> {
+  async findById(@Param("id", ParseUUIDPipe) id: string): Promise<CursoResponseDto> {
     return this.service.findById(id);
   }
 
@@ -62,7 +62,7 @@ export class CursosController {
     type: CursoResponseDto,
   })
   async update(
-    @Param("id") id: string,
+    @Param("id", ParseUUIDPipe) id: string,
     @Body() dto: UpdateCursoDto,
     @CurrentUser() user: AuthenticatedUser,
     @ClientInfo() clientInfo: ClientInfoData,
@@ -82,7 +82,7 @@ export class CursosController {
     type: CursoResponseDto,
   })
   async deactivate(
-    @Param("id") id: string,
+    @Param("id", ParseUUIDPipe) id: string,
     @CurrentUser() user: AuthenticatedUser,
     @ClientInfo() clientInfo: ClientInfoData,
   ): Promise<CursoResponseDto> {
@@ -99,7 +99,7 @@ export class CursosController {
     type: CursoResponseDto,
   })
   async reactivate(
-    @Param("id") id: string,
+    @Param("id", ParseUUIDPipe) id: string,
     @CurrentUser() user: AuthenticatedUser,
     @ClientInfo() clientInfo: ClientInfoData,
   ): Promise<CursoResponseDto> {

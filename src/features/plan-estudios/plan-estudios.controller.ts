@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post } from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { ClientInfo, type ClientInfoData, CurrentUser, Roles } from "../../common/decorators";
 import type { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface";
@@ -25,7 +25,9 @@ export class PlanEstudiosController {
     description: "Estructura del plan de estudios con asignaturas y total de horas",
     type: PlanEstudioResponseDto,
   })
-  async getPlanByGrado(@Param("gradoId") gradoId: string): Promise<PlanEstudioResponseDto> {
+  async getPlanByGrado(
+    @Param("gradoId", ParseUUIDPipe) gradoId: string,
+  ): Promise<PlanEstudioResponseDto> {
     return this.service.getPlanByGrado(gradoId);
   }
 
@@ -39,7 +41,7 @@ export class PlanEstudiosController {
     type: PlanEstudioItemDto,
   })
   async addCurso(
-    @Param("gradoId") gradoId: string,
+    @Param("gradoId", ParseUUIDPipe) gradoId: string,
     @Body() dto: AddCursoPlanDto,
     @CurrentUser() user: AuthenticatedUser,
     @ClientInfo() clientInfo: ClientInfoData,
@@ -57,7 +59,7 @@ export class PlanEstudiosController {
     type: PlanEstudioItemDto,
   })
   async updateHoras(
-    @Param("id") id: string,
+    @Param("id", ParseUUIDPipe) id: string,
     @Body() dto: UpdateHorasPlanDto,
     @CurrentUser() user: AuthenticatedUser,
     @ClientInfo() clientInfo: ClientInfoData,
@@ -77,7 +79,7 @@ export class PlanEstudiosController {
     description: "Asignatura quitada del plan de estudios",
   })
   async removeCurso(
-    @Param("id") id: string,
+    @Param("id", ParseUUIDPipe) id: string,
     @CurrentUser() user: AuthenticatedUser,
     @ClientInfo() clientInfo: ClientInfoData,
   ): Promise<{ success: boolean; message: string }> {
@@ -94,8 +96,8 @@ export class PlanEstudiosController {
     description: "Plan copiado exitosamente",
   })
   async copyPlan(
-    @Param("destinoGradoId") destinoGradoId: string,
-    @Param("origenGradoId") origenGradoId: string,
+    @Param("destinoGradoId", ParseUUIDPipe) destinoGradoId: string,
+    @Param("origenGradoId", ParseUUIDPipe) origenGradoId: string,
     @CurrentUser() user: AuthenticatedUser,
     @ClientInfo() clientInfo: ClientInfoData,
   ): Promise<{

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch } from "@nestjs/common";
+import { Body, Controller, Get, Param, ParseUUIDPipe, Patch } from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { ClientInfo, type ClientInfoData, CurrentUser, Roles } from "../../common/decorators";
 import type { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface";
@@ -32,7 +32,7 @@ export class GradosController {
     description: "Detalle del grado",
     type: GradoResponseDto,
   })
-  async findById(@Param("id") id: string): Promise<GradoResponseDto> {
+  async findById(@Param("id", ParseUUIDPipe) id: string): Promise<GradoResponseDto> {
     return this.service.findById(id);
   }
 
@@ -46,7 +46,7 @@ export class GradosController {
     type: GradoResponseDto,
   })
   async update(
-    @Param("id") id: string,
+    @Param("id", ParseUUIDPipe) id: string,
     @Body() dto: UpdateGradoDto,
     @CurrentUser() user: AuthenticatedUser,
     @ClientInfo() clientInfo: ClientInfoData,
