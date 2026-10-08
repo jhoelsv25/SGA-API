@@ -36,15 +36,14 @@ describe("AuditController (RF-003: Endpoints de Auditoría)", () => {
     it("debe delegar la búsqueda al servicio con los parámetros recibidos", async () => {
       const mockResponse: PaginatedAuditResponseDto = {
         data: [],
-        total: 0,
-        page: 1,
+        nextCursor: null,
+        hasMore: false,
         limit: 50,
-        totalPages: 0,
         mensaje: "No hay registros de auditoría para los filtros seleccionados.",
       };
       service.findAll.mockResolvedValue(mockResponse);
 
-      const query = { page: 1, limit: 50 };
+      const query = { limit: 50 };
       const result = await controller.findAll(query);
 
       expect(service.findAll).toHaveBeenCalledWith(query);

@@ -1,0 +1,33 @@
+export const MODULE_TABLES_MAP: Record<string, string[]> = {
+  seguridad: ["usuarios", "roles", "rol_permisos", "bitacora", "sesiones_usuario"],
+  academico: [
+    "cursos",
+    "areas_curriculares",
+    "secciones",
+    "aulas",
+    "horarios_seccion",
+    "horas_pedagogicas",
+  ],
+  matricula: [
+    "personas",
+    "estudiantes",
+    "apoderados",
+    "docentes",
+    "matriculas",
+    "traslados",
+    "responsables",
+  ],
+  asistencia: ["asistencias", "marcaciones_kiosko", "justificaciones"],
+  "seguimiento-docente": ["sesiones_clase", "temas_sesion", "evaluaciones", "calificaciones"],
+  libretas: ["libretas", "libretas_bimestrales", "meritos_academicos"],
+  "aula-virtual": ["unidades_didacticas", "tareas_virtuales", "entregas_tarea", "materiales"],
+  comunicacion: ["comunicados", "destinatarios_comunicado", "incidencias_convivencia"],
+  configuracion: [
+    "institucion",
+    "turnos",
+    "anios_lectivos",
+    "bimestres",
+    "dispositivos_kiosko",
+    "configuracion_sistema",
+  ],
+};

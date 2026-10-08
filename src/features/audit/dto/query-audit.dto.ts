@@ -57,15 +57,12 @@ export class QueryAuditDto {
   entidad?: string;
 
   @ApiPropertyOptional({
-    description: "Página a consultar (1-indexed)",
-    default: 1,
-    minimum: 1,
+    description: "Cursor opaco en base64url para la siguiente página de resultados.",
+    example: "eyJyZWdpc3RyYWRvRW4iOiIyMDI2LTEwLTA4IDA5OjMwOjAwIiwiaWQiOjE0MjUwfQ",
   })
   @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  page?: number = 1;
+  @IsString()
+  cursor?: string;
 
   @ApiPropertyOptional({
     description: "Elementos por página (por defecto 50)",

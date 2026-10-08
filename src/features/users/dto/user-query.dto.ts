@@ -2,17 +2,15 @@ import { ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import { IsIn, IsInt, IsOptional, IsString, IsUUID, Max, Min } from "class-validator";
 
+import { USER_STATUSES, UserStatus } from "../constants";
+
 export class UserQueryDto {
   @ApiPropertyOptional({
-    description: "Página a consultar (1-indexed)",
-    default: 1,
-    minimum: 1,
+    description: "Cursor opaco en base64url para la siguiente página de usuarios",
   })
   @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  page: number = 1;
+  @IsString()
+  cursor?: string;
 
   @ApiPropertyOptional({
     description: "Elementos por página",
@@ -36,13 +34,13 @@ export class UserQueryDto {
 
   @ApiPropertyOptional({
     description: "Filtrar por estado de la cuenta",
-    enum: ["activo", "bloqueado", "inactivo"],
+    enum: USER_STATUSES,
   })
   @IsOptional()
-  @IsIn(["activo", "bloqueado", "inactivo"], {
+  @IsIn(USER_STATUSES, {
     message: "El estado debe ser activo, bloqueado o inactivo",
   })
-  estado?: "activo" | "bloqueado" | "inactivo";
+  estado?: UserStatus;
 
   @ApiPropertyOptional({
     description: "Buscar por nombre, apellidos o nombre de usuario",

@@ -1,4 +1,5 @@
 export const QUEUES = {
+  AUDIT: "audit-queue",
   REPORTS: "reports-queue",
   EMAILS: "emails-queue",
   NOTIFICATIONS: "notifications-queue",

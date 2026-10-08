@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { decodeCursor } from "../../common/utils";
 import {
   AuditDetailResponseDto,
   AuditDiffFieldDto,
@@ -110,9 +111,7 @@ export class AuditService {
   constructor(private readonly auditRepository: AuditRepository) {}
 
   async findAll(query: QueryAuditDto = {}): Promise<PaginatedAuditResponseDto> {
-    const page = Number(query.page) > 0 ? Number(query.page) : 1;
     const limit = Number(query.limit) > 0 ? Number(query.limit) : 50;
-    const offset = (page - 1) * limit;
 
     let startDate: Date;
     let endDate: Date;
@@ -158,28 +157,37 @@ export class AuditService {
     const startDateStr = formatSqlTimestamp(startDate, false);
     const endDateStr = formatSqlTimestamp(endDate, true);
 
+    let cursorFecha: string | null = null;
+    let cursorId: number | null = null;
+
+    if (query.cursor) {
+      const decoded = decodeCursor<{ registradoEn: string; id: number }>(query.cursor);
+      if (decoded && decoded.registradoEn && typeof decoded.id === "number") {
+        cursorFecha = decoded.registradoEn;
+        cursorId = decoded.id;
+      }
+    }
+
     const result = await this.auditRepository.findAll({
       startDate: startDateStr,
       endDate: endDateStr,
       usuario: query.usuario,
       accion: query.accion,
       entidad: query.entidad,
-      offset,
+      cursorFecha,
+      cursorId,
       limit,
     });
 
     const data: AuditLogItemDto[] = result.data.map((record) => this.mapToItemDto(record));
 
-    const totalPages = result.total === 0 ? 0 : Math.ceil(result.total / limit);
-
     return {
       data,
-      total: result.total,
-      page,
+      nextCursor: result.nextCursor,
+      hasMore: result.hasMore,
       limit,
-      totalPages,
       mensaje:
-        result.total === 0
+        data.length === 0
           ? "No hay registros de auditoría para los filtros seleccionados."
           : undefined,
     };

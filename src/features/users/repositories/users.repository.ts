@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, count, eq, ilike, isNull, or, sql } from "drizzle-orm";
+import { and, eq, ilike, isNull, or, sql } from "drizzle-orm";
 import { Database, DRIZZLE } from "../../../core/database";
 import { personas, roles, sesiones, usuarios } from "../../../core/database/schema";
 import {
@@ -8,10 +8,13 @@ import {
   UserResponseDto,
 } from "../dto/user-response.dto";
 import { UserQueryDto } from "../dto/user-query.dto";
+import { decodeCursor, encodeCursor } from "../../../common/utils";
 import {
   CreateUserData,
+  DbUserProcedureExecutionResult,
   IUsersRepository,
   UpdateUserData,
+  UserCursorPayload,
 } from "../interfaces/users.repository.interface";
 
 @Injectable()
@@ -145,66 +148,47 @@ export class UsersRepository implements IUsersRepository {
   }
 
   async findUsers(query: UserQueryDto): Promise<PaginatedUsersResponseDto> {
-    const conditions = [isNull(usuarios.eliminadoEn)];
+    const limit = query.limit && query.limit > 0 ? query.limit : 10;
+    const decodedCursor = decodeCursor<UserCursorPayload>(query.cursor);
 
-    if (query.rolId) {
-      conditions.push(eq(usuarios.rolId, query.rolId));
-    }
+    const payload = {
+      rolId: query.rolId ?? null,
+      estado: query.estado ?? null,
+      search: query.search?.trim() || null,
+      cursorPaterno: decodedCursor?.apellidoPaterno ?? null,
+      cursorMaterno: decodedCursor?.apellidoMaterno ?? null,
+      cursorNombres: decodedCursor?.nombres ?? null,
+      cursorId: decodedCursor?.id ?? null,
+      limit,
+    };
 
-    if (query.estado) {
-      conditions.push(eq(usuarios.estado, query.estado));
-    }
+    const result = (await this.db.execute(sql`
+      SELECT fn_consultar_usuarios(${JSON.stringify(payload)}::jsonb) AS resultado
+    `)) as unknown as DbUserProcedureExecutionResult;
 
-    if (query.search && query.search.trim() !== "") {
-      const pattern = `%${query.search.trim()}%`;
-      conditions.push(
-        or(
-          ilike(usuarios.nombreUsuario, pattern),
-          ilike(personas.nombres, pattern),
-          ilike(personas.apellidoPaterno, pattern),
-          ilike(personas.apellidoMaterno, pattern),
-        )!,
-      );
-    }
+    const jsonResult = result.rows?.[0]?.resultado ?? {};
+    const data = jsonResult.data ?? [];
+    const hasMore = Boolean(jsonResult.hasMore);
 
-    const whereClause = and(...conditions);
-
-    // Total count
-    const [countResult] = await this.db
-      .select({ count: count(usuarios.id) })
-      .from(usuarios)
-      .innerJoin(personas, eq(usuarios.personaId, personas.id))
-      .where(whereClause);
-
-    const total = Number(countResult?.count ?? 0);
-    const limit = query.limit ?? 10;
-    const page = query.page ?? 1;
-    const offset = (page - 1) * limit;
-
-    // Ordered by apellidos: apellidoPaterno, apellidoMaterno, nombres
-    const rows = await this.db
-      .select({
-        usuario: usuarios,
-        persona: personas,
-        rol: roles,
-      })
-      .from(usuarios)
-      .innerJoin(personas, eq(usuarios.personaId, personas.id))
-      .innerJoin(roles, eq(usuarios.rolId, roles.id))
-      .where(whereClause)
-      .orderBy(personas.apellidoPaterno, personas.apellidoMaterno, personas.nombres)
-      .limit(limit)
-      .offset(offset);
-
-    const data = rows.map((r) => this.mapUserResult(r));
-    const totalPages = Math.ceil(total / limit);
+    const nextCursor =
+      hasMore && jsonResult.nextCursorId && jsonResult.nextCursorPaterno != null
+        ? encodeCursor<UserCursorPayload>({
+            apellidoPaterno: jsonResult.nextCursorPaterno,
+            apellidoMaterno: jsonResult.nextCursorMaterno ?? "",
+            nombres: jsonResult.nextCursorNombres ?? "",
+            id: jsonResult.nextCursorId,
+          })
+        : null;
 
     return {
       data,
-      total,
-      page,
+      nextCursor,
+      hasMore,
       limit,
-      totalPages: totalPages === 0 ? 1 : totalPages,
+      mensaje:
+        data.length === 0
+          ? "No se encontraron usuarios para los filtros seleccionados."
+          : undefined,
     };
   }
 

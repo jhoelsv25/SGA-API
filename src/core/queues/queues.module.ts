@@ -1,6 +1,8 @@
 import { BullModule } from "@nestjs/bullmq";
 import { Module } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { AuditProcessor } from "./processors/audit.processor";
+import { QUEUES } from "./queues.constants";
 
 @Module({
   imports: [
@@ -15,7 +17,11 @@ import { ConfigService } from "@nestjs/config";
         };
       },
     }),
+    BullModule.registerQueue({
+      name: QUEUES.AUDIT,
+    }),
   ],
+  providers: [AuditProcessor],
   exports: [BullModule],
 })
 export class QueuesModule {}
