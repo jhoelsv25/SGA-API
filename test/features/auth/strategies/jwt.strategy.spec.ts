@@ -104,7 +104,7 @@ describe("JwtStrategy (RF-001: Validación de Token y Sesión)", () => {
         new UnauthorizedException("La cuenta de usuario no se encuentra activa"),
       );
     });
-  
+
     it("RF-001 V2: rechaza el token si su perfil activo ya no está asignado", async () => {
       authRepository.findUserById.mockResolvedValue(mockUserRecord);
       authRepository.findUserProfiles.mockResolvedValue([
@@ -128,5 +128,5 @@ describe("JwtStrategy (RF-001: Validación de Token y Sesión)", () => {
       expect(result.roleId).toBe(mockPayload.roleId);
       expect(result.role).toBe("Apoderado");
     });
-});
+  });
 });

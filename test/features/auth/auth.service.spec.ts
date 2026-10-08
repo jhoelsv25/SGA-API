@@ -7,6 +7,7 @@ jest.mock("bcryptjs", () => ({
   hash: jest.fn(),
 }));
 import { AuthService } from "@/features/auth/auth.service";
+import { VariablesSistemaRepository } from "@/features/variables-sistema/repositories";
 import type {
   InstitutionSummary,
   PersonaRecord,
@@ -21,6 +22,7 @@ describe("AuthService (RF-001: Acceso al Sistema)", () => {
   let authService: AuthService;
   let authRepository: jest.Mocked<AuthRepository>;
   let sessionService: jest.Mocked<SessionService>;
+  let variablesRepository: { findByCodigoVigente: jest.Mock };
 
   const mockUser: UsuarioRecord = {
     id: "usr-uuid-1",
@@ -105,12 +107,18 @@ describe("AuthService (RF-001: Acceso al Sistema)", () => {
         AuthService,
         { provide: AuthRepository, useValue: mockRepo },
         { provide: SessionService, useValue: mockSession },
+        {
+          // Sin variable vigente: se usan los valores por defecto (5 intentos, 8 caracteres)
+          provide: VariablesSistemaRepository,
+          useValue: { findByCodigoVigente: jest.fn().mockResolvedValue(null) },
+        },
       ],
     }).compile();
 
     authService = module.get<AuthService>(AuthService);
     authRepository = module.get(AuthRepository);
     sessionService = module.get(SessionService);
+    variablesRepository = module.get(VariablesSistemaRepository);
 
     jest.clearAllMocks();
   });
@@ -411,8 +419,13 @@ describe("AuthService (RF-001: Acceso al Sistema)", () => {
     });
   });
 
-  describe("RF-001 V2: Varios perfiles", () => {
-    const perfilDocente = { rolId: "rol-docente", nombre: "Docente", esSistema: false, esPrincipal: true };
+  describe("RF-001 V2: Varios perfiles y valores configurables", () => {
+    const perfilDocente = {
+      rolId: "rol-docente",
+      nombre: "Docente",
+      esSistema: false,
+      esPrincipal: true,
+    };
     const perfilApoderado = {
       rolId: "rol-apoderado",
       nombre: "Apoderado",
@@ -433,7 +446,11 @@ describe("AuthService (RF-001: Acceso al Sistema)", () => {
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
       prepararPerfil([perfilDocente, perfilApoderado]);
 
-      const result = await authService.login({ username: "jdoe", password: "x", rememberMe: false });
+      const result = await authService.login({
+        username: "jdoe",
+        password: "x",
+        rememberMe: false,
+      });
 
       expect(sessionService.generateAccessToken).toHaveBeenCalledWith(
         expect.objectContaining({ roleId: "rol-docente", role: "Docente" }),
@@ -495,7 +512,38 @@ describe("AuthService (RF-001: Acceso al Sistema)", () => {
       expect(result.user.activeProfileName).toBe("Apoderado");
     });
 
+    it("P-10 Intentos configurables: bloquea al llegar a seguridad.intentos_fallidos_bloqueo (3)", async () => {
+      variablesRepository.findByCodigoVigente.mockImplementation((codigo: string) =>
+        Promise.resolve(codigo === "seguridad.intentos_fallidos_bloqueo" ? { valor: "3" } : null),
+      );
+      authRepository.findUserByUsername.mockResolvedValue({ ...mockUser, intentosFallidos: 2 });
+      (bcrypt.compare as jest.Mock).mockResolvedValue(false);
 
+      await expect(
+        authService.login({ username: "jdoe", password: "mala", rememberMe: false }),
+      ).rejects.toThrow(UnauthorizedException);
+      expect(authRepository.updateLoginAttempts).toHaveBeenCalledWith(mockUser.id, 3, true);
+    });
+
+    it("P-10 Longitud configurable: exige seguridad.longitud_minima_contrasena (10)", async () => {
+      variablesRepository.findByCodigoVigente.mockImplementation((codigo: string) =>
+        Promise.resolve(codigo === "seguridad.longitud_minima_contrasena" ? { valor: "10" } : null),
+      );
+      authRepository.findUserById.mockResolvedValue(mockUser);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+
+      await expect(
+        authService.changePassword(mockUser.id, {
+          currentPassword: "Actual123",
+          newPassword: "Clave1234",
+        }),
+      ).rejects.toThrow(
+        new BadRequestException(
+          "La contraseña debe tener al menos 10 caracteres, con letras y números.",
+        ),
+      );
+      expect(authRepository.updatePassword).not.toHaveBeenCalled();
+    });
 
     it("Contraseña sin números: rechaza con el mensaje de la política", async () => {
       authRepository.findUserById.mockResolvedValue(mockUser);
@@ -507,7 +555,9 @@ describe("AuthService (RF-001: Acceso al Sistema)", () => {
           newPassword: "SoloLetrasLargas",
         }),
       ).rejects.toThrow(
-        new BadRequestException("La contraseña debe tener al menos 8 caracteres, con letras y números."),
+        new BadRequestException(
+          "La contraseña debe tener al menos 8 caracteres, con letras y números.",
+        ),
       );
     });
   });

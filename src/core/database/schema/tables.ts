@@ -241,15 +241,35 @@ export const usuarioRoles = pgTable(
   },
   (table) => [
     uniqueIndex("ux_usuario_roles_vigente")
-      .using("btree", table.usuarioId.asc().nullsLast().op("uuid_ops"), table.rolId.asc().nullsLast().op("uuid_ops"))
+      .using(
+        "btree",
+        table.usuarioId.asc().nullsLast().op("uuid_ops"),
+        table.rolId.asc().nullsLast().op("uuid_ops"),
+      )
       .where(sql`vigente`),
     uniqueIndex("ux_usuario_roles_principal")
       .using("btree", table.usuarioId.asc().nullsLast().op("uuid_ops"))
       .where(sql`(vigente AND es_principal)`),
-    foreignKey({ columns: [table.usuarioId], foreignColumns: [usuarios.id], name: "fk_usuario_roles_usuario" }),
-    foreignKey({ columns: [table.rolId], foreignColumns: [roles.id], name: "fk_usuario_roles_rol" }),
-    foreignKey({ columns: [table.asignadoPorId], foreignColumns: [usuarios.id], name: "fk_usuario_roles_asignado" }),
-    foreignKey({ columns: [table.retiradoPorId], foreignColumns: [usuarios.id], name: "fk_usuario_roles_retirado" }),
+    foreignKey({
+      columns: [table.usuarioId],
+      foreignColumns: [usuarios.id],
+      name: "fk_usuario_roles_usuario",
+    }),
+    foreignKey({
+      columns: [table.rolId],
+      foreignColumns: [roles.id],
+      name: "fk_usuario_roles_rol",
+    }),
+    foreignKey({
+      columns: [table.asignadoPorId],
+      foreignColumns: [usuarios.id],
+      name: "fk_usuario_roles_asignado",
+    }),
+    foreignKey({
+      columns: [table.retiradoPorId],
+      foreignColumns: [usuarios.id],
+      name: "fk_usuario_roles_retirado",
+    }),
     check(
       "ck_usuario_roles_retiro",
       sql`vigente OR (retirado_por_id IS NOT NULL AND retirado_en IS NOT NULL)`,

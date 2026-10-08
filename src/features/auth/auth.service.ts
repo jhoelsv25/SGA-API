@@ -8,6 +8,14 @@ import {
 } from "@nestjs/common";
 import * as bcrypt from "bcryptjs";
 import { AuditService } from "../../common/services/audit.service";
+import { VariablesSistemaRepository } from "../variables-sistema/repositories";
+import {
+  DEFAULT_INTENTOS_BLOQUEO,
+  DEFAULT_LONGITUD_CONTRASENA,
+  PASSWORD_LETRAS_Y_NUMEROS,
+  VAR_INTENTOS_BLOQUEO,
+  VAR_LONGITUD_CONTRASENA,
+} from "./constants";
 import { AuthModuleDto, AuthResponseDto, CurrentUserDto } from "./dto/auth-response.dto";
 import { SwitchProfileDto } from "./dto/switch-profile.dto";
 import { ChangePasswordDto } from "./dto/change-password.dto";
@@ -18,13 +26,6 @@ import type { JwtPayload } from "./interfaces/jwt-payload.interface";
 import { AuthRepository } from "./repositories/auth.repository";
 import { SessionService } from "./services/session.service";
 
-// Política de acceso (RF-001). P-10: serán configurables con las variables
-// seguridad.intentos_fallidos_bloqueo y seguridad.longitud_minima_contrasena cuando
-// exista la tabla variables_sistema (RF-004 V2, en desarrollo en otra rama).
-const INTENTOS_BLOQUEO = 5;
-const LONGITUD_MINIMA_CONTRASENA = 8;
-const PASSWORD_LETRAS_Y_NUMEROS = /^(?=.*[A-Za-z])(?=.*\d).+$/;
-
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
@@ -33,6 +34,7 @@ export class AuthService {
     private readonly authRepository: AuthRepository,
     private readonly sessionService: SessionService,
     @Optional() private readonly auditService?: AuditService,
+    @Optional() private readonly variablesRepository?: VariablesSistemaRepository,
   ) {}
 
   async login(dto: LoginDto, ipAddress?: string, userAgent?: string): Promise<AuthResponseDto> {
@@ -281,7 +283,10 @@ export class AuthService {
     }
 
     // 2. Validar la política de contraseña (longitud configurable, letras y números)
-    const longitudMinima = LONGITUD_MINIMA_CONTRASENA;
+    const longitudMinima = await this.leerVariableNumerica(
+      VAR_LONGITUD_CONTRASENA,
+      DEFAULT_LONGITUD_CONTRASENA,
+    );
     if (
       dto.newPassword.length < longitudMinima ||
       !PASSWORD_LETRAS_Y_NUMEROS.test(dto.newPassword)
@@ -344,7 +349,10 @@ export class AuthService {
     }
 
     if (!isValid) {
-      const maxIntentos = INTENTOS_BLOQUEO;
+      const maxIntentos = await this.leerVariableNumerica(
+        VAR_INTENTOS_BLOQUEO,
+        DEFAULT_INTENTOS_BLOQUEO,
+      );
       const attempts = user.intentosFallidos + 1;
       const mustLock = attempts >= maxIntentos;
 
@@ -374,6 +382,18 @@ export class AuthService {
       }
 
       throw new UnauthorizedException("Usuario o contraseña incorrectos");
+    }
+  }
+
+  /** Valor numérico vigente de una variable del sistema, o el valor por defecto. */
+  private async leerVariableNumerica(codigo: string, porDefecto: number): Promise<number> {
+    try {
+      const variable = await this.variablesRepository?.findByCodigoVigente(codigo);
+      const valor = Number(variable?.valor);
+      return variable && Number.isFinite(valor) ? valor : porDefecto;
+    } catch (error) {
+      this.logger.warn(`No se pudo leer la variable ${codigo}: ${(error as Error).message}`);
+      return porDefecto;
     }
   }
 

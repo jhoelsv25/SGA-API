@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from "@nestjs/config";
 import { JwtModule } from "@nestjs/jwt";
 import { PassportModule } from "@nestjs/passport";
 import { AuditService } from "../../common/services/audit.service";
+import { VariablesSistemaModule } from "../variables-sistema/variables-sistema.module";
 import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
 import { AuthRepository } from "./repositories/auth.repository";
@@ -11,6 +12,7 @@ import { JwtStrategy } from "./strategies/jwt.strategy";
 
 @Module({
   imports: [
+    VariablesSistemaModule,
     PassportModule.register({ defaultStrategy: "jwt" }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -27,13 +29,7 @@ import { JwtStrategy } from "./strategies/jwt.strategy";
     }),
   ],
   controllers: [AuthController],
-  providers: [
-    AuthService,
-    SessionService,
-    AuthRepository,
-    JwtStrategy,
-    AuditService,
-  ],
+  providers: [AuthService, SessionService, AuthRepository, JwtStrategy, AuditService],
   exports: [AuthService, SessionService, AuthRepository, JwtModule, PassportModule],
 })
 export class AuthModule {}
