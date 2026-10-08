@@ -44,6 +44,8 @@ export interface IAuthRepository {
   resetLoginAttempts(userId: string): Promise<void>;
   createSession(data: SessionData): Promise<void>;
   closeSession(tokenHash: string): Promise<void>;
+  /** true si la sesión de ese token existe y ya fue cerrada (logout o revocación). */
+  isSessionClosed(tokenHash: string): Promise<boolean>;
   closeOtherSessions(userId: string, currentTokenHash: string): Promise<void>;
   updatePassword(userId: string, newHash: string): Promise<void>;
   getUserModules(rolId: string, esSistema: boolean): Promise<AuthModuleDto[]>;

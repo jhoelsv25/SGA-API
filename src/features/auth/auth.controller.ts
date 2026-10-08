@@ -72,14 +72,17 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiCookieAuth()
   @ApiOperation({
-    summary: "Cambiar el rol activo sin volver a iniciar sesión (RF-001 V2)",
+    summary: "Fijar el rol elegido en el paso 2 del inicio de sesión (RF-001 V3)",
   })
   @ApiResponse({
     status: 200,
     description: "Rol cambiado; se emite un token nuevo con el rol elegido",
     type: AuthResponseDto,
   })
-  @ApiResponse({ status: 403, description: "El usuario no tiene asignado ese rol" })
+  @ApiResponse({
+    status: 403,
+    description: "No tiene ese rol, o el rol ya se eligió (solo se elige al iniciar sesión)",
+  })
   async switchRole(
     @CurrentUser() user: AuthenticatedUser,
     @ExtractToken() token: string | undefined,
@@ -90,11 +93,12 @@ export class AuthController {
     const result = await this.authService.switchRole(
       user.id,
       dto,
+      user,
       token,
       client.ip,
       client.userAgent,
     );
-    setAuthCookie({ res, token: result.accessToken, rememberMe: false });
+    setAuthCookie({ res, token: result.accessToken, rememberMe: user.recordar });
     return result;
   }
 
