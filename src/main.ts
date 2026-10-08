@@ -1,9 +1,11 @@
 // Garantizar que todo el runtime de Node.js opere en UTC
 process.env.TZ = "UTC";
 
+import { join } from "path";
 import { ValidationPipe } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { NestFactory } from "@nestjs/core";
+import { NestExpressApplication } from "@nestjs/platform-express";
 import compression from "compression";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
@@ -13,10 +15,13 @@ import { GlobalHttpExceptionFilter, LoggingInterceptor } from "./common";
 import { getCorsConfig, getWinstonLoggerConfig, setupSwagger } from "./config";
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, {
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: WinstonModule.createLogger(getWinstonLoggerConfig()),
   });
   const configService = app.get(ConfigService);
+
+  // Servir archivos estáticos subidos (/uploads)
+  app.useStaticAssets(join(process.cwd(), "uploads"), { prefix: "/uploads/" });
 
   // Compresión de respuestas HTTP (gzip)
   app.use(compression());
