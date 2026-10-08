@@ -27,6 +27,7 @@
     "db:pull": "drizzle-kit pull",
     "db:studio": "drizzle-kit studio",
     "db:check": "drizzle-kit check",
+    "db:procedures": "ts-node src/core/database/apply-procedures.ts",
     "db:seed": "ts-node src/core/database/seed.ts"
   },
   "dependencies": {

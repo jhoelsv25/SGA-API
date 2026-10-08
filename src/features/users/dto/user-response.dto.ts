@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { USER_STATUSES, UserStatus } from "../constants";
 
 export class UserPersonaDto {
   @ApiProperty({ description: "ID de la persona" })
@@ -44,8 +45,11 @@ export class UserResponseDto {
   @ApiProperty({ description: "Nombre de usuario" })
   nombreUsuario!: string;
 
-  @ApiProperty({ description: "Estado de la cuenta: activo, bloqueado o inactivo" })
-  estado!: "activo" | "bloqueado" | "inactivo";
+  @ApiProperty({
+    description: "Estado de la cuenta: activo, bloqueado o inactivo",
+    enum: USER_STATUSES,
+  })
+  estado!: UserStatus;
 
   @ApiProperty({ description: "Indica si debe cambiar contraseña en el primer/siguiente ingreso" })
   debeCambiarContrasena!: boolean;
@@ -95,15 +99,21 @@ export class PaginatedUsersResponseDto {
   @ApiProperty({ type: [UserResponseDto] })
   data!: UserResponseDto[];
 
-  @ApiProperty({ description: "Total de registros encontrados" })
-  total!: number;
+  @ApiPropertyOptional({
+    description:
+      "Cursor opaco para solicitar la siguiente página de usuarios (o null si no hay más)",
+    nullable: true,
+  })
+  nextCursor!: string | null;
 
-  @ApiProperty({ description: "Página actual" })
-  page!: number;
+  @ApiProperty({ description: "Indica si existen más registros en las siguientes páginas" })
+  hasMore!: boolean;
 
   @ApiProperty({ description: "Elementos por página" })
   limit!: number;
 
-  @ApiProperty({ description: "Total de páginas" })
-  totalPages!: number;
+  @ApiPropertyOptional({
+    description: "Mensaje informativo opcional",
+  })
+  mensaje?: string;
 }

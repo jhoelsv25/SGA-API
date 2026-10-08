@@ -12,6 +12,7 @@ import { Database, DRIZZLE } from "../../core/database";
 import { personas } from "../../core/database/schema";
 import type { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface";
 import { RolesRepository } from "../roles/repositories/roles.repository";
+import { BCRYPT_SALT_ROUNDS, TEMP_PASSWORD_LENGTH } from "./constants";
 import { ChangeUserRoleDto } from "./dto/change-user-role.dto";
 import { CreateUserDto } from "./dto/create-user.dto";
 import { UpdateUsernameDto } from "./dto/update-username.dto";
@@ -82,8 +83,8 @@ export class UsersService {
     }
 
     // 5. Generar contraseña temporal segura y su hash
-    const tempPassword = generateTemporaryPassword(10);
-    const contrasenaHash = await bcrypt.hash(tempPassword, 10);
+    const tempPassword = generateTemporaryPassword(TEMP_PASSWORD_LENGTH);
+    const contrasenaHash = await bcrypt.hash(tempPassword, BCRYPT_SALT_ROUNDS);
 
     // 6. Crear la cuenta
     const user = await this.usersRepository.create({
@@ -228,8 +229,8 @@ export class UsersService {
     await this.findUserById(id);
 
     // Generar nueva contraseña temporal
-    const tempPassword = generateTemporaryPassword(10);
-    const newHash = await bcrypt.hash(tempPassword, 10);
+    const tempPassword = generateTemporaryPassword(TEMP_PASSWORD_LENGTH);
+    const newHash = await bcrypt.hash(tempPassword, BCRYPT_SALT_ROUNDS);
 
     await this.usersRepository.update(id, {
       contrasenaHash: newHash,

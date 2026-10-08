@@ -1,130 +1,80 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, count, desc, eq, gte, ilike, isNull, lte, or, type SQL } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
+import { encodeCursor } from "../../../common/utils";
 import { Database, DRIZZLE } from "../../../core/database";
 import { bitacoraAuditoria, usuarios } from "../../../core/database/schema";
+import { MODULE_TABLES_MAP } from "../constants/audit.constants";
 import {
   AuditRecord,
+  DbProcedureExecutionResult,
   FindAuditFilters,
+  FindAuditResult,
   IAuditRepository,
 } from "../interfaces/audit.repository.interface";
-
-const MODULE_TABLES_MAP: Record<string, string[]> = {
-  seguridad: ["usuarios", "roles", "rol_permisos", "bitacora", "sesiones_usuario"],
-  academico: [
-    "cursos",
-    "areas_curriculares",
-    "secciones",
-    "aulas",
-    "horarios_seccion",
-    "horas_pedagogicas",
-  ],
-  matricula: [
-    "personas",
-    "estudiantes",
-    "apoderados",
-    "docentes",
-    "matriculas",
-    "traslados",
-    "responsables",
-  ],
-  asistencia: ["asistencias", "marcaciones_kiosko", "justificaciones"],
-  "seguimiento-docente": ["sesiones_clase", "temas_sesion", "evaluaciones", "calificaciones"],
-  libretas: ["libretas", "libretas_bimestrales", "meritos_academicos"],
-  "aula-virtual": ["unidades_didacticas", "tareas_virtuales", "entregas_tarea", "materiales"],
-  comunicacion: ["comunicados", "destinatarios_comunicado", "incidencias_convivencia"],
-  configuracion: [
-    "institucion",
-    "turnos",
-    "anios_lectivos",
-    "bimestres",
-    "dispositivos_kiosko",
-    "configuracion_sistema",
-  ],
-};
+import { formatRecordTimestamp } from "../utils/audit-date.util";
 
 @Injectable()
 export class AuditRepository implements IAuditRepository {
   constructor(@Inject(DRIZZLE) private readonly db: Database) {}
 
-  async findAll(filters: FindAuditFilters): Promise<{ data: AuditRecord[]; total: number }> {
-    const conditions: SQL[] = [
-      gte(bitacoraAuditoria.registradoEn, filters.startDate),
-      lte(bitacoraAuditoria.registradoEn, filters.endDate),
-    ];
-
-    if (filters.usuario && filters.usuario.trim() !== "") {
-      const trimmedUser = filters.usuario.trim();
-      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-        trimmedUser,
-      );
-
-      if (trimmedUser.toLowerCase() === "sistema") {
-        conditions.push(isNull(bitacoraAuditoria.usuarioId));
-      } else if (isUuid) {
-        conditions.push(eq(bitacoraAuditoria.usuarioId, trimmedUser));
-      } else {
-        conditions.push(ilike(usuarios.nombreUsuario, `%${trimmedUser}%`));
-      }
-    }
-
-    if (filters.accion && filters.accion.trim() !== "") {
-      conditions.push(eq(bitacoraAuditoria.accion, filters.accion.trim()));
-    }
+  async findAll(filters: FindAuditFilters): Promise<FindAuditResult> {
+    let tablas: string[] | null = null;
+    let entidadFiltro: string | null = null;
 
     if (filters.entidad && filters.entidad.trim() !== "") {
       const trimmed = filters.entidad.trim().toLowerCase();
       const mappedTables = MODULE_TABLES_MAP[trimmed];
       if (mappedTables && mappedTables.length > 0) {
-        conditions.push(
-          or(
-            ilike(bitacoraAuditoria.tabla, `%${trimmed}%`),
-            ...mappedTables.map((t) => ilike(bitacoraAuditoria.tabla, `%${t}%`)),
-          )!,
-        );
+        tablas = mappedTables;
       } else {
-        conditions.push(ilike(bitacoraAuditoria.tabla, `%${trimmed}%`));
+        entidadFiltro = trimmed;
       }
     }
 
-    const whereClause = and(...conditions);
+    const payload = {
+      fechaInicio: filters.startDate,
+      fechaFin: filters.endDate,
+      usuario: filters.usuario?.trim() || null,
+      accion: filters.accion?.trim() || null,
+      tablas,
+      entidad: entidadFiltro,
+      cursorFecha: filters.cursorFecha ?? null,
+      cursorId: filters.cursorId ?? null,
+      limit: filters.limit,
+    };
 
-    const [totalResult] = await this.db
-      .select({ totalCount: count() })
-      .from(bitacoraAuditoria)
-      .leftJoin(usuarios, eq(bitacoraAuditoria.usuarioId, usuarios.id))
-      .where(whereClause);
+    const result = (await this.db.execute(sql`
+      SELECT fn_consultar_bitacora_auditoria(${JSON.stringify(payload)}::jsonb) AS resultado
+    `)) as unknown as DbProcedureExecutionResult;
 
-    const total = Number(totalResult?.totalCount ?? 0);
+    const jsonResult = result.rows?.[0]?.resultado ?? {};
 
-    const rows = await this.db
-      .select({
-        id: bitacoraAuditoria.id,
-        usuarioId: bitacoraAuditoria.usuarioId,
-        usuarioNombre: usuarios.nombreUsuario,
-        accion: bitacoraAuditoria.accion,
-        tabla: bitacoraAuditoria.tabla,
-        registroId: bitacoraAuditoria.registroId,
-        valorAnterior: bitacoraAuditoria.valorAnterior,
-        valorNuevo: bitacoraAuditoria.valorNuevo,
-        direccionIp: bitacoraAuditoria.direccionIp,
-        registradoEn: bitacoraAuditoria.registradoEn,
-      })
-      .from(bitacoraAuditoria)
-      .leftJoin(usuarios, eq(bitacoraAuditoria.usuarioId, usuarios.id))
-      .where(whereClause)
-      .orderBy(desc(bitacoraAuditoria.registradoEn), desc(bitacoraAuditoria.id))
-      .limit(filters.limit)
-      .offset(filters.offset);
-
-    const data: AuditRecord[] = rows.map((r) => ({
-      ...r,
-      valorAnterior: r.valorAnterior as Record<string, unknown> | null,
-      valorNuevo: r.valorNuevo as Record<string, unknown> | null,
+    const data: AuditRecord[] = (jsonResult.data ?? []).map((r) => ({
+      id: Number(r.id),
+      usuarioId: r.usuarioId ?? null,
+      usuarioNombre: r.usuarioNombre ?? null,
+      accion: r.accion,
+      tabla: r.tabla,
+      registroId: r.registroId ?? null,
+      valorAnterior: r.valorAnterior ?? null,
+      valorNuevo: r.valorNuevo ?? null,
+      direccionIp: r.direccionIp ?? null,
+      registradoEn: formatRecordTimestamp(r.registradoEn),
     }));
+
+    const hasMore = Boolean(jsonResult.hasMore);
+    const nextCursor =
+      hasMore && jsonResult.nextCursorFecha && jsonResult.nextCursorId != null
+        ? encodeCursor({
+            registradoEn: jsonResult.nextCursorFecha,
+            id: Number(jsonResult.nextCursorId),
+          })
+        : null;
 
     return {
       data,
-      total,
+      nextCursor,
+      hasMore,
     };
   }
 

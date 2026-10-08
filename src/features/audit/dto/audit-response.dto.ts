@@ -145,17 +145,22 @@ export class PaginatedAuditResponseDto {
   })
   data!: AuditLogItemDto[];
 
-  @ApiProperty({ description: "Total de registros encontrados con los filtros", example: 120 })
-  total!: number;
+  @ApiPropertyOptional({
+    description:
+      "Cursor opaco para solicitar la siguiente página de resultados (o null si no hay más)",
+    example: "eyJyZWdpc3RyYWRvRW4iOiIyMDI2LTEwLTA4IDA5OjMwOjAwIiwiaWQiOjE0MjUwfQ",
+    nullable: true,
+  })
+  nextCursor!: string | null;
 
-  @ApiProperty({ description: "Página actual", example: 1 })
-  page!: number;
+  @ApiProperty({
+    description: "Indica si existen más registros en las siguientes páginas",
+    example: true,
+  })
+  hasMore!: boolean;
 
   @ApiProperty({ description: "Registros por página", example: 50 })
   limit!: number;
-
-  @ApiProperty({ description: "Total de páginas calculadas", example: 3 })
-  totalPages!: number;
 
   @ApiPropertyOptional({
     description: "Mensaje informativo (ej. cuando no hay resultados)",

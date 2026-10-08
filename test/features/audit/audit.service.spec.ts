@@ -51,11 +51,12 @@ describe("AuditService (RF-003: Bitácora de Auditoría)", () => {
   });
 
   describe("findAll()", () => {
-    it("debe consultar los últimos 7 días por defecto y retornar listado paginado (Escenario: Consulta inicial)", async () => {
+    it("debe consultar los últimos 7 días por defecto y retornar listado paginado por cursor (Escenario: Consulta inicial)", async () => {
       // Arrange
       repository.findAll.mockResolvedValue({
         data: [mockAuditRecord],
-        total: 1,
+        nextCursor: "mock-next-cursor",
+        hasMore: true,
       });
 
       // Act
@@ -65,7 +66,8 @@ describe("AuditService (RF-003: Bitácora de Auditoría)", () => {
       expect(repository.findAll).toHaveBeenCalledTimes(1);
       const callArg = repository.findAll.mock.calls[0][0];
       expect(callArg.limit).toBe(50);
-      expect(callArg.offset).toBe(0);
+      expect(callArg.cursorFecha).toBeNull();
+      expect(callArg.cursorId).toBeNull();
       expect(callArg.startDate).toMatch(/^\d{4}-\d{2}-\d{2} 00:00:00$/);
       expect(callArg.endDate).toMatch(/^\d{4}-\d{2}-\d{2} 23:59:59$/);
       expect(result.data).toHaveLength(1);
@@ -79,17 +81,17 @@ describe("AuditService (RF-003: Bitácora de Auditoría)", () => {
         registroId: "target-user-uuid",
         direccionIp: "192.168.1.100",
       });
-      expect(result.total).toBe(1);
-      expect(result.page).toBe(1);
+      expect(result.nextCursor).toBe("mock-next-cursor");
+      expect(result.hasMore).toBe(true);
       expect(result.limit).toBe(50);
-      expect(result.totalPages).toBe(1);
     });
 
     it("debe mapear el usuario a 'Sistema' si usuarioId es null (Escenario: Acción hecha por el sistema)", async () => {
       // Arrange
       repository.findAll.mockResolvedValue({
         data: [mockSystemRecord],
-        total: 1,
+        nextCursor: null,
+        hasMore: false,
       });
 
       // Act
@@ -100,12 +102,17 @@ describe("AuditService (RF-003: Bitácora de Auditoría)", () => {
       expect(result.data[0].usuarioId).toBeNull();
     });
 
-    it("debe aplicar filtros por usuario, acción y entidad correctamente (Escenario: Filtrar por usuario y acción)", async () => {
+    it("debe aplicar filtros y decodificar el cursor correctamente", async () => {
       // Arrange
       repository.findAll.mockResolvedValue({
         data: [mockAuditRecord],
-        total: 1,
+        nextCursor: null,
+        hasMore: false,
       });
+
+      const cursorToken = Buffer.from(
+        JSON.stringify({ registradoEn: "2026-10-05 14:30:00", id: 1 }),
+      ).toString("base64url");
 
       // Act
       await service.findAll({
@@ -114,7 +121,7 @@ describe("AuditService (RF-003: Bitácora de Auditoría)", () => {
         usuario: "admin",
         accion: "actualizar",
         entidad: "usuarios",
-        page: 2,
+        cursor: cursorToken,
         limit: 20,
       });
 
@@ -125,7 +132,8 @@ describe("AuditService (RF-003: Bitácora de Auditoría)", () => {
         usuario: "admin",
         accion: "actualizar",
         entidad: "usuarios",
-        offset: 20,
+        cursorFecha: "2026-10-05 14:30:00",
+        cursorId: 1,
         limit: 20,
       });
     });
@@ -158,7 +166,8 @@ describe("AuditService (RF-003: Bitácora de Auditoría)", () => {
       // Arrange
       repository.findAll.mockResolvedValue({
         data: [],
-        total: 0,
+        nextCursor: null,
+        hasMore: false,
       });
 
       // Act
@@ -166,8 +175,8 @@ describe("AuditService (RF-003: Bitácora de Auditoría)", () => {
 
       // Assert
       expect(result.data).toEqual([]);
-      expect(result.total).toBe(0);
-      expect(result.totalPages).toBe(0);
+      expect(result.nextCursor).toBeNull();
+      expect(result.hasMore).toBe(false);
       expect(result.mensaje).toBe("No hay registros de auditoría para los filtros seleccionados.");
     });
   });

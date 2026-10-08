@@ -312,4 +312,24 @@ describe("UsersService (RF-002: HU 1)", () => {
       expect(usersRepository.closeAllUserSessions).toHaveBeenCalledWith(dummyUser.id);
     });
   });
+
+  describe("findUsers()", () => {
+    it("should delegate to repository and return cursor-paginated users", async () => {
+      const mockResult = {
+        data: [dummyUser],
+        nextCursor: "mock-next-cursor",
+        hasMore: true,
+        limit: 10,
+      };
+      usersRepository.findUsers.mockResolvedValue(mockResult);
+
+      const query = { limit: 10, cursor: "mock-cursor" };
+      const result = await service.findUsers(query);
+
+      expect(usersRepository.findUsers).toHaveBeenCalledWith(query);
+      expect(result).toBe(mockResult);
+      expect(result.nextCursor).toBe("mock-next-cursor");
+      expect(result.hasMore).toBe(true);
+    });
+  });
 });

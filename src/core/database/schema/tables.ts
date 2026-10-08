@@ -289,6 +289,11 @@ export const bitacoraAuditoria = pgTable(
       table.usuarioId.asc().nullsLast().op("uuid_ops"),
       table.registradoEn.asc().nullsLast().op("uuid_ops"),
     ),
+    index("ix_bitacora_auditoria_cursor").using(
+      "btree",
+      table.registradoEn.desc().nullsLast().op("timestamp_ops"),
+      table.id.desc().nullsLast().op("int8_ops"),
+    ),
     check(
       "ck_bitacora_accion",
       sql`(accion)::text = ANY ((ARRAY['crear'::character varying, 'actualizar'::character varying, 'eliminar'::character varying, 'iniciar_sesion'::character varying, 'cerrar_sesion'::character varying])::text[])`,

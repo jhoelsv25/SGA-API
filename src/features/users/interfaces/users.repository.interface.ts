@@ -17,6 +17,28 @@ export interface UpdateUserData {
   debeCambiarContrasena?: boolean;
 }
 
+export interface UserCursorPayload {
+  apellidoPaterno: string;
+  apellidoMaterno: string;
+  nombres: string;
+  id: string;
+}
+
+export interface UserProcedureResultJson {
+  data?: UserResponseDto[];
+  hasMore?: boolean;
+  nextCursorPaterno?: string | null;
+  nextCursorMaterno?: string | null;
+  nextCursorNombres?: string | null;
+  nextCursorId?: string | null;
+}
+
+export interface DbUserProcedureExecutionResult {
+  rows?: Array<{
+    resultado?: UserProcedureResultJson;
+  }>;
+}
+
 export interface IUsersRepository {
   findUserById(id: string): Promise<UserResponseDto | null>;
   findUserByPersonaId(personaId: string): Promise<UserResponseDto | null>;
