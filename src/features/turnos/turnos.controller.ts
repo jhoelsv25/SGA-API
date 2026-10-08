@@ -40,11 +40,23 @@ export class TurnosController {
   }
 
   @Put(":id")
-  @Patch(":id")
   @Roles("Administrador")
   @ApiOperation({ summary: "Modificar horarios y ventanas de un turno" })
   @ApiResponse({ status: 200, type: TurnoResponseDto })
   async update(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: UpdateTurnoDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @ClientInfo() clientInfo: ClientInfoData,
+  ): Promise<TurnoResponseDto> {
+    return this.turnosService.update(id, dto, user.id, clientInfo.ip);
+  }
+
+  @Patch(":id")
+  @Roles("Administrador")
+  @ApiOperation({ summary: "Modificar parcialmente horarios y ventanas de un turno" })
+  @ApiResponse({ status: 200, type: TurnoResponseDto })
+  async patch(
     @Param("id", ParseUUIDPipe) id: string,
     @Body() dto: UpdateTurnoDto,
     @CurrentUser() user: AuthenticatedUser,

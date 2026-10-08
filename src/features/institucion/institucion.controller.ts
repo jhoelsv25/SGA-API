@@ -41,7 +41,6 @@ export class InstitucionController {
   }
 
   @Put()
-  @Patch()
   @Roles("Administrador")
   @ApiOperation({ summary: "Actualizar datos oficiales de la institución (Solo Administrador)" })
   @ApiResponse({
@@ -50,6 +49,22 @@ export class InstitucionController {
     type: InstitucionResponseDto,
   })
   async update(
+    @Body() dto: UpdateInstitucionDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @ClientInfo() clientInfo: ClientInfoData,
+  ): Promise<InstitucionResponseDto> {
+    return this.institucionService.update(dto, user.id, clientInfo.ip);
+  }
+
+  @Patch()
+  @Roles("Administrador")
+  @ApiOperation({ summary: "Actualizar parcialmente datos de la institución (Solo Administrador)" })
+  @ApiResponse({
+    status: 200,
+    description: "Institución actualizada exitosamente",
+    type: InstitucionResponseDto,
+  })
+  async patch(
     @Body() dto: UpdateInstitucionDto,
     @CurrentUser() user: AuthenticatedUser,
     @ClientInfo() clientInfo: ClientInfoData,
