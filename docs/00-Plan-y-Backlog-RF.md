@@ -3,7 +3,7 @@
 **Proyecto:** SGA Colegio (Sistema de Gestión Académica) — colegio de secundaria (1.° a 5.°)
 **Desarrollador backend:** Jhoel Silvestre
 **Versión del backlog:** 2.1
-**Base:** Modelo de datos v3.2 (`02-Diseno-Base-Datos-SQLServer.sql`, 49 tablas)
+**Base:** Modelo de datos v3.2 (`02-Diseno-Base-Datos-SQLServer.sql`, 54 tablas)
 **Última actualización:** 2026-10-08
 
 > [!important] Fuente de verdad del avance
@@ -33,38 +33,38 @@
 **Prioridad:** Alta (indicador de la tesis o imprescindible) · Media (operación diaria) · Baja (complementa).
 **Indicador en negrita:** el RF registra directamente el dato del indicador.
 
-| RF                                                                                                                             | Módulo              | Requerimiento                                | Prioridad | Indicador           | Documento      | Pendientes                   | Back % | Front % | Estado          |
-| ------------------------------------------------------------------------------------------------------------------------------ | ------------------- | -------------------------------------------- | --------- | ------------------- | -------------- | ---------------------------- | ------ | ------- | --------------- |
-| [RF-001](requerimientos/RF-001_Acceso_al_Sistema/V1/RF-001_Acceso_al_Sistema.md)                                               | Seguridad           | Acceso al sistema                            | Alta      | —                   | Redactado      | —                            | 100 %  | 100 %   | Completado      |
-| [RF-002](requerimientos/RF-002_Usuarios_Roles_y_Menu/V1/RF-002_Usuarios_Roles_y_Menu.md)                                       | Seguridad           | Usuarios, roles y menú                       | Alta      | —                   | Redactado      | —                            | 100 %  | 100 %   | Completado      |
-| [RF-003](requerimientos/RF-003_Bitacora_de_Auditoria/V1/RF-003_Bitacora_de_Auditoria.md)                                       | Seguridad           | Bitácora de auditoría                        | Baja      | —                   | Redactado      | —                            | 100 %  | 100 %   | Completado      |
-| [RF-004](requerimientos/RF-004_Institucion_y_Turnos/V1/RF-004_Institucion_y_Turnos.md)                                         | Configuración       | Institución, turnos y equipos autorizados    | Alta      | —                   | Redactado      | —                            | 0 %    | 0 %     | Por desarrollar |
-| [RF-005](requerimientos/RF-005_Anio_Escolar_y_Calendario/V1/RF-005_Anio_Escolar_y_Calendario.md)                               | Configuración       | Año escolar y calendario                     | Alta      | CSP                 | Redactado      | —                            | 0 %    | 0 %     | Por desarrollar |
-| [RF-006](requerimientos/RF-006_Grados_Cursos_y_Plan_de_Estudios/V1/RF-006_Grados_Cursos_y_Plan_de_Estudios.md)                 | Configuración       | Grados, cursos y plan de estudios            | Alta      | —                   | Redactado      | —                            | 0 %    | 0 %     | Por desarrollar |
-| [RF-007](requerimientos/RF-007_Personas_Docentes_Estudiantes_Apoderados/V1/RF-007_Personas_Docentes_Estudiantes_Apoderados.md) | Comunidad           | Personas: docentes, estudiantes y apoderados | Alta      | —                   | Con pendientes | P-01, P-02                   | 0 %    | 0 %     | Por desarrollar |
-| [RF-008](requerimientos/RF-008_Secciones_Carga_Academica_y_Horarios/V1/RF-008_Secciones_Carga_Academica_y_Horarios.md)         | Organización        | Secciones, carga académica y horarios        | Alta      | CSP                 | Con pendientes | P-03, P-04                   | 0 %    | 0 %     | Por desarrollar |
-| [RF-009](requerimientos/RF-009_Matricula_Retiro_y_Traslado/V1/RF-009_Matricula_Retiro_y_Traslado.md)                           | Matrícula           | Matrícula, retiro y traslado                 | Alta      | ISA                 | Redactado      | —                            | 0 %    | 0 %     | Por desarrollar |
-| [RF-010](requerimientos/RF-010_Marcacion_y_Asistencia_de_Estudiantes/V1/RF-010_Marcacion_y_Asistencia_de_Estudiantes.md)       | Asistencia          | Marcación y asistencia de estudiantes        | Media     | —                   | Redactado      | —                            | 0 %    | 0 %     | Por desarrollar |
-| [RF-011](requerimientos/RF-011_Registro_de_Sesion_de_Clase/V1/RF-011_Registro_de_Sesion_de_Clase.md)                           | Seguimiento docente | Registro de sesión de clase                  | Alta      | **CSP**             | Con pendientes | P-04, P-05, P-06, P-07, P-08 | 0 %    | 0 %     | Por desarrollar |
-| RF-012                                                                                                                         | Seguimiento docente | Supervisión y ausencias del docente          | Alta      | **CSP**             | Por redactar   | —                            | 0 %    | 0 %     | Por desarrollar |
-| RF-013                                                                                                                         | Seguimiento docente | Consolidado y ficha de seguimiento docente   | Alta      | **CSP**             | Por redactar   | —                            | 0 %    | 0 %     | Por desarrollar |
-| RF-014                                                                                                                         | Libretas            | Libretas del SIAGIE                          | Alta      | **ISA**             | Por redactar   | —                            | 0 %    | 0 %     | Por desarrollar |
-| RF-015                                                                                                                         | Aula virtual        | Unidades y materiales de reforzamiento       | Alta      | **IGM**             | Por redactar   | —                            | 0 %    | 0 %     | Por desarrollar |
-| RF-016                                                                                                                         | Aula virtual        | Tareas, entregas y calificación              | Media     | IGM                 | Por redactar   | —                            | 0 %    | 0 %     | Por desarrollar |
-| RF-017                                                                                                                         | Aula virtual        | Interacción y actividad del curso            | Baja      | IGM                 | Por redactar   | —                            | 0 %    | 0 %     | Por desarrollar |
-| RF-018                                                                                                                         | Convivencia         | Conducta y observaciones del estudiante      | Baja      | —                   | Por redactar   | —                            | 0 %    | 0 %     | Por desarrollar |
-| RF-019                                                                                                                         | Comunicación        | Comunicados y notificaciones                 | Media     | ISA                 | Por redactar   | —                            | 0 %    | 0 %     | Por desarrollar |
-| RF-020                                                                                                                         | Reportes            | Indicadores de la tesis y panel              | Alta      | **ISA · CSP · IGM** | Por redactar   | —                            | 0 %    | 0 %     | Por desarrollar |
+| RF | Módulo | Requerimiento | Prioridad | Indicador | Documento | Pendientes | Back % | Front % | Estado |
+|---|---|---|---|---|---|---|---|---|---|
+| [RF-001](requerimientos/RF-001_Acceso_al_Sistema/V1/RF-001_Acceso_al_Sistema.md) | Seguridad | Acceso al sistema | Alta | — | Redactado | — | 100 % | 100 % | Completado |
+| [RF-002](requerimientos/RF-002_Usuarios_Roles_y_Menu/V1/RF-002_Usuarios_Roles_y_Menu.md) | Seguridad | Usuarios, roles y menú | Alta | — | Redactado | — | 100 % | 100 % | Completado |
+| [RF-003](requerimientos/RF-003_Bitacora_de_Auditoria/V1/RF-003_Bitacora_de_Auditoria.md) | Seguridad | Bitácora de auditoría | Baja | — | Redactado | — | 100 % | 100 % | Completado |
+| [RF-004](requerimientos/RF-004_Institucion_y_Turnos/V1/RF-004_Institucion_y_Turnos.md) | Configuración | Institución, turnos y equipos autorizados | Alta | — | Redactado | — | 0 % | 0 % | Por desarrollar |
+| [RF-005](requerimientos/RF-005_Anio_Escolar_y_Calendario/V1/RF-005_Anio_Escolar_y_Calendario.md) | Configuración | Año escolar y calendario | Alta | CSP | Redactado | — | 0 % | 0 % | Por desarrollar |
+| [RF-006](requerimientos/RF-006_Grados_Cursos_y_Plan_de_Estudios/V1/RF-006_Grados_Cursos_y_Plan_de_Estudios.md) | Configuración | Grados, cursos y plan de estudios | Alta | — | Redactado | — | 0 % | 0 % | Por desarrollar |
+| [RF-007](requerimientos/RF-007_Personas_Docentes_Estudiantes_Apoderados/V1/RF-007_Personas_Docentes_Estudiantes_Apoderados.md) | Comunidad | Personas: docentes, estudiantes y apoderados | Alta | — | Con pendientes | P-01, P-02 | 0 % | 0 % | Por desarrollar |
+| [RF-008](requerimientos/RF-008_Secciones_Carga_Academica_y_Horarios/V1/RF-008_Secciones_Carga_Academica_y_Horarios.md) | Organización | Secciones, carga académica y horarios | Alta | CSP | Con pendientes | P-03, P-04 | 0 % | 0 % | Por desarrollar |
+| [RF-009](requerimientos/RF-009_Matricula_Retiro_y_Traslado/V1/RF-009_Matricula_Retiro_y_Traslado.md) | Matrícula | Matrícula, retiro y traslado | Alta | ISA | Redactado | — | 0 % | 0 % | Por desarrollar |
+| [RF-010](requerimientos/RF-010_Marcacion_y_Asistencia_de_Estudiantes/V1/RF-010_Marcacion_y_Asistencia_de_Estudiantes.md) | Asistencia | Marcación y asistencia de estudiantes | Media | — | Redactado | — | 0 % | 0 % | Por desarrollar |
+| [RF-011](requerimientos/RF-011_Registro_de_Sesion_de_Clase/V1/RF-011_Registro_de_Sesion_de_Clase.md) | Seguimiento docente | Registro de sesión de clase | Alta | **CSP** | Con pendientes | P-04, P-05, P-06, P-07, P-08 | 0 % | 0 % | Por desarrollar |
+| [RF-012](requerimientos/RF-012_Supervision_y_Ausencias_del_Docente/V1/RF-012_Supervision_y_Ausencias_del_Docente.md) | Seguimiento docente | Supervisión y ausencias del docente | Alta | **CSP** | Con pendientes | P-09, P-10 | 0 % | 0 % | Por desarrollar |
+| [RF-013](requerimientos/RF-013_Consolidado_y_Ficha_de_Seguimiento_Docente/V1/RF-013_Consolidado_y_Ficha_de_Seguimiento_Docente.md) | Seguimiento docente | Consolidado y ficha de seguimiento docente | Alta | **CSP** | Redactado | — | 0 % | 0 % | Por desarrollar |
+| [RF-014](requerimientos/RF-014_Libretas_del_SIAGIE/V1/RF-014_Libretas_del_SIAGIE.md) | Libretas | Libretas del SIAGIE | Alta | **ISA** | Con pendientes | P-12 | 0 % | 0 % | Por desarrollar |
+| [RF-015](requerimientos/RF-015_Unidades_y_Materiales_de_Reforzamiento/V1/RF-015_Unidades_y_Materiales_de_Reforzamiento.md) | Aula virtual | Unidades y materiales de reforzamiento | Alta | **IGM** | Con pendientes | P-13, P-14 | 0 % | 0 % | Por desarrollar |
+| [RF-016](requerimientos/RF-016_Tareas_Entregas_y_Calificacion/V1/RF-016_Tareas_Entregas_y_Calificacion.md) | Aula virtual | Tareas, entregas y calificación | Media | IGM | Con pendientes | P-15, P-16 | 0 % | 0 % | Por desarrollar |
+| [RF-017](requerimientos/RF-017_Interaccion_y_Actividad_del_Curso/V1/RF-017_Interaccion_y_Actividad_del_Curso.md) | Aula virtual | Interacción y actividad del curso | Baja | IGM | Redactado | — | 0 % | 0 % | Por desarrollar |
+| [RF-018](requerimientos/RF-018_Conducta_y_Observaciones_del_Estudiante/V1/RF-018_Conducta_y_Observaciones_del_Estudiante.md) | Convivencia | Conducta y observaciones del estudiante | Baja | — | Con pendientes | P-17 | 0 % | 0 % | Por desarrollar |
+| [RF-019](requerimientos/RF-019_Comunicados_y_Notificaciones/V1/RF-019_Comunicados_y_Notificaciones.md) | Comunicación | Comunicados y notificaciones | Media | ISA | Redactado | — | 0 % | 0 % | Por desarrollar |
+| [RF-020](requerimientos/RF-020_Indicadores_de_la_Tesis_y_Panel/V1/RF-020_Indicadores_de_la_Tesis_y_Panel.md) | Reportes | Indicadores de la tesis y panel | Alta | **ISA · CSP · IGM** | Con pendientes | P-18 | 0 % | 0 % | Por desarrollar |
 
 ### Resumen de avance
 
-| Concepto              | Valor   |
-| --------------------- | ------- |
-| RF redactados         | 11 / 20 |
-| RF con pendientes     | 3       |
-| RF completados        | 3 / 20  |
-| Avance promedio Back  | 15 %    |
-| Avance promedio Front | 15 %    |
+| Concepto | Valor |
+|---|---|
+| RF redactados | 20 / 20 |
+| RF con pendientes | 9 |
+| RF completados | 3 / 20 |
+| Avance promedio Back | 15 % |
+| Avance promedio Front | 15 % |
 
 ---
 
@@ -72,19 +72,31 @@
 
 Una fila por cada actualización. La más reciente arriba.
 
-| Fecha      | RF              | Capa      | Antes        | Después                    | Qué se hizo                                                                                                                                                                                                                                                                  | Escenarios pendientes |
-| ---------- | --------------- | --------- | ------------ | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
-| 2026-10-08 | RF-002, RF-003  | Fullstack | 100 %        | 100 %                      | [Jhoel Silvestre] Optimización de rendimiento y arquitectura: paginación por cursor en BD con PL/pgSQL JSONB (`fn_consultar_usuarios`, `fn_consultar_bitacora_auditoria`), auditoría asíncrona desacoplada con BullMQ (`audit-queue`) y estandarización modular por carpetas | —                     |
-| 2026-10-07 | RF-003          | Front     | 0 %          | 100 %                      | [Jhoel Silvestre] Implementación completa frontend en Next.js / Bun: Bitácora de Auditoría (/admin/audit), filtros de fecha (máx 31d), acciones, modal comparativo antes/después y sellado inmutable                                                                         | —                     |
-| 2026-10-07 | RF-001          | Front     | 0 %          | 100 %                      | [Jhoel Silvestre] Implementación completa frontend de Autenticación: Login institucional, auto-redirección de sesión activa, cambio forzoso de clave y guards                                                                                                                | —                     |
-| 2026-10-05 | RF-002          | Front     | 0 %          | 100 %                      | [Jhoel Silvestre] Implementación completa frontend en Next.js / Bun: Gestión de Usuarios, Roles, Permisos RBAC, modales y exportación Excel                                                                                                                                  | —                     |
-| 2026-10-05 | RF-003          | Back      | 0 %          | 100 %                      | [Jhoel Silvestre] Implementación completa backend de Bitácora de Auditoría: DTOs, filtros, paginación, servicio, controlador y unit tests (81 tests en 11 suites)                                                                                                            | —                     |
-| 2026-10-05 | RF-001          | Back      | 0 %          | 100 %                      | [Jhoel Silvestre] Certificación de pruebas unitarias backend y migración a jerarquía test/ con aliases @/ (66 tests pasando en 9 suites)                                                                                                                                     | —                     |
-| 2026-10-05 | RF-002          | Back      | 0 %          | 100 %                      | [Jhoel Silvestre] Implementación completa backend: HU1 Cuentas, HU2 Roles/Permisos, HU3 Módulos y Menú (25 escenarios cubiertos con tests)                                                                                                                                   | —                     |
-| 2026-10-03 | RF-011          | Documento | Por redactar | Con pendientes             | Redacción V1 (kiosko de sesiones, justificación por subdirector)                                                                                                                                                                                                             | —                     |
-| 2026-10-03 | RF-010          | Documento | Por redactar | Redactado                  | Redacción V1 (asistencia por sesión)                                                                                                                                                                                                                                         | —                     |
-| 2026-10-03 | RF-009          | Documento | Por redactar | Redactado                  | Redacción V1                                                                                                                                                                                                                                                                 | —                     |
-| 2026-10-03 | RF-001 a RF-008 | Documento | Por redactar | Redactado / Con pendientes | Redacción V1 con la skill Gherkin                                                                                                                                                                                                                                            | —                     |
+| Fecha | RF | Capa | Antes | Después | Qué se hizo | Escenarios pendientes |
+|---|---|---|---|---|---|---|
+| 2026-10-08 | RF-001, RF-002 | Documento | 100 % | 100 % (revisar) | Tras la implementación, el RF-002 V1 se ajustó: alcance por permiso (propio/tutoría/mis secciones/colegio), roles Subdirector y Soporte TI; el RF-001 sumó esos roles. Verificar que la implementación cubra los escenarios nuevos con la skill actualizar-backlog-rf | RF-002: «Alcance de un permiso» |
+| 2026-10-08 | RF-020 | Documento | Por redactar | Con pendientes | Redacción V1 (fórmulas, pretest manual, postest congelado, Excel y PDF). Backlog 20/20 redactado | — |
+| 2026-10-08 | RF-019 | Documento | Por redactar | Redactado | Redacción V1 (publicación por rol con alcance, lectura al abrir, solo en el sistema) | — |
+| 2026-10-08 | RF-018 | Documento | Por redactar | Con pendientes | Redacción V1 (acceso por rol con alcance, confidencialidad, aviso al apoderado) | — |
+| 2026-10-08 | RF-002, RF-014 | Documento | Redactado / Con pendientes | Ajustado | Alcance por rol (propio, tutoría, mis secciones, colegio) para todo el sistema | — |
+| 2026-10-08 | RF-017 | Documento | Por redactar | Redactado | Redacción V1 (muro abierto, chat grupal sin privados, moderación con vigencia 0) | — |
+| 2026-10-08 | RF-016 | Documento | Por redactar | Con pendientes | Redacción V1 (tipos configurables, intentos, calificación automática, literal al exportar) | — |
+| 2026-10-08 | RF-015 | Documento | Por redactar | Con pendientes | Redacción V1 (planificación congelada, solicitudes de cambio de fecha) | — |
+| 2026-10-08 | RF-014 | Documento | Por redactar | Con pendientes | Redacción V1 (carga en bloque, alcance configurable, historial de archivos) | — |
+| 2026-10-08 | RF-013 | Documento | Por redactar | Redactado | Redacción V1 (informativo, versiones, solicitudes de revisión) | — |
+| 2026-10-08 | RF-002, RF-003 | Fullstack | 100 % | 100 % | [Jhoel Silvestre] Optimización de rendimiento y arquitectura: paginación por cursor en BD con PL/pgSQL JSONB (`fn_consultar_usuarios`, `fn_consultar_bitacora_auditoria`), auditoría asíncrona desacoplada con BullMQ (`audit-queue`) y estandarización modular por carpetas | — |
+| 2026-10-07 | RF-003 | Front | 0 % | 100 % | [Jhoel Silvestre] Implementación completa frontend en Next.js / Bun: Bitácora de Auditoría (/admin/audit), filtros de fecha (máx 31d), acciones, modal comparativo antes/después y sellado inmutable | — |
+| 2026-10-07 | RF-001 | Front | 0 % | 100 % | [Jhoel Silvestre] Implementación completa frontend de Autenticación: Login institucional, auto-redirección de sesión activa, cambio forzoso de clave y guards | — |
+| 2026-10-05 | RF-012 | Documento | Con pendientes | Con pendientes | P-11 resuelto: historial de versiones con baja lógica (vigencia 0) | — |
+| 2026-10-05 | RF-012 | Documento | Por redactar | Con pendientes | Redacción V1 (ausencias con fotos, descargo, anulación) | — |
+| 2026-10-05 | RF-002 | Front | 0 % | 100 % | [Jhoel Silvestre] Implementación completa frontend en Next.js / Bun: Gestión de Usuarios, Roles, Permisos RBAC, modales y exportación Excel | — |
+| 2026-10-05 | RF-003 | Back | 0 % | 100 % | [Jhoel Silvestre] Implementación completa backend de Bitácora de Auditoría: DTOs, filtros, paginación, servicio, controlador y unit tests (81 tests en 11 suites) | — |
+| 2026-10-05 | RF-001 | Back | 0 % | 100 % | [Jhoel Silvestre] Certificación de pruebas unitarias backend y migración a jerarquía test/ con aliases @/ (66 tests pasando en 9 suites) | — |
+| 2026-10-05 | RF-002 | Back | 0 % | 100 % | [Jhoel Silvestre] Implementación completa backend: HU1 Cuentas, HU2 Roles/Permisos, HU3 Módulos y Menú (25 escenarios cubiertos con tests) | — |
+| 2026-10-03 | RF-011 | Documento | Por redactar | Con pendientes | Redacción V1 (kiosko de sesiones, justificación por subdirector) | — |
+| 2026-10-03 | RF-010 | Documento | Por redactar | Redactado | Redacción V1 (asistencia por sesión) | — |
+| 2026-10-03 | RF-009 | Documento | Por redactar | Redactado | Redacción V1 | — |
+| 2026-10-03 | RF-001 a RF-008 | Documento | Por redactar | Redactado / Con pendientes | Redacción V1 con la skill Gherkin | — |
 
 ---
 
@@ -93,11 +105,11 @@ Una fila por cada actualización. La más reciente arriba.
 > [!warning] Por confirmar
 > La columna _Objetivo específico_ usa provisionalmente el nombre del indicador del Anexo 03. Hay que reemplazarla por la redacción exacta de los objetivos específicos del proyecto de tesis.
 
-| Objetivo específico                                   | Indicador                                              | Fórmula                                                        | RF que lo soportan                             | Tablas                                                                                                                |
-| ----------------------------------------------------- | ------------------------------------------------------ | -------------------------------------------------------------- | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| Mejorar las prácticas pedagógicas _(por confirmar)_   | **CSP** — Cumplimiento de sesiones planificadas        | sesiones ejecutadas ÷ sesiones planificadas × 100              | RF-005, RF-008, RF-011, RF-012, RF-013, RF-020 | `horarios`, `calendario_eventos`, `sesiones_clase`, `ausencias_sesion`, `evidencias_ausencia`, `consolidados_docente` |
-| Mejorar el seguimiento académico _(por confirmar)_    | **ISA** — Informes de seguimiento académico entregados | libretas publicadas a tiempo ÷ libretas programadas × 100      | RF-009, RF-014, RF-019, RF-020                 | `matriculas`, `libretas`, `notificaciones`                                                                            |
-| Mejorar la gestión del aula virtual _(por confirmar)_ | **IGM** — Gestión de materiales                        | materiales publicados a tiempo ÷ materiales planificados × 100 | RF-015, RF-016, RF-017, RF-020                 | `unidades_aprendizaje`, `materiales`, `tareas`, `actividad_aula`                                                      |
+| Objetivo específico | Indicador | Fórmula | RF que lo soportan | Tablas |
+|---|---|---|---|---|
+| Mejorar las prácticas pedagógicas *(por confirmar)* | **CSP** — Cumplimiento de sesiones planificadas | (cumplidas + parciales) ÷ (planificadas − justificadas) × 100 *(P-18)* | RF-005, RF-008, RF-011, RF-012, RF-013, RF-020 | `horarios`, `calendario_eventos`, `sesiones_clase`, `ausencias_sesion`, `evidencias_ausencia`, `consolidados_docente` |
+| Mejorar el seguimiento académico *(por confirmar)* | **ISA** — Informes de seguimiento académico entregados | libretas publicadas a tiempo ÷ libretas programadas × 100 | RF-009, RF-014, RF-019, RF-020 | `matriculas`, `libretas`, `notificaciones` |
+| Mejorar la gestión del aula virtual *(por confirmar)* | **IGM** — Gestión de materiales | materiales publicados a tiempo ÷ materiales planificados × 100 | RF-015, RF-016, RF-017, RF-020 | `unidades_aprendizaje`, `materiales`, `tareas`, `actividad_aula` |
 
 ---
 
