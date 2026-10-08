@@ -57,6 +57,7 @@ describe("UsersService (RF-002: HU 1)", () => {
       findUserByUsername: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
+      syncPrincipalProfile: jest.fn(),
       findUsers: jest.fn(),
       closeAllUserSessions: jest.fn().mockResolvedValue(undefined),
     };
@@ -124,6 +125,12 @@ describe("UsersService (RF-002: HU 1)", () => {
       expect(result.usuario.id).toBe(dummyUser.id);
       expect(result.tempPassword).toBeDefined();
       expect(result.tempPassword.length).toBeGreaterThanOrEqual(10);
+      // RF-001 V2: el perfil elegido queda como principal en usuario_roles
+      expect(usersRepository.syncPrincipalProfile).toHaveBeenCalledWith(
+        dummyUser.id,
+        expect.any(String),
+        expect.anything(),
+      );
       expect(auditService.log).toHaveBeenCalledWith(
         expect.objectContaining({ accion: "crear", tabla: "usuarios" }),
       );
@@ -209,6 +216,12 @@ describe("UsersService (RF-002: HU 1)", () => {
 
       // Assert
       expect(updated.rol.nombre).toBe("Director");
+      // RF-001 V2: el nuevo perfil pasa a ser el principal en usuario_roles
+      expect(usersRepository.syncPrincipalProfile).toHaveBeenCalledWith(
+        dummyUser.id,
+        "rol-director",
+        currentAdmin.id,
+      );
       expect(auditService.log).toHaveBeenCalledWith(
         expect.objectContaining({ accion: "actualizar", tabla: "usuarios" }),
       );

@@ -5,6 +5,14 @@ export type UsuarioRecord = typeof usuarios.$inferSelect;
 export type PersonaRecord = typeof personas.$inferSelect;
 export type RolRecord = typeof roles.$inferSelect;
 
+/** Perfil (rol) vigente de un usuario. */
+export interface PerfilRecord {
+  rolId: string;
+  nombre: string;
+  esSistema: boolean;
+  esPrincipal: boolean;
+}
+
 export interface SessionData {
   usuarioId: string;
   tokenHash: string;
@@ -30,6 +38,7 @@ export interface IAuthRepository {
   findUserWithPersonaByUsername(username: string): Promise<UserWithPersonaBirthdate | null>;
   findPersonaById(personaId: string): Promise<PersonaRecord | null>;
   findRoleById(rolId: string): Promise<RolRecord | null>;
+  findUserProfiles(userId: string): Promise<PerfilRecord[]>;
   findInstitution(): Promise<InstitutionSummary | null>;
   updateLoginAttempts(userId: string, attempts: number, blockAccount: boolean): Promise<void>;
   resetLoginAttempts(userId: string): Promise<void>;

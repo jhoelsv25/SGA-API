@@ -4,6 +4,8 @@
 **Diseño (fuente de verdad):** [`Diseno-Base-Datos-PostgreSQL.sql`](Diseno-Base-Datos-PostgreSQL.sql) — v3.3, 58 tablas, probado en PostgreSQL 17.
 **Implementado:** `src/core/database/schema/tables.ts` (Drizzle) — 48 tablas, equivalente al diseño v3.1.
 
+> **Nota (2026-10-09):** el RF-004 ya está implementado con otros nombres: `equipos_autorizados` (= `dispositivos_marcacion`) y `turnos.ventana_entrada_inicio/fin`, `ventana_salida_inicio/fin` (= `entrada_desde/hasta`, `salida_desde/hasta`). Esas filas ya no son pendientes. Este documento no se seguirá actualizando.
+>
 > Lista de lo que falta migrar para que la base del backend coincida con el diseño. Se generó comparando tablas y columnas de forma automática y se revisó a mano. **No incluye** diferencias de tipos, índices ni `CHECK`: revisarlas al escribir cada migración.
 > Cada cambio se origina en un RF; implementarlo junto con ese RF y actualizar el backlog con la skill `actualizar-backlog-rf`.
 

@@ -23,6 +23,7 @@ import { AuthResponseDto } from "./dto/auth-response.dto";
 import { ChangePasswordDto } from "./dto/change-password.dto";
 import { ForgotPasswordDto } from "./dto/forgot-password.dto";
 import { LoginDto } from "./dto/login.dto";
+import { SwitchProfileDto } from "./dto/switch-profile.dto";
 import type { AuthenticatedUser } from "./interfaces/jwt-payload.interface";
 import { clearAuthCookie, setAuthCookie } from "./utils";
 
@@ -63,7 +64,38 @@ export class AuthController {
   })
   @ApiResponse({ status: 401, description: "Sesión inválida o expirada" })
   async checkToken(@CurrentUser() user: AuthenticatedUser): Promise<AuthResponseDto> {
-    return this.authService.checkToken(user.id);
+    return this.authService.checkToken(user.id, user.roleId);
+  }
+
+  @Post("switch-profile")
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiCookieAuth()
+  @ApiOperation({
+    summary: "Cambiar el perfil activo sin volver a iniciar sesión (RF-001 V2)",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Perfil cambiado; se emite un token nuevo con el perfil elegido",
+    type: AuthResponseDto,
+  })
+  @ApiResponse({ status: 403, description: "El usuario no tiene asignado ese perfil" })
+  async switchProfile(
+    @CurrentUser() user: AuthenticatedUser,
+    @ExtractToken() token: string | undefined,
+    @Body() dto: SwitchProfileDto,
+    @ClientInfo() client: ClientInfoData,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<AuthResponseDto> {
+    const result = await this.authService.switchProfile(
+      user.id,
+      dto,
+      token,
+      client.ip,
+      client.userAgent,
+    );
+    setAuthCookie({ res, token: result.accessToken, rememberMe: false });
+    return result;
   }
 
   @Get("logout")

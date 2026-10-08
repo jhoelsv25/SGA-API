@@ -45,6 +45,11 @@ export interface IUsersRepository {
   findUserByUsername(username: string): Promise<UserResponseDto | null>;
   create(data: CreateUserData): Promise<UserResponseDto>;
   update(id: string, data: UpdateUserData): Promise<UserResponseDto>;
+  /**
+   * RF-001 / RF-002 V2: deja `rolId` como perfil principal vigente del usuario en
+   * usuario_roles. El principal anterior (si es otro perfil) queda con vigente false.
+   */
+  syncPrincipalProfile(userId: string, rolId: string, actorId: string | null): Promise<void>;
   findUsers(query: UserQueryDto): Promise<PaginatedUsersResponseDto>;
   findEligiblePersonas(
     search?: string,

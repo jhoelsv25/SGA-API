@@ -38,6 +38,7 @@ describe("JwtStrategy (RF-001: Validación de Token y Sesión)", () => {
   beforeEach(async () => {
     const mockRepo = {
       findUserById: jest.fn(),
+      findUserProfiles: jest.fn().mockResolvedValue([]),
     };
 
     const mockConfig = {
@@ -103,5 +104,29 @@ describe("JwtStrategy (RF-001: Validación de Token y Sesión)", () => {
         new UnauthorizedException("La cuenta de usuario no se encuentra activa"),
       );
     });
-  });
+  
+    it("RF-001 V2: rechaza el token si su perfil activo ya no está asignado", async () => {
+      authRepository.findUserById.mockResolvedValue(mockUserRecord);
+      authRepository.findUserProfiles.mockResolvedValue([
+        { rolId: "otro-perfil", nombre: "Apoderado", esSistema: false, esPrincipal: true },
+      ]);
+
+      await expect(strategy.validate(mockPayload)).rejects.toThrow(
+        "Su perfil ya no está asignado. Ingrese nuevamente.",
+      );
+    });
+
+    it("RF-001 V2: usa el perfil activo del token cuando sigue asignado", async () => {
+      authRepository.findUserById.mockResolvedValue(mockUserRecord);
+      authRepository.findUserProfiles.mockResolvedValue([
+        { rolId: "x", nombre: "Docente", esSistema: false, esPrincipal: true },
+        { rolId: mockPayload.roleId, nombre: "Apoderado", esSistema: false, esPrincipal: false },
+      ]);
+
+      const result = await strategy.validate(mockPayload);
+
+      expect(result.roleId).toBe(mockPayload.roleId);
+      expect(result.role).toBe("Apoderado");
+    });
+});
 });

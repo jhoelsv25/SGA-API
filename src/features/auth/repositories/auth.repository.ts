@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, eq, isNull, ne, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, ne, sql } from "drizzle-orm";
 import { Database, DRIZZLE } from "../../../core/database";
 import {
   institucion,
@@ -10,12 +10,14 @@ import {
   roles,
   rolPermisos,
   sesiones,
+  usuarioRoles,
   usuarios,
 } from "../../../core/database/schema";
 import { AuthModuleDto } from "../dto/auth-response.dto";
 import type {
   IAuthRepository,
   InstitutionSummary,
+  PerfilRecord,
   PersonaRecord,
   RolRecord,
   SessionData,
@@ -76,6 +78,21 @@ export class AuthRepository implements IAuthRepository {
     const [role] = await this.db.select().from(roles).where(eq(roles.id, rolId)).limit(1);
 
     return role ?? null;
+  }
+
+  /** Perfiles vigentes del usuario, el principal primero. */
+  async findUserProfiles(userId: string): Promise<PerfilRecord[]> {
+    return this.db
+      .select({
+        rolId: usuarioRoles.rolId,
+        nombre: roles.nombre,
+        esSistema: roles.esSistema,
+        esPrincipal: usuarioRoles.esPrincipal,
+      })
+      .from(usuarioRoles)
+      .innerJoin(roles, eq(usuarioRoles.rolId, roles.id))
+      .where(and(eq(usuarioRoles.usuarioId, userId), eq(usuarioRoles.vigente, true)))
+      .orderBy(desc(usuarioRoles.esPrincipal), roles.nombre);
   }
 
   async findInstitution(): Promise<InstitutionSummary | null> {
