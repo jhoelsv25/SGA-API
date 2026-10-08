@@ -1018,6 +1018,10 @@ export const turnos = pgTable(
     aplicaA: varchar("aplica_a", { length: 20 }).notNull(),
     horaEntrada: time("hora_entrada", { precision: 0 }).notNull(),
     horaSalida: time("hora_salida", { precision: 0 }).notNull(),
+    ventanaEntradaInicio: time("ventana_entrada_inicio", { precision: 0 }),
+    ventanaEntradaFin: time("ventana_entrada_fin", { precision: 0 }),
+    ventanaSalidaInicio: time("ventana_salida_inicio", { precision: 0 }),
+    ventanaSalidaFin: time("ventana_salida_fin", { precision: 0 }),
     toleranciaMin: smallint("tolerancia_min").default(10).notNull(),
     diasLaborables: varchar("dias_laborables", { length: 20 }).default("1,2,3,4,5").notNull(),
     activo: boolean().default(true).notNull(),
@@ -1036,6 +1040,49 @@ export const turnos = pgTable(
     ),
     check("ck_turnos_horas", sql`hora_salida > hora_entrada`),
     check("ck_turnos_tolerancia", sql`tolerancia_min >= 0`),
+  ],
+);
+
+export const equiposAutorizados = pgTable(
+  "equipos_autorizados",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    nombre: varchar({ length: 100 }).notNull(),
+    ubicacion: varchar({ length: 150 }).notNull(),
+    tipo: varchar({ length: 20 }).notNull(),
+    proposito: varchar({ length: 20 }).notNull(),
+    usuariosPermitidos: varchar("usuarios_permitidos", { length: 100 }).notNull(),
+    numeroSerie: varchar("numero_serie", { length: 100 }),
+    tokenAutorizacion: varchar("token_autorizacion", { length: 255 }),
+    autorizado: boolean().default(false).notNull(),
+    autorizadoEn: timestamp("autorizado_en", { precision: 0, mode: "string" }),
+    autorizadoPorId: uuid("autorizado_por_id"),
+    activo: boolean().default(true).notNull(),
+    ultimoAcceso: timestamp("ultimo_acceso", { precision: 0, mode: "string" }),
+    ipRegistro: varchar("ip_registro", { length: 45 }),
+    creadoEn: timestamp("creado_en", { precision: 0, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    actualizadoEn: timestamp("actualizado_en", { precision: 0, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    eliminadoEn: timestamp("eliminado_en", { precision: 0, mode: "string" }),
+  },
+  (table) => [
+    unique("uq_equipos_autorizados_nombre").on(table.nombre),
+    foreignKey({
+      columns: [table.autorizadoPorId],
+      foreignColumns: [usuarios.id],
+      name: "fk_equipos_autorizado_por",
+    }),
+    check(
+      "ck_equipos_tipo",
+      sql`(tipo)::text = ANY ((ARRAY['kiosko'::character varying, 'biometrico'::character varying])::text[])`,
+    ),
+    check(
+      "ck_equipos_proposito",
+      sql`(proposito)::text = ANY ((ARRAY['marcacion'::character varying, 'sesiones'::character varying])::text[])`,
+    ),
   ],
 );
 

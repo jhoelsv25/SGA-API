@@ -50,8 +50,8 @@ export class GlobalHttpExceptionFilter implements ExceptionFilter {
 
         if (Array.isArray(payload.message)) {
           // Errores de validación de DTOs (ValidationPipe / class-validator)
-          message = "Error de validación en los datos enviados";
           validationErrors = payload.message;
+          message = `Error de validación: ${payload.message.join(", ")}`;
         } else if (typeof payload.message === "string") {
           message = payload.message;
         }
@@ -69,8 +69,12 @@ export class GlobalHttpExceptionFilter implements ExceptionFilter {
       );
     }
 
-    // Registra errores 5xx como error crítico en los logs
-    if (statusCode >= 500) {
+    // Registra errores de validación en logs para diagnóstico rápido
+    if (statusCode === 400 && validationErrors && validationErrors.length > 0) {
+      this.logger.warn(
+        `[400] ${request.method} ${request.url} - Validación: ${validationErrors.join("; ")}`,
+      );
+    } else if (statusCode >= 500) {
       this.logger.error(`[${statusCode}] ${request.method} ${request.url} - ${message}`);
     }
 

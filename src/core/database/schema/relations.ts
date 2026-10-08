@@ -45,6 +45,7 @@ import {
   actividadAula,
   rolPermisos,
   estudianteApoderados,
+  equiposAutorizados,
 } from "./tables";
 
 export const permisosRelations = relations(permisos, ({ one, many }) => ({
@@ -109,6 +110,14 @@ export const usuariosRelations = relations(usuarios, ({ one, many }) => ({
   }),
   mensajesChats_receptorId: many(mensajesChat, {
     relationName: "mensajesChat_receptorId_usuarios_id",
+  }),
+  equiposAutorizados: many(equiposAutorizados),
+}));
+
+export const equiposAutorizadosRelations = relations(equiposAutorizados, ({ one }) => ({
+  autorizadoPor: one(usuarios, {
+    fields: [equiposAutorizados.autorizadoPorId],
+    references: [usuarios.id],
   }),
 }));
 

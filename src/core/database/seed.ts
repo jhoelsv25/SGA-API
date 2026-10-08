@@ -644,6 +644,48 @@ const PERMISOS_SEED: PermisoSeed[] = [
     nombre: "Exportar / Descargar respaldos",
     descripcion: "Permite descargar volcados encriptados de la base de datos.",
   },
+  {
+    moduloCodigo: "configuracion",
+    codigo: "turnos:ver",
+    nombre: "Consultar turnos de marcación",
+    descripcion: "Permite ver horarios de entrada, salida, ventanas y tolerancias.",
+  },
+  {
+    moduloCodigo: "configuracion",
+    codigo: "turnos:crear",
+    nombre: "Registrar turno de marcación",
+    descripcion: "Permite dar de alta turnos para estudiantes, docentes o administrativos.",
+  },
+  {
+    moduloCodigo: "configuracion",
+    codigo: "turnos:actualizar",
+    nombre: "Modificar turno de marcación",
+    descripcion: "Permite cambiar horarios oficiales, ventanas, tolerancias y estado activo.",
+  },
+  {
+    moduloCodigo: "configuracion",
+    codigo: "equipos:ver",
+    nombre: "Consultar equipos autorizados",
+    descripcion: "Permite listar kioskos de marcación, kioskos de sesiones y biométricos.",
+  },
+  {
+    moduloCodigo: "configuracion",
+    codigo: "equipos:crear",
+    nombre: "Registrar equipo autorizado",
+    descripcion: "Permite registrar un nuevo kiosko o biométrico en el sistema.",
+  },
+  {
+    moduloCodigo: "configuracion",
+    codigo: "equipos:actualizar",
+    nombre: "Modificar equipo autorizado",
+    descripcion: "Permite cambiar datos de equipos o desactivarlos inmediatamente.",
+  },
+  {
+    moduloCodigo: "configuracion",
+    codigo: "equipos:autorizar",
+    nombre: "Autorizar equipo físico",
+    descripcion: "Permite vincular y autorizar la clave de una PC física como kiosko.",
+  },
 ];
 
 async function seed() {
@@ -670,6 +712,117 @@ async function seed() {
       correo = EXCLUDED.correo;
   `);
   console.log("✔ Institución configurada.");
+
+  // 1.1 Turnos oficiales de marcación (RF-004)
+  const TURNOS_SEED = [
+    {
+      aplicaA: "estudiantes",
+      horaEntrada: "07:45:00",
+      horaSalida: "13:15:00",
+      ventanaEntradaInicio: "06:30:00",
+      ventanaEntradaFin: "09:30:00",
+      ventanaSalidaInicio: "12:30:00",
+      ventanaSalidaFin: "15:00:00",
+      toleranciaMin: 10,
+      diasLaborables: "1,2,3,4,5",
+    },
+    {
+      aplicaA: "docentes",
+      horaEntrada: "07:30:00",
+      horaSalida: "13:30:00",
+      ventanaEntradaInicio: "06:30:00",
+      ventanaEntradaFin: "09:30:00",
+      ventanaSalidaInicio: "12:30:00",
+      ventanaSalidaFin: "15:30:00",
+      toleranciaMin: 10,
+      diasLaborables: "1,2,3,4,5",
+    },
+    {
+      aplicaA: "administrativos",
+      horaEntrada: "07:30:00",
+      horaSalida: "16:00:00",
+      ventanaEntradaInicio: "06:30:00",
+      ventanaEntradaFin: "09:30:00",
+      ventanaSalidaInicio: "15:00:00",
+      ventanaSalidaFin: "18:00:00",
+      toleranciaMin: 10,
+      diasLaborables: "1,2,3,4,5",
+    },
+  ];
+
+  for (const t of TURNOS_SEED) {
+    await pool.query(
+      `INSERT INTO turnos (
+        aplica_a, hora_entrada, hora_salida,
+        ventana_entrada_inicio, ventana_entrada_fin,
+        ventana_salida_inicio, ventana_salida_fin,
+        tolerancia_min, dias_laborables, activo
+       )
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true)
+       ON CONFLICT (aplica_a) DO UPDATE SET
+         hora_entrada = EXCLUDED.hora_entrada,
+         hora_salida = EXCLUDED.hora_salida,
+         ventana_entrada_inicio = EXCLUDED.ventana_entrada_inicio,
+         ventana_entrada_fin = EXCLUDED.ventana_entrada_fin,
+         ventana_salida_inicio = EXCLUDED.ventana_salida_inicio,
+         ventana_salida_fin = EXCLUDED.ventana_salida_fin,
+         tolerancia_min = EXCLUDED.tolerancia_min,
+         dias_laborables = EXCLUDED.dias_laborables;`,
+      [
+        t.aplicaA,
+        t.horaEntrada,
+        t.horaSalida,
+        t.ventanaEntradaInicio,
+        t.ventanaEntradaFin,
+        t.ventanaSalidaInicio,
+        t.ventanaSalidaFin,
+        t.toleranciaMin,
+        t.diasLaborables,
+      ],
+    );
+  }
+  console.log("✔ Turnos iniciales configurados (Estudiantes, Docentes, Administrativos).");
+
+  // 1.2 Equipos autorizados previstos (RF-004)
+  const EQUIPOS_SEED = [
+    {
+      nombre: "Kiosko Estudiantes",
+      ubicacion: "Puerta principal",
+      tipo: "kiosko",
+      proposito: "marcacion",
+      usuariosPermitidos: "estudiantes",
+    },
+    {
+      nombre: "Kiosko Personal",
+      ubicacion: "Afuera de la oficina de secretaría",
+      tipo: "kiosko",
+      proposito: "marcacion",
+      usuariosPermitidos: "docentes,administrativos",
+    },
+    {
+      nombre: "Kiosko de Sesiones",
+      ubicacion: "Subdirección",
+      tipo: "kiosko",
+      proposito: "sesiones",
+      usuariosPermitidos: "docentes",
+    },
+  ];
+
+  for (const eq of EQUIPOS_SEED) {
+    await pool.query(
+      `INSERT INTO equipos_autorizados (
+        nombre, ubicacion, tipo, proposito, usuarios_permitidos, activo, autorizado
+       )
+       VALUES ($1, $2, $3, $4, $5, true, false)
+       ON CONFLICT (nombre) DO UPDATE SET
+         ubicacion = EXCLUDED.ubicacion,
+         tipo = EXCLUDED.tipo,
+         proposito = EXCLUDED.proposito,
+         usuarios_permitidos = EXCLUDED.usuarios_permitidos;`,
+      [eq.nombre, eq.ubicacion, eq.tipo, eq.proposito, eq.usuariosPermitidos],
+    );
+  }
+  console.log("✔ Equipos autorizados iniciales registrados.");
 
   // 2. Módulos del Sistema
   for (const mod of MODULOS_SEED) {
@@ -749,6 +902,11 @@ async function seed() {
       descripcion: "Seguimiento de asistencia, rendimiento académico y comunicados",
       esSistema: true,
     },
+    {
+      nombre: "Soporte TI",
+      descripcion: "Gestión de infraestructura técnica, equipos autorizados y soporte del sistema",
+      esSistema: true,
+    },
   ];
 
   for (const rol of ROLES_SEED) {
@@ -826,6 +984,26 @@ async function seed() {
       );
     }
     console.log("✔ Permisos pedagógicos asignados al rol Docente.");
+  }
+
+  // Asignar permisos técnicos al rol Soporte TI (RF-004)
+  const soporteRolRes = await pool.query<{ id: string }>(
+    `SELECT id FROM roles WHERE nombre = 'Soporte TI' LIMIT 1`,
+  );
+  if (soporteRolRes.rows.length > 0) {
+    const soporteRolId = soporteRolRes.rows[0].id;
+    const soportePermsRes = await pool.query<{ id: string }>(
+      `SELECT id FROM permisos WHERE codigo LIKE 'equipos:%' OR codigo = 'institucion:ver'`,
+    );
+    for (const p of soportePermsRes.rows) {
+      await pool.query(
+        `INSERT INTO rol_permisos (rol_id, permiso_id)
+         VALUES ($1, $2)
+         ON CONFLICT (rol_id, permiso_id) DO NOTHING;`,
+        [soporteRolId, p.id],
+      );
+    }
+    console.log("✔ Permisos técnicos asignados al rol Soporte TI.");
   }
 
   // 7. Persona Administrador
