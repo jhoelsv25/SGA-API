@@ -16,6 +16,7 @@ import { MENSAJES as MENSAJES_CALENDARIO } from "@/features/calendario/constants
 import { CalendarioService } from "@/features/calendario/calendario.service";
 import { EventoPersistido } from "@/features/calendario/interfaces";
 import { CalendarioRepository } from "@/features/calendario/repositories/calendario.repository";
+import { AnioLectivoCls } from "@/common/anio-lectivo";
 import type { ExecutionContext } from "@nestjs/common";
 
 const ACTOR = "admin-1";
@@ -370,8 +371,11 @@ describe("AniosAcademicosService (RF-005)", () => {
 describe("CalendarioService (RF-005)", () => {
   let service: CalendarioService;
   let repo: jest.Mocked<CalendarioRepository>;
-  let anios: jest.Mocked<Pick<AniosAcademicosService, "findEnCurso" | "findById">>;
+  let anios: jest.Mocked<
+    Pick<AniosAcademicosService, "findEnCurso" | "findById" | "cerrarReaperturasVencidas">
+  >;
   let audit: jest.Mocked<Pick<AuditService, "log">>;
+  let anioLectivo: jest.Mocked<Pick<AnioLectivoCls, "id">>;
 
   beforeEach(() => {
     repo = {
@@ -387,12 +391,15 @@ describe("CalendarioService (RF-005)", () => {
     anios = {
       findEnCurso: jest.fn().mockResolvedValue(anio({ estado: "en_curso" })),
       findById: jest.fn(),
+      cerrarReaperturasVencidas: jest.fn().mockResolvedValue(0),
     };
     audit = { log: jest.fn().mockResolvedValue(undefined) };
+    anioLectivo = { id: jest.fn().mockReturnValue(undefined) };
     service = new CalendarioService(
       repo,
       anios as unknown as AniosAcademicosService,
       audit as unknown as AuditService,
+      anioLectivo as unknown as AnioLectivoCls,
     );
   });
 
@@ -487,6 +494,38 @@ describe("CalendarioService (RF-005)", () => {
     expect(consulta.hasta).toBe("2027-07-31");
     expect(consulta.eventos).toHaveLength(2);
     expect(consulta.diasSinClases).toEqual(["2027-07-28", "2027-07-29"]);
+    expect(repo.listarEnRango).toHaveBeenCalledWith("anio-2027", "2027-07-01", "2027-07-31");
+  });
+
+  it("consulta el año elegido en el encabezado y no el vigente", async () => {
+    anios.findById.mockResolvedValue(
+      anio({
+        id: "anio-2026",
+        anio: 2026,
+        estado: "cerrado",
+        fechaInicio: "2026-03-01",
+        fechaFin: "2026-12-18",
+      }),
+    );
+
+    anioLectivo.id.mockReturnValue("anio-2026");
+    const consulta = await service.consultar(3, 2026);
+
+    expect(anios.findEnCurso).not.toHaveBeenCalled();
+    expect(repo.listarEnRango).toHaveBeenCalledWith("anio-2026", "2026-03-01", "2026-03-31");
+    expect(consulta.anio).toBe(2026);
+    expect(consulta.anioAcademicoId).toBe("anio-2026");
+  });
+
+  it("rechaza consultar un año que aún está planificado", async () => {
+    anios.findById.mockResolvedValue(anio({ estado: "planificado" }));
+
+    anioLectivo.id.mockReturnValue("anio-2028");
+
+    await expect(service.consultar(3, 2028)).rejects.toThrow(
+      new BadRequestException(MENSAJES_CALENDARIO.anioNoDisponible),
+    );
+    expect(repo.listarEnRango).not.toHaveBeenCalled();
   });
 
   it("indica si una fecha suspende clases para que RF-011 no genere sesiones", async () => {

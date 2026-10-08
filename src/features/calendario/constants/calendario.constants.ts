@@ -25,4 +25,5 @@ export const MENSAJES = {
   eventoNoEncontrado: "Evento de calendario no encontrado.",
   fechaInvalida: "Indique una fecha válida (AAAA-MM-DD).",
   mesInvalido: "Indique un mes entre 1 y 12.",
+  anioNoDisponible: "Un año planificado aún no inicia. No se puede consultar.",
 } as const;

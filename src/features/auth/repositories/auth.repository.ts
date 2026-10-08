@@ -217,6 +217,21 @@ export class AuthRepository implements IAuthRepository {
     return result;
   }
 
+  async getPermissionCodes(rolId: string, esSistema: boolean): Promise<string[]> {
+    if (esSistema) {
+      const rows = await this.db.select({ codigo: permisos.codigo }).from(permisos);
+      return rows.map((row) => row.codigo);
+    }
+
+    const rows = await this.db
+      .select({ codigo: permisos.codigo })
+      .from(rolPermisos)
+      .innerJoin(permisos, eq(rolPermisos.permisoId, permisos.id))
+      .where(eq(rolPermisos.rolId, rolId));
+
+    return rows.map((row) => row.codigo);
+  }
+
   async updatePassword(userId: string, newHash: string): Promise<void> {
     await this.db
       .update(usuarios)

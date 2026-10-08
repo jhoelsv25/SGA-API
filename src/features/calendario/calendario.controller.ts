@@ -9,7 +9,15 @@ import {
   Post,
   Query,
 } from "@nestjs/common";
-import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from "@nestjs/swagger";
+import {
+  ApiBearerAuth,
+  ApiHeader,
+  ApiOperation,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+} from "@nestjs/swagger";
+import { HEADER_ANIO_ACADEMICO } from "../../common/anio-lectivo";
 import { ClientInfo, type ClientInfoData, CurrentUser, Permissions } from "../../common/decorators";
 import type { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface";
 import { CalendarioService } from "./calendario.service";
@@ -23,12 +31,19 @@ import {
 
 @ApiTags("Calendario")
 @ApiBearerAuth()
+@ApiHeader({
+  name: HEADER_ANIO_ACADEMICO,
+  required: false,
+  description: "Año lectivo de trabajo. Si se omite, se usa el año en curso.",
+})
 @Controller("calendario")
 export class CalendarioController {
   constructor(private readonly calendarioService: CalendarioService) {}
 
   @Get()
-  @ApiOperation({ summary: "Eventos del año vigente en un mes, con los días sin clases" })
+  @ApiOperation({
+    summary: "Eventos del año lectivo de trabajo en un mes, con los días sin clases",
+  })
   @ApiQuery({ name: "anio", required: false, example: 2027 })
   @ApiQuery({ name: "mes", required: false, example: 7 })
   @ApiResponse({ status: 200, type: CalendarioConsultaResponseDto })

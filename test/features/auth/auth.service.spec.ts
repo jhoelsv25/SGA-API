@@ -89,6 +89,7 @@ describe("AuthService (RF-001: Acceso al Sistema)", () => {
       closeOtherSessions: jest.fn(),
       updatePassword: jest.fn(),
       getUserModules: jest.fn(),
+      getPermissionCodes: jest.fn().mockResolvedValue([]),
       // Sin filas en usuario_roles: usa usuarios.rol_id como perfil principal (respaldo)
       findUserProfiles: jest.fn().mockResolvedValue([]),
     };

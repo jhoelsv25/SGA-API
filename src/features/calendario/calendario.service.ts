@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { AnioLectivoCls } from "../../common/anio-lectivo";
 import { AuditService } from "../../common/services/audit.service";
 import { MENSAJES, TIPOS_SUSPENDEN_POR_DEFECTO } from "./constants";
 import {
@@ -25,10 +26,11 @@ export class CalendarioService {
     private readonly calendarioRepository: CalendarioRepository,
     private readonly aniosService: AniosAcademicosService,
     private readonly auditService: AuditService,
+    private readonly anioLectivo: AnioLectivoCls,
   ) {}
 
   async consultar(mes?: number, anio?: number): Promise<CalendarioConsultaResponseDto> {
-    const vigente = await this.aniosService.findEnCurso();
+    const vigente = await this.resolverAnioDeConsulta();
     const defecto = this.rangoPorDefecto(vigente);
     const anioNumero = anio ?? defecto.anio;
     const mesNumero = mes ?? defecto.mes;
@@ -142,10 +144,20 @@ export class CalendarioService {
     return this.calendarioRepository.suspendeClasesEn(fecha);
   }
 
-  private async resolverAnio(anioAcademicoId?: string) {
-    if (anioAcademicoId) {
-      return this.aniosService.findById(anioAcademicoId);
+  private async resolverAnioDeConsulta() {
+    const id = this.anioLectivo.id();
+    if (!id) return this.aniosService.findEnCurso();
+    await this.aniosService.cerrarReaperturasVencidas();
+    const anio = await this.aniosService.findById(id);
+    if (anio.estado === "planificado") {
+      throw new BadRequestException(MENSAJES.anioNoDisponible);
     }
+    return anio;
+  }
+
+  private async resolverAnio(anioAcademicoId?: string) {
+    const id = anioAcademicoId || this.anioLectivo.id();
+    if (id) return this.aniosService.findById(id);
     return this.aniosService.findEnCurso();
   }
 

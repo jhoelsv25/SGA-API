@@ -8,3 +8,4 @@
 - **Fuente de verdad:** la documentación (requerimientos y pruebas) vive solo en `docs/`. No se mantienen copias fuera del proyecto.
 - **Ramas:** una rama por RF con el estándar de `.agents/skills/nombre-rama-rf/SKILL.md` (`feat/rf-001-acceso-al-sistema`, `feat/rf-001-v2-varios-perfiles`, `fix/rf-004-...`), el mismo nombre en SGA-API y SGA-WEB.
 - **Base de datos:** los cambios se hacen solo en el esquema Drizzle (`src/core/database/schema/`) y en migraciones (`drizzle/`). El `.sql` de `docs/base-de-datos/` está congelado: no se usa ni se actualiza.
+- **Año lectivo de trabajo:** llega en el header `x-anio-academico-id` y se lee con `AnioLectivoCls`. Regla en `.agents/rules/anio-lectivo.md`.

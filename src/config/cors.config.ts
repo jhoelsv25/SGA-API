@@ -1,5 +1,6 @@
 import type { CorsOptions } from "@nestjs/common/interfaces/external/cors-options.interface";
 import type { ConfigService } from "@nestjs/config";
+import { HEADER_ANIO_ACADEMICO } from "../common/anio-lectivo";
 
 /**
  * Obtiene la configuración de CORS para la aplicación.
@@ -18,7 +19,14 @@ export const getCorsConfig = (configService: ConfigService): CorsOptions => {
     origin: allowedOrigins,
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "Accept", "X-Requested-With", "x-csrf-token"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "Accept",
+      "X-Requested-With",
+      "x-csrf-token",
+      HEADER_ANIO_ACADEMICO,
+    ],
     exposedHeaders: ["x-csrf-token"],
   };
 };

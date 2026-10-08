@@ -56,6 +56,12 @@ export class CurrentUserDto {
 
   @ApiPropertyOptional({ example: "Docente", description: "Perfil activo en esta sesión" })
   activeProfileName?: string;
+
+  @ApiPropertyOptional({
+    type: [String],
+    description: "Códigos de permiso del perfil activo, por ejemplo calendario:registrar.",
+  })
+  permissions?: string[];
 }
 
 export class AuthModuleDto {
@@ -87,4 +93,10 @@ export class AuthResponseDto {
 
   @ApiPropertyOptional({ type: [AuthModuleDto] })
   modules?: AuthModuleDto[];
+
+  @ApiPropertyOptional({
+    type: [String],
+    description: "Códigos de permiso del perfil activo, por ejemplo calendario:registrar.",
+  })
+  permissions?: string[];
 }

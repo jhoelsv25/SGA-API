@@ -1,4 +1,5 @@
 import { Module } from "@nestjs/common";
+import { AnioLectivoModule } from "../common/anio-lectivo";
 import { CacheModule } from "./cache";
 import { DatabaseModule } from "./database";
 import { HealthModule } from "./health";
@@ -8,6 +9,7 @@ import { AppThrottlerModule } from "./throttler";
 
 @Module({
   imports: [
+    AnioLectivoModule,
     DatabaseModule,
     RedisModule,
     CacheModule,
