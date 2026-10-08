@@ -37,11 +37,13 @@
 
 | RF | Módulo | Requerimiento | Prioridad | Indicador | Documento | Pendientes | Back % | Front % | Estado |
 |---|---|---|---|---|---|---|---|---|---|
+| 2026-10-09 | RF-004 | Back + Front | 0 % (perdido en merge) | 75 % · Pendiente (V2) | Jhoel implementó la V1 (back `582b331`, front `9c7530f`) y la marcó 100 % en `65f6dc0`, pero ese cambio **se perdió al resolver el merge `707d09e`** (quedó 0 %). Se restituye su avance y se aplica la regla de versiones: V1 completa (24 casos) + V2 con 8 casos nuevos (variables) = 24/32. Pendiente menor: la institución aún expone la geocerca | RF-004: HU4 «Variables del sistema» (CP-RF004-25 a 32) |
+| 2026-10-08 | RF-004 | Back + Front | 0 % | 100 % | [Jhoel Silvestre] Implementación backend y frontend de institución, turnos (ventanas de marcado) y equipos autorizados (`equipos_autorizados`) | — |
 | 2026-10-09 | RF-002, RF-007 | Documento | V2 | V2 | Perfil (acceso) y cargo (puesto) separados: catálogo de cargos con perfiles sugeridos (RF-002 HU4) y cargos del personal con historial (RF-007 HU6). Terminología "rol" → "perfil" en los RF. Modelo: 58 tablas | RF-002: 4 casos nuevos · RF-007: 5 casos nuevos |
 | [RF-001](requerimientos/RF-001_Acceso_al_Sistema/V2/RF-001_Acceso_al_Sistema.md) | Seguridad | Acceso al sistema | Alta | — | V2 | Implementar V2: varios perfiles y cambio de perfil, variables configurables (3 casos) | 88 % | 88 % | Pendiente (V2) |
 | [RF-002](requerimientos/RF-002_Usuarios_Roles_y_Menu/V2/RF-002_Usuarios_Roles_y_Menu.md) | Seguridad | Usuarios, perfiles y menú | Alta | — | V2 | Implementar V2: varios perfiles por cuenta, historial, alcance por permiso, cargos con perfiles sugeridos (9 casos) | 74 % | 74 % | Pendiente (V2) |
 | [RF-003](requerimientos/RF-003_Bitacora_de_Auditoria/V1/RF-003_Bitacora_de_Auditoria.md) | Seguridad | Bitácora de auditoría | Baja | — | Redactado | — | 100 % | 100 % | Completado |
-| [RF-004](requerimientos/RF-004_Institucion_y_Turnos/V2/RF-004_Institucion_y_Turnos.md) | Configuración | Institución, turnos y equipos autorizados | Alta | — | V2 | — | 0 % | 0 % | Por desarrollar |
+| [RF-004](requerimientos/RF-004_Institucion_y_Turnos/V2/RF-004_Institucion_y_Turnos.md) | Configuración | Institución, turnos y equipos autorizados | Alta | — | V2 | Implementar V2: HU4 variables del sistema (8 casos); quitar geocerca de institución | 75 % | 75 % | Pendiente (V2) |
 | [RF-005](requerimientos/RF-005_Anio_Escolar_y_Calendario/V1/RF-005_Anio_Escolar_y_Calendario.md) | Configuración | Año escolar y calendario | Alta | CSP | Redactado | — | 0 % | 0 % | Por desarrollar |
 | [RF-006](requerimientos/RF-006_Grados_Cursos_y_Plan_de_Estudios/V1/RF-006_Grados_Cursos_y_Plan_de_Estudios.md) | Configuración | Grados, cursos y plan de estudios | Alta | — | Redactado | — | 0 % | 0 % | Por desarrollar |
 | [RF-007](requerimientos/RF-007_Personas_Docentes_Estudiantes_Apoderados/V2/RF-007_Personas_Docentes_Estudiantes_Apoderados.md) | Comunidad | Personas: docentes, estudiantes y apoderados | Alta | — | V2 | — | 0 % | 0 % | Por desarrollar |
@@ -66,8 +68,8 @@
 | RF redactados | 20 / 20 |
 | RF con pendientes | 5 (RF-008, RF-011, RF-014, RF-016, RF-020) |
 | RF completados | 1 / 20 |
-| Avance promedio Back | 13.1 % |
-| Avance promedio Front | 13.1 % |
+| Avance promedio Back | 16.9 % |
+| Avance promedio Front | 16.9 % |
 
 ---
 

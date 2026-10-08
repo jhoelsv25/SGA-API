@@ -39,11 +39,25 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException("La cuenta de usuario no se encuentra activa");
     }
 
+    // RF-001 V2: el token lleva el perfil activo; debe seguir asignado al usuario.
+    // Sin filas en usuario_roles (datos previos a la migración 0002) se usa usuarios.rol_id.
+    const profiles = await this.authRepository.findUserProfiles(user.id);
+    const activeProfile =
+      profiles.length > 0
+        ? profiles.find((p) => p.rolId === payload.roleId)
+        : payload.roleId === user.rolId
+          ? { rolId: user.rolId, nombre: payload.role }
+          : undefined;
+
+    if (!activeProfile) {
+      throw new UnauthorizedException("Su perfil ya no está asignado. Ingrese nuevamente.");
+    }
+
     return {
       id: user.id,
       username: user.nombreUsuario,
-      roleId: user.rolId,
-      role: payload.role,
+      roleId: activeProfile.rolId,
+      role: activeProfile.nombre,
       personaId: user.personaId,
     };
   }

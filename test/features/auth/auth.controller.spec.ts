@@ -84,7 +84,7 @@ describe("AuthController (RF-001: Endpoints de Autenticación)", () => {
 
       const result = await controller.checkToken(mockUser);
 
-      expect(authService.checkToken).toHaveBeenCalledWith(mockUser.id);
+      expect(authService.checkToken).toHaveBeenCalledWith(mockUser.id, mockUser.roleId);
       expect(result).toBe(mockAuthResponse);
     });
   });

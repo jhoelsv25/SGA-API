@@ -1,5 +1,16 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 
+export class ProfileDto {
+  @ApiProperty({ example: "550e8400-e29b-41d4-a716-446655440000" })
+  id!: string;
+
+  @ApiProperty({ example: "Docente" })
+  name!: string;
+
+  @ApiProperty({ example: true, description: "Perfil con el que inicia sesión" })
+  isPrincipal!: boolean;
+}
+
 export class CurrentUserDto {
   @ApiProperty({ example: "550e8400-e29b-41d4-a716-446655440000" })
   id!: string;
@@ -33,6 +44,18 @@ export class CurrentUserDto {
     description: "Indica si el usuario debe cambiar su contraseña obligatoriamente",
   })
   mustChangePassword?: boolean;
+
+  @ApiPropertyOptional({
+    type: [ProfileDto],
+    description: "Perfiles vigentes del usuario (RF-001 V2: puede tener varios)",
+  })
+  profiles?: ProfileDto[];
+
+  @ApiPropertyOptional({ example: "550e8400-e29b-41d4-a716-446655440000" })
+  activeProfileId?: string;
+
+  @ApiPropertyOptional({ example: "Docente", description: "Perfil activo en esta sesión" })
+  activeProfileName?: string;
 }
 
 export class AuthModuleDto {

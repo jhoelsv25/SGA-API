@@ -1,4 +1,4 @@
-import { BadRequestException, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, UnauthorizedException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import * as bcrypt from "bcryptjs";
 
@@ -87,6 +87,8 @@ describe("AuthService (RF-001: Acceso al Sistema)", () => {
       closeOtherSessions: jest.fn(),
       updatePassword: jest.fn(),
       getUserModules: jest.fn(),
+      // Sin filas en usuario_roles: usa usuarios.rol_id como perfil principal (respaldo)
+      findUserProfiles: jest.fn().mockResolvedValue([]),
     };
 
     const mockSession = {
@@ -406,6 +408,107 @@ describe("AuthService (RF-001: Acceso al Sistema)", () => {
 
         expect(sessionService.revokeSession).not.toHaveBeenCalled();
       });
+    });
+  });
+
+  describe("RF-001 V2: Varios perfiles", () => {
+    const perfilDocente = { rolId: "rol-docente", nombre: "Docente", esSistema: false, esPrincipal: true };
+    const perfilApoderado = {
+      rolId: "rol-apoderado",
+      nombre: "Apoderado",
+      esSistema: false,
+      esPrincipal: false,
+    };
+
+    const prepararPerfil = (perfiles: (typeof perfilDocente)[]) => {
+      authRepository.findUserProfiles.mockResolvedValue(perfiles);
+      authRepository.findPersonaById.mockResolvedValue(mockPersona);
+      authRepository.findInstitution.mockResolvedValue(mockInstitution);
+      authRepository.getUserModules.mockResolvedValue([]);
+      sessionService.generateAccessToken.mockReturnValue("jwt_nuevo");
+    };
+
+    it("CP-RF001-23 Ingreso con varios perfiles: entra con el principal y devuelve todos sus perfiles", async () => {
+      authRepository.findUserByUsername.mockResolvedValue(mockUser);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+      prepararPerfil([perfilDocente, perfilApoderado]);
+
+      const result = await authService.login({ username: "jdoe", password: "x", rememberMe: false });
+
+      expect(sessionService.generateAccessToken).toHaveBeenCalledWith(
+        expect.objectContaining({ roleId: "rol-docente", role: "Docente" }),
+        false,
+      );
+      expect(authRepository.getUserModules).toHaveBeenCalledWith("rol-docente", false);
+      expect(result.user.activeProfileName).toBe("Docente");
+      expect(result.user.profiles).toEqual([
+        { id: "rol-docente", name: "Docente", isPrincipal: true },
+        { id: "rol-apoderado", name: "Apoderado", isPrincipal: false },
+      ]);
+    });
+
+    it("CP-RF001-24 Cambiar de perfil: emite token con el nuevo perfil y revoca el anterior", async () => {
+      authRepository.findUserById.mockResolvedValue(mockUser);
+      prepararPerfil([perfilDocente, perfilApoderado]);
+
+      const result = await authService.switchProfile(
+        mockUser.id,
+        { roleId: "rol-apoderado" },
+        "jwt_anterior",
+      );
+
+      expect(sessionService.revokeSession).toHaveBeenCalledWith("jwt_anterior");
+      expect(sessionService.generateAccessToken).toHaveBeenCalledWith(
+        expect.objectContaining({ roleId: "rol-apoderado", role: "Apoderado" }),
+        false,
+      );
+      expect(authRepository.getUserModules).toHaveBeenCalledWith("rol-apoderado", false);
+      expect(result.user.activeProfileId).toBe("rol-apoderado");
+      expect(result.message).toBe("Perfil cambiado a Apoderado.");
+    });
+
+    it("Cambiar a un perfil no asignado: rechaza con ForbiddenException", async () => {
+      authRepository.findUserById.mockResolvedValue(mockUser);
+      prepararPerfil([perfilDocente]);
+
+      await expect(
+        authService.switchProfile(mockUser.id, { roleId: "rol-director" }, "jwt_anterior"),
+      ).rejects.toThrow(new ForbiddenException("No tiene asignado ese perfil."));
+      expect(sessionService.revokeSession).not.toHaveBeenCalled();
+    });
+
+    it("CP-RF001-25 Usuario con un solo perfil: devuelve un único perfil (el frontend oculta «Cambiar perfil»)", async () => {
+      authRepository.findUserById.mockResolvedValue(mockUser);
+      prepararPerfil([perfilDocente]);
+
+      const result = await authService.checkToken(mockUser.id, "rol-docente");
+
+      expect(result.user.profiles).toHaveLength(1);
+    });
+
+    it("checkToken conserva el perfil activo del token si sigue asignado", async () => {
+      authRepository.findUserById.mockResolvedValue(mockUser);
+      prepararPerfil([perfilDocente, perfilApoderado]);
+
+      const result = await authService.checkToken(mockUser.id, "rol-apoderado");
+
+      expect(result.user.activeProfileName).toBe("Apoderado");
+    });
+
+
+
+    it("Contraseña sin números: rechaza con el mensaje de la política", async () => {
+      authRepository.findUserById.mockResolvedValue(mockUser);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+
+      await expect(
+        authService.changePassword(mockUser.id, {
+          currentPassword: "Actual123",
+          newPassword: "SoloLetrasLargas",
+        }),
+      ).rejects.toThrow(
+        new BadRequestException("La contraseña debe tener al menos 8 caracteres, con letras y números."),
+      );
     });
   });
 });

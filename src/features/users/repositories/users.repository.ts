@@ -1,7 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { and, eq, ilike, isNull, or, sql } from "drizzle-orm";
 import { Database, DRIZZLE } from "../../../core/database";
-import { personas, roles, sesiones, usuarios } from "../../../core/database/schema";
+import { personas, roles, sesiones, usuarioRoles, usuarios } from "../../../core/database/schema";
 import {
   PaginatedUsersResponseDto,
   UserPersonaDto,
@@ -116,6 +116,55 @@ export class UsersRepository implements IUsersRepository {
       .returning();
 
     return (await this.findUserById(created.id))!;
+  }
+
+  async syncPrincipalProfile(userId: string, rolId: string, actorId: string | null): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      // 1. Retirar el perfil principal anterior si es otro (historial: vigente false)
+      await tx
+        .update(usuarioRoles)
+        .set({
+          esPrincipal: false,
+          vigente: false,
+          retiradoPorId: actorId ?? userId,
+          retiradoEn: sql`CURRENT_TIMESTAMP`,
+        })
+        .where(
+          and(
+            eq(usuarioRoles.usuarioId, userId),
+            eq(usuarioRoles.vigente, true),
+            eq(usuarioRoles.esPrincipal, true),
+            sql`${usuarioRoles.rolId} <> ${rolId}`,
+          ),
+        );
+
+      // 2. Marcar como principal el perfil si ya estaba asignado, o asignarlo
+      const [vigente] = await tx
+        .select({ id: usuarioRoles.id })
+        .from(usuarioRoles)
+        .where(
+          and(
+            eq(usuarioRoles.usuarioId, userId),
+            eq(usuarioRoles.rolId, rolId),
+            eq(usuarioRoles.vigente, true),
+          ),
+        )
+        .limit(1);
+
+      if (vigente) {
+        await tx
+          .update(usuarioRoles)
+          .set({ esPrincipal: true })
+          .where(eq(usuarioRoles.id, vigente.id));
+      } else {
+        await tx.insert(usuarioRoles).values({
+          usuarioId: userId,
+          rolId,
+          esPrincipal: true,
+          asignadoPorId: actorId,
+        });
+      }
+    });
   }
 
   async update(id: string, data: UpdateUserData): Promise<UserResponseDto> {

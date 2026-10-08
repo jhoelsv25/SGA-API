@@ -94,7 +94,10 @@ export class UsersService {
       contrasenaHash,
     });
 
-    // 7. Auditoría
+    // 7. Perfil principal en usuario_roles (RF-001 V2: varios perfiles por usuario)
+    await this.usersRepository.syncPrincipalProfile(user.id, dto.rolId, actorId);
+
+    // 8. Auditoría
     await this.auditService.log({
       usuarioId: actorId,
       accion: "crear",
@@ -136,6 +139,8 @@ export class UsersService {
     }
 
     const updated = await this.usersRepository.update(id, { rolId: dto.rolId });
+    // RF-001 V2: el perfil principal en usuario_roles sigue a usuarios.rol_id
+    await this.usersRepository.syncPrincipalProfile(id, dto.rolId, actorUser.id);
 
     await this.auditService.log({
       usuarioId: actorUser.id,

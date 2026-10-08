@@ -9,7 +9,7 @@ Estado de la validación de cada RF. Se actualiza al terminar cada ejecución.
 | [RF-001](casos/RF-001_Acceso_al_Sistema/casos-de-prueba.md) | Acceso al Sistema | 25 | — | — | Pendiente (V2): validar los casos de V1 y esperar la implementación de los nuevos |
 | [RF-002](casos/RF-002_Usuarios_Roles_y_Menu/casos-de-prueba.md) | Usuarios, Perfiles y Menú | 34 | — | — | Pendiente (V2): validar los casos de V1 y esperar la implementación de los nuevos |
 | [RF-003](casos/RF-003_Bitacora_de_Auditoria/casos-de-prueba.md) | Bitácora de Auditoría | 10 | — | — | Por validar (desarrollo 100 %) |
-| [RF-004](casos/RF-004_Institucion_y_Turnos/casos-de-prueba.md) | Institución, Turnos y Equipos Autorizados | 32 | — | — | Sin desarrollo |
+| [RF-004](casos/RF-004_Institucion_y_Turnos/casos-de-prueba.md) | Institución, Turnos y Equipos Autorizados | 32 | — | — | Pendiente (V2): validar los casos de V1 (24) y esperar la implementación de la HU4 (8) |
 | [RF-005](casos/RF-005_Anio_Escolar_y_Calendario/casos-de-prueba.md) | Año Escolar y Calendario | 21 | — | — | Sin desarrollo |
 | [RF-006](casos/RF-006_Grados_Cursos_y_Plan_de_Estudios/casos-de-prueba.md) | Grados, Cursos y Plan de Estudios | 18 | — | — | Sin desarrollo |
 | [RF-007](casos/RF-007_Personas_Docentes_Estudiantes_Apoderados/casos-de-prueba.md) | Personas — Docentes, Estudiantes y Apoderados | 35 | — | — | Sin desarrollo |

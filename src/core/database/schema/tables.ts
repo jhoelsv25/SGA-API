@@ -221,6 +221,42 @@ export const usuarios = pgTable(
   ],
 );
 
+// RF-001 / RF-002 V2: un usuario puede tener varios perfiles (roles). Uno es el
+// principal (con el que inicia sesión). Retirar un perfil = vigente false (historial).
+// usuarios.rol_id se mantiene sincronizado con el perfil principal hasta la V2 del RF-002.
+export const usuarioRoles = pgTable(
+  "usuario_roles",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    usuarioId: uuid("usuario_id").notNull(),
+    rolId: uuid("rol_id").notNull(),
+    esPrincipal: boolean("es_principal").default(false).notNull(),
+    vigente: boolean().default(true).notNull(),
+    asignadoPorId: uuid("asignado_por_id"),
+    asignadoEn: timestamp("asignado_en", { precision: 0, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    retiradoPorId: uuid("retirado_por_id"),
+    retiradoEn: timestamp("retirado_en", { precision: 0, mode: "string" }),
+  },
+  (table) => [
+    uniqueIndex("ux_usuario_roles_vigente")
+      .using("btree", table.usuarioId.asc().nullsLast().op("uuid_ops"), table.rolId.asc().nullsLast().op("uuid_ops"))
+      .where(sql`vigente`),
+    uniqueIndex("ux_usuario_roles_principal")
+      .using("btree", table.usuarioId.asc().nullsLast().op("uuid_ops"))
+      .where(sql`(vigente AND es_principal)`),
+    foreignKey({ columns: [table.usuarioId], foreignColumns: [usuarios.id], name: "fk_usuario_roles_usuario" }),
+    foreignKey({ columns: [table.rolId], foreignColumns: [roles.id], name: "fk_usuario_roles_rol" }),
+    foreignKey({ columns: [table.asignadoPorId], foreignColumns: [usuarios.id], name: "fk_usuario_roles_asignado" }),
+    foreignKey({ columns: [table.retiradoPorId], foreignColumns: [usuarios.id], name: "fk_usuario_roles_retirado" }),
+    check(
+      "ck_usuario_roles_retiro",
+      sql`vigente OR (retirado_por_id IS NOT NULL AND retirado_en IS NOT NULL)`,
+    ),
+  ],
+);
+
 export const sesiones = pgTable(
   "sesiones",
   {
