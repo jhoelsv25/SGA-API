@@ -1,9 +1,9 @@
 import { Body, Controller, Get, Param, Patch } from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from "@nestjs/swagger";
-import { ClientInfo, type ClientInfoData, CurrentUser, Roles } from "../../../common/decorators";
-import type { AuthenticatedUser } from "../../auth/interfaces/jwt-payload.interface";
-import { GradoResponseDto, UpdateGradoDto } from "../dto";
-import { GradosService } from "../services";
+import { ClientInfo, type ClientInfoData, CurrentUser, Roles } from "../../common/decorators";
+import type { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface";
+import { GradoResponseDto, UpdateGradoDto } from "./dto";
+import { GradosService } from "./grados.service";
 
 @ApiTags("Grados")
 @ApiBearerAuth()

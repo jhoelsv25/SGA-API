@@ -1,17 +1,17 @@
 import { BadRequestException, ConflictException, NotFoundException } from "@nestjs/common";
 import { AuditService } from "@/common/services/audit.service";
+import { GradoResponseDto, GradosRepository, GradosService } from "@/features/grados";
 import {
   CreateCursoDto,
   CursoResponseDto,
   CursosRepository,
   CursosService,
-  GradoResponseDto,
-  GradosRepository,
-  GradosService,
+  UpdateCursoDto,
+} from "@/features/cursos";
+import {
   PlanEstudioItemDto,
   PlanEstudiosRepository,
   PlanEstudiosService,
-  UpdateCursoDto,
 } from "@/features/plan-estudios";
 
 describe("RF-006: Grados, Cursos y Plan de Estudios", () => {

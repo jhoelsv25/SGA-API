@@ -1,14 +1,14 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post } from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from "@nestjs/swagger";
-import { ClientInfo, type ClientInfoData, CurrentUser, Roles } from "../../../common/decorators";
-import type { AuthenticatedUser } from "../../auth/interfaces/jwt-payload.interface";
+import { ClientInfo, type ClientInfoData, CurrentUser, Roles } from "../../common/decorators";
+import type { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface";
 import {
   AddCursoPlanDto,
   PlanEstudioItemDto,
   PlanEstudioResponseDto,
   UpdateHorasPlanDto,
-} from "../dto";
-import { PlanEstudiosService } from "../services";
+} from "./dto";
+import { PlanEstudiosService } from "./plan-estudios.service";
 
 @ApiTags("Plan de Estudios")
 @ApiBearerAuth()
@@ -68,12 +68,13 @@ export class PlanEstudiosController {
   @Delete(":id")
   @Roles("Administrador")
   @ApiOperation({
-    summary: "Quitar un curso del plan de estudios si no tiene carga académica en el grado",
+    summary:
+      "Quitar una asignatura del plan si no tiene carga académica en el grado (Solo Administrador)",
   })
   @ApiParam({ name: "id", description: "UUID del registro de plan de estudios" })
   @ApiResponse({
     status: 200,
-    description: "Curso retirado del plan exitosamente",
+    description: "Asignatura quitada del plan de estudios",
   })
   async removeCurso(
     @Param("id") id: string,
@@ -83,17 +84,17 @@ export class PlanEstudiosController {
     return this.service.removeCurso(id, user.id, clientInfo.ip);
   }
 
-  @Post(":gradoId/copiar-de/:origenGradoId")
+  @Post(":destinoGradoId/copiar-de/:origenGradoId")
   @Roles("Administrador")
-  @ApiOperation({ summary: "Copiar la estructura completa del plan de estudios desde otro grado" })
-  @ApiParam({ name: "gradoId", description: "UUID del grado de destino" })
-  @ApiParam({ name: "origenGradoId", description: "UUID del grado de origen" })
+  @ApiOperation({ summary: "Copiar el plan de estudios de un grado origen a un grado destino" })
+  @ApiParam({ name: "destinoGradoId", description: "UUID del grado que recibirá las asignaturas" })
+  @ApiParam({ name: "origenGradoId", description: "UUID del grado fuente a copiar" })
   @ApiResponse({
     status: 201,
-    description: "Plan de estudios copiado exitosamente",
+    description: "Plan copiado exitosamente",
   })
   async copyPlan(
-    @Param("gradoId") gradoId: string,
+    @Param("destinoGradoId") destinoGradoId: string,
     @Param("origenGradoId") origenGradoId: string,
     @CurrentUser() user: AuthenticatedUser,
     @ClientInfo() clientInfo: ClientInfoData,
@@ -102,6 +103,6 @@ export class PlanEstudiosController {
     totalHoras: number;
     cursos: PlanEstudioItemDto[];
   }> {
-    return this.service.copyPlan(origenGradoId, gradoId, user.id, clientInfo.ip);
+    return this.service.copyPlan(origenGradoId, destinoGradoId, user.id, clientInfo.ip);
   }
 }

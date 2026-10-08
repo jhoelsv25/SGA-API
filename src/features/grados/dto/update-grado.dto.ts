@@ -7,8 +7,8 @@ export class UpdateGradoDto {
     example: "5.° de secundaria",
     maxLength: 50,
   })
-  @IsString({ message: "El nombre debe ser una cadena de texto." })
-  @IsNotEmpty({ message: "El nombre del grado es obligatorio." })
-  @MaxLength(50, { message: "El nombre del grado no puede exceder 50 caracteres." })
-  nombre!: string;
+  @IsString({ message: "El nombre del grado debe ser un texto." })
+  @IsNotEmpty({ message: "El nombre del grado no puede estar vacío." })
+  @MaxLength(50, { message: "El nombre no puede exceder 50 caracteres." })
+  nombre: string;
 }

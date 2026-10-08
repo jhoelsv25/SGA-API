@@ -1,7 +1,7 @@
 import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
-import { AuditService } from "../../../common/services/audit.service";
-import { CreateCursoDto, CursoResponseDto, FilterCursoDto, UpdateCursoDto } from "../dto";
-import { CursosRepository } from "../repositories";
+import { AuditService } from "../../common/services/audit.service";
+import { CreateCursoDto, CursoResponseDto, FilterCursoDto, UpdateCursoDto } from "./dto";
+import { CursosRepository } from "./repositories/cursos.repository";
 
 @Injectable()
 export class CursosService {
@@ -122,6 +122,10 @@ export class CursosService {
     return updated;
   }
 
+  async deactivate(id: string, actorId: string, ip?: string): Promise<CursoResponseDto> {
+    return this.desactivar(id, actorId, ip);
+  }
+
   async reactivar(id: string, actorId: string, ip?: string): Promise<CursoResponseDto> {
     const existing = await this.findById(id);
 
@@ -152,5 +156,9 @@ export class CursosService {
     });
 
     return updated;
+  }
+
+  async reactivate(id: string, actorId: string, ip?: string): Promise<CursoResponseDto> {
+    return this.reactivar(id, actorId, ip);
   }
 }

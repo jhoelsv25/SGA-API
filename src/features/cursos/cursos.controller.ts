@@ -1,9 +1,9 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from "@nestjs/common";
+import { Body, Controller, Get, Param, Patch, Post, Query } from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from "@nestjs/swagger";
-import { ClientInfo, type ClientInfoData, CurrentUser, Roles } from "../../../common/decorators";
-import type { AuthenticatedUser } from "../../auth/interfaces/jwt-payload.interface";
-import { CreateCursoDto, CursoResponseDto, FilterCursoDto, UpdateCursoDto } from "../dto";
-import { CursosService } from "../services";
+import { ClientInfo, type ClientInfoData, CurrentUser, Roles } from "../../common/decorators";
+import type { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface";
+import { CreateCursoDto, CursoResponseDto, FilterCursoDto, UpdateCursoDto } from "./dto";
+import { CursosService } from "./cursos.service";
 
 @ApiTags("Cursos")
 @ApiBearerAuth()
@@ -13,10 +13,10 @@ export class CursosController {
 
   @Get()
   @Roles("Administrador", "Director", "Coordinador", "Secretaria", "Docente")
-  @ApiOperation({ summary: "Listar catálogo de cursos con filtros de estado y búsqueda" })
+  @ApiOperation({ summary: "Listar catálogo de cursos (con filtros de estado, área y búsqueda)" })
   @ApiResponse({
     status: 200,
-    description: "Catálogo de asignaturas agrupables por área curricular",
+    description: "Catálogo de cursos",
     type: [CursoResponseDto],
   })
   async findAll(@Query() filter: FilterCursoDto): Promise<CursoResponseDto[]> {
@@ -38,10 +38,10 @@ export class CursosController {
 
   @Post()
   @Roles("Administrador")
-  @ApiOperation({ summary: "Crear una nueva asignatura curricular o taller (Solo Administrador)" })
+  @ApiOperation({ summary: "Registrar una nueva asignatura en el catálogo (Solo Administrador)" })
   @ApiResponse({
     status: 201,
-    description: "Curso creado exitosamente",
+    description: "Curso registrado exitosamente",
     type: CursoResponseDto,
   })
   async create(
@@ -72,52 +72,37 @@ export class CursosController {
 
   @Patch(":id/desactivar")
   @Roles("Administrador")
-  @ApiOperation({ summary: "Desactivar un curso que no tenga carga académica en el año en curso" })
+  @ApiOperation({
+    summary: "Desactivar un curso del catálogo si no está en uso (Solo Administrador)",
+  })
   @ApiParam({ name: "id", description: "UUID del curso" })
   @ApiResponse({
     status: 200,
-    description: "Curso desactivado exitosamente",
+    description: "Curso desactivado correctamente",
     type: CursoResponseDto,
   })
-  async desactivar(
+  async deactivate(
     @Param("id") id: string,
     @CurrentUser() user: AuthenticatedUser,
     @ClientInfo() clientInfo: ClientInfoData,
   ): Promise<CursoResponseDto> {
-    return this.service.desactivar(id, user.id, clientInfo.ip);
-  }
-
-  @Delete(":id")
-  @Roles("Administrador")
-  @ApiOperation({ summary: "Desactivar un curso (alias HTTP DELETE)" })
-  @ApiParam({ name: "id", description: "UUID del curso" })
-  @ApiResponse({
-    status: 200,
-    description: "Curso desactivado exitosamente",
-    type: CursoResponseDto,
-  })
-  async delete(
-    @Param("id") id: string,
-    @CurrentUser() user: AuthenticatedUser,
-    @ClientInfo() clientInfo: ClientInfoData,
-  ): Promise<CursoResponseDto> {
-    return this.service.desactivar(id, user.id, clientInfo.ip);
+    return this.service.deactivate(id, user.id, clientInfo.ip);
   }
 
   @Patch(":id/reactivar")
   @Roles("Administrador")
-  @ApiOperation({ summary: "Reactivar un curso previamente desactivado" })
+  @ApiOperation({ summary: "Reactivar un curso inactivo en el catálogo (Solo Administrador)" })
   @ApiParam({ name: "id", description: "UUID del curso" })
   @ApiResponse({
     status: 200,
     description: "Curso reactivado exitosamente",
     type: CursoResponseDto,
   })
-  async reactivar(
+  async reactivate(
     @Param("id") id: string,
     @CurrentUser() user: AuthenticatedUser,
     @ClientInfo() clientInfo: ClientInfoData,
   ): Promise<CursoResponseDto> {
-    return this.service.reactivar(id, user.id, clientInfo.ip);
+    return this.service.reactivate(id, user.id, clientInfo.ip);
   }
 }

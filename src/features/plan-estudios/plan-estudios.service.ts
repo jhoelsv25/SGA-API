@@ -4,14 +4,16 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { AuditService } from "../../../common/services/audit.service";
+import { AuditService } from "../../common/services/audit.service";
+import { CursosRepository } from "../cursos";
+import { GradosRepository } from "../grados";
 import {
   AddCursoPlanDto,
   PlanEstudioItemDto,
   PlanEstudioResponseDto,
   UpdateHorasPlanDto,
-} from "../dto";
-import { CursosRepository, GradosRepository, PlanEstudiosRepository } from "../repositories";
+} from "./dto";
+import { PlanEstudiosRepository } from "./repositories/plan-estudios.repository";
 
 @Injectable()
 export class PlanEstudiosService {

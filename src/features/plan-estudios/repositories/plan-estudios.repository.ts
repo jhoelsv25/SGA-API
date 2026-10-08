@@ -8,7 +8,7 @@ import {
   planEstudios,
   secciones,
 } from "../../../core/database/schema";
-import { AreaCurricular, AREA_CURRICULAR_LABELS } from "../constants";
+import { AreaCurricular, AREA_CURRICULAR_LABELS } from "../../cursos";
 import { PlanEstudioItemDto } from "../dto";
 
 export interface IPlanEstudiosRepository {

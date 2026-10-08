@@ -1,25 +1,14 @@
 import { Module } from "@nestjs/common";
-import { CursosController, GradosController, PlanEstudiosController } from "./controllers";
-import { CursosRepository, GradosRepository, PlanEstudiosRepository } from "./repositories";
-import { CursosService, GradosService, PlanEstudiosService } from "./services";
+import { CursosModule } from "../cursos";
+import { GradosModule } from "../grados";
+import { PlanEstudiosController } from "./plan-estudios.controller";
+import { PlanEstudiosRepository } from "./repositories/plan-estudios.repository";
+import { PlanEstudiosService } from "./plan-estudios.service";
 
 @Module({
-  controllers: [GradosController, CursosController, PlanEstudiosController],
-  providers: [
-    GradosRepository,
-    CursosRepository,
-    PlanEstudiosRepository,
-    GradosService,
-    CursosService,
-    PlanEstudiosService,
-  ],
-  exports: [
-    GradosService,
-    CursosService,
-    PlanEstudiosService,
-    GradosRepository,
-    CursosRepository,
-    PlanEstudiosRepository,
-  ],
+  imports: [GradosModule, CursosModule],
+  controllers: [PlanEstudiosController],
+  providers: [PlanEstudiosRepository, PlanEstudiosService],
+  exports: [PlanEstudiosService, PlanEstudiosRepository],
 })
 export class PlanEstudiosModule {}

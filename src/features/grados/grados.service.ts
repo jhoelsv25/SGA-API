@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
-import { AuditService } from "../../../common/services/audit.service";
-import { GradoResponseDto, UpdateGradoDto } from "../dto";
-import { GradosRepository } from "../repositories";
+import { AuditService } from "../../common/services/audit.service";
+import { GradoResponseDto, UpdateGradoDto } from "./dto";
+import { GradosRepository } from "./repositories/grados.repository";
 
 @Injectable()
 export class GradosService {

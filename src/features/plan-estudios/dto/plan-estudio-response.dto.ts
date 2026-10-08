@@ -1,6 +1,6 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { CursoResponseDto } from "../cursos/curso-response.dto";
-import { GradoResponseDto } from "../grados/grado-response.dto";
+import { CursoResponseDto } from "../../cursos";
+import { GradoResponseDto } from "../../grados";
 
 export class PlanEstudioItemDto {
   @ApiProperty({ description: "ID de la asignación en el plan de estudios" })
