@@ -15,7 +15,7 @@
     *   Si después se matricula un estudiante, se le crea su libreta `pendiente` con la misma fecha límite.
     *   Si un estudiante se retira o traslada antes de la fecha límite, su libreta pendiente se elimina y no cuenta en el ISA (`RF-009`).
     *   La fecha límite se puede cambiar mientras haya libretas pendientes; el cambio queda en la bitácora.
-*   **Quién sube: configurable.** No es fijo. Lo controla el permiso `libretas.subir` con su **alcance por rol** (`RF-002`), que el Administrador puede cambiar en cualquier momento:
+*   **Quién sube: configurable.** No es fijo. Lo controla el permiso `libretas.subir` con su **alcance por perfil** (`RF-002`), que el Administrador puede cambiar en cualquier momento:
 
     | Alcance | Puede subir libretas de… |
     |---|---|
@@ -59,7 +59,7 @@
 *   **Lectura de las notas dentro del PDF.** Solo se identifica al estudiante.
 *   **Firma o constancia de recepción del apoderado.** Solo se registra la primera vista.
 *   **Cálculo y reporte del ISA.** Corresponde a `RF-020`.
-*   **Configuración de roles y permisos.** Corresponde a `RF-002`.
+*   **Configuración de perfiles y permisos.** Corresponde a `RF-002`.
 
 ## Acuerdos y puntos abiertos
 
@@ -137,13 +137,13 @@
 **Entonces** el sistema bloquea la carga y muestra "El bimestre aún no tiene libretas programadas."
 
 ### Escenario: Sección sin permiso
-**Dado** que mi rol tiene `libretas.subir` con alcance `mis_secciones` y no dicto en 4.° B
+**Dado** que mi perfil tiene `libretas.subir` con alcance `mis_secciones` y no dicto en 4.° B
 **Cuando** intento subir libretas de 4.° B
 **Entonces** el sistema rechaza la carga y muestra "No tiene permiso para subir libretas de esta sección."
 
 ### Escenario: Cambiar el alcance
 **Dado** que soy Administrador
-**Cuando** cambio el alcance de `libretas.subir` del rol Docente de `mis_secciones` a `tutoria`
+**Cuando** cambio el alcance de `libretas.subir` del perfil Docente de `mis_secciones` a `tutoria`
 **Entonces** desde ese momento solo los tutores pueden subir libretas de su sección, y el cambio queda en la bitácora.
 
 ## Historia de Usuario 3: Reemplazar una libreta
@@ -205,7 +205,7 @@
 ## Reglas de validación y negocio (resumen)
 
 *   **Programación:** por bimestre, con fecha límite; una libreta por estudiante con matrícula vigente; se agregan nuevos matriculados; se eliminan las pendientes de retirados antes de la fecha límite.
-*   **Permisos configurables:** `libretas.programar` (por defecto Director y Subdirector); `libretas.subir` con alcance por rol `tutoria`, `mis_secciones` (por defecto para Docente) o `colegio` (`RF-002`).
+*   **Permisos configurables:** `libretas.programar` (por defecto Director y Subdirector); `libretas.subir` con alcance por perfil `tutoria`, `mis_secciones` (por defecto para Docente) o `colegio` (`RF-002`).
 *   **Carga:** solo PDF de hasta 5 MB; hasta 50 por carga; vista previa obligatoria; asignación automática por código (P-12) o manual.
 *   **Estado:** la primera publicación decide `a_tiempo` (hasta el final del día límite) o `fuera_de_plazo`; los reemplazos no lo cambian.
 *   **Reemplazo:** motivo obligatorio; el archivo anterior queda con vigencia 0; nunca se borra.

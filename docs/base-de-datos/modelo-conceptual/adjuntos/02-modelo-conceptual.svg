@@ -1,0 +1,744 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4200 2970" width="420mm" height="297mm" font-family="Segoe UI, Arial, sans-serif">
+<rect width="100%" height="100%" fill="#ffffff"/>
+<style>.at{font-size:21px;fill:#1f2937}.hd{font-size:23px;font-weight:700;fill:#fff;letter-spacing:.3px}.lb{font-size:18px;font-style:italic;fill:#111827}.nt{font-size:19px;fill:#1f2937}.ln{fill:none;stroke:#374151;stroke-width:2.2}</style>
+<text x="90" y="118" font-size="54" font-weight="800" fill="#0f172a">Modelo Conceptual de Datos · Diagrama Entidad-Relación</text>
+<text x="92" y="170" font-size="27" fill="#334155">Sistema Web de Gestión Académica (SGA) · I.E. Nuestra Señora del Carmen, Lircay – Huancavelica</text>
+<text x="92" y="210" font-size="23" fill="#64748b">Fase 2 del diseño de BD · Notación pata de gallo (Crow&#x27;s Foot) con marcas Barker (# * o) · 45 entidades en 9 módulos · v1.0 · 25/09/2026 · Lima De La Cruz Hever – Silvestre Vargas Jhoel</text>
+<line x1="90" y1="240" x2="4110" y2="240" stroke="#cbd5e1" stroke-width="3"/>
+<path d="M420,370 L550,370" class="ln" />
+<line x1="438.0" y1="370.0" x2="420.0" y2="359.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="438.0" y1="370.0" x2="420.0" y2="370.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="438.0" y1="370.0" x2="420.0" y2="381.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="449.0" cy="370.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<line x1="532.0" y1="370.0" x2="550.0" y2="381.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="532.0" y1="370.0" x2="550.0" y2="370.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="532.0" y1="370.0" x2="550.0" y2="359.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="521.0" cy="370.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M260,452 L260,540" class="ln" />
+<line x1="250.0" y1="463.0" x2="270.0" y2="463.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="250.0" y1="477.0" x2="270.0" y2="477.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<line x1="260.0" y1="522.0" x2="249.0" y2="540.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="260.0" y1="522.0" x2="260.0" y2="540.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="260.0" y1="522.0" x2="271.0" y2="540.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="260.0" cy="511.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M260,820 L260,729" class="ln" />
+<line x1="270.0" y1="809.0" x2="250.0" y2="809.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="270.0" y1="795.0" x2="250.0" y2="795.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<line x1="250.0" y1="740.0" x2="270.0" y2="740.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="260.0" cy="758.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M420,610 L510,610 L510,640 L550,640" class="ln" />
+<line x1="431.0" y1="620.0" x2="431.0" y2="600.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="445.0" y1="620.0" x2="445.0" y2="600.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<line x1="532.0" y1="640.0" x2="550.0" y2="651.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="532.0" y1="640.0" x2="550.0" y2="640.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="532.0" y1="640.0" x2="550.0" y2="629.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="521.0" cy="640.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M420,660 L510,660 L510,940 L550,940" class="ln" />
+<line x1="431.0" y1="670.0" x2="431.0" y2="650.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="449.0" cy="660.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<line x1="532.0" y1="940.0" x2="550.0" y2="951.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="532.0" y1="940.0" x2="550.0" y2="940.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="532.0" y1="940.0" x2="550.0" y2="929.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="521.0" cy="940.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M420,980 L510,980 L510,1230 L550,1230" class="ln" />
+<line x1="431.0" y1="990.0" x2="431.0" y2="970.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="445.0" y1="990.0" x2="445.0" y2="970.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<line x1="532.0" y1="1230.0" x2="550.0" y2="1241.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="532.0" y1="1230.0" x2="550.0" y2="1230.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="532.0" y1="1230.0" x2="550.0" y2="1219.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="521.0" cy="1230.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M550,1530 L470,1530 L470,1450 L420,1450" class="ln" />
+<line x1="532.0" y1="1530.0" x2="550.0" y2="1541.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="532.0" y1="1530.0" x2="550.0" y2="1530.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="532.0" y1="1530.0" x2="550.0" y2="1519.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="525.0" y1="1520.0" x2="525.0" y2="1540.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<line x1="438.0" y1="1450.0" x2="420.0" y2="1439.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="438.0" y1="1450.0" x2="420.0" y2="1450.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="438.0" y1="1450.0" x2="420.0" y2="1461.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="445.0" y1="1460.0" x2="445.0" y2="1440.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<path d="M1340,410 L1420,410 L1420,370 L1470,370" class="ln" />
+<line x1="1351.0" y1="420.0" x2="1351.0" y2="400.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1365.0" y1="420.0" x2="1365.0" y2="400.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<line x1="1452.0" y1="370.0" x2="1470.0" y2="381.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1452.0" y1="370.0" x2="1470.0" y2="370.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1452.0" y1="370.0" x2="1470.0" y2="359.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1445.0" y1="360.0" x2="1445.0" y2="380.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<path d="M1800,370 L1890,370 L1890,410 L1930,410" class="ln" />
+<line x1="1811.0" y1="380.0" x2="1811.0" y2="360.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1825.0" y1="380.0" x2="1825.0" y2="360.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<line x1="1912.0" y1="410.0" x2="1930.0" y2="421.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1912.0" y1="410.0" x2="1930.0" y2="410.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1912.0" y1="410.0" x2="1930.0" y2="399.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1905.0" y1="400.0" x2="1905.0" y2="420.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<path d="M1470,430 L1380,430 L1380,720 L1340,720" class="ln" />
+<line x1="1459.0" y1="420.0" x2="1459.0" y2="440.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1445.0" y1="420.0" x2="1445.0" y2="440.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<line x1="1358.0" y1="720.0" x2="1340.0" y2="709.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1358.0" y1="720.0" x2="1340.0" y2="720.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1358.0" y1="720.0" x2="1340.0" y2="731.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1365.0" y1="730.0" x2="1365.0" y2="710.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<path d="M1800,430 L1890,430 L1890,730 L1930,730" class="ln" />
+<line x1="1811.0" y1="440.0" x2="1811.0" y2="420.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1825.0" y1="440.0" x2="1825.0" y2="420.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<line x1="1912.0" y1="730.0" x2="1930.0" y2="741.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1912.0" y1="730.0" x2="1930.0" y2="730.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1912.0" y1="730.0" x2="1930.0" y2="719.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="1901.0" cy="730.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M2560,425 L2560,520" class="ln" />
+<line x1="2550.0" y1="436.0" x2="2570.0" y2="436.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="2550.0" y1="450.0" x2="2570.0" y2="450.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<line x1="2560.0" y1="502.0" x2="2549.0" y2="520.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="2560.0" y1="502.0" x2="2560.0" y2="520.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="2560.0" y1="502.0" x2="2571.0" y2="520.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="2570.0" y1="495.0" x2="2550.0" y2="495.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<path d="M2720,590 L2810,590 L2810,630 L2850,630" class="ln" />
+<line x1="2738.0" y1="590.0" x2="2720.0" y2="579.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="2738.0" y1="590.0" x2="2720.0" y2="590.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="2738.0" y1="590.0" x2="2720.0" y2="601.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="2749.0" cy="590.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<line x1="2832.0" y1="630.0" x2="2850.0" y2="641.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="2832.0" y1="630.0" x2="2850.0" y2="630.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="2832.0" y1="630.0" x2="2850.0" y2="619.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="2825.0" y1="620.0" x2="2825.0" y2="640.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<path d="M3180,630 L3260,630 L3260,600 L3310,600" class="ln" />
+<line x1="3191.0" y1="640.0" x2="3191.0" y2="620.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="3209.0" cy="630.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<line x1="3292.0" y1="600.0" x2="3310.0" y2="611.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="3292.0" y1="600.0" x2="3310.0" y2="600.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="3292.0" y1="600.0" x2="3310.0" y2="589.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="3281.0" cy="600.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M3640,600 L3720,600 L3720,590 L3770,590" class="ln" />
+<line x1="3651.0" y1="610.0" x2="3651.0" y2="590.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="3665.0" y1="610.0" x2="3665.0" y2="590.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<line x1="3752.0" y1="590.0" x2="3770.0" y2="601.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="3752.0" y1="590.0" x2="3770.0" y2="590.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="3752.0" y1="590.0" x2="3770.0" y2="579.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="3745.0" y1="580.0" x2="3745.0" y2="600.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<path d="M1640,506 L1640,900" class="ln" />
+<line x1="1630.0" y1="517.0" x2="1650.0" y2="517.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1630.0" y1="531.0" x2="1650.0" y2="531.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<line x1="1640.0" y1="882.0" x2="1629.0" y2="900.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1640.0" y1="882.0" x2="1640.0" y2="900.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1640.0" y1="882.0" x2="1651.0" y2="900.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="1640.0" cy="871.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M2390,570 L1900,570 L1900,960 L1800,960" class="ln" />
+<line x1="2379.0" y1="560.0" x2="2379.0" y2="580.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="2365.0" y1="560.0" x2="2365.0" y2="580.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<line x1="1818.0" y1="960.0" x2="1800.0" y2="949.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1818.0" y1="960.0" x2="1800.0" y2="960.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1818.0" y1="960.0" x2="1800.0" y2="971.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="1829.0" cy="960.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M1340,990 L1420,990 L1420,970 L1470,970" class="ln" />
+<line x1="1351.0" y1="1000.0" x2="1351.0" y2="980.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1365.0" y1="1000.0" x2="1365.0" y2="980.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<line x1="1452.0" y1="970.0" x2="1470.0" y2="981.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1452.0" y1="970.0" x2="1470.0" y2="970.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1452.0" y1="970.0" x2="1470.0" y2="959.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="1441.0" cy="970.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M1340,1330 L1420,1330 L1420,1020 L1470,1020" class="ln" />
+<line x1="1351.0" y1="1340.0" x2="1351.0" y2="1320.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="1369.0" cy="1330.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<line x1="1452.0" y1="1020.0" x2="1470.0" y2="1031.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1452.0" y1="1020.0" x2="1470.0" y2="1020.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1452.0" y1="1020.0" x2="1470.0" y2="1009.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="1441.0" cy="1020.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M1800,1000 L2340,1000 L2340,960 L2390,960" class="ln" />
+<line x1="1811.0" y1="1010.0" x2="1811.0" y2="990.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1825.0" y1="1010.0" x2="1825.0" y2="990.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<line x1="2372.0" y1="960.0" x2="2390.0" y2="971.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="2372.0" y1="960.0" x2="2390.0" y2="960.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="2372.0" y1="960.0" x2="2390.0" y2="949.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="2365.0" y1="950.0" x2="2365.0" y2="970.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<path d="M3020,736 L3020,850 L2590,850 L2590,900" class="ln" />
+<line x1="3010.0" y1="747.0" x2="3030.0" y2="747.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="3010.0" y1="761.0" x2="3030.0" y2="761.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<line x1="2590.0" y1="882.0" x2="2579.0" y2="900.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="2590.0" y1="882.0" x2="2590.0" y2="900.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="2590.0" y1="882.0" x2="2601.0" y2="900.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="2590.0" cy="871.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M1340,1280 L1630,1280 L1630,1110 L2350,1110 L2350,1000 L2390,1000" class="ln" />
+<line x1="1351.0" y1="1290.0" x2="1351.0" y2="1270.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="1369.0" cy="1280.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<line x1="2372.0" y1="1000.0" x2="2390.0" y2="1011.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="2372.0" y1="1000.0" x2="2390.0" y2="1000.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="2372.0" y1="1000.0" x2="2390.0" y2="989.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="2361.0" cy="1000.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M1800,1040 L1890,1040 L1890,1310 L1930,1310" class="ln" />
+<line x1="1811.0" y1="1050.0" x2="1811.0" y2="1030.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1825.0" y1="1050.0" x2="1825.0" y2="1030.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<line x1="1912.0" y1="1310.0" x2="1930.0" y2="1321.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1912.0" y1="1310.0" x2="1930.0" y2="1310.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1912.0" y1="1310.0" x2="1930.0" y2="1299.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="1901.0" cy="1310.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M2490,1062 L2490,1150 L2100,1150 L2100,1200" class="ln" />
+<line x1="2480.0" y1="1073.0" x2="2500.0" y2="1073.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="2490.0" cy="1091.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<line x1="2100.0" y1="1182.0" x2="2089.0" y2="1200.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="2100.0" y1="1182.0" x2="2100.0" y2="1200.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="2100.0" y1="1182.0" x2="2111.0" y2="1200.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="2100.0" cy="1171.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M880,1530 L1420,1530 L1420,1430 L1470,1430" class="ln" />
+<line x1="891.0" y1="1540.0" x2="891.0" y2="1520.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="905.0" y1="1540.0" x2="905.0" y2="1520.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<line x1="1452.0" y1="1430.0" x2="1470.0" y2="1441.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1452.0" y1="1430.0" x2="1470.0" y2="1430.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1452.0" y1="1430.0" x2="1470.0" y2="1419.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="1441.0" cy="1430.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M1680,1089 L1680,1280 L1640,1280 L1640,1330" class="ln" />
+<line x1="1670.0" y1="1100.0" x2="1690.0" y2="1100.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1670.0" y1="1114.0" x2="1690.0" y2="1114.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<line x1="1640.0" y1="1312.0" x2="1629.0" y2="1330.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1640.0" y1="1312.0" x2="1640.0" y2="1330.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1640.0" y1="1312.0" x2="1651.0" y2="1330.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="1640.0" cy="1301.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M2560,1062 L2560,1330" class="ln" />
+<line x1="2550.0" y1="1073.0" x2="2570.0" y2="1073.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="2550.0" y1="1087.0" x2="2570.0" y2="1087.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<line x1="2560.0" y1="1312.0" x2="2549.0" y2="1330.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="2560.0" y1="1312.0" x2="2560.0" y2="1330.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="2560.0" y1="1312.0" x2="2571.0" y2="1330.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="2560.0" cy="1301.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M2100,533 L2100,580 L2330,580 L2330,1280 L2490,1280 L2490,1330" class="ln" />
+<line x1="2090.0" y1="544.0" x2="2110.0" y2="544.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="2090.0" y1="558.0" x2="2110.0" y2="558.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<line x1="2490.0" y1="1312.0" x2="2479.0" y2="1330.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="2490.0" y1="1312.0" x2="2490.0" y2="1330.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="2490.0" y1="1312.0" x2="2501.0" y2="1330.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="2490.0" cy="1301.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M3430,682 L3430,860 L2810,860 L2810,1290 L2620,1290 L2620,1330" class="ln" />
+<line x1="3420.0" y1="693.0" x2="3440.0" y2="693.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="3420.0" y1="707.0" x2="3440.0" y2="707.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<line x1="2620.0" y1="1312.0" x2="2609.0" y2="1330.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="2620.0" y1="1312.0" x2="2620.0" y2="1330.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="2620.0" y1="1312.0" x2="2631.0" y2="1330.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="2620.0" cy="1301.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M1800,1430 L1900,1430 L1900,1450 L2390,1450" class="ln" />
+<line x1="1818.0" y1="1430.0" x2="1800.0" y2="1419.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1818.0" y1="1430.0" x2="1800.0" y2="1430.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1818.0" y1="1430.0" x2="1800.0" y2="1441.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="1829.0" cy="1430.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<line x1="2372.0" y1="1450.0" x2="2390.0" y2="1461.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="2372.0" y1="1450.0" x2="2390.0" y2="1450.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="2372.0" y1="1450.0" x2="2390.0" y2="1439.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="2361.0" cy="1450.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M1800,1510 L1900,1510 L1900,1830 L2350,1830 L2350,1850 L2390,1850" class="ln" />
+<line x1="1811.0" y1="1520.0" x2="1811.0" y2="1500.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1825.0" y1="1520.0" x2="1825.0" y2="1500.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<line x1="2372.0" y1="1850.0" x2="2390.0" y2="1861.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="2372.0" y1="1850.0" x2="2390.0" y2="1850.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="2372.0" y1="1850.0" x2="2390.0" y2="1839.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="2361.0" cy="1850.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M2160,533 L2160,570 L2170,570 L2170,560 L2320,560 L2320,1690 L2510,1690 L2510,1740" class="ln" />
+<line x1="2150.0" y1="544.0" x2="2170.0" y2="544.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="2150.0" y1="558.0" x2="2170.0" y2="558.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<line x1="2510.0" y1="1722.0" x2="2499.0" y2="1740.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="2510.0" y1="1722.0" x2="2510.0" y2="1740.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="2510.0" y1="1722.0" x2="2521.0" y2="1740.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="2510.0" cy="1711.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M3520,682 L3520,870 L3210,870 L3210,1560 L2740,1560 L2740,1690 L2600,1690 L2600,1740" class="ln" />
+<line x1="3510.0" y1="693.0" x2="3530.0" y2="693.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="3510.0" y1="707.0" x2="3530.0" y2="707.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<line x1="2600.0" y1="1722.0" x2="2589.0" y2="1740.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="2600.0" y1="1722.0" x2="2600.0" y2="1740.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="2600.0" y1="1722.0" x2="2611.0" y2="1740.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="2600.0" cy="1711.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M1640,1600 L1640,1710 L1150,1710 L1150,1760" class="ln" />
+<line x1="1630.0" y1="1611.0" x2="1650.0" y2="1611.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1630.0" y1="1625.0" x2="1650.0" y2="1625.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<line x1="1150.0" y1="1742.0" x2="1139.0" y2="1760.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1150.0" y1="1742.0" x2="1150.0" y2="1760.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1150.0" y1="1742.0" x2="1161.0" y2="1760.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="1150.0" cy="1731.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M2030,533 L2030,580 L1360,580 L1360,1690 L1250,1690 L1250,1760" class="ln" />
+<line x1="2020.0" y1="544.0" x2="2040.0" y2="544.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="2020.0" y1="558.0" x2="2040.0" y2="558.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<line x1="1250.0" y1="1742.0" x2="1239.0" y2="1760.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1250.0" y1="1742.0" x2="1250.0" y2="1760.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1250.0" y1="1742.0" x2="1261.0" y2="1760.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="1250.0" cy="1731.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M420,1490 L460,1490 L460,1710 L970,1710 L970,1870 L1010,1870" class="ln" />
+<line x1="431.0" y1="1500.0" x2="431.0" y2="1480.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="449.0" cy="1490.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<line x1="992.0" y1="1870.0" x2="1010.0" y2="1881.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="992.0" y1="1870.0" x2="1010.0" y2="1870.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="992.0" y1="1870.0" x2="1010.0" y2="1859.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="981.0" cy="1870.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M2100,1416 L2100,1520" class="ln" />
+<line x1="2090.0" y1="1427.0" x2="2110.0" y2="1427.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="2090.0" y1="1441.0" x2="2110.0" y2="1441.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<line x1="2100.0" y1="1502.0" x2="2089.0" y2="1520.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="2100.0" y1="1502.0" x2="2100.0" y2="1520.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="2100.0" y1="1502.0" x2="2111.0" y2="1520.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="2100.0" cy="1491.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M1340,1390 L1440,1390 L1440,1620 L1930,1620" class="ln" />
+<line x1="1351.0" y1="1400.0" x2="1351.0" y2="1380.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1365.0" y1="1400.0" x2="1365.0" y2="1380.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<line x1="1912.0" y1="1620.0" x2="1930.0" y2="1631.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1912.0" y1="1620.0" x2="1930.0" y2="1620.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1912.0" y1="1620.0" x2="1930.0" y2="1609.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="1901.0" cy="1620.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M1930,1700 L1840,1700 L1840,1860 L1800,1860" class="ln" />
+<line x1="1919.0" y1="1690.0" x2="1919.0" y2="1710.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1905.0" y1="1690.0" x2="1905.0" y2="1710.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<line x1="1818.0" y1="1860.0" x2="1800.0" y2="1849.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1818.0" y1="1860.0" x2="1800.0" y2="1860.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1818.0" y1="1860.0" x2="1800.0" y2="1871.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="1829.0" cy="1860.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M1700,1600 L1700,1730 L1640,1730 L1640,1780" class="ln" />
+<line x1="1690.0" y1="1611.0" x2="1710.0" y2="1611.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1690.0" y1="1625.0" x2="1710.0" y2="1625.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<line x1="1640.0" y1="1762.0" x2="1629.0" y2="1780.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1640.0" y1="1762.0" x2="1640.0" y2="1780.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1640.0" y1="1762.0" x2="1651.0" y2="1780.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="1640.0" cy="1751.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M300,1144 L300,1370 L520,1370 L520,1690 L650,1690 L650,1740" class="ln" />
+<line x1="290.0" y1="1155.0" x2="310.0" y2="1155.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="290.0" y1="1169.0" x2="310.0" y2="1169.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<line x1="650.0" y1="1722.0" x2="639.0" y2="1740.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="650.0" y1="1722.0" x2="650.0" y2="1740.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="650.0" y1="1722.0" x2="661.0" y2="1740.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="650.0" cy="1711.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M720,1353 L720,1740" class="ln" />
+<line x1="710.0" y1="1364.0" x2="730.0" y2="1364.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="720.0" cy="1382.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<line x1="720.0" y1="1722.0" x2="709.0" y2="1740.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="720.0" y1="1722.0" x2="720.0" y2="1740.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="720.0" y1="1722.0" x2="731.0" y2="1740.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="720.0" cy="1711.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M1180,1096 L1180,1180 L900,1180 L900,1690 L780,1690 L780,1740" class="ln" />
+<line x1="1170.0" y1="1107.0" x2="1190.0" y2="1107.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="1180.0" cy="1125.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<line x1="780.0" y1="1722.0" x2="769.0" y2="1740.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="780.0" y1="1722.0" x2="780.0" y2="1740.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="780.0" y1="1722.0" x2="791.0" y2="1740.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="780.0" cy="1711.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M1470,1510 L1430,1510 L1430,2240 L880,2240" class="ln" />
+<line x1="1459.0" y1="1500.0" x2="1459.0" y2="1520.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1445.0" y1="1500.0" x2="1445.0" y2="1520.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<line x1="898.0" y1="2240.0" x2="880.0" y2="2229.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="898.0" y1="2240.0" x2="880.0" y2="2240.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="898.0" y1="2240.0" x2="880.0" y2="2251.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="909.0" cy="2240.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M290,1944 L290,1990 L520,1990 L520,2060 L720,2060 L720,2100" class="ln" />
+<line x1="280.0" y1="1955.0" x2="300.0" y2="1955.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="280.0" y1="1969.0" x2="300.0" y2="1969.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<line x1="720.0" y1="2082.0" x2="709.0" y2="2100.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="720.0" y1="2082.0" x2="720.0" y2="2100.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="720.0" y1="2082.0" x2="731.0" y2="2100.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="720.0" cy="2071.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M1570,1600 L1570,1700 L900,1700 L900,2390 L760,2390 L760,2430" class="ln" />
+<line x1="1560.0" y1="1611.0" x2="1580.0" y2="1611.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1560.0" y1="1625.0" x2="1580.0" y2="1625.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<line x1="760.0" y1="2412.0" x2="749.0" y2="2430.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="760.0" y1="2412.0" x2="760.0" y2="2430.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="760.0" y1="2412.0" x2="771.0" y2="2430.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="760.0" cy="2401.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M340,1944 L340,1980 L510,1980 L510,2390 L670,2390 L670,2430" class="ln" />
+<line x1="330.0" y1="1955.0" x2="350.0" y2="1955.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="330.0" y1="1969.0" x2="350.0" y2="1969.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<line x1="670.0" y1="2412.0" x2="659.0" y2="2430.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="670.0" y1="2412.0" x2="670.0" y2="2430.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="670.0" y1="2412.0" x2="681.0" y2="2430.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="670.0" cy="2401.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M180,1944 L180,1990 L60,1990 L60,2280 L210,2280 L210,2330" class="ln" />
+<line x1="170.0" y1="1955.0" x2="190.0" y2="1955.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="170.0" y1="1969.0" x2="190.0" y2="1969.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<line x1="210.0" y1="2312.0" x2="199.0" y2="2330.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="210.0" y1="2312.0" x2="210.0" y2="2330.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="210.0" y1="2312.0" x2="221.0" y2="2330.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="210.0" cy="2301.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M230,1944 L230,1980 L260,1980 L260,2020" class="ln" />
+<line x1="220.0" y1="1955.0" x2="240.0" y2="1955.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="220.0" y1="1969.0" x2="240.0" y2="1969.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<line x1="260.0" y1="2002.0" x2="249.0" y2="2020.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="260.0" y1="2002.0" x2="260.0" y2="2020.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="260.0" y1="2002.0" x2="271.0" y2="2020.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="260.0" cy="1991.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M1590,1089 L1590,1140 L910,1140 L910,1390 L450,1390 L450,2280 L300,2280 L300,2330" class="ln" />
+<line x1="1580.0" y1="1100.0" x2="1600.0" y2="1100.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="1590.0" cy="1118.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<line x1="300.0" y1="2312.0" x2="289.0" y2="2330.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="300.0" y1="2312.0" x2="300.0" y2="2330.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="300.0" y1="2312.0" x2="311.0" y2="2330.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="300.0" cy="2301.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M2390,610 L2280,610 L2280,2070 L460,2070 L460,2450 L420,2450" class="ln" />
+<line x1="2379.0" y1="600.0" x2="2379.0" y2="620.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="2361.0" cy="610.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<line x1="438.0" y1="2450.0" x2="420.0" y2="2439.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="438.0" y1="2450.0" x2="420.0" y2="2450.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="438.0" y1="2450.0" x2="420.0" y2="2461.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="449.0" cy="2450.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M2790,980 L2820,980 L2820,1040 L2850,1040" class="ln" />
+<line x1="2801.0" y1="990.0" x2="2801.0" y2="970.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="2815.0" y1="990.0" x2="2815.0" y2="970.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<line x1="2832.0" y1="1040.0" x2="2850.0" y2="1051.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="2832.0" y1="1040.0" x2="2850.0" y2="1040.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="2832.0" y1="1040.0" x2="2850.0" y2="1029.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="2821.0" cy="1040.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M2260,410 L2340,410 L2340,870 L2820,870 L2820,980 L2850,980" class="ln" />
+<line x1="2271.0" y1="420.0" x2="2271.0" y2="400.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="2289.0" cy="410.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<line x1="2832.0" y1="980.0" x2="2850.0" y2="991.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="2832.0" y1="980.0" x2="2850.0" y2="980.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="2832.0" y1="980.0" x2="2850.0" y2="969.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="2821.0" cy="980.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M3190,1010 L3270,1010 L3270,1020 L3310,1020" class="ln" />
+<line x1="3201.0" y1="1020.0" x2="3201.0" y2="1000.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="3215.0" y1="1020.0" x2="3215.0" y2="1000.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<line x1="3292.0" y1="1020.0" x2="3310.0" y2="1031.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="3292.0" y1="1020.0" x2="3310.0" y2="1020.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="3292.0" y1="1020.0" x2="3310.0" y2="1009.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="3281.0" cy="1020.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M3020,1116 L3020,1230" class="ln" />
+<line x1="3010.0" y1="1127.0" x2="3030.0" y2="1127.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="3010.0" y1="1141.0" x2="3030.0" y2="1141.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<line x1="3020.0" y1="1212.0" x2="3009.0" y2="1230.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="3020.0" y1="1212.0" x2="3020.0" y2="1230.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="3020.0" y1="1212.0" x2="3031.0" y2="1230.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="3020.0" cy="1201.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M2720,1450 L2800,1450 L2800,1340 L2850,1340" class="ln" />
+<line x1="2731.0" y1="1460.0" x2="2731.0" y2="1440.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="2749.0" cy="1450.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<line x1="2832.0" y1="1340.0" x2="2850.0" y2="1351.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="2832.0" y1="1340.0" x2="2850.0" y2="1340.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="2832.0" y1="1340.0" x2="2850.0" y2="1329.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="2821.0" cy="1340.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M3180,1310 L3310,1310" class="ln" />
+<line x1="3191.0" y1="1320.0" x2="3191.0" y2="1300.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="3205.0" y1="1320.0" x2="3205.0" y2="1300.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<line x1="3292.0" y1="1310.0" x2="3310.0" y2="1321.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="3292.0" y1="1310.0" x2="3310.0" y2="1310.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="3292.0" y1="1310.0" x2="3310.0" y2="1299.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="3281.0" cy="1310.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M3640,1310 L3720,1310 L3720,1300 L3770,1300" class="ln" />
+<line x1="3651.0" y1="1320.0" x2="3651.0" y2="1300.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="3665.0" y1="1320.0" x2="3665.0" y2="1300.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<line x1="3752.0" y1="1300.0" x2="3770.0" y2="1311.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="3752.0" y1="1300.0" x2="3770.0" y2="1300.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="3752.0" y1="1300.0" x2="3770.0" y2="1289.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="3741.0" cy="1300.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M3020,1446 L3020,1590" class="ln" />
+<line x1="3010.0" y1="1457.0" x2="3030.0" y2="1457.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="3010.0" y1="1471.0" x2="3030.0" y2="1471.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<line x1="3020.0" y1="1572.0" x2="3009.0" y2="1590.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="3020.0" y1="1572.0" x2="3020.0" y2="1590.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="3020.0" y1="1572.0" x2="3031.0" y2="1590.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="3020.0" cy="1561.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M3310,1700 L3180,1700" class="ln" />
+<line x1="3299.0" y1="1690.0" x2="3299.0" y2="1710.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="3285.0" y1="1690.0" x2="3285.0" y2="1710.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<line x1="3198.0" y1="1700.0" x2="3180.0" y2="1689.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="3198.0" y1="1700.0" x2="3180.0" y2="1700.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="3198.0" y1="1700.0" x2="3180.0" y2="1711.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="3209.0" cy="1700.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M3650,1700 L3720,1700 L3720,1680 L3770,1680" class="ln" />
+<line x1="3661.0" y1="1710.0" x2="3661.0" y2="1690.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="3675.0" y1="1710.0" x2="3675.0" y2="1690.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<line x1="3752.0" y1="1680.0" x2="3770.0" y2="1691.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="3752.0" y1="1680.0" x2="3770.0" y2="1680.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="3752.0" y1="1680.0" x2="3770.0" y2="1669.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="3741.0" cy="1680.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M3480,1143 L3480,1200 L3740,1200 L3740,1540 L3940,1540 L3940,1590" class="ln" />
+<line x1="3470.0" y1="1154.0" x2="3490.0" y2="1154.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="3480.0" cy="1172.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<line x1="3940.0" y1="1572.0" x2="3929.0" y2="1590.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="3940.0" y1="1572.0" x2="3940.0" y2="1590.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="3940.0" y1="1572.0" x2="3951.0" y2="1590.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="3940.0" cy="1561.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M3180,1370 L3280,1370 L3280,1630 L3730,1630 L3730,1640 L3770,1640" class="ln" />
+<line x1="3191.0" y1="1380.0" x2="3191.0" y2="1360.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="3209.0" cy="1370.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<line x1="3752.0" y1="1640.0" x2="3770.0" y2="1651.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="3752.0" y1="1640.0" x2="3770.0" y2="1640.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="3752.0" y1="1640.0" x2="3770.0" y2="1629.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="3741.0" cy="1640.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M2620,1062 L2620,1300 L2820,1300 L2820,1940 L3020,1940 L3020,1990" class="ln" />
+<line x1="2610.0" y1="1073.0" x2="2630.0" y2="1073.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="2610.0" y1="1087.0" x2="2630.0" y2="1087.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<line x1="3020.0" y1="1972.0" x2="3009.0" y2="1990.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="3020.0" y1="1972.0" x2="3020.0" y2="1990.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="3020.0" y1="1972.0" x2="3031.0" y2="1990.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="3020.0" cy="1961.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M3180,2070 L3270,2070 L3270,2080 L3310,2080" class="ln" />
+<line x1="3191.0" y1="2080.0" x2="3191.0" y2="2060.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="3205.0" y1="2080.0" x2="3205.0" y2="2060.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<line x1="3292.0" y1="2080.0" x2="3310.0" y2="2091.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="3292.0" y1="2080.0" x2="3310.0" y2="2080.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="3292.0" y1="2080.0" x2="3310.0" y2="2069.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="3281.0" cy="2080.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M2690,1062 L2690,1280 L2760,1280 L2760,2300 L3020,2300 L3020,2350" class="ln" />
+<line x1="2680.0" y1="1073.0" x2="2700.0" y2="1073.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="2680.0" y1="1087.0" x2="2700.0" y2="1087.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<line x1="3020.0" y1="2332.0" x2="3009.0" y2="2350.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="3020.0" y1="2332.0" x2="3020.0" y2="2350.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="3020.0" y1="2332.0" x2="3031.0" y2="2350.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="3020.0" cy="2321.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M3430,2380 L3430,2190 L3020,2190 L3020,2152" class="ln" />
+<line x1="3440.0" y1="2369.0" x2="3420.0" y2="2369.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="3440.0" y1="2355.0" x2="3420.0" y2="2355.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<line x1="3020.0" y1="2170.0" x2="3031.0" y2="2152.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="3020.0" y1="2170.0" x2="3020.0" y2="2152.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="3020.0" y1="2170.0" x2="3009.0" y2="2152.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="3020.0" cy="2181.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M3530,2380 L3530,2180 L3480,2180 L3480,2145" class="ln" />
+<line x1="3540.0" y1="2369.0" x2="3520.0" y2="2369.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="3540.0" y1="2355.0" x2="3520.0" y2="2355.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<line x1="3480.0" y1="2163.0" x2="3491.0" y2="2145.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="3480.0" y1="2163.0" x2="3480.0" y2="2145.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="3480.0" y1="2163.0" x2="3469.0" y2="2145.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="3480.0" cy="2174.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M3310,2420 L3220,2420 L3220,2430 L3180,2430" class="ln" />
+<line x1="3299.0" y1="2410.0" x2="3299.0" y2="2430.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="3285.0" y1="2410.0" x2="3285.0" y2="2430.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<line x1="3198.0" y1="2430.0" x2="3180.0" y2="2419.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="3198.0" y1="2430.0" x2="3180.0" y2="2430.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="3198.0" y1="2430.0" x2="3180.0" y2="2441.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="3209.0" cy="2430.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<path d="M210,1144 L210,1194 L260,1194 L260,1254" class="ln" />
+<path d="M260,1400 L260,1280" class="ln" />
+<path d="M720,1420 L720,1350 L260,1350 L260,1280" class="ln" />
+<path d="M1010,1330 L260,1330 L260,1280" class="ln" />
+<circle cx="260" cy="1280" r="24" fill="#fff" stroke="#374151" stroke-width="2.6"/><text x="260" y="1289" text-anchor="middle" font-size="28" font-weight="700" fill="#111">o</text>
+<text x="300" y="1255" class="lb">es un (especialización)</text>
+<line x1="470" y1="1530" x2="420" y2="1580" stroke="#6b7280" stroke-width="2" stroke-dasharray="6 5"/>
+<rect x="90" y="1580" width="330" height="132" rx="10" fill="#fffbeb" stroke="#d97706" stroke-width="2" stroke-dasharray="8 5"/>
+<text x="104" y="1606" font-size="20" font-weight="700" fill="#92400e">Vínculo familiar</text>
+<text x="104" y="1632" class="nt">* parentesco</text>
+<text x="104" y="1656" class="nt">* es apoderado principal</text>
+<text x="104" y="1680" class="nt">* vive con el estudiante</text>
+<text x="104" y="1704" class="nt">* autorizado a recoger</text>
+<line x1="2810" y1="590" x2="2695" y2="690" stroke="#6b7280" stroke-width="2" stroke-dasharray="6 5"/>
+<rect x="2365" y="690" width="330" height="84" rx="10" fill="#fffbeb" stroke="#d97706" stroke-width="2" stroke-dasharray="8 5"/>
+<text x="2379" y="716" font-size="20" font-weight="700" fill="#92400e">Plan de estudios</text>
+<text x="2379" y="742" class="nt">* horas semanales</text>
+<text x="2379" y="766" class="nt">* vigente</text>
+<line x1="2007" y1="1450" x2="2007" y2="1860" stroke="#6b7280" stroke-width="2" stroke-dasharray="6 5"/>
+<rect x="1910" y="1860" width="340" height="132" rx="10" fill="#fffbeb" stroke="#d97706" stroke-width="2" stroke-dasharray="8 5"/>
+<text x="1924" y="1886" font-size="20" font-weight="700" fill="#92400e">Atributos de la NOTA</text>
+<text x="1924" y="1912" class="nt">o nota numérica (0–20)</text>
+<text x="1924" y="1936" class="nt">o nota literal</text>
+<text x="1924" y="1960" class="nt">o observación</text>
+<text x="1924" y="1984" class="nt">* registrada en</text>
+<rect x="454" y="356" width="62" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="485" y="376" text-anchor="middle" class="lb">otorga</text>
+<rect x="208" y="473" width="105" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="260" y="493" text-anchor="middle" class="lb">se asigna a</text>
+<rect x="203" y="760" width="113" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="260" y="780" text-anchor="middle" class="lb">posee cuenta</text>
+<rect x="464" y="580" width="62" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="495" y="600" text-anchor="middle" class="lb">inicia</text>
+<rect x="479" y="755" width="62" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="510" y="775" text-anchor="middle" class="lb">genera</text>
+<rect x="451" y="1060" width="53" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="478" y="1080" text-anchor="middle" class="lb">porta</text>
+<rect x="444" y="1516" width="53" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="470" y="1536" text-anchor="middle" class="lb">tiene</text>
+<rect x="1381" y="396" width="79" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="1420" y="416" text-anchor="middle" class="lb">organiza</text>
+<rect x="1788" y="356" width="113" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="1845" y="376" text-anchor="middle" class="lb">se divide en</text>
+<rect x="1349" y="553" width="62" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="1380" y="573" text-anchor="middle" class="lb">define</text>
+<rect x="1851" y="551" width="79" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="1890" y="571" text-anchor="middle" class="lb">programa</text>
+<rect x="2529" y="458" width="62" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="2560" y="478" text-anchor="middle" class="lb">agrupa</text>
+<rect x="2775" y="576" width="70" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="2810" y="596" text-anchor="middle" class="lb">incluye</text>
+<rect x="3196" y="616" width="96" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="3244" y="636" text-anchor="middle" class="lb">desarrolla</text>
+<rect x="3660" y="586" width="87" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="3704" y="606" text-anchor="middle" class="lb">comprende</text>
+<rect x="1618" y="689" width="44" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="1640" y="709" text-anchor="middle" class="lb">abre</text>
+<rect x="1764" y="586" width="130" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="1829" y="606" text-anchor="middle" class="lb">se organiza en</text>
+<rect x="1398" y="976" width="44" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="1420" y="996" text-anchor="middle" class="lb">rige</text>
+<rect x="1368" y="1176" width="105" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="1420" y="1196" text-anchor="middle" class="lb">es tutor de</text>
+<rect x="2076" y="986" width="79" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="2115" y="1006" text-anchor="middle" class="lb">programa</text>
+<rect x="2775" y="836" width="122" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="2836" y="856" text-anchor="middle" class="lb">se dicta como</text>
+<rect x="1779" y="1112" width="122" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="1840" y="1132" text-anchor="middle" class="lb">tiene a cargo</text>
+<rect x="1786" y="1146" width="208" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="1890" y="1166" text-anchor="middle" class="lb">distribuye su semana en</text>
+<rect x="2284" y="1136" width="53" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="2310" y="1156" text-anchor="middle" class="lb">ocupa</text>
+<rect x="1168" y="1516" width="113" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="1225" y="1536" text-anchor="middle" class="lb">se matricula</text>
+<rect x="1654" y="1250" width="53" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="1680" y="1270" text-anchor="middle" class="lb">acoge</text>
+<rect x="2521" y="1190" width="79" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="2560" y="1210" text-anchor="middle" class="lb">programa</text>
+<rect x="2291" y="886" width="79" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="2330" y="906" text-anchor="middle" class="lb">contiene</text>
+<rect x="2900" y="846" width="122" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="2961" y="866" text-anchor="middle" class="lb">se evalúa con</text>
+<rect x="1938" y="1436" width="139" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="2007" y="1456" text-anchor="middle" class="lb">obtiene nota en</text>
+<rect x="1901" y="1816" width="87" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="1945" y="1836" text-anchor="middle" class="lb">consolida</text>
+<rect x="2289" y="1103" width="62" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="2320" y="1123" text-anchor="middle" class="lb">cierra</text>
+<rect x="3216" y="1396" width="79" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="3255" y="1416" text-anchor="middle" class="lb">califica</text>
+<rect x="1395" y="1696" width="62" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="1426" y="1716" text-anchor="middle" class="lb">genera</text>
+<rect x="1366" y="851" width="79" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="1405" y="871" text-anchor="middle" class="lb">programa</text>
+<rect x="564" y="1696" width="62" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="595" y="1716" text-anchor="middle" class="lb">recibe</text>
+<rect x="2039" y="1471" width="122" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="2100" y="1491" text-anchor="middle" class="lb">se ejecuta en</text>
+<rect x="1490" y="1622" width="53" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="1517" y="1642" text-anchor="middle" class="lb">dicta</text>
+<rect x="1801" y="1686" width="79" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="1840" y="1706" text-anchor="middle" class="lb">registra</text>
+<rect x="1665" y="1716" width="70" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="1700" y="1736" text-anchor="middle" class="lb">acumula</text>
+<rect x="485" y="1372" width="70" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="520" y="1392" text-anchor="middle" class="lb">realiza</text>
+<rect x="676" y="1664" width="87" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="720" y="1684" text-anchor="middle" class="lb">se usa en</text>
+<rect x="869" y="1376" width="62" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="900" y="1396" text-anchor="middle" class="lb">evalúa</text>
+<rect x="1391" y="2120" width="79" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="1430" y="2140" text-anchor="middle" class="lb">registra</text>
+<rect x="454" y="1976" width="70" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="489" y="1996" text-anchor="middle" class="lb">reporta</text>
+<rect x="869" y="1686" width="62" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="900" y="1706" text-anchor="middle" class="lb">recibe</text>
+<rect x="434" y="2224" width="70" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="469" y="2244" text-anchor="middle" class="lb">redacta</text>
+<rect x="70" y="2266" width="70" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="105" y="2286" text-anchor="middle" class="lb">publica</text>
+<rect x="214" y="1966" width="62" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="245" y="1986" text-anchor="middle" class="lb">recibe</text>
+<rect x="566" y="1376" width="105" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="619" y="1396" text-anchor="middle" class="lb">se dirige a</text>
+<rect x="1897" y="2056" width="105" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="1949" y="2076" text-anchor="middle" class="lb">se dirige a</text>
+<rect x="2794" y="996" width="53" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="2820" y="1016" text-anchor="middle" class="lb">tiene</text>
+<rect x="2350" y="856" width="70" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="2385" y="876" text-anchor="middle" class="lb">enmarca</text>
+<rect x="3215" y="996" width="79" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="3254" y="1016" text-anchor="middle" class="lb">contiene</text>
+<rect x="2985" y="1151" width="70" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="3020" y="1171" text-anchor="middle" class="lb">propone</text>
+<rect x="2735" y="1452" width="130" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="2800" y="1472" text-anchor="middle" class="lb">se alimenta de</text>
+<rect x="3206" y="1296" width="79" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="3245" y="1316" text-anchor="middle" class="lb">contiene</text>
+<rect x="3673" y="1296" width="62" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="3704" y="1316" text-anchor="middle" class="lb">ofrece</text>
+<rect x="2989" y="1496" width="62" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="3020" y="1516" text-anchor="middle" class="lb">recibe</text>
+<rect x="3206" y="1686" width="79" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="3245" y="1706" text-anchor="middle" class="lb">presenta</text>
+<rect x="3689" y="1686" width="62" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="3720" y="1706" text-anchor="middle" class="lb">genera</text>
+<rect x="3666" y="1387" width="148" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="3740" y="1407" text-anchor="middle" class="lb">es consultado en</text>
+<rect x="3281" y="1616" width="148" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="3355" y="1636" text-anchor="middle" class="lb">es consultada en</text>
+<rect x="2738" y="1515" width="165" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="2820" y="1535" text-anchor="middle" class="lb">muestra en su muro</text>
+<rect x="3224" y="2056" width="62" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="3255" y="2076" text-anchor="middle" class="lb">recibe</text>
+<rect x="2766" y="1791" width="53" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="2792" y="1811" text-anchor="middle" class="lb">aloja</text>
+<rect x="3273" y="2176" width="70" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="3309" y="2196" text-anchor="middle" class="lb">escribe</text>
+<rect x="3495" y="2228" width="70" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="3530" y="2248" text-anchor="middle" class="lb">escribe</text>
+<rect x="3208" y="2406" width="53" height="26" rx="6" fill="#fff" fill-opacity=".92"/><text x="3235" y="2426" text-anchor="middle" class="lb">envía</text>
+<rect x="90" y="290" width="330" height="162" rx="10" fill="#fff" stroke="#475569" stroke-width="2.6"/>
+<path d="M90,334 L90,300 Q90,290 100,290 L410,290 Q420,290 420,300 L420,334 Z" fill="#475569"/>
+<text x="104" y="320" class="hd">ROL</text>
+<text x="104" y="355" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#475569">#</tspan><tspan dx="8" text-decoration="underline" font-weight="700">id rol</tspan></text>
+<text x="104" y="382" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#475569">*</tspan><tspan dx="8">nombre</tspan></text>
+<text x="104" y="409" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#475569">o</tspan><tspan dx="8">descripción</tspan></text>
+<text x="104" y="436" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#475569">*</tspan><tspan dx="8">es de sistema</tspan></text>
+<rect x="550" y="290" width="330" height="162" rx="10" fill="#fff" stroke="#475569" stroke-width="2.6"/>
+<path d="M550,334 L550,300 Q550,290 560,290 L870,290 Q880,290 880,300 L880,334 Z" fill="#475569"/>
+<text x="564" y="320" class="hd">PERMISO</text>
+<text x="564" y="355" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#475569">#</tspan><tspan dx="8" text-decoration="underline" font-weight="700">código</tspan></text>
+<text x="564" y="382" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#475569">*</tspan><tspan dx="8">nombre</tspan></text>
+<text x="564" y="409" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#475569">*</tspan><tspan dx="8">módulo</tspan></text>
+<text x="564" y="436" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#475569">o</tspan><tspan dx="8">descripción</tspan></text>
+<rect x="90" y="540" width="330" height="189" rx="10" fill="#fff" stroke="#475569" stroke-width="2.6"/>
+<path d="M90,584 L90,550 Q90,540 100,540 L410,540 Q420,540 420,550 L420,584 Z" fill="#475569"/>
+<text x="104" y="570" class="hd">USUARIO</text>
+<text x="104" y="605" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#475569">#</tspan><tspan dx="8" text-decoration="underline" font-weight="700">nombre de usuario</tspan></text>
+<text x="104" y="632" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#475569">*</tspan><tspan dx="8">contraseña (cifrada)</tspan></text>
+<text x="104" y="659" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#475569">*</tspan><tspan dx="8">estado</tspan></text>
+<text x="104" y="686" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#475569">*</tspan><tspan dx="8">debe cambiar contraseña</tspan></text>
+<text x="104" y="713" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#475569">o</tspan><tspan dx="8">último acceso</tspan></text>
+<rect x="550" y="540" width="330" height="189" rx="10" fill="#fff" stroke="#475569" stroke-width="2.6"/>
+<path d="M550,584 L550,550 Q550,540 560,540 L870,540 Q880,540 880,550 L880,584 Z" fill="#475569"/>
+<text x="564" y="570" class="hd">SESIÓN DE ACCESO</text>
+<text x="564" y="605" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#475569">#</tspan><tspan dx="8" text-decoration="underline" font-weight="700">id sesión</tspan></text>
+<text x="564" y="632" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#475569">*</tspan><tspan dx="8">iniciada en</tspan></text>
+<text x="564" y="659" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#475569">*</tspan><tspan dx="8">expira en</tspan></text>
+<text x="564" y="686" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#475569">o</tspan><tspan dx="8">dirección IP / navegador</tspan></text>
+<text x="564" y="713" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#475569">o</tspan><tspan dx="8">cerrada en</tspan></text>
+<rect x="550" y="820" width="330" height="243" rx="10" fill="#fff" stroke="#475569" stroke-width="2.6"/>
+<path d="M550,864 L550,830 Q550,820 560,820 L870,820 Q880,820 880,830 L880,864 Z" fill="#475569"/>
+<text x="564" y="850" class="hd">BITÁCORA</text>
+<text x="564" y="885" font-size="19" font-style="italic" fill="#64748b">de auditoría (inmutable)</text>
+<text x="564" y="912" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#475569">#</tspan><tspan dx="8" text-decoration="underline" font-weight="700">id registro</tspan></text>
+<text x="564" y="939" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#475569">*</tspan><tspan dx="8">acción</tspan></text>
+<text x="564" y="966" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#475569">*</tspan><tspan dx="8">objeto afectado</tspan></text>
+<text x="564" y="993" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#475569">o</tspan><tspan dx="8">valor anterior</tspan></text>
+<text x="564" y="1020" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#475569">o</tspan><tspan dx="8">valor nuevo</tspan></text>
+<text x="564" y="1047" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#475569">*</tspan><tspan dx="8">fecha y hora</tspan></text>
+<rect x="90" y="820" width="330" height="324" rx="10" fill="#fff" stroke="#475569" stroke-width="2.6"/>
+<path d="M90,864 L90,830 Q90,820 100,820 L410,820 Q420,820 420,830 L420,864 Z" fill="#475569"/>
+<text x="104" y="850" class="hd">PERSONA</text>
+<text x="104" y="885" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#475569">#</tspan><tspan dx="8" text-decoration="underline" font-weight="700">id persona</tspan></text>
+<text x="104" y="912" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#475569">*</tspan><tspan dx="8">(tipo doc., número doc.)</tspan></text>
+<text x="104" y="939" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#475569">*</tspan><tspan dx="8">nombres</tspan></text>
+<text x="104" y="966" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#475569">*</tspan><tspan dx="8">apellido paterno</tspan></text>
+<text x="104" y="993" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#475569">o</tspan><tspan dx="8">apellido materno</tspan></text>
+<text x="104" y="1020" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#475569">o</tspan><tspan dx="8">fecha de nacimiento</tspan></text>
+<text x="104" y="1047" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#475569">*</tspan><tspan dx="8">sexo</tspan></text>
+<text x="104" y="1074" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#475569">o</tspan><tspan dx="8">{teléfono}</tspan></text>
+<text x="104" y="1101" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#475569">o</tspan><tspan dx="8">correo</tspan></text>
+<text x="104" y="1128" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#475569">o</tspan><tspan dx="8">(dirección, distrito)</tspan></text>
+<rect x="90" y="1400" width="330" height="135" rx="10" fill="#fff" stroke="#0f766e" stroke-width="2.6"/>
+<path d="M90,1444 L90,1410 Q90,1400 100,1400 L410,1400 Q420,1400 420,1410 L420,1444 Z" fill="#0f766e"/>
+<text x="104" y="1430" class="hd">APODERADO</text>
+<text x="104" y="1465" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0f766e">o</tspan><tspan dx="8">ocupación</tspan></text>
+<text x="104" y="1492" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0f766e">o</tspan><tspan dx="8">centro laboral</tspan></text>
+<text x="104" y="1519" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0f766e">o</tspan><tspan dx="8">grado de instrucción</tspan></text>
+<rect x="550" y="1420" width="330" height="216" rx="10" fill="#fff" stroke="#0f766e" stroke-width="2.6"/>
+<path d="M550,1464 L550,1430 Q550,1420 560,1420 L870,1420 Q880,1420 880,1430 L880,1464 Z" fill="#0f766e"/>
+<text x="564" y="1450" class="hd">ESTUDIANTE</text>
+<text x="564" y="1485" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0f766e">#</tspan><tspan dx="8" text-decoration="underline" font-weight="700">código de estudiante</tspan></text>
+<text x="564" y="1512" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0f766e">*</tspan><tspan dx="8">fecha de ingreso</tspan></text>
+<text x="564" y="1539" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0f766e">o</tspan><tspan dx="8">lengua materna</tspan></text>
+<text x="564" y="1566" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0f766e">o</tspan><tspan dx="8">discapacidad</tspan></text>
+<text x="564" y="1593" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0f766e">o</tspan><tspan dx="8">(grupo sang., alergias, seguro)</tspan></text>
+<text x="564" y="1620" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0f766e">*</tspan><tspan dx="8">estado</tspan></text>
+<rect x="1010" y="1210" width="330" height="243" rx="10" fill="#fff" stroke="#0f766e" stroke-width="2.6"/>
+<path d="M1010,1254 L1010,1220 Q1010,1210 1020,1210 L1330,1210 Q1340,1210 1340,1220 L1340,1254 Z" fill="#0f766e"/>
+<text x="1024" y="1240" class="hd">DOCENTE</text>
+<text x="1024" y="1275" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0f766e">#</tspan><tspan dx="8" text-decoration="underline" font-weight="700">código docente</tspan></text>
+<text x="1024" y="1302" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0f766e">o</tspan><tspan dx="8">especialidad</tspan></text>
+<text x="1024" y="1329" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0f766e">*</tspan><tspan dx="8">tipo de contrato</tspan></text>
+<text x="1024" y="1356" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0f766e">*</tspan><tspan dx="8">jornada (horas)</tspan></text>
+<text x="1024" y="1383" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0f766e">*</tspan><tspan dx="8">fecha de ingreso</tspan></text>
+<text x="1024" y="1410" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0f766e">*</tspan><tspan dx="8">estado</tspan></text>
+<text x="1024" y="1437" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0f766e">o</tspan><tspan dx="8">firma digital</tspan></text>
+<rect x="550" y="1110" width="330" height="243" rx="10" fill="#fff" stroke="#0f766e" stroke-width="2.6"/>
+<path d="M550,1154 L550,1120 Q550,1110 560,1110 L870,1110 Q880,1110 880,1120 L880,1154 Z" fill="#0f766e"/>
+<text x="564" y="1140" class="hd">CREDENCIAL</text>
+<text x="564" y="1175" font-size="19" font-style="italic" fill="#64748b">carné con QR para el kiosko</text>
+<text x="564" y="1202" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0f766e">#</tspan><tspan dx="8" text-decoration="underline" font-weight="700">código QR</tspan></text>
+<text x="564" y="1229" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0f766e">o</tspan><tspan dx="8">PIN (cifrado)</tspan></text>
+<text x="564" y="1256" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0f766e">*</tspan><tspan dx="8">activa</tspan></text>
+<text x="564" y="1283" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0f766e">*</tspan><tspan dx="8">emitida en</tspan></text>
+<text x="564" y="1310" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0f766e">o</tspan><tspan dx="8">vence en</tspan></text>
+<text x="564" y="1337" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0f766e">o</tspan><tspan dx="8">motivo de anulación</tspan></text>
+<rect x="1010" y="290" width="330" height="243" rx="10" fill="#fff" stroke="#a16207" stroke-width="2.6"/>
+<path d="M1010,334 L1010,300 Q1010,290 1020,290 L1330,290 Q1340,290 1340,300 L1340,334 Z" fill="#a16207"/>
+<text x="1024" y="320" class="hd">INSTITUCIÓN</text>
+<text x="1024" y="355" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#a16207">#</tspan><tspan dx="8" text-decoration="underline" font-weight="700">código modular</tspan></text>
+<text x="1024" y="382" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#a16207">*</tspan><tspan dx="8">nombre</tspan></text>
+<text x="1024" y="409" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#a16207">*</tspan><tspan dx="8">tipo de gestión</tspan></text>
+<text x="1024" y="436" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#a16207">o</tspan><tspan dx="8">UGEL / DRE</tspan></text>
+<text x="1024" y="463" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#a16207">*</tspan><tspan dx="8">dirección</tspan></text>
+<text x="1024" y="490" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#a16207">o</tspan><tspan dx="8">director</tspan></text>
+<text x="1024" y="517" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#a16207">o</tspan><tspan dx="8">(latitud, longitud, radio)</tspan></text>
+<rect x="1010" y="880" width="330" height="216" rx="10" fill="#fff" stroke="#a16207" stroke-width="2.6"/>
+<path d="M1010,924 L1010,890 Q1010,880 1020,880 L1330,880 Q1340,880 1340,890 L1340,924 Z" fill="#a16207"/>
+<text x="1024" y="910" class="hd">TURNO</text>
+<text x="1024" y="945" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#a16207">#</tspan><tspan dx="8" text-decoration="underline" font-weight="700">id turno</tspan></text>
+<text x="1024" y="972" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#a16207">*</tspan><tspan dx="8">nombre</tspan></text>
+<text x="1024" y="999" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#a16207">*</tspan><tspan dx="8">aplica a</tspan></text>
+<text x="1024" y="1026" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#a16207">*</tspan><tspan dx="8">hora de entrada</tspan></text>
+<text x="1024" y="1053" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#a16207">*</tspan><tspan dx="8">hora de salida</tspan></text>
+<text x="1024" y="1080" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#a16207">*</tspan><tspan dx="8">tolerancia (min)</tspan></text>
+<rect x="1470" y="290" width="330" height="216" rx="10" fill="#fff" stroke="#1d4ed8" stroke-width="2.6"/>
+<path d="M1470,334 L1470,300 Q1470,290 1480,290 L1790,290 Q1800,290 1800,300 L1800,334 Z" fill="#1d4ed8"/>
+<text x="1484" y="320" class="hd">AÑO ACADÉMICO</text>
+<text x="1484" y="355" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#1d4ed8">#</tspan><tspan dx="8" text-decoration="underline" font-weight="700">año</tspan></text>
+<text x="1484" y="382" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#1d4ed8">o</tspan><tspan dx="8">denominación</tspan></text>
+<text x="1484" y="409" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#1d4ed8">*</tspan><tspan dx="8">fecha de inicio</tspan></text>
+<text x="1484" y="436" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#1d4ed8">*</tspan><tspan dx="8">fecha de fin</tspan></text>
+<text x="1484" y="463" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#1d4ed8">*</tspan><tspan dx="8">estado</tspan></text>
+<text x="1484" y="490" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#1d4ed8">o</tspan><tspan dx="8">motivo de reapertura</tspan></text>
+<rect x="1930" y="290" width="330" height="243" rx="10" fill="#fff" stroke="#1d4ed8" stroke-width="2.6"/>
+<path d="M1930,334 L1930,300 Q1930,290 1940,290 L2250,290 Q2260,290 2260,300 L2260,334 Z" fill="#1d4ed8"/>
+<text x="1944" y="320" class="hd">PERIODO ACADÉMICO</text>
+<text x="1944" y="355" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#1d4ed8">#</tspan><tspan dx="8" text-decoration="underline" font-weight="700">id periodo</tspan></text>
+<text x="1944" y="382" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#1d4ed8">*</tspan><tspan dx="8">número</tspan></text>
+<text x="1944" y="409" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#1d4ed8">*</tspan><tspan dx="8">nombre</tspan></text>
+<text x="1944" y="436" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#1d4ed8">*</tspan><tspan dx="8">tipo</tspan></text>
+<text x="1944" y="463" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#1d4ed8">*</tspan><tspan dx="8">fecha de inicio</tspan></text>
+<text x="1944" y="490" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#1d4ed8">*</tspan><tspan dx="8">fecha de fin</tspan></text>
+<text x="1944" y="517" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#1d4ed8">*</tspan><tspan dx="8">estado</tspan></text>
+<rect x="1010" y="610" width="330" height="216" rx="10" fill="#fff" stroke="#1d4ed8" stroke-width="2.6"/>
+<path d="M1010,654 L1010,620 Q1010,610 1020,610 L1330,610 Q1340,610 1340,620 L1340,654 Z" fill="#1d4ed8"/>
+<text x="1024" y="640" class="hd">ESCALA</text>
+<text x="1024" y="675" font-size="19" font-style="italic" fill="#64748b">de calificación del año</text>
+<text x="1024" y="702" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#1d4ed8">#</tspan><tspan dx="8" text-decoration="underline" font-weight="700">literal (AD, A, B, C)</tspan></text>
+<text x="1024" y="729" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#1d4ed8">*</tspan><tspan dx="8">descripción</tspan></text>
+<text x="1024" y="756" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#1d4ed8">*</tspan><tspan dx="8">nota mínima</tspan></text>
+<text x="1024" y="783" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#1d4ed8">*</tspan><tspan dx="8">nota máxima</tspan></text>
+<text x="1024" y="810" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#1d4ed8">*</tspan><tspan dx="8">orden</tspan></text>
+<rect x="1930" y="610" width="330" height="243" rx="10" fill="#fff" stroke="#1d4ed8" stroke-width="2.6"/>
+<path d="M1930,654 L1930,620 Q1930,610 1940,610 L2250,610 Q2260,610 2260,620 L2260,654 Z" fill="#1d4ed8"/>
+<text x="1944" y="640" class="hd">EVENTO</text>
+<text x="1944" y="675" font-size="19" font-style="italic" fill="#64748b">del calendario escolar</text>
+<text x="1944" y="702" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#1d4ed8">#</tspan><tspan dx="8" text-decoration="underline" font-weight="700">id evento</tspan></text>
+<text x="1944" y="729" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#1d4ed8">*</tspan><tspan dx="8">título</tspan></text>
+<text x="1944" y="756" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#1d4ed8">*</tspan><tspan dx="8">tipo</tspan></text>
+<text x="1944" y="783" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#1d4ed8">*</tspan><tspan dx="8">fecha de inicio</tspan></text>
+<text x="1944" y="810" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#1d4ed8">*</tspan><tspan dx="8">fecha de fin</tspan></text>
+<text x="1944" y="837" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#1d4ed8">*</tspan><tspan dx="8">suspende clases</tspan></text>
+<rect x="2390" y="290" width="330" height="135" rx="10" fill="#fff" stroke="#1d4ed8" stroke-width="2.6"/>
+<path d="M2390,334 L2390,300 Q2390,290 2400,290 L2710,290 Q2720,290 2720,300 L2720,334 Z" fill="#1d4ed8"/>
+<text x="2404" y="320" class="hd">NIVEL</text>
+<text x="2404" y="355" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#1d4ed8">#</tspan><tspan dx="8" text-decoration="underline" font-weight="700">id nivel</tspan></text>
+<text x="2404" y="382" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#1d4ed8">*</tspan><tspan dx="8">nombre</tspan></text>
+<text x="2404" y="409" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#1d4ed8">*</tspan><tspan dx="8">orden</tspan></text>
+<rect x="2390" y="520" width="330" height="135" rx="10" fill="#fff" stroke="#1d4ed8" stroke-width="2.6"/>
+<path d="M2390,564 L2390,530 Q2390,520 2400,520 L2710,520 Q2720,520 2720,530 L2720,564 Z" fill="#1d4ed8"/>
+<text x="2404" y="550" class="hd">GRADO</text>
+<text x="2404" y="585" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#1d4ed8">#</tspan><tspan dx="8" text-decoration="underline" font-weight="700">id grado</tspan></text>
+<text x="2404" y="612" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#1d4ed8">*</tspan><tspan dx="8">número</tspan></text>
+<text x="2404" y="639" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#1d4ed8">*</tspan><tspan dx="8">nombre</tspan></text>
+<rect x="2850" y="520" width="330" height="216" rx="10" fill="#fff" stroke="#1d4ed8" stroke-width="2.6"/>
+<path d="M2850,564 L2850,530 Q2850,520 2860,520 L3170,520 Q3180,520 3180,530 L3180,564 Z" fill="#1d4ed8"/>
+<text x="2864" y="550" class="hd">CURSO</text>
+<text x="2864" y="585" font-size="19" font-style="italic" fill="#64748b">área curricular o taller</text>
+<text x="2864" y="612" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#1d4ed8">#</tspan><tspan dx="8" text-decoration="underline" font-weight="700">código</tspan></text>
+<text x="2864" y="639" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#1d4ed8">*</tspan><tspan dx="8">nombre</tspan></text>
+<text x="2864" y="666" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#1d4ed8">*</tspan><tspan dx="8">área curricular</tspan></text>
+<text x="2864" y="693" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#1d4ed8">o</tspan><tspan dx="8">descripción</tspan></text>
+<text x="2864" y="720" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#1d4ed8">o</tspan><tspan dx="8">color</tspan></text>
+<rect x="3310" y="520" width="330" height="162" rx="10" fill="#fff" stroke="#1d4ed8" stroke-width="2.6"/>
+<path d="M3310,564 L3310,530 Q3310,520 3320,520 L3630,520 Q3640,520 3640,530 L3640,564 Z" fill="#1d4ed8"/>
+<text x="3324" y="550" class="hd">COMPETENCIA</text>
+<text x="3324" y="585" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#1d4ed8">#</tspan><tspan dx="8" text-decoration="underline" font-weight="700">código</tspan></text>
+<text x="3324" y="612" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#1d4ed8">*</tspan><tspan dx="8">nombre</tspan></text>
+<text x="3324" y="639" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#1d4ed8">o</tspan><tspan dx="8">descripción</tspan></text>
+<text x="3324" y="666" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#1d4ed8">*</tspan><tspan dx="8">orden</tspan></text>
+<rect x="3770" y="520" width="330" height="135" rx="10" fill="#fff" stroke="#1d4ed8" stroke-width="2.6"/>
+<path d="M3770,564 L3770,530 Q3770,520 3780,520 L4090,520 Q4100,520 4100,530 L4100,564 Z" fill="#1d4ed8"/>
+<text x="3784" y="550" class="hd">CAPACIDAD</text>
+<text x="3784" y="585" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#1d4ed8">#</tspan><tspan dx="8" text-decoration="underline" font-weight="700">código</tspan></text>
+<text x="3784" y="612" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#1d4ed8">*</tspan><tspan dx="8">nombre</tspan></text>
+<text x="3784" y="639" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#1d4ed8">*</tspan><tspan dx="8">orden</tspan></text>
+<rect x="1470" y="900" width="330" height="189" rx="10" fill="#fff" stroke="#15803d" stroke-width="2.6"/>
+<path d="M1470,944 L1470,910 Q1470,900 1480,900 L1790,900 Q1800,900 1800,910 L1800,944 Z" fill="#15803d"/>
+<text x="1484" y="930" class="hd">SECCIÓN</text>
+<text x="1484" y="965" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#15803d">#</tspan><tspan dx="8" text-decoration="underline" font-weight="700">id sección</tspan></text>
+<text x="1484" y="992" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#15803d">*</tspan><tspan dx="8">nombre (A, B…)</tspan></text>
+<text x="1484" y="1019" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#15803d">o</tspan><tspan dx="8">aula</tspan></text>
+<text x="1484" y="1046" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#15803d">*</tspan><tspan dx="8">vacantes</tspan></text>
+<text x="1484" y="1073" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#15803d">*</tspan><tspan dx="8">estado</tspan></text>
+<rect x="2390" y="900" width="400" height="162" rx="10" fill="#fff" stroke="#15803d" stroke-width="2.6"/>
+<path d="M2390,944 L2390,910 Q2390,900 2400,900 L2780,900 Q2790,900 2790,910 L2790,944 Z" fill="#15803d"/>
+<text x="2404" y="930" class="hd">CURSO-SECCIÓN</text>
+<text x="2404" y="965" font-size="19" font-style="italic" fill="#64748b">carga académica del docente</text>
+<text x="2404" y="992" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#15803d">#</tspan><tspan dx="8" text-decoration="underline" font-weight="700">id curso-sección</tspan></text>
+<text x="2404" y="1019" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#15803d">*</tspan><tspan dx="8">fecha de asignación</tspan></text>
+<text x="2404" y="1046" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#15803d">*</tspan><tspan dx="8">estado</tspan></text>
+<rect x="1930" y="1200" width="330" height="216" rx="10" fill="#fff" stroke="#15803d" stroke-width="2.6"/>
+<path d="M1930,1244 L1930,1210 Q1930,1200 1940,1200 L2250,1200 Q2260,1200 2260,1210 L2260,1244 Z" fill="#15803d"/>
+<text x="1944" y="1230" class="hd">HORARIO</text>
+<text x="1944" y="1265" font-size="19" font-style="italic" fill="#64748b">bloque semanal de la sección</text>
+<text x="1944" y="1292" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#15803d">#</tspan><tspan dx="8" text-decoration="underline" font-weight="700">id bloque</tspan></text>
+<text x="1944" y="1319" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#15803d">*</tspan><tspan dx="8">día de la semana</tspan></text>
+<text x="1944" y="1346" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#15803d">*</tspan><tspan dx="8">hora de inicio</tspan></text>
+<text x="1944" y="1373" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#15803d">*</tspan><tspan dx="8">hora de fin</tspan></text>
+<text x="1944" y="1400" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#15803d">*</tspan><tspan dx="8">tipo (clase / receso)</tspan></text>
+<rect x="1470" y="1330" width="330" height="270" rx="10" fill="#fff" stroke="#15803d" stroke-width="2.6"/>
+<path d="M1470,1374 L1470,1340 Q1470,1330 1480,1330 L1790,1330 Q1800,1330 1800,1340 L1800,1374 Z" fill="#15803d"/>
+<text x="1484" y="1360" class="hd">MATRÍCULA</text>
+<text x="1484" y="1395" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#15803d">#</tspan><tspan dx="8" text-decoration="underline" font-weight="700">código de matrícula</tspan></text>
+<text x="1484" y="1422" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#15803d">*</tspan><tspan dx="8">fecha</tspan></text>
+<text x="1484" y="1449" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#15803d">*</tspan><tspan dx="8">tipo</tspan></text>
+<text x="1484" y="1476" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#15803d">*</tspan><tspan dx="8">estado</tspan></text>
+<text x="1484" y="1503" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#15803d">*</tspan><tspan dx="8">es repitente</tspan></text>
+<text x="1484" y="1530" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#15803d">o</tspan><tspan dx="8">colegio de procedencia</tspan></text>
+<text x="1484" y="1557" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#15803d">o</tspan><tspan dx="8">fecha de retiro</tspan></text>
+<text x="1484" y="1584" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#15803d">o</tspan><tspan dx="8">motivo de retiro</tspan></text>
+<rect x="2390" y="1330" width="330" height="243" rx="10" fill="#fff" stroke="#c2410c" stroke-width="2.6"/>
+<path d="M2390,1374 L2390,1340 Q2390,1330 2400,1330 L2710,1330 Q2720,1330 2720,1340 L2720,1374 Z" fill="#c2410c"/>
+<text x="2404" y="1360" class="hd">EVALUACIÓN</text>
+<text x="2404" y="1395" font-size="19" font-style="italic" fill="#64748b">instrumento de evaluación</text>
+<text x="2404" y="1422" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#c2410c">#</tspan><tspan dx="8" text-decoration="underline" font-weight="700">id evaluación</tspan></text>
+<text x="2404" y="1449" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#c2410c">*</tspan><tspan dx="8">nombre</tspan></text>
+<text x="2404" y="1476" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#c2410c">*</tspan><tspan dx="8">tipo</tspan></text>
+<text x="2404" y="1503" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#c2410c">*</tspan><tspan dx="8">fecha</tspan></text>
+<text x="2404" y="1530" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#c2410c">*</tspan><tspan dx="8">peso</tspan></text>
+<text x="2404" y="1557" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#c2410c">*</tspan><tspan dx="8">estado</tspan></text>
+<rect x="2390" y="1740" width="330" height="216" rx="10" fill="#fff" stroke="#c2410c" stroke-width="2.6"/>
+<path d="M2390,1784 L2390,1750 Q2390,1740 2400,1740 L2710,1740 Q2720,1740 2720,1750 L2720,1784 Z" fill="#c2410c"/>
+<text x="2404" y="1770" class="hd">CALIFICACIÓN</text>
+<text x="2404" y="1805" font-size="19" font-style="italic" fill="#64748b">resultado del periodo por competencia</text>
+<text x="2404" y="1832" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#c2410c">#</tspan><tspan dx="8" text-decoration="underline" font-weight="700">id calificación</tspan></text>
+<text x="2404" y="1859" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#c2410c">o</tspan><tspan dx="8">nota numérica (0–20)</tspan></text>
+<text x="2404" y="1886" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#c2410c">*</tspan><tspan dx="8">nota literal</tspan></text>
+<text x="2404" y="1913" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#c2410c">o</tspan><tspan dx="8">conclusión descriptiva</tspan></text>
+<text x="2404" y="1940" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#c2410c">*</tspan><tspan dx="8">cerrada</tspan></text>
+<rect x="1010" y="1760" width="380" height="216" rx="10" fill="#fff" stroke="#c2410c" stroke-width="2.6"/>
+<path d="M1010,1804 L1010,1770 Q1010,1760 1020,1760 L1380,1760 Q1390,1760 1390,1770 L1390,1804 Z" fill="#c2410c"/>
+<text x="1024" y="1790" class="hd">ENTREGA DE LIBRETA</text>
+<rect x="1316" y="1769" width="66" height="27" rx="13" fill="#fde047" stroke="#854d0e" stroke-width="1.5"/><text x="1349.0" y="1789" text-anchor="middle" font-size="18" font-weight="800" fill="#422006">ISA</text>
+<text x="1024" y="1825" font-size="19" font-style="italic" fill="#64748b">informe de progreso al apoderado</text>
+<text x="1024" y="1852" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#c2410c">#</tspan><tspan dx="8" text-decoration="underline" font-weight="700">id entrega</tspan></text>
+<text x="1024" y="1879" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#c2410c">*</tspan><tspan dx="8">fecha límite</tspan></text>
+<text x="1024" y="1906" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#c2410c">o</tspan><tspan dx="8">entregada en</tspan></text>
+<text x="1024" y="1933" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#c2410c">o</tspan><tspan dx="8">medio de entrega</tspan></text>
+<text x="1024" y="1960" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#c2410c">*</tspan><tspan dx="8">estado (a tiempo / con retraso)</tspan></text>
+<rect x="1930" y="1520" width="330" height="270" rx="10" fill="#fff" stroke="#be123c" stroke-width="2.6"/>
+<path d="M1930,1564 L1930,1530 Q1930,1520 1940,1520 L2250,1520 Q2260,1520 2260,1530 L2260,1564 Z" fill="#be123c"/>
+<text x="1944" y="1550" class="hd">SESIÓN DE CLASE</text>
+<rect x="2186" y="1529" width="66" height="27" rx="13" fill="#fde047" stroke="#854d0e" stroke-width="1.5"/><text x="2219.0" y="1549" text-anchor="middle" font-size="18" font-weight="800" fill="#422006">CSP</text>
+<text x="1944" y="1585" font-size="19" font-style="italic" fill="#64748b">clase programada de un día</text>
+<text x="1944" y="1612" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#be123c">#</tspan><tspan dx="8" text-decoration="underline" font-weight="700">id sesión</tspan></text>
+<text x="1944" y="1639" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#be123c">*</tspan><tspan dx="8">fecha</tspan></text>
+<text x="1944" y="1666" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#be123c">o</tspan><tspan dx="8">hora real de inicio</tspan></text>
+<text x="1944" y="1693" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#be123c">o</tspan><tspan dx="8">hora real de fin</tspan></text>
+<text x="1944" y="1720" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#be123c">*</tspan><tspan dx="8">estado</tspan></text>
+<text x="1944" y="1747" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#be123c">o</tspan><tspan dx="8">propósito de aprendizaje</tspan></text>
+<text x="1944" y="1774" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#be123c">o</tspan><tspan dx="8">justificación</tspan></text>
+<rect x="1470" y="1780" width="330" height="162" rx="10" fill="#fff" stroke="#be123c" stroke-width="2.6"/>
+<path d="M1470,1824 L1470,1790 Q1470,1780 1480,1780 L1790,1780 Q1800,1780 1800,1790 L1800,1824 Z" fill="#be123c"/>
+<text x="1484" y="1810" class="hd">ASISTENCIA</text>
+<text x="1484" y="1845" font-size="19" font-style="italic" fill="#64748b">del estudiante en la sesión</text>
+<text x="1484" y="1872" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#be123c">#</tspan><tspan dx="8" text-decoration="underline" font-weight="700">id asistencia</tspan></text>
+<text x="1484" y="1899" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#be123c">*</tspan><tspan dx="8">estado (P / T / F / J)</tspan></text>
+<text x="1484" y="1926" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#be123c">o</tspan><tspan dx="8">justificación</tspan></text>
+<rect x="550" y="1740" width="330" height="297" rx="10" fill="#fff" stroke="#be123c" stroke-width="2.6"/>
+<path d="M550,1784 L550,1750 Q550,1740 560,1740 L870,1740 Q880,1740 880,1750 L880,1784 Z" fill="#be123c"/>
+<text x="564" y="1770" class="hd">MARCACIÓN</text>
+<text x="564" y="1805" font-size="19" font-style="italic" fill="#64748b">ingreso / salida del colegio</text>
+<text x="564" y="1832" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#be123c">#</tspan><tspan dx="8" text-decoration="underline" font-weight="700">id marcación</tspan></text>
+<text x="564" y="1859" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#be123c">*</tspan><tspan dx="8">tipo</tspan></text>
+<text x="564" y="1886" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#be123c">*</tspan><tspan dx="8">fecha y hora</tspan></text>
+<text x="564" y="1913" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#be123c">*</tspan><tspan dx="8">origen</tspan></text>
+<text x="564" y="1940" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#be123c">*</tspan><tspan dx="8">resultado</tspan></text>
+<text x="564" y="1967" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#be123c">*</tspan><tspan dx="8">minutos de tardanza</tspan></text>
+<text x="564" y="1994" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#be123c">o</tspan><tspan dx="8">(latitud, longitud)</tspan></text>
+<text x="564" y="2021" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#be123c">o</tspan><tspan dx="8">justificación</tspan></text>
+<rect x="90" y="1880" width="340" height="64" rx="10" fill="#f8fafc" stroke="#475569" stroke-width="2.4" stroke-dasharray="9 6"/>
+<text x="260.0" y="1909" text-anchor="middle" font-size="23" font-weight="700" fill="#475569">USUARIO</text>
+<text x="260.0" y="1932" text-anchor="middle" font-size="17" font-style="italic" fill="#64748b">réplica visual de la entidad</text>
+<rect x="90" y="2020" width="330" height="189" rx="10" fill="#fff" stroke="#7e22ce" stroke-width="2.6"/>
+<path d="M90,2064 L90,2030 Q90,2020 100,2020 L410,2020 Q420,2020 420,2030 L420,2064 Z" fill="#7e22ce"/>
+<text x="104" y="2050" class="hd">NOTIFICACIÓN</text>
+<text x="104" y="2085" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#7e22ce">#</tspan><tspan dx="8" text-decoration="underline" font-weight="700">id notificación</tspan></text>
+<text x="104" y="2112" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#7e22ce">*</tspan><tspan dx="8">título</tspan></text>
+<text x="104" y="2139" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#7e22ce">*</tspan><tspan dx="8">mensaje</tspan></text>
+<text x="104" y="2166" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#7e22ce">*</tspan><tspan dx="8">tipo</tspan></text>
+<text x="104" y="2193" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#7e22ce">*</tspan><tspan dx="8">leída</tspan></text>
+<rect x="90" y="2330" width="330" height="243" rx="10" fill="#fff" stroke="#7e22ce" stroke-width="2.6"/>
+<path d="M90,2374 L90,2340 Q90,2330 100,2330 L410,2330 Q420,2330 420,2340 L420,2374 Z" fill="#7e22ce"/>
+<text x="104" y="2360" class="hd">COMUNICADO</text>
+<text x="104" y="2395" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#7e22ce">#</tspan><tspan dx="8" text-decoration="underline" font-weight="700">id comunicado</tspan></text>
+<text x="104" y="2422" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#7e22ce">*</tspan><tspan dx="8">título</tspan></text>
+<text x="104" y="2449" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#7e22ce">*</tspan><tspan dx="8">contenido</tspan></text>
+<text x="104" y="2476" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#7e22ce">*</tspan><tspan dx="8">dirigido a</tspan></text>
+<text x="104" y="2503" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#7e22ce">*</tspan><tspan dx="8">prioridad</tspan></text>
+<text x="104" y="2530" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#7e22ce">*</tspan><tspan dx="8">estado</tspan></text>
+<text x="104" y="2557" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#7e22ce">o</tspan><tspan dx="8">publicado en</tspan></text>
+<rect x="550" y="2100" width="330" height="270" rx="10" fill="#fff" stroke="#7e22ce" stroke-width="2.6"/>
+<path d="M550,2144 L550,2110 Q550,2100 560,2100 L870,2100 Q880,2100 880,2110 L880,2144 Z" fill="#7e22ce"/>
+<text x="564" y="2130" class="hd">INCIDENCIA</text>
+<text x="564" y="2165" font-size="19" font-style="italic" fill="#64748b">de convivencia (mérito o falta)</text>
+<text x="564" y="2192" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#7e22ce">#</tspan><tspan dx="8" text-decoration="underline" font-weight="700">id incidencia</tspan></text>
+<text x="564" y="2219" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#7e22ce">*</tspan><tspan dx="8">fecha</tspan></text>
+<text x="564" y="2246" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#7e22ce">*</tspan><tspan dx="8">tipo (mérito / falta)</tspan></text>
+<text x="564" y="2273" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#7e22ce">*</tspan><tspan dx="8">categoría</tspan></text>
+<text x="564" y="2300" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#7e22ce">o</tspan><tspan dx="8">gravedad</tspan></text>
+<text x="564" y="2327" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#7e22ce">*</tspan><tspan dx="8">descripción</tspan></text>
+<text x="564" y="2354" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#7e22ce">o</tspan><tspan dx="8">medidas tomadas</tspan></text>
+<rect x="550" y="2430" width="330" height="243" rx="10" fill="#fff" stroke="#7e22ce" stroke-width="2.6"/>
+<path d="M550,2474 L550,2440 Q550,2430 560,2430 L870,2430 Q880,2430 880,2440 L880,2474 Z" fill="#7e22ce"/>
+<text x="564" y="2460" class="hd">OBSERVACIÓN</text>
+<text x="564" y="2495" font-size="19" font-style="italic" fill="#64748b">tutorial / psicopedagógica</text>
+<text x="564" y="2522" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#7e22ce">#</tspan><tspan dx="8" text-decoration="underline" font-weight="700">id observación</tspan></text>
+<text x="564" y="2549" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#7e22ce">*</tspan><tspan dx="8">fecha</tspan></text>
+<text x="564" y="2576" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#7e22ce">*</tspan><tspan dx="8">tipo</tspan></text>
+<text x="564" y="2603" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#7e22ce">*</tspan><tspan dx="8">observación</tspan></text>
+<text x="564" y="2630" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#7e22ce">o</tspan><tspan dx="8">derivado a</tspan></text>
+<text x="564" y="2657" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#7e22ce">*</tspan><tspan dx="8">confidencial</tspan></text>
+<rect x="2850" y="900" width="340" height="216" rx="10" fill="#fff" stroke="#0369a1" stroke-width="2.6"/>
+<path d="M2850,944 L2850,910 Q2850,900 2860,900 L3180,900 Q3190,900 3190,910 L3190,944 Z" fill="#0369a1"/>
+<text x="2864" y="930" class="hd">UNIDAD DE APRENDIZAJE</text>
+<text x="2864" y="965" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0369a1">#</tspan><tspan dx="8" text-decoration="underline" font-weight="700">id unidad</tspan></text>
+<text x="2864" y="992" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0369a1">*</tspan><tspan dx="8">título</tspan></text>
+<text x="2864" y="1019" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0369a1">o</tspan><tspan dx="8">descripción</tspan></text>
+<text x="2864" y="1046" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0369a1">*</tspan><tspan dx="8">orden</tspan></text>
+<text x="2864" y="1073" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0369a1">o</tspan><tspan dx="8">(fecha inicio, fecha fin)</tspan></text>
+<text x="2864" y="1100" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0369a1">*</tspan><tspan dx="8">publicada</tspan></text>
+<rect x="3310" y="900" width="330" height="243" rx="10" fill="#fff" stroke="#0369a1" stroke-width="2.6"/>
+<path d="M3310,944 L3310,910 Q3310,900 3320,900 L3630,900 Q3640,900 3640,910 L3640,944 Z" fill="#0369a1"/>
+<text x="3324" y="930" class="hd">MATERIAL</text>
+<rect x="3566" y="909" width="66" height="27" rx="13" fill="#fde047" stroke="#854d0e" stroke-width="1.5"/><text x="3599.0" y="929" text-anchor="middle" font-size="18" font-weight="800" fill="#422006">IGM</text>
+<text x="3324" y="965" font-size="19" font-style="italic" fill="#64748b">recurso del aula virtual</text>
+<text x="3324" y="992" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0369a1">#</tspan><tspan dx="8" text-decoration="underline" font-weight="700">id material</tspan></text>
+<text x="3324" y="1019" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0369a1">*</tspan><tspan dx="8">título</tspan></text>
+<text x="3324" y="1046" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0369a1">*</tspan><tspan dx="8">tipo</tspan></text>
+<text x="3324" y="1073" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0369a1">*</tspan><tspan dx="8">URL / archivo</tspan></text>
+<text x="3324" y="1100" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0369a1">*</tspan><tspan dx="8">fecha programada</tspan></text>
+<text x="3324" y="1127" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0369a1">o</tspan><tspan dx="8">publicado en</tspan></text>
+<rect x="2850" y="1230" width="330" height="216" rx="10" fill="#fff" stroke="#0369a1" stroke-width="2.6"/>
+<path d="M2850,1274 L2850,1240 Q2850,1230 2860,1230 L3170,1230 Q3180,1230 3180,1240 L3180,1274 Z" fill="#0369a1"/>
+<text x="2864" y="1260" class="hd">TAREA</text>
+<text x="2864" y="1295" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0369a1">#</tspan><tspan dx="8" text-decoration="underline" font-weight="700">id tarea</tspan></text>
+<text x="2864" y="1322" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0369a1">*</tspan><tspan dx="8">título</tspan></text>
+<text x="2864" y="1349" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0369a1">*</tspan><tspan dx="8">tipo</tspan></text>
+<text x="2864" y="1376" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0369a1">*</tspan><tspan dx="8">puntaje máximo</tspan></text>
+<text x="2864" y="1403" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0369a1">*</tspan><tspan dx="8">fecha límite</tspan></text>
+<text x="2864" y="1430" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0369a1">*</tspan><tspan dx="8">estado</tspan></text>
+<rect x="3310" y="1230" width="330" height="162" rx="10" fill="#fff" stroke="#0369a1" stroke-width="2.6"/>
+<path d="M3310,1274 L3310,1240 Q3310,1230 3320,1230 L3630,1230 Q3640,1230 3640,1240 L3640,1274 Z" fill="#0369a1"/>
+<text x="3324" y="1260" class="hd">PREGUNTA</text>
+<text x="3324" y="1295" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0369a1">#</tspan><tspan dx="8" text-decoration="underline" font-weight="700">id pregunta</tspan></text>
+<text x="3324" y="1322" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0369a1">*</tspan><tspan dx="8">enunciado</tspan></text>
+<text x="3324" y="1349" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0369a1">*</tspan><tspan dx="8">tipo</tspan></text>
+<text x="3324" y="1376" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0369a1">*</tspan><tspan dx="8">puntaje</tspan></text>
+<rect x="3770" y="1230" width="330" height="135" rx="10" fill="#fff" stroke="#0369a1" stroke-width="2.6"/>
+<path d="M3770,1274 L3770,1240 Q3770,1230 3780,1230 L4090,1230 Q4100,1230 4100,1240 L4100,1274 Z" fill="#0369a1"/>
+<text x="3784" y="1260" class="hd">OPCIÓN DE RESPUESTA</text>
+<text x="3784" y="1295" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0369a1">#</tspan><tspan dx="8" text-decoration="underline" font-weight="700">id opción</tspan></text>
+<text x="3784" y="1322" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0369a1">*</tspan><tspan dx="8">texto</tspan></text>
+<text x="3784" y="1349" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0369a1">*</tspan><tspan dx="8">es correcta</tspan></text>
+<rect x="2850" y="1590" width="330" height="216" rx="10" fill="#fff" stroke="#0369a1" stroke-width="2.6"/>
+<path d="M2850,1634 L2850,1600 Q2850,1590 2860,1590 L3170,1590 Q3180,1590 3180,1600 L3180,1634 Z" fill="#0369a1"/>
+<text x="2864" y="1620" class="hd">ENTREGA DE TAREA</text>
+<text x="2864" y="1655" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0369a1">#</tspan><tspan dx="8" text-decoration="underline" font-weight="700">id entrega</tspan></text>
+<text x="2864" y="1682" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0369a1">*</tspan><tspan dx="8">intento</tspan></text>
+<text x="2864" y="1709" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0369a1">*</tspan><tspan dx="8">entregada en</tspan></text>
+<text x="2864" y="1736" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0369a1">o</tspan><tspan dx="8">contenido / archivo</tspan></text>
+<text x="2864" y="1763" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0369a1">o</tspan><tspan dx="8">nota</tspan></text>
+<text x="2864" y="1790" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0369a1">o</tspan><tspan dx="8">retroalimentación</tspan></text>
+<rect x="3310" y="1660" width="340" height="64" rx="10" fill="#f8fafc" stroke="#15803d" stroke-width="2.4" stroke-dasharray="9 6"/>
+<text x="3480.0" y="1689" text-anchor="middle" font-size="23" font-weight="700" fill="#15803d">MATRÍCULA</text>
+<text x="3480.0" y="1712" text-anchor="middle" font-size="17" font-style="italic" fill="#64748b">réplica visual de la entidad</text>
+<rect x="3770" y="1590" width="330" height="135" rx="10" fill="#fff" stroke="#0369a1" stroke-width="2.6"/>
+<path d="M3770,1634 L3770,1600 Q3770,1590 3780,1590 L4090,1590 Q4100,1590 4100,1600 L4100,1634 Z" fill="#0369a1"/>
+<text x="3784" y="1620" class="hd">ACTIVIDAD EN EL AULA</text>
+<text x="3784" y="1655" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0369a1">#</tspan><tspan dx="8" text-decoration="underline" font-weight="700">id actividad</tspan></text>
+<text x="3784" y="1682" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0369a1">*</tspan><tspan dx="8">acción</tspan></text>
+<text x="3784" y="1709" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0369a1">*</tspan><tspan dx="8">fecha y hora</tspan></text>
+<rect x="2850" y="1990" width="330" height="162" rx="10" fill="#fff" stroke="#0369a1" stroke-width="2.6"/>
+<path d="M2850,2034 L2850,2000 Q2850,1990 2860,1990 L3170,1990 Q3180,1990 3180,2000 L3180,2034 Z" fill="#0369a1"/>
+<text x="2864" y="2020" class="hd">PUBLICACIÓN DEL MURO</text>
+<text x="2864" y="2055" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0369a1">#</tspan><tspan dx="8" text-decoration="underline" font-weight="700">id publicación</tspan></text>
+<text x="2864" y="2082" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0369a1">*</tspan><tspan dx="8">contenido</tspan></text>
+<text x="2864" y="2109" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0369a1">o</tspan><tspan dx="8">adjunto</tspan></text>
+<text x="2864" y="2136" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0369a1">*</tspan><tspan dx="8">fijada</tspan></text>
+<rect x="3310" y="2010" width="330" height="135" rx="10" fill="#fff" stroke="#0369a1" stroke-width="2.6"/>
+<path d="M3310,2054 L3310,2020 Q3310,2010 3320,2010 L3630,2010 Q3640,2010 3640,2020 L3640,2054 Z" fill="#0369a1"/>
+<text x="3324" y="2040" class="hd">COMENTARIO</text>
+<text x="3324" y="2075" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0369a1">#</tspan><tspan dx="8" text-decoration="underline" font-weight="700">id comentario</tspan></text>
+<text x="3324" y="2102" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0369a1">*</tspan><tspan dx="8">contenido</tspan></text>
+<text x="3324" y="2129" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0369a1">*</tspan><tspan dx="8">creado en</tspan></text>
+<rect x="2850" y="2350" width="330" height="162" rx="10" fill="#fff" stroke="#0369a1" stroke-width="2.6"/>
+<path d="M2850,2394 L2850,2360 Q2850,2350 2860,2350 L3170,2350 Q3180,2350 3180,2360 L3180,2394 Z" fill="#0369a1"/>
+<text x="2864" y="2380" class="hd">MENSAJE DE CHAT</text>
+<text x="2864" y="2415" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0369a1">#</tspan><tspan dx="8" text-decoration="underline" font-weight="700">id mensaje</tspan></text>
+<text x="2864" y="2442" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0369a1">*</tspan><tspan dx="8">contenido</tspan></text>
+<text x="2864" y="2469" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0369a1">*</tspan><tspan dx="8">enviado en</tspan></text>
+<text x="2864" y="2496" class="at"><tspan font-family="Consolas, monospace" font-weight="700" fill="#0369a1">o</tspan><tspan dx="8">leído en</tspan></text>
+<rect x="3310" y="2380" width="340" height="64" rx="10" fill="#f8fafc" stroke="#475569" stroke-width="2.4" stroke-dasharray="9 6"/>
+<text x="3480.0" y="2409" text-anchor="middle" font-size="23" font-weight="700" fill="#475569">USUARIO</text>
+<text x="3480.0" y="2432" text-anchor="middle" font-size="17" font-style="italic" fill="#64748b">réplica visual de la entidad</text>
+<rect x="1000" y="2330" width="1290" height="610" rx="14" fill="#f8fafc" stroke="#94a3b8" stroke-width="2"/>
+<text x="1024" y="2370" font-size="27" font-weight="800" fill="#0f172a">LEYENDA</text>
+<line x1="1024" y1="2412" x2="1114" y2="2412" class="ln"/>
+<line x1="1103.0" y1="2402.0" x2="1103.0" y2="2422.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1089.0" y1="2402.0" x2="1089.0" y2="2422.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<rect x="1114" y="2398" width="8" height="28" fill="#374151"/>
+<text x="1136" y="2419" font-size="20" fill="#1f2937">exactamente uno (1..1)</text>
+<line x1="1644" y1="2412" x2="1734" y2="2412" class="ln"/>
+<line x1="1723.0" y1="2402.0" x2="1723.0" y2="2422.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="1705.0" cy="2412.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<rect x="1734" y="2398" width="8" height="28" fill="#374151"/>
+<text x="1756" y="2419" font-size="20" fill="#1f2937">cero o uno (0..1)</text>
+<line x1="1024" y1="2456" x2="1114" y2="2456" class="ln"/>
+<line x1="1096.0" y1="2456.0" x2="1114.0" y2="2467.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1096.0" y1="2456.0" x2="1114.0" y2="2456.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1096.0" y1="2456.0" x2="1114.0" y2="2445.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1089.0" y1="2446.0" x2="1089.0" y2="2466.0" stroke="#374151" stroke-width="2.2" fill="none"/>
+<rect x="1114" y="2442" width="8" height="28" fill="#374151"/>
+<text x="1136" y="2463" font-size="20" fill="#1f2937">uno o muchos (1..N)</text>
+<line x1="1644" y1="2456" x2="1734" y2="2456" class="ln"/>
+<line x1="1716.0" y1="2456.0" x2="1734.0" y2="2467.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1716.0" y1="2456.0" x2="1734.0" y2="2456.0" stroke="#374151" stroke-width="2.2" fill="none"/><line x1="1716.0" y1="2456.0" x2="1734.0" y2="2445.0" stroke="#374151" stroke-width="2.2" fill="none"/><circle cx="1705.0" cy="2456.0" r="6.5" fill="#fff" stroke="#374151" stroke-width="2.2"/>
+<rect x="1734" y="2442" width="8" height="28" fill="#374151"/>
+<text x="1756" y="2463" font-size="20" fill="#1f2937">cero o muchos (0..N)</text>
+<text x="1024" y="2516" font-size="21" font-family="Consolas, monospace" font-weight="700" fill="#1d4ed8">#</text><text x="1074" y="2516" font-size="19" fill="#1f2937">identificador único (clave candidata elegida)</text>
+<text x="1644" y="2516" font-size="21" font-family="Consolas, monospace" font-weight="700" fill="#1d4ed8">*</text><text x="1694" y="2516" font-size="19" fill="#1f2937">atributo obligatorio</text>
+<text x="1024" y="2552" font-size="21" font-family="Consolas, monospace" font-weight="700" fill="#1d4ed8">o</text><text x="1074" y="2552" font-size="19" fill="#1f2937">atributo opcional</text>
+<text x="1644" y="2552" font-size="21" font-family="Consolas, monospace" font-weight="700" fill="#1d4ed8">{ }</text><text x="1694" y="2552" font-size="19" fill="#1f2937">atributo multivaluado  ·  ( ) atributo compuesto</text>
+<circle cx="1044" cy="2592" r="17" fill="#fff" stroke="#374151" stroke-width="2.4"/><text x="1044" y="2600" text-anchor="middle" font-size="22" font-weight="700">o</text><text x="1074" y="2600" font-size="19" fill="#1f2937">especialización solapada (una persona puede ser docente y apoderado a la vez)</text>
+<rect x="1024" y="2622" width="60" height="30" rx="6" fill="#fffbeb" stroke="#d97706" stroke-width="2" stroke-dasharray="7 4"/><text x="1098" y="2644" font-size="19" fill="#1f2937">atributos propios de una relación muchos a muchos (N:M)</text>
+<rect x="1024" y="2666" width="60" height="30" rx="6" fill="#f8fafc" stroke="#475569" stroke-width="2" stroke-dasharray="7 4"/><text x="1098" y="2688" font-size="19" fill="#1f2937">réplica visual de una entidad (evita cruces; es la misma entidad)</text>
+<rect x="1024" y="2711" width="60" height="27" rx="13" fill="#fde047" stroke="#854d0e" stroke-width="1.5"/><text x="1054" y="2731" text-anchor="middle" font-size="16" font-weight="800">CSP</text><text x="1098" y="2732" font-size="19" fill="#1f2937">entidad que alimenta un indicador de tesis (CSP · IGM · ISA)</text>
+<text x="1024" y="2782" font-size="21" font-weight="800" fill="#0f172a">Módulos</text>
+<rect x="1024" y="2796" width="26" height="26" rx="5" fill="#475569"/><text x="1060" y="2816" font-size="18" fill="#1f2937">Seguridad</text>
+<rect x="1444" y="2796" width="26" height="26" rx="5" fill="#a16207"/><text x="1480" y="2816" font-size="18" fill="#1f2937">Institución</text>
+<rect x="1864" y="2796" width="26" height="26" rx="5" fill="#1d4ed8"/><text x="1900" y="2816" font-size="18" fill="#1f2937">Estructura académica</text>
+<rect x="1024" y="2832" width="26" height="26" rx="5" fill="#0f766e"/><text x="1060" y="2852" font-size="18" fill="#1f2937">Comunidad educativa</text>
+<rect x="1444" y="2832" width="26" height="26" rx="5" fill="#15803d"/><text x="1480" y="2852" font-size="18" fill="#1f2937">Organización y matrícula</text>
+<rect x="1864" y="2832" width="26" height="26" rx="5" fill="#c2410c"/><text x="1900" y="2852" font-size="18" fill="#1f2937">Evaluación</text>
+<rect x="1024" y="2868" width="26" height="26" rx="5" fill="#be123c"/><text x="1060" y="2888" font-size="18" fill="#1f2937">Asistencia</text>
+<rect x="1444" y="2868" width="26" height="26" rx="5" fill="#7e22ce"/><text x="1480" y="2888" font-size="18" fill="#1f2937">Convivencia y comunicación</text>
+<rect x="1864" y="2868" width="26" height="26" rx="5" fill="#0369a1"/><text x="1900" y="2888" font-size="18" fill="#1f2937">Aula virtual</text>
+</svg>

@@ -1,15 +1,20 @@
 # Guía de entrevista — Pendientes del SGA Colegio
 
 **Proyecto:** SGA Colegio — Sistema de Gestión Académica
-**Fecha de la entrevista:** ____ / ____ / ________
 **Entrevistador:** Hever Lima
+**Estado:** 1.ª ronda respondida el 2026-10-09 · **quedan 6 preguntas** (sección A)
 
 > Marque una opción (☐ → ☒) o escriba la respuesta. La opción **(propuesta)** es la que el sistema usa hoy; si el colegio la acepta, basta marcarla.
-> Al volver, las respuestas se registran en `PENDIENTES.md` y se corrigen los RF en su versión 2.
+> Todo valor numérico es **configurable** (tabla de variables del sistema) y todo "quién puede" es **configurable por perfil**.
+> Al volver, las respuestas se registran en `PENDIENTES.md` y se corrigen los RF en una nueva versión.
 
 ---
 
-## 1. Subdirección
+# A. PREGUNTAS PENDIENTES (2.ª ronda)
+
+**Fecha de la entrevista:** ____ / ____ / ________
+
+## A.1 Subdirección
 
 **Entrevistado:** ______________________________________ **Cargo:** __________________
 
@@ -21,45 +26,14 @@
 
 Hora de inicio de la primera clase: ________ Recreo: de ________ a ________ ¿Hay un segundo recreo? ☐ No ☐ Sí: ________
 
-### P-04 · Bloque doble (RF-008)
+### P-04 · Bloque doble (RF-008, RF-011)
 ¿Un curso puede tener dos horas pedagógicas seguidas (90 min)?
 - ☐ No
 - ☐ Sí, y el docente **firma una sola vez** (ingreso y salida del bloque completo) **(propuesta)**
 - ☐ Sí, pero el docente firma **cada hora por separado**
 
-### P-05 · Desde cuándo se firma el ingreso (RF-011)
-Si la clase empieza a las 08:30, ¿desde qué hora puede firmar el ingreso el docente?
-- ☐ Desde 1 minuto antes (08:29) **(propuesta)**
-- ☐ Desde ____ minutos antes
-
-¿Hasta qué hora como máximo puede firmar el ingreso?
-- ☐ Hasta que termina el bloque **(propuesta)**
-- ☐ Hasta ____ minutos después del inicio
-
-### P-06 · Tolerancia (RF-011)
-¿Cuántos minutos de tolerancia tiene el docente al firmar el ingreso (y la salida) antes de que la sesión cuente como **parcial**?
-- ☐ 3 minutos **(propuesta)**
-- ☐ ____ minutos
-
-### P-08 · Olvido de la firma de salida (RF-011)
-Si el docente firmó el ingreso pero olvidó firmar la salida, ¿cómo queda la sesión?
-- ☐ **Parcial**, con la observación "Sin firma de salida" **(propuesta)**
-- ☐ **Cumplida**
-- ☐ Otro: ____________________________
-
-### P-13 · Planificación de materiales (RF-015)
-¿Cuántos días tiene el docente, desde el inicio del bimestre, para planificar sus materiales del aula virtual antes de que las fechas se congelen?
-- ☐ 7 días (primera semana) **(propuesta)**
-- ☐ ____ días
-
-### P-14 · Cambios de fecha de materiales (RF-015)
-¿Quién aprueba que un docente cambie la fecha de un material ya planificado?
-- ☐ Subdirector **(propuesta)**
-- ☐ Director
-- ☐ Otro: ____________________________
-
 ### P-15 · Conversión de la nota a literal (RF-016)
-¿Qué rangos se usan para pasar la nota (0–20) a AD, A, B, C?
+¿Qué rangos se usan para pasar la nota final del aula virtual (0–20) a AD, A, B, C?
 
 | Literal | Propuesta | Rango del colegio |
 |---|---|---|
@@ -68,97 +42,41 @@ Si el docente firmó el ingreso pero olvidó firmar la salida, ¿cómo queda la 
 | B | 11 – 13 | ____ – ____ |
 | C | 0 – 10 | ____ – ____ |
 
-### P-16 · Nota final del aula virtual (RF-016)
-¿Cómo se calcula la nota final de un curso en el aula virtual por bimestre?
-- ☐ Promedio simple de todas las tareas **(propuesta)**
-- ☐ Con peso por tipo: Examen ____ % · Cuestionario ____ % · Trabajo ____ % · Proyecto ____ %
+**Y los pesos de la nota final** (P-16 ya respondida: con peso por tipo):
+Examen ____ % · Cuestionario ____ % · Trabajo ____ % · Proyecto ____ % (deben sumar 100 %; hoy 25 % cada uno)
 
-**Observaciones de la Subdirección:**
+**Observaciones:** ________________________________________________________________
 
-______________________________________________________________________________
-
-______________________________________________________________________________
-
----
-
-## 2. Dirección
+## A.2 Dirección
 
 **Entrevistado:** ______________________________________ **Cargo:** __________________
 
-### P-02 · Docente que también es apoderado (RF-007)
-Si un docente tiene un hijo en el colegio, ¿necesita entrar al sistema **también como apoderado** (ver libretas, conducta y comunicados de su hijo)?
-- ☐ No; entra solo como docente **(propuesta)**
-- ☐ Sí; debe poder ver también el portal de apoderado
-
 ### P-07 · Justificación de sesiones (RF-011)
-¿Quién aprueba la justificación de una sesión no dictada (por ejemplo, por descanso médico)?
+¿Qué perfil aprueba la justificación de una sesión no dictada (por ejemplo, por descanso médico)? *(será configurable)*
 - ☐ Subdirector **(propuesta)**
 - ☐ Director
 - ☐ Ambos
 
-### P-09 · Registro de ausencias del docente (RF-012)
-¿Quién registra que encontró al docente fuera de clase durante su sesión?
-- ☐ Director y Subdirector **(propuesta)**
-- ☐ Solo el Director
-- ☐ Otro cargo además: ____________________________
+**Observaciones:** ________________________________________________________________
 
-### P-10 · Plazo del descargo (RF-012)
-¿Cuántos días tiene el docente para dejar su descargo después de que le registran una ausencia?
-- ☐ 7 días calendario **(propuesta)**
-- ☐ ____ días ☐ calendario ☐ hábiles
-
-### P-17 · Observaciones confidenciales (RF-018)
-Hoy las ven: quien la registró, el tutor y los apoderados del estudiante. ¿Quién más debe verlas? *(puede marcar varias)*
-- ☐ Director **(propuesta)**
-- ☐ Subdirector
-- ☐ Psicólogo(a)
-- ☐ El propio estudiante
-- ☐ Nadie más
-
-**Observaciones de la Dirección:**
-
-______________________________________________________________________________
-
-______________________________________________________________________________
-
----
-
-## 3. Secretaría (y docentes que manejan el SIAGIE)
+## A.3 Secretaría (y docentes que manejan el SIAGIE)
 
 **Entrevistado:** ______________________________________ **Cargo:** __________________
 
-### P-01 · Registro de apoderados (RF-007)
-¿Cómo se registrarán los apoderados?
-- ☐ Uno por uno, desde la ficha del estudiante **(propuesta)**
-- ☐ En la misma plantilla Excel de estudiantes (columnas del padre/madre)
-- ☐ En una plantilla Excel aparte
-
 ### P-12 · Libreta del SIAGIE (RF-014)
-**Pedir un PDF de ejemplo de una libreta descargada del SIAGIE.**
+**Pedir un PDF de ejemplo de una libreta descargada del SIAGIE.** ☐ Se obtuvo el PDF
 
 ¿Dónde aparece el código del estudiante?
 - ☐ En el **nombre del archivo** **(propuesta)** — Ejemplo de nombre: ______________________________
 - ☐ **Impreso dentro** del PDF
 - ☐ En ambos
 
-¿Qué código es?
-- ☐ Código del estudiante del SIAGIE
-- ☐ DNI
-- ☐ Otro: ____________________________
-
+¿Qué código es? ☐ Código del estudiante del SIAGIE ☐ DNI ☐ Otro: ______________
 ¿El SIAGIE descarga un PDF por estudiante o uno por sección? ☐ Por estudiante ☐ Por sección
 
-☐ **Se obtuvo el PDF de ejemplo**
+**Observaciones:** ________________________________________________________________
 
-**Observaciones de la Secretaría:**
-
-______________________________________________________________________________
-
-______________________________________________________________________________
-
----
-
-## 4. Asesor de tesis
+## A.4 Asesor de tesis
 
 **Asesor:** ______________________________________
 
@@ -172,30 +90,36 @@ Confirmar que coincide con el Anexo 03 del proyecto:
 - ☐ Las **justificadas** cuentan como no ejecutadas (no se excluyen)
 - ☐ Otra: ____________________________
 
-**Observaciones del asesor:**
+**Observaciones:** ________________________________________________________________
 
-______________________________________________________________________________
-
----
-
-## Resumen para registrar al volver
+## Resumen de la 2.ª ronda (para registrar al volver)
 
 | N.° | Respuesta corta | ¿Cambia el RF? |
 |---|---|---|
-| P-01 | | ☐ Sí ☐ No |
-| P-02 | | ☐ Sí ☐ No |
 | P-03 | | ☐ Sí ☐ No |
 | P-04 | | ☐ Sí ☐ No |
-| P-05 | | ☐ Sí ☐ No |
-| P-06 | | ☐ Sí ☐ No |
 | P-07 | | ☐ Sí ☐ No |
-| P-08 | | ☐ Sí ☐ No |
-| P-09 | | ☐ Sí ☐ No |
-| P-10 | | ☐ Sí ☐ No |
 | P-12 | | ☐ Sí ☐ No |
-| P-13 | | ☐ Sí ☐ No |
-| P-14 | | ☐ Sí ☐ No |
 | P-15 | | ☐ Sí ☐ No |
-| P-16 | | ☐ Sí ☐ No |
-| P-17 | | ☐ Sí ☐ No |
 | P-18 | | ☐ Sí ☐ No |
+
+---
+
+# B. PREGUNTAS YA RESPONDIDAS (1.ª ronda, 2026-10-09)
+
+| N.° | Pregunta | Respuesta | Aplicado en |
+|---|---|---|---|
+| P-01 | ¿Cómo se registran los apoderados? | Uno por uno desde la ficha del estudiante **y** masivo con plantilla Excel | `RF-007` V2 |
+| P-02 | ¿El docente que es apoderado ve también el portal de apoderado? | Sí: un usuario puede tener **varios perfiles** y cambiar entre ellos | `RF-001`, `RF-002`, `RF-007` V2 |
+| P-05 | ¿Desde cuándo se firma el ingreso de la sesión? | Desde **15 minutos antes** hasta que termina el bloque; configurable | `RF-011` V2 |
+| P-06 | ¿Tolerancia al firmar? | **15 minutos** al ingresar y **15** al salir; configurables | `RF-011` V2 |
+| P-08 | ¿Si olvida firmar la salida? | **Parcial** con "Sin firma de salida" y **hora de salida automática** (fin del bloque) | `RF-011` V2 |
+| P-09 | ¿Quién registra ausencias del docente? | Director y Subdirector por defecto; **configurable por perfil** | `RF-012` V2 |
+| P-10 | ¿Plazo del descargo? | **7 días calendario**; configurable (tabla de variables) | `RF-012`, `RF-004` V2 |
+| P-11 | ¿Se puede corregir o borrar una ausencia? | Se corrige en 24 h antes del descargo; después solo se anula; cada cambio crea versión nueva (vigencia 0) | `RF-012` |
+| P-13 | ¿Días para planificar materiales? | **7 días**; configurable | `RF-015` V2 |
+| P-14 | ¿Quién aprueba cambios de fecha de materiales? | Subdirector por defecto; **configurable por perfil** | `RF-015` V2 |
+| P-16 | ¿Cómo se calcula la nota final del aula virtual? | **Con peso por tipo** (examen, cuestionario, trabajo, proyecto); pesos configurables (faltan los % → ver P-15) | `RF-016` V2 |
+| P-17 | ¿Quién más ve observaciones confidenciales? | El **Director** y el **propio estudiante**; configurable por perfil | `RF-018` V2 |
+
+**Decisión adicional (2026-10-09):** se distinguen **perfil** (acceso al sistema) y **cargo** (puesto en el colegio). Los permisos se dan solo por perfil; el cargo solo sugiere perfiles. → `RF-002`, `RF-007` V2.

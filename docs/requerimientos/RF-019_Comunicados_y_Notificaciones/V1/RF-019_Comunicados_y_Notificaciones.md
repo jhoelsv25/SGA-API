@@ -13,9 +13,9 @@
     1.  **Comunicados:** anuncios que redacta una persona (citaciones, reuniones, avisos) para un grupo.
     2.  **Notificaciones:** avisos personales que el sistema genera solo cuando ocurre algo que afecta al usuario.
 *   **Solo dentro del sistema.** Todo se entrega en la **bandeja de notificaciones** del sistema (campana con contador). No se envían correos, SMS ni WhatsApp.
-*   **Quién publica comunicados: por rol con alcance** (`RF-002`). Valores por defecto del permiso `comunicados.publicar`:
+*   **Quién publica comunicados: por perfil con alcance** (`RF-002`). Valores por defecto del permiso `comunicados.publicar`:
 
-    | Rol | Alcance | Puede dirigir comunicados a… |
+    | Perfil | Alcance | Puede dirigir comunicados a… |
     |---|---|---|
     | Director, Subdirector | `colegio` | Todo el colegio, un grado o una sección |
     | Docente (tutor) | `tutoria` | Solo su sección |
@@ -69,7 +69,7 @@
 
 ## Acuerdos y puntos abiertos
 
-*   **Publicación por rol con alcance (acordado).** Por defecto, Director a todo el colegio y tutor solo a su sección.
+*   **Publicación por perfil con alcance (acordado).** Por defecto, Director a todo el colegio y tutor solo a su sección.
 *   **Lectura (acordado).** Basta con abrirlo.
 *   **Canal (acordado).** Solo dentro del sistema.
 
@@ -171,7 +171,7 @@
 ## Reglas de validación y negocio (resumen)
 
 *   **Canal:** solo dentro del sistema; sin correo, SMS ni WhatsApp.
-*   **Comunicados:** obligatorios Título, Contenido, Público y Alcance; adjunto PDF o imagen de hasta 10 MB; vencimiento posterior a la publicación; alcance dentro del permitido por rol (`RF-002`).
+*   **Comunicados:** obligatorios Título, Contenido, Público y Alcance; adjunto PDF o imagen de hasta 10 MB; vencimiento posterior a la publicación; alcance dentro del permitido por perfil (`RF-002`).
 *   **Estados:** `borrador` → `publicado` → `archivado`; publicado no se edita; nada se borra.
 *   **Destinatarios:** calculados por público y alcance, solo con matrícula vigente.
 *   **Lectura:** se registra al abrir; sin "Enterado"; el autor ve el avance.

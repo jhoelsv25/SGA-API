@@ -1,0 +1,28 @@
+# Casos de prueba — RF-014: Libretas del SIAGIE
+
+**Fuente:** [`RF-014` V1](../../requerimientos/RF-014_Libretas_del_SIAGIE/V1/RF-014_Libretas_del_SIAGIE.md) · **Total de casos:** 20
+
+> Generados desde los escenarios Gherkin. Si el RF cambia de versión, regenerar y conservar las ejecuciones anteriores.
+
+| ID | HU | Escenario | Precondición (Dado) | Acción (Cuando) | Resultado esperado (Entonces) | Capa |
+|---|---|---|---|---|---|---|
+| CP-RF014-01 | HU1 | Programar las libretas | que el II Bimestre está en curso y hay 168 estudiantes con matrícula vigente | fijo la fecha límite 26/07/2027 y confirmo | el sistema crea 168 libretas `pendiente` y muestra "Se programaron 168 libretas del II Bimestre con fecha límite 26/07/2027." | Back + Front |
+| CP-RF014-02 | HU1 | Estudiante matriculado después | que las libretas del II Bimestre ya están programadas | se matricula un nuevo estudiante (`RF-009`) | el sistema le crea su libreta `pendiente` con la misma fecha límite. | Back + Front |
+| CP-RF014-03 | HU1 | Estudiante retirado antes de la fecha límite | que un estudiante tiene su libreta `pendiente` | se registra su retiro antes de la fecha límite | su libreta pendiente se elimina y deja de contar en el ISA. | Back + Front |
+| CP-RF014-04 | HU1 | Cambiar la fecha límite | que hay libretas pendientes del II Bimestre | cambio la fecha límite al 30/07/2027 | las libretas pendientes toman la nueva fecha y el cambio queda en la bitácora · las ya publicadas conservan su estado. | Back + Front |
+| CP-RF014-05 | HU2 | Subir y publicar a tiempo | que soy tutor de 5.° A, las libretas del II Bimestre vencen el 26/07/2027 y hoy es 24/07/2027 | subo 30 PDF cuyo nombre contiene el código SIAGIE de cada estudiante y confirmo la vista previa | el sistema publica las 30 libretas como `a_tiempo`, notifica a cada estudiante y apoderado principal, y muestra "Se publicaron 30 libretas. Se notificó a los estudiantes y apoderados." | Back + Front |
+| CP-RF014-06 | HU2 | Publicar fuera de plazo | que la fecha límite fue el 26/07/2027 | publico una libreta el 28/07/2027 | la libreta queda `fuera_de_plazo`. | Back + Front |
+| CP-RF014-07 | HU2 | Vista previa con archivos no reconocidos | que subí 31 archivos y 2 no tienen un código reconocible y 1 es de un estudiante de 5.° B | el sistema termina de leerlos | muestra "28 libretas asignadas, 2 sin reconocer, 1 de otra sección." sin publicar nada todavía. | Back + Front |
+| CP-RF014-08 | HU2 | Asignar manualmente un archivo | que un archivo quedó sin reconocer | elijo al estudiante correspondiente de la lista de la sección | el archivo queda asignado con asignación `manual` y se publica al confirmar. | Back + Front |
+| CP-RF014-09 | HU2 | Archivo inválido | que estoy subiendo libretas | incluyo una imagen JPG o un PDF de 8 MB | el sistema rechaza ese archivo y muestra "Solo se aceptan archivos PDF de hasta 5 MB." | Back + Front |
+| CP-RF014-10 | HU2 | Demasiados archivos | que estoy subiendo libretas | selecciono 60 archivos | el sistema rechaza la carga y muestra "Puede subir hasta 50 archivos por carga." | Back + Front |
+| CP-RF014-11 | HU2 | Bimestre sin programar | que el III Bimestre aún no tiene libretas programadas | intento subir libretas del III Bimestre | el sistema bloquea la carga y muestra "El bimestre aún no tiene libretas programadas." | Back + Front |
+| CP-RF014-12 | HU2 | Sección sin permiso | que mi perfil tiene `libretas.subir` con alcance `mis_secciones` y no dicto en 4.° B | intento subir libretas de 4.° B | el sistema rechaza la carga y muestra "No tiene permiso para subir libretas de esta sección." | Back + Front |
+| CP-RF014-13 | HU2 | Cambiar el alcance | que soy Administrador | cambio el alcance de `libretas.subir` del perfil Docente de `mis_secciones` a `tutoria` | desde ese momento solo los tutores pueden subir libretas de su sección, y el cambio queda en la bitácora. | Back + Front |
+| CP-RF014-14 | HU3 | Reemplazar con motivo | que la libreta de un estudiante ya está publicada `a_tiempo` | subo un nuevo PDF para él con el motivo "Corrección de nota en el SIAGIE" | el nuevo archivo queda vigente, el anterior queda con vigencia 0 con quién y cuándo, y la libreta sigue `a_tiempo`. | Back + Front |
+| CP-RF014-15 | HU3 | Reemplazo sin motivo | que el estudiante ya tiene libreta publicada | subo otro PDF sin motivo | el sistema impide guardar y muestra "Indique el motivo del reemplazo." | Back + Front |
+| CP-RF014-16 | HU3 | Historial de archivos | que una libreta fue reemplazada | el Director abre su historial | el sistema lista cada archivo con quién lo subió, cuándo, el motivo del reemplazo y cuál es el vigente. | Back + Front |
+| CP-RF014-17 | HU4 | Ver la libreta publicada | que la libreta del II Bimestre de mi hijo está publicada | la abro por primera vez | el sistema la muestra, permite descargarla y registra la fecha y hora de la primera vista. | Back + Front |
+| CP-RF014-18 | HU4 | Libreta aún no publicada | que la libreta del II Bimestre aún está pendiente | el estudiante entra a "Mis libretas" | ve el bimestre con el mensaje "Tu libreta del II Bimestre aún no está disponible." | Back + Front |
+| CP-RF014-19 | HU4 | Libreta de otro estudiante | que soy apoderado de un estudiante | intento abrir la libreta de otro estudiante | el sistema rechaza el acceso. | Back + Front |
+| CP-RF014-20 | HU5 | Avance por sección | que estoy en "Libretas" y elijo el II Bimestre | veo el resumen | el sistema muestra por sección cuántas libretas están a tiempo, fuera de plazo, pendientes y vistas por la familia, con el porcentaje a tiempo · permite ver el detalle por estudiante. | Back + Front |

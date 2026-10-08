@@ -32,7 +32,7 @@
 - **Calendario de eventos.** Feriados, suspensiones, jornadas pedagógicas, reuniones, actividades y exámenes, cada uno con título, tipo, fecha de inicio y fin (fin ≥ inicio) y descripción opcional.
 - **Días sin clases.** Un evento marcado como **"Suspende clases"** (por defecto en feriados, suspensiones y jornadas pedagógicas) hace que ese día no se generen sesiones de clase (`RF-011`) y no cuente como sesión planificada en el CSP (`RF-020`).
 - **Evento registrado después.** Si se registra una suspensión para una fecha que ya tiene sesiones generadas, el sistema elimina las sesiones **pendientes** de esa fecha. Las que ya tienen firma se conservan.
-- **Quién gestiona.** Año y bimestres: el Administrador. Calendario de eventos: la decisión de suspender clases es del Director, pero la registra **cualquier rol que tenga el permiso** `calendario.registrar` (por defecto, Administrador y Director; el Administrador puede dárselo a otro rol, como Secretaria o Subdirector, en `RF-002`). Todos los usuarios pueden ver el calendario.
+- **Quién gestiona.** Año y bimestres: el Administrador. Calendario de eventos: la decisión de suspender clases es del Director, pero la registra **cualquier perfil que tenga el permiso** `calendario.registrar` (por defecto, Administrador y Director; el Administrador puede dárselo a otro perfil, como Secretaria o Subdirector, en `RF-002`). Todos los usuarios pueden ver el calendario.
 - **Operación 100% en línea.**
 - **Auditoría inmutable.** Crear o editar años, bimestres y eventos, y cada cambio de estado, queda en la bitácora (`RF-003`).
 
@@ -63,7 +63,7 @@
 
 - **Periodos (acordado).** 4 bimestres por año.
 - **Cierre de bimestre (acordado).** Bloquea las sesiones y ausencias de sus fechas.
-- **Registro de eventos (acordado).** El Director ordena; lo registra cualquier rol con el permiso `calendario.registrar`.
+- **Registro de eventos (acordado).** El Director ordena; lo registra cualquier perfil con el permiso `calendario.registrar`.
 
 ## Historia de Usuario 1: Año escolar y bimestres
 
@@ -202,7 +202,7 @@
 
 ### Escenario: Usuario sin permiso para registrar
 
-**Dado** que mi rol no tiene el permiso `calendario.registrar`
+**Dado** que mi perfil no tiene el permiso `calendario.registrar`
 **Cuando** abro "Calendario"
 **Entonces** puedo ver los eventos, pero el sistema no me ofrece registrar, editar ni eliminar.
 
@@ -216,7 +216,7 @@
 - **Cierre de bimestre:** bloquea sesiones y ausencias de sus fechas; libretas y consolidado siguen abiertos hasta el cierre del año.
 - **Eventos:** fin ≥ inicio; "Suspende clases" activo por defecto en feriados, suspensiones y jornadas pedagógicas.
 - **Efecto en sesiones:** los días que suspenden clases no generan sesiones; una suspensión posterior elimina solo las sesiones pendientes.
-- **Permisos:** año y bimestres, el Administrador; eventos, cualquier rol con `calendario.registrar` (por defecto Administrador y Director); consulta del calendario, todos.
+- **Permisos:** año y bimestres, el Administrador; eventos, cualquier perfil con `calendario.registrar` (por defecto Administrador y Director); consulta del calendario, todos.
 - **Auditoría:** altas, ediciones y cambios de estado (`RF-003`).
 
 ## Anexos y Prototipo Interactivo

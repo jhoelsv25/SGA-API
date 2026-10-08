@@ -31,7 +31,7 @@
 - **Copiar horario.** Se puede copiar el horario de una sección a otra del mismo grado; los cursos se emparejan por curso y se vuelve a validar el cruce de docentes.
 - **Cambios del horario a mitad de año.** Rigen desde el día siguiente. No cambian las sesiones ya generadas ni las ya firmadas.
 - **Consulta.** Cada docente ve su horario semanal (todas sus secciones); cada estudiante y apoderado ve el horario de su sección.
-- **Quién gestiona.** Roles con el permiso de organización escolar (por defecto, Administrador y Subdirector).
+- **Quién gestiona.** Perfiles con el permiso de organización escolar (por defecto, Administrador y Subdirector).
 - **Operación 100% en línea.**
 - **Auditoría inmutable.** Crear o editar secciones, asignar docentes y cambiar el horario queda en la bitácora (`RF-003`).
 
@@ -202,7 +202,7 @@
 
 ### Escenario: Usuario sin permiso
 
-**Dado** que mi rol no tiene el permiso de organización escolar
+**Dado** que mi perfil no tiene el permiso de organización escolar
 **Cuando** intento abrir "Secciones" o "Horarios" para editar
 **Entonces** el sistema no me ofrece crear ni modificar.
 
@@ -214,7 +214,7 @@
 - **Carga académica:** se crea con los cursos del plan del grado; solo docentes activos; aviso si se supera la jornada; el cambio de docente no altera sesiones firmadas.
 - **Horario:** lunes a viernes; fin posterior al inicio; sin superposición en la sección; sin cruce de docente; aviso si las horas no coinciden con el plan; cambios rigen desde el día siguiente.
 - **Jornada (parámetro):** 45 minutos por hora pedagógica, 7 al día.
-- **Permisos:** gestión, roles con el permiso de organización escolar (Administrador y Subdirector); consulta del propio horario, docentes, estudiantes y apoderados.
+- **Permisos:** gestión, perfiles con el permiso de organización escolar (Administrador y Subdirector); consulta del propio horario, docentes, estudiantes y apoderados.
 - **Auditoría:** secciones, asignaciones y horarios (`RF-003`).
 
 ## Anexos y Prototipo Interactivo
