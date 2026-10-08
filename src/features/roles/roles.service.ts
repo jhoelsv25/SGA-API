@@ -3,8 +3,10 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  Optional,
 } from "@nestjs/common";
 import { AuditService } from "../../common/services/audit.service";
+import { CacheService } from "../../core/cache";
 import { esRolDelSistema } from "./constants/roles.constants";
 import { AssignPermissionsDto } from "./dto/assign-permissions.dto";
 import { CreateRoleDto } from "./dto/create-role.dto";
@@ -16,11 +18,15 @@ import {
 import { UpdateRoleDto } from "./dto/update-role.dto";
 import { RolesRepository } from "./repositories/roles.repository";
 
+export const PERMISSIONS_CATALOG_CACHE_KEY = "catalog:permissions";
+export const PERMISSIONS_CATALOG_CACHE_TTL = 86400; // 24 horas
+
 @Injectable()
 export class RolesService {
   constructor(
     private readonly rolesRepository: RolesRepository,
     private readonly auditService: AuditService,
+    @Optional() private readonly cacheService?: CacheService,
   ) {}
 
   async findAll(soloActivos?: boolean): Promise<RoleResponseDto[]> {
@@ -152,6 +158,13 @@ export class RolesService {
   }
 
   async getPermissionsCatalog(): Promise<PermissionCatalogItemDto[]> {
+    if (this.cacheService) {
+      return this.cacheService.getOrSet(
+        PERMISSIONS_CATALOG_CACHE_KEY,
+        () => this.rolesRepository.getAllPermissions(),
+        PERMISSIONS_CATALOG_CACHE_TTL,
+      );
+    }
     return this.rolesRepository.getAllPermissions();
   }
 

@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { AuditService } from "@/common/services/audit.service";
+import { CacheService } from "@/core/cache";
 import { RolesRepository } from "@/features/roles/repositories/roles.repository";
 import { RolesService } from "@/features/roles/roles.service";
 
@@ -200,6 +201,65 @@ describe("RolesService (RF-002: HU 2)", () => {
       ]);
       expect(auditService.log).toHaveBeenCalledWith(
         expect.objectContaining({ accion: "actualizar", tabla: "rol_permisos" }),
+      );
+    });
+  });
+
+  describe("getPermissionsCatalog()", () => {
+    it("should return permissions directly from repository when cacheService is undefined", async () => {
+      const mockCatalog = [
+        {
+          id: "p1",
+          codigo: "usuarios.ver",
+          nombre: "Ver usuarios",
+          descripcion: "Permite ver usuarios",
+          moduloId: "m1",
+          moduloNombre: "Seguridad",
+          moduloCodigo: "seguridad",
+        },
+      ];
+      repository.getAllPermissions.mockResolvedValue(mockCatalog);
+
+      const result = await service.getPermissionsCatalog();
+
+      expect(result).toEqual(mockCatalog);
+      expect(repository.getAllPermissions).toHaveBeenCalledTimes(1);
+    });
+
+    it("should use cacheService.getOrSet when cacheService is provided", async () => {
+      const mockCatalog = [
+        {
+          id: "p1",
+          codigo: "usuarios.ver",
+          nombre: "Ver usuarios",
+          descripcion: "Permite ver usuarios",
+          moduloId: "m1",
+          moduloNombre: "Seguridad",
+          moduloCodigo: "seguridad",
+        },
+      ];
+      const mockCacheService: Partial<Record<keyof CacheService, jest.Mock>> = {
+        getOrSet: jest
+          .fn()
+          .mockImplementation((_key: string, factory: () => Promise<unknown>): Promise<unknown> =>
+            factory(),
+          ),
+      };
+
+      const serviceWithCache = new RolesService(
+        repository,
+        auditService,
+        mockCacheService as unknown as CacheService,
+      );
+      repository.getAllPermissions.mockResolvedValue(mockCatalog);
+
+      const result = await serviceWithCache.getPermissionsCatalog();
+
+      expect(result).toEqual(mockCatalog);
+      expect(mockCacheService.getOrSet).toHaveBeenCalledWith(
+        "catalog:permissions",
+        expect.any(Function),
+        86400,
       );
     });
   });

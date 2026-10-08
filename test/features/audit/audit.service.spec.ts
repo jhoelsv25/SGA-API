@@ -71,7 +71,7 @@ describe("AuditService (RF-003: Bitácora de Auditoría)", () => {
       expect(result.data).toHaveLength(1);
       expect(result.data[0]).toEqual({
         id: 1,
-        registradoEn: "2026-10-05 14:30:00",
+        registradoEn: "2026-10-05T14:30:00.000Z",
         usuarioId: "usr-uuid-1",
         usuario: "admin",
         accion: "actualizar",

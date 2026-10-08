@@ -2,7 +2,11 @@ import { Inject, Injectable } from "@nestjs/common";
 import { and, count, eq, ilike, isNull, or, sql } from "drizzle-orm";
 import { Database, DRIZZLE } from "../../../core/database";
 import { personas, roles, sesiones, usuarios } from "../../../core/database/schema";
-import { PaginatedUsersResponseDto, UserResponseDto } from "../dto/user-response.dto";
+import {
+  PaginatedUsersResponseDto,
+  UserPersonaDto,
+  UserResponseDto,
+} from "../dto/user-response.dto";
 import { UserQueryDto } from "../dto/user-query.dto";
 import {
   CreateUserData,
@@ -202,6 +206,41 @@ export class UsersRepository implements IUsersRepository {
       limit,
       totalPages: totalPages === 0 ? 1 : totalPages,
     };
+  }
+
+  async findEligiblePersonas(search?: string): Promise<UserPersonaDto[]> {
+    const conditions = [isNull(personas.eliminadoEn), isNull(usuarios.id)];
+
+    if (search && search.trim() !== "") {
+      const pattern = `%${search.trim()}%`;
+      conditions.push(
+        or(
+          ilike(personas.numeroDocumento, pattern),
+          ilike(personas.nombres, pattern),
+          ilike(personas.apellidoPaterno, pattern),
+          ilike(personas.apellidoMaterno, pattern),
+        )!,
+      );
+    }
+
+    const rows = await this.db
+      .select({
+        id: personas.id,
+        tipoDocumento: personas.tipoDocumento,
+        numeroDocumento: personas.numeroDocumento,
+        nombres: personas.nombres,
+        apellidoPaterno: personas.apellidoPaterno,
+        apellidoMaterno: personas.apellidoMaterno,
+        correo: personas.correo,
+        fotoUrl: personas.fotoUrl,
+      })
+      .from(personas)
+      .leftJoin(usuarios, and(eq(personas.id, usuarios.personaId), isNull(usuarios.eliminadoEn)))
+      .where(and(...conditions))
+      .orderBy(personas.apellidoPaterno, personas.apellidoMaterno, personas.nombres)
+      .limit(30);
+
+    return rows;
   }
 
   async closeAllUserSessions(userId: string): Promise<void> {

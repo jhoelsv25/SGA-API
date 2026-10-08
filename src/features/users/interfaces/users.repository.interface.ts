@@ -24,5 +24,8 @@ export interface IUsersRepository {
   create(data: CreateUserData): Promise<UserResponseDto>;
   update(id: string, data: UpdateUserData): Promise<UserResponseDto>;
   findUsers(query: UserQueryDto): Promise<PaginatedUsersResponseDto>;
+  findEligiblePersonas(
+    search?: string,
+  ): Promise<import("../dto/user-response.dto").UserPersonaDto[]>;
   closeAllUserSessions(userId: string): Promise<void>;
 }

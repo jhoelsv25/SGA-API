@@ -35,6 +35,16 @@ function sanitizeRecord(obj: Record<string, unknown> | null): Record<string, unk
   return result;
 }
 
+function toIsoTimestamp(value: string | Date | null | undefined): string {
+  if (!value) return "";
+  if (value instanceof Date) return value.toISOString();
+  const trimmed = String(value).trim();
+  if (trimmed.endsWith("Z") || trimmed.includes("+") || /-\d{2}:\d{2}$/.test(trimmed)) {
+    return new Date(trimmed).toISOString();
+  }
+  return new Date(`${trimmed.replace(" ", "T")}Z`).toISOString();
+}
+
 function computeDifferences(
   accion: string,
   valorAnterior: Record<string, unknown> | null,
@@ -188,7 +198,7 @@ export class AuditService {
 
     return {
       id: record.id,
-      registradoEn: record.registradoEn,
+      registradoEn: toIsoTimestamp(record.registradoEn),
       usuarioId: record.usuarioId,
       usuario: record.usuarioNombre ?? (record.usuarioId ? "Usuario no encontrado" : "Sistema"),
       accion: record.accion,
@@ -204,7 +214,7 @@ export class AuditService {
   private mapToItemDto(record: AuditRecord): AuditLogItemDto {
     return {
       id: record.id,
-      registradoEn: record.registradoEn,
+      registradoEn: toIsoTimestamp(record.registradoEn),
       usuarioId: record.usuarioId,
       usuario: record.usuarioNombre ?? (record.usuarioId ? "Usuario no encontrado" : "Sistema"),
       accion: record.accion,

@@ -20,6 +20,7 @@ import {
   PaginatedUsersResponseDto,
   TempPasswordResetResponseDto,
   UserCreatedResponseDto,
+  UserPersonaDto,
   UserResponseDto,
 } from "./dto/user-response.dto";
 import { UsersRepository } from "./repositories/users.repository";
@@ -36,6 +37,10 @@ export class UsersService {
 
   async findUsers(query: UserQueryDto): Promise<PaginatedUsersResponseDto> {
     return this.usersRepository.findUsers(query);
+  }
+
+  async findEligiblePersonas(search?: string): Promise<UserPersonaDto[]> {
+    return this.usersRepository.findEligiblePersonas(search);
   }
 
   async findUserById(id: string): Promise<UserResponseDto> {

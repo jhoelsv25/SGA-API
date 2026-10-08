@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   Param,
   ParseBoolPipe,
   ParseUUIDPipe,
@@ -40,6 +41,7 @@ export class RolesController {
   }
 
   @Get("permissions")
+  @Header("Cache-Control", "public, max-age=86400, stale-while-revalidate=43200")
   @ApiOperation({ summary: "Obtener catálogo completo de permisos agrupados por módulo" })
   @ApiResponse({ status: 200, type: [PermissionCatalogItemDto] })
   async getPermissionsCatalog(): Promise<PermissionCatalogItemDto[]> {
