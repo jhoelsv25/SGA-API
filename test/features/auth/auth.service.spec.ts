@@ -148,7 +148,13 @@ describe("AuthService (RF-001: Acceso al Sistema)", () => {
         expect(authRepository.findUserByUsername).toHaveBeenCalledWith("jdoe");
         expect(authRepository.resetLoginAttempts).toHaveBeenCalledWith(mockUser.id);
         expect(sessionService.generateAccessToken).toHaveBeenCalledWith(
-          expect.objectContaining({ sub: mockUser.id, username: mockUser.nombreUsuario }),
+          // RF-001 V3: el token del paso 1 deja el rol pendiente de elegir
+          expect.objectContaining({
+            sub: mockUser.id,
+            username: mockUser.nombreUsuario,
+            rolPendiente: true,
+            recordar: true,
+          }),
           true,
         );
         expect(sessionService.recordSession).toHaveBeenCalledWith({
@@ -465,21 +471,22 @@ describe("AuthService (RF-001: Acceso al Sistema)", () => {
       ]);
     });
 
-    it("CP-RF001-24 Cambiar de rol: emite token con el nuevo rol y revoca el anterior", async () => {
+    it("RF-001 V3 Elegir rol al ingresar: emite token con el rol elegido, sin rol pendiente, y revoca el del paso 1", async () => {
       authRepository.findUserById.mockResolvedValue(mockUser);
       prepararRol([rolDocente, rolApoderado]);
 
       const result = await authService.switchRole(
         mockUser.id,
         { roleId: "rol-apoderado" },
+        { rolPendiente: true, recordar: true },
         "jwt_anterior",
       );
 
       expect(sessionService.revokeSession).toHaveBeenCalledWith("jwt_anterior");
-      expect(sessionService.generateAccessToken).toHaveBeenCalledWith(
-        expect.objectContaining({ roleId: "rol-apoderado", role: "Apoderado" }),
-        false,
-      );
+      const [payload, recordar] = sessionService.generateAccessToken.mock.calls[0];
+      expect(payload).toMatchObject({ roleId: "rol-apoderado", role: "Apoderado" });
+      expect(payload.rolPendiente).toBeUndefined();
+      expect(recordar).toBe(true);
       expect(authRepository.getUserModules).toHaveBeenCalledWith("rol-apoderado", false);
       expect(result.user.activeRoleId).toBe("rol-apoderado");
       expect(result.message).toBe("Rol cambiado a Apoderado.");
@@ -490,8 +497,25 @@ describe("AuthService (RF-001: Acceso al Sistema)", () => {
       prepararRol([rolDocente]);
 
       await expect(
-        authService.switchRole(mockUser.id, { roleId: "rol-director" }, "jwt_anterior"),
+        authService.switchRole(
+          mockUser.id,
+          { roleId: "rol-director" },
+          { rolPendiente: true },
+          "jwt_anterior",
+        ),
       ).rejects.toThrow(new ForbiddenException("No tiene asignado ese rol."));
+      expect(sessionService.revokeSession).not.toHaveBeenCalled();
+    });
+
+    it("RF-001 V3 Sin cambio de rol dentro del sistema: rechaza si el rol ya se eligió", async () => {
+      await expect(
+        authService.switchRole(mockUser.id, { roleId: "rol-apoderado" }, {}, "jwt_final"),
+      ).rejects.toThrow(
+        new ForbiddenException(
+          "El rol se elige al iniciar sesión. Cierre sesión para ingresar con otro rol.",
+        ),
+      );
+      expect(authRepository.findUserById).not.toHaveBeenCalled();
       expect(sessionService.revokeSession).not.toHaveBeenCalled();
     });
 

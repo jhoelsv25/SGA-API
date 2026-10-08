@@ -3,8 +3,17 @@ import { ConfigService } from "@nestjs/config";
 import { PassportStrategy } from "@nestjs/passport";
 import type { Request } from "express";
 import { ExtractJwt, Strategy } from "passport-jwt";
+import { hashSha256 } from "../../../common/utils";
 import type { AuthenticatedUser, JwtPayload } from "../interfaces/jwt-payload.interface";
 import { AuthRepository } from "../repositories/auth.repository";
+
+const extraerToken = ExtractJwt.fromExtractors([
+  ExtractJwt.fromAuthHeaderAsBearerToken(),
+  (request: Request): string | null => {
+    const cookies = request?.cookies as Record<string, string | undefined> | undefined;
+    return cookies?.access_token ?? null;
+  },
+]);
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -13,14 +22,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     private readonly authRepository: AuthRepository,
   ) {
     super({
-      jwtFromRequest: ExtractJwt.fromExtractors([
-        ExtractJwt.fromAuthHeaderAsBearerToken(),
-        (request: Request): string | null => {
-          const cookies = request?.cookies as Record<string, string | undefined> | undefined;
-          return cookies?.access_token ?? null;
-        },
-      ]),
+      jwtFromRequest: extraerToken,
       ignoreExpiration: false,
+      passReqToCallback: true,
       secretOrKey: configService.get<string>(
         "JWT_SECRET",
         "sga_super_secret_jwt_key_2026_change_in_prod",
@@ -28,7 +32,13 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  async validate(payload: JwtPayload): Promise<AuthenticatedUser> {
+  async validate(request: Request, payload: JwtPayload): Promise<AuthenticatedUser> {
+    // Un token cuya sesión se cerró (logout, cambio de contraseña, rol ya elegido) ya no vale
+    const token = extraerToken(request);
+    if (token && (await this.authRepository.isSessionClosed(hashSha256(token)))) {
+      throw new UnauthorizedException("La sesión fue cerrada. Ingrese nuevamente.");
+    }
+
     const user = await this.authRepository.findUserById(payload.sub);
 
     if (!user || user.eliminadoEn !== null) {
@@ -59,6 +69,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       roleId: activeRole.rolId,
       role: activeRole.nombre,
       personaId: user.personaId,
+      rolPendiente: payload.rolPendiente === true,
+      recordar: payload.recordar === true,
     };
   }
 }

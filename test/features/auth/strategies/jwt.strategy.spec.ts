@@ -7,10 +7,15 @@ import type {
 } from "@/features/auth/interfaces/jwt-payload.interface";
 import { AuthRepository } from "@/features/auth/repositories/auth.repository";
 import { JwtStrategy } from "@/features/auth/strategies/jwt.strategy";
+import type { Request } from "express";
 
 describe("JwtStrategy (RF-001: Validación de Token y Sesión)", () => {
   let strategy: JwtStrategy;
   let authRepository: jest.Mocked<AuthRepository>;
+
+  const mockRequest = {
+    headers: { authorization: "Bearer jwt_de_prueba" },
+  } as unknown as Request;
 
   const mockPayload: JwtPayload = {
     sub: "usr-uuid-1",
@@ -39,6 +44,7 @@ describe("JwtStrategy (RF-001: Validación de Token y Sesión)", () => {
     const mockRepo = {
       findUserById: jest.fn(),
       findUserRoles: jest.fn().mockResolvedValue([]),
+      isSessionClosed: jest.fn().mockResolvedValue(false),
     };
 
     const mockConfig = {
@@ -63,7 +69,7 @@ describe("JwtStrategy (RF-001: Validación de Token y Sesión)", () => {
     it("debe retornar los datos del usuario autenticado si la cuenta está activa y existe", async () => {
       authRepository.findUserById.mockResolvedValue(mockUserRecord);
 
-      const result: AuthenticatedUser = await strategy.validate(mockPayload);
+      const result: AuthenticatedUser = await strategy.validate(mockRequest, mockPayload);
 
       expect(result).toEqual({
         id: mockUserRecord.id,
@@ -71,6 +77,8 @@ describe("JwtStrategy (RF-001: Validación de Token y Sesión)", () => {
         roleId: mockUserRecord.rolId,
         role: mockPayload.role,
         personaId: mockUserRecord.personaId,
+        rolPendiente: false,
+        recordar: false,
       });
       expect(authRepository.findUserById).toHaveBeenCalledWith(mockPayload.sub);
     });
@@ -78,7 +86,7 @@ describe("JwtStrategy (RF-001: Validación de Token y Sesión)", () => {
     it("debe lanzar UnauthorizedException si el usuario no existe", async () => {
       authRepository.findUserById.mockResolvedValue(null);
 
-      await expect(strategy.validate(mockPayload)).rejects.toThrow(
+      await expect(strategy.validate(mockRequest, mockPayload)).rejects.toThrow(
         new UnauthorizedException("Usuario no encontrado o dado de baja"),
       );
     });
@@ -89,7 +97,7 @@ describe("JwtStrategy (RF-001: Validación de Token y Sesión)", () => {
         eliminadoEn: "2026-10-02T00:00:00Z",
       });
 
-      await expect(strategy.validate(mockPayload)).rejects.toThrow(
+      await expect(strategy.validate(mockRequest, mockPayload)).rejects.toThrow(
         new UnauthorizedException("Usuario no encontrado o dado de baja"),
       );
     });
@@ -100,7 +108,7 @@ describe("JwtStrategy (RF-001: Validación de Token y Sesión)", () => {
         estado: "bloqueado",
       });
 
-      await expect(strategy.validate(mockPayload)).rejects.toThrow(
+      await expect(strategy.validate(mockRequest, mockPayload)).rejects.toThrow(
         new UnauthorizedException("La cuenta de usuario no se encuentra activa"),
       );
     });
@@ -111,7 +119,7 @@ describe("JwtStrategy (RF-001: Validación de Token y Sesión)", () => {
         { rolId: "otro-rol", nombre: "Apoderado", esSistema: false, esPrincipal: true },
       ]);
 
-      await expect(strategy.validate(mockPayload)).rejects.toThrow(
+      await expect(strategy.validate(mockRequest, mockPayload)).rejects.toThrow(
         "Su rol ya no está asignado. Ingrese nuevamente.",
       );
     });
@@ -123,10 +131,19 @@ describe("JwtStrategy (RF-001: Validación de Token y Sesión)", () => {
         { rolId: mockPayload.roleId, nombre: "Apoderado", esSistema: false, esPrincipal: false },
       ]);
 
-      const result = await strategy.validate(mockPayload);
+      const result = await strategy.validate(mockRequest, mockPayload);
 
       expect(result.roleId).toBe(mockPayload.roleId);
       expect(result.role).toBe("Apoderado");
+    });
+
+    it("debe rechazar un token cuya sesión ya fue cerrada (logout o rol ya elegido)", async () => {
+      authRepository.isSessionClosed.mockResolvedValue(true);
+
+      await expect(strategy.validate(mockRequest, mockPayload)).rejects.toThrow(
+        new UnauthorizedException("La sesión fue cerrada. Ingrese nuevamente."),
+      );
+      expect(authRepository.findUserById).not.toHaveBeenCalled();
     });
   });
 });

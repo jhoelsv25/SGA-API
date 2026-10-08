@@ -65,6 +65,9 @@ export class AuthService {
       roleId: activeRole.rolId,
       role: activeRole.nombre,
       personaId: user.personaId,
+      // RF-001 V3: el paso 2 del login fija el rol; hasta entonces el rol queda pendiente
+      rolPendiente: true,
+      recordar: dto.rememberMe === true,
     };
 
     const accessToken = this.sessionService.generateAccessToken(payload, dto.rememberMe);
@@ -157,16 +160,24 @@ export class AuthService {
   }
 
   /**
-   * RF-001 V2: cambia el rol activo sin volver a pedir la contraseña.
-   * Emite un token nuevo con el rol elegido y cierra la sesión del token anterior.
+   * RF-001 V3: paso 2 del inicio de sesión. Fija el rol elegido emitiendo un token
+   * nuevo (sin rol pendiente) y cierra la sesión del token del paso 1. Dentro del
+   * sistema no se cambia de rol: un token que ya tiene el rol fijado se rechaza.
    */
   async switchRole(
     userId: string,
     dto: SwitchRoleDto,
+    session: { rolPendiente?: boolean; recordar?: boolean },
     oldToken?: string,
     ipAddress?: string,
     userAgent?: string,
   ): Promise<AuthResponseDto> {
+    if (!session.rolPendiente) {
+      throw new ForbiddenException(
+        "El rol se elige al iniciar sesión. Cierre sesión para ingresar con otro rol.",
+      );
+    }
+
     const user = await this.authRepository.findUserById(userId);
     if (!user) {
       throw new UnauthorizedException("Sesión inválida o expirada");
@@ -192,11 +203,11 @@ export class AuthService {
     if (oldToken) {
       await this.sessionService.revokeSession(oldToken);
     }
-    const accessToken = this.sessionService.generateAccessToken(payload, false);
+    const accessToken = this.sessionService.generateAccessToken(payload, session.recordar);
     await this.sessionService.recordSession({
       userId: user.id,
       token: accessToken,
-      rememberMe: false,
+      rememberMe: session.recordar,
       ipAddress,
       userAgent,
     });

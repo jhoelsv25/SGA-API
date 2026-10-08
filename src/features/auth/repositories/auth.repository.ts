@@ -148,6 +148,16 @@ export class AuthRepository implements IAuthRepository {
       .where(eq(sesiones.tokenHash, tokenHash));
   }
 
+  async isSessionClosed(tokenHash: string): Promise<boolean> {
+    const [row] = await this.db
+      .select({ cerradaEn: sesiones.cerradaEn })
+      .from(sesiones)
+      .where(eq(sesiones.tokenHash, tokenHash))
+      .limit(1);
+
+    return Boolean(row?.cerradaEn);
+  }
+
   async getUserModules(rolId: string, esSistema: boolean): Promise<AuthModuleDto[]> {
     if (esSistema) {
       const allModules = await this.db
