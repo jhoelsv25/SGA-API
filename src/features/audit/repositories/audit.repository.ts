@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, count, desc, eq, gte, ilike, isNull, lte, type SQL } from "drizzle-orm";
+import { and, count, desc, eq, gte, ilike, isNull, lte, or, type SQL } from "drizzle-orm";
 import { Database, DRIZZLE } from "../../../core/database";
 import { bitacoraAuditoria, usuarios } from "../../../core/database/schema";
 import {
@@ -7,6 +7,40 @@ import {
   FindAuditFilters,
   IAuditRepository,
 } from "../interfaces/audit.repository.interface";
+
+const MODULE_TABLES_MAP: Record<string, string[]> = {
+  seguridad: ["usuarios", "roles", "rol_permisos", "bitacora", "sesiones_usuario"],
+  academico: [
+    "cursos",
+    "areas_curriculares",
+    "secciones",
+    "aulas",
+    "horarios_seccion",
+    "horas_pedagogicas",
+  ],
+  matricula: [
+    "personas",
+    "estudiantes",
+    "apoderados",
+    "docentes",
+    "matriculas",
+    "traslados",
+    "responsables",
+  ],
+  asistencia: ["asistencias", "marcaciones_kiosko", "justificaciones"],
+  "seguimiento-docente": ["sesiones_clase", "temas_sesion", "evaluaciones", "calificaciones"],
+  libretas: ["libretas", "libretas_bimestrales", "meritos_academicos"],
+  "aula-virtual": ["unidades_didacticas", "tareas_virtuales", "entregas_tarea", "materiales"],
+  comunicacion: ["comunicados", "destinatarios_comunicado", "incidencias_convivencia"],
+  configuracion: [
+    "institucion",
+    "turnos",
+    "anios_lectivos",
+    "bimestres",
+    "dispositivos_kiosko",
+    "configuracion_sistema",
+  ],
+};
 
 @Injectable()
 export class AuditRepository implements IAuditRepository {
@@ -38,7 +72,18 @@ export class AuditRepository implements IAuditRepository {
     }
 
     if (filters.entidad && filters.entidad.trim() !== "") {
-      conditions.push(ilike(bitacoraAuditoria.tabla, `%${filters.entidad.trim()}%`));
+      const trimmed = filters.entidad.trim().toLowerCase();
+      const mappedTables = MODULE_TABLES_MAP[trimmed];
+      if (mappedTables && mappedTables.length > 0) {
+        conditions.push(
+          or(
+            ilike(bitacoraAuditoria.tabla, `%${trimmed}%`),
+            ...mappedTables.map((t) => ilike(bitacoraAuditoria.tabla, `%${t}%`)),
+          )!,
+        );
+      } else {
+        conditions.push(ilike(bitacoraAuditoria.tabla, `%${trimmed}%`));
+      }
     }
 
     const whereClause = and(...conditions);
