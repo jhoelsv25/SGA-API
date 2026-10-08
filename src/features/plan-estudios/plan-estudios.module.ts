@@ -1,4 +1,5 @@
 import { Module } from "@nestjs/common";
+import { AuditService } from "../../common/services/audit.service";
 import { CursosModule } from "../cursos";
 import { GradosModule } from "../grados";
 import { PlanEstudiosController } from "./plan-estudios.controller";
@@ -8,7 +9,7 @@ import { PlanEstudiosService } from "./plan-estudios.service";
 @Module({
   imports: [GradosModule, CursosModule],
   controllers: [PlanEstudiosController],
-  providers: [PlanEstudiosRepository, PlanEstudiosService],
+  providers: [PlanEstudiosRepository, PlanEstudiosService, AuditService],
   exports: [PlanEstudiosService, PlanEstudiosRepository],
 })
 export class PlanEstudiosModule {}
