@@ -62,10 +62,36 @@ export class TurnosService {
   ): Promise<TurnoResponseDto> {
     const current = await this.findById(id);
 
-    // Validar reglas de horas y ventanas
-    validateTurnoTimes(dto);
+    // Si solo viene activo, tratar como toggleActivo
+    if (dto.activo !== undefined && !dto.horaEntrada && !dto.horaSalida) {
+      return this.toggleActivo(id, dto.activo, actorId, ip);
+    }
 
-    const updated = await this.turnosRepository.update(id, dto);
+    const merged = {
+      horaEntrada: dto.horaEntrada ?? current.horaEntrada,
+      horaSalida: dto.horaSalida ?? current.horaSalida,
+      ventanaEntradaInicio: dto.ventanaEntradaInicio ?? current.ventanaEntradaInicio,
+      ventanaEntradaFin: dto.ventanaEntradaFin ?? current.ventanaEntradaFin,
+      ventanaSalidaInicio: dto.ventanaSalidaInicio ?? current.ventanaSalidaInicio,
+      ventanaSalidaFin: dto.ventanaSalidaFin ?? current.ventanaSalidaFin,
+      toleranciaMin: dto.toleranciaMin ?? current.toleranciaMin,
+      diasLaborables: dto.diasLaborables ?? current.diasLaborables,
+      ...(dto.activo !== undefined ? { activo: dto.activo } : {}),
+    };
+
+    // Validar reglas de horas y ventanas
+    validateTurnoTimes({
+      horaEntrada: merged.horaEntrada,
+      horaSalida: merged.horaSalida,
+      ventanaEntradaInicio: merged.ventanaEntradaInicio,
+      ventanaEntradaFin: merged.ventanaEntradaFin,
+      ventanaSalidaInicio: merged.ventanaSalidaInicio,
+      ventanaSalidaFin: merged.ventanaSalidaFin,
+      toleranciaMin: merged.toleranciaMin,
+      diasLaborables: merged.diasLaborables,
+    });
+
+    const updated = await this.turnosRepository.update(id, merged);
 
     await this.auditService.log({
       usuarioId: actorId,

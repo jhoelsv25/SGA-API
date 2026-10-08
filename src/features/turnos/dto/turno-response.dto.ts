@@ -8,6 +8,13 @@ export class TurnoResponseDto {
   @ApiProperty({ description: "Tipo de persona a la que aplica", enum: PERSONA_TYPES_TURNO })
   aplicaA!: PersonaTypeTurno;
 
+  @ApiProperty({
+    description: "Alias para tipo de persona",
+    enum: PERSONA_TYPES_TURNO,
+    required: false,
+  })
+  tipoPersona?: PersonaTypeTurno;
+
   @ApiProperty({ description: "Hora oficial de entrada", example: "07:45:00" })
   horaEntrada!: string;
 
@@ -28,6 +35,9 @@ export class TurnoResponseDto {
 
   @ApiProperty({ description: "Tolerancia en minutos", example: 10 })
   toleranciaMin!: number;
+
+  @ApiProperty({ description: "Alias para tolerancia en minutos", example: 10, required: false })
+  toleranciaMinutos?: number;
 
   @ApiProperty({ description: "Días laborables (ej: 1,2,3,4,5)", example: "1,2,3,4,5" })
   diasLaborables!: string;

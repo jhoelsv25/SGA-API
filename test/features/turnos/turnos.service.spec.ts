@@ -110,7 +110,7 @@ describe("TurnosService (RF-004 HU2)", () => {
     it("debe lanzar NotFoundException si el turno a modificar no existe", async () => {
       mockRepository.findById = jest.fn().mockResolvedValue(null);
 
-      await expect(service.update("no-existe", {} as UpdateTurnoDto, "user-admin")).rejects.toThrow(
+      await expect(service.update("no-existe", {}, "user-admin")).rejects.toThrow(
         NotFoundException,
       );
     });

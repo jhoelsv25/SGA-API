@@ -14,6 +14,7 @@ export class TurnosRepository implements ITurnosRepository {
     return {
       id: row.id,
       aplicaA: row.aplicaA as PersonaTypeTurno,
+      tipoPersona: row.aplicaA as PersonaTypeTurno,
       horaEntrada: row.horaEntrada,
       horaSalida: row.horaSalida,
       ventanaEntradaInicio: row.ventanaEntradaInicio ?? row.horaEntrada,
@@ -21,6 +22,7 @@ export class TurnosRepository implements ITurnosRepository {
       ventanaSalidaInicio: row.ventanaSalidaInicio ?? row.horaSalida,
       ventanaSalidaFin: row.ventanaSalidaFin ?? row.horaSalida,
       toleranciaMin: row.toleranciaMin,
+      toleranciaMinutos: row.toleranciaMin,
       diasLaborables: row.diasLaborables,
       activo: row.activo,
       creadoEn: row.creadoEn,
@@ -77,6 +79,7 @@ export class TurnosRepository implements ITurnosRepository {
         ventanaSalidaFin: dto.ventanaSalidaFin,
         toleranciaMin: dto.toleranciaMin,
         diasLaborables: dto.diasLaborables,
+        ...(dto.activo !== undefined ? { activo: dto.activo } : {}),
         actualizadoEn: sql`CURRENT_TIMESTAMP`,
       })
       .where(eq(turnos.id, id))

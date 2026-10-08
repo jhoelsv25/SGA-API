@@ -40,6 +40,7 @@ export class TurnosController {
   }
 
   @Put(":id")
+  @Patch(":id")
   @Roles("Administrador")
   @ApiOperation({ summary: "Modificar horarios y ventanas de un turno" })
   @ApiResponse({ status: 200, type: TurnoResponseDto })
