@@ -43,6 +43,7 @@ export class InstitucionService {
       departamento: dto.departamento !== undefined ? dto.departamento : current.departamento,
       telefono: dto.telefono !== undefined ? dto.telefono : current.telefono,
       correo: dto.correo !== undefined ? dto.correo : current.correo,
+      logoUrl: dto.logoUrl !== undefined ? dto.logoUrl : current.logoUrl,
     };
 
     const updated = await this.institucionRepository.update(mergedDto);

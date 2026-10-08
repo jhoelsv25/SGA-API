@@ -100,4 +100,10 @@ export class UpdateInstitucionDto {
   @IsEmail({}, { message: "Ingrese un correo válido." })
   @MaxLength(100)
   correo?: string | null;
+
+  @ApiPropertyOptional({ description: "URL del logo institucional" })
+  @IsOptional()
+  @Transform(({ value }: { value: unknown }) => (value === "" ? null : value))
+  @IsString()
+  logoUrl?: string | null;
 }

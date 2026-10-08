@@ -57,6 +57,7 @@ export class InstitucionRepository implements IInstitucionRepository {
         departamento: dto.departamento ?? null,
         telefono: dto.telefono ?? null,
         correo: dto.correo ?? null,
+        ...(dto.logoUrl !== undefined ? { logoUrl: dto.logoUrl ?? null } : {}),
         actualizadoEn: sql`CURRENT_TIMESTAMP`,
       })
       .returning();
