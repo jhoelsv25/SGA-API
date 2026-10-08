@@ -361,6 +361,9 @@ export const periodosAcademicos = pgTable(
       name: "fk_periodos_academicos_anio",
     }).onDelete("cascade"),
     unique("uq_periodos_academicos_numero").on(table.anioAcademicoId, table.numero),
+    uniqueIndex("ux_periodos_academicos_en_curso")
+      .on(table.anioAcademicoId)
+      .where(sql`((estado)::text = 'en_curso'::text)`),
     check(
       "ck_periodos_academicos_estado",
       sql`(estado)::text = ANY ((ARRAY['planificado'::character varying, 'en_curso'::character varying, 'cerrado'::character varying])::text[])`,
@@ -2015,6 +2018,43 @@ export const estudianteApoderados = pgTable(
     check(
       "ck_estudiante_apoderados_parentesco",
       sql`(parentesco)::text = ANY ((ARRAY['padre'::character varying, 'madre'::character varying, 'abuelo'::character varying, 'abuela'::character varying, 'hermano'::character varying, 'hermana'::character varying, 'tio'::character varying, 'tia'::character varying, 'tutor_legal'::character varying, 'otro'::character varying])::text[])`,
+    ),
+  ],
+);
+
+export const variablesSistema = pgTable(
+  "variables_sistema",
+  {
+    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    codigo: varchar({ length: 60 }).notNull(),
+    descripcion: varchar({ length: 255 }).notNull(),
+    modulo: varchar({ length: 30 }).notNull(),
+    tipo: varchar({ length: 10 }).notNull(),
+    valor: text().notNull(),
+    unidad: varchar({ length: 20 }),
+    valorMinimo: numeric("valor_minimo", { precision: 18, scale: 4 }),
+    valorMaximo: numeric("valor_maximo", { precision: 18, scale: 4 }),
+    editable: boolean().default(true).notNull(),
+    cargaEnAplicacion: boolean("carga_en_aplicacion").default(true).notNull(),
+    vigente: boolean().default(true).notNull(),
+    motivoCambio: varchar("motivo_cambio", { length: 500 }),
+    actualizadoPorId: uuid("actualizado_por_id"),
+    creadoEn: timestamp("creado_en", { precision: 0, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("ux_variables_sistema_vigente")
+      .on(table.codigo)
+      .where(sql`vigente = true`),
+    foreignKey({
+      columns: [table.actualizadoPorId],
+      foreignColumns: [usuarios.id],
+      name: "fk_variables_sistema_actualizado_por",
+    }),
+    check(
+      "ck_variables_sistema_tipo",
+      sql`(tipo)::text = ANY ((ARRAY['texto'::character varying, 'entero'::character varying, 'decimal'::character varying, 'booleano'::character varying, 'fecha'::character varying, 'hora'::character varying, 'lista'::character varying])::text[])`,
     ),
   ],
 );

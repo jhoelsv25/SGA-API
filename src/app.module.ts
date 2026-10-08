@@ -3,7 +3,8 @@ import { ConfigModule } from "@nestjs/config";
 import { APP_GUARD } from "@nestjs/core";
 import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
-import { JwtAuthGuard, RolesGuard } from "./common/guards";
+import { JwtAuthGuard, PermissionsGuard, RolesGuard } from "./common/guards";
+import { RolePermissionsService } from "./common/services/role-permissions.service";
 import { CoreModule } from "./core";
 import { FeaturesModule } from "./features/features.module";
 
@@ -25,6 +26,11 @@ import { FeaturesModule } from "./features/features.module";
     {
       provide: APP_GUARD,
       useClass: RolesGuard,
+    },
+    RolePermissionsService,
+    {
+      provide: APP_GUARD,
+      useClass: PermissionsGuard,
     },
   ],
 })

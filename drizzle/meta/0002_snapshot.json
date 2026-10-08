@@ -1,6 +1,6 @@
 {
-  "id": "2627b000-d9a9-42f4-a0ee-ae972fdd4c63",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "dd95c45b-b5ba-4f1e-88f4-9c2fa8d95a23",
+  "prevId": "2627b000-d9a9-42f4-a0ee-ae972fdd4c63",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -6273,6 +6273,156 @@
         "ck_usuarios_intentos": {
           "name": "ck_usuarios_intentos",
           "value": "intentos_fallidos >= 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.variables_sistema": {
+      "name": "variables_sistema",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "variables_sistema_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "codigo": {
+          "name": "codigo",
+          "type": "varchar(60)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "descripcion": {
+          "name": "descripcion",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "modulo": {
+          "name": "modulo",
+          "type": "varchar(30)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tipo": {
+          "name": "tipo",
+          "type": "varchar(10)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "valor": {
+          "name": "valor",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "unidad": {
+          "name": "unidad",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "valor_minimo": {
+          "name": "valor_minimo",
+          "type": "numeric(18, 4)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "valor_maximo": {
+          "name": "valor_maximo",
+          "type": "numeric(18, 4)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "editable": {
+          "name": "editable",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "carga_en_aplicacion": {
+          "name": "carga_en_aplicacion",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "vigente": {
+          "name": "vigente",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "motivo_cambio": {
+          "name": "motivo_cambio",
+          "type": "varchar(500)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "actualizado_por_id": {
+          "name": "actualizado_por_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "creado_en": {
+          "name": "creado_en",
+          "type": "timestamp(0)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "CURRENT_TIMESTAMP"
+        }
+      },
+      "indexes": {
+        "ux_variables_sistema_vigente": {
+          "name": "ux_variables_sistema_vigente",
+          "columns": [
+            {
+              "expression": "codigo",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "vigente = true",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "fk_variables_sistema_actualizado_por": {
+          "name": "fk_variables_sistema_actualizado_por",
+          "tableFrom": "variables_sistema",
+          "tableTo": "usuarios",
+          "columnsFrom": ["actualizado_por_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "ck_variables_sistema_tipo": {
+          "name": "ck_variables_sistema_tipo",
+          "value": "(tipo)::text = ANY ((ARRAY['texto'::character varying, 'entero'::character varying, 'decimal'::character varying, 'booleano'::character varying, 'fecha'::character varying, 'hora'::character varying, 'lista'::character varying])::text[])"
         }
       },
       "isRLSEnabled": false

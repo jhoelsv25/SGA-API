@@ -4,6 +4,16 @@ import { UpdateInstitucionDto } from "@/features/institucion/dto";
 import { InstitucionService } from "@/features/institucion/institucion.service";
 import { InstitucionRepository } from "@/features/institucion/repositories/institucion.repository";
 
+jest.mock("fs", () => {
+  const actual = jest.requireActual<typeof import("fs")>("fs");
+  return {
+    ...actual,
+    existsSync: jest.fn().mockReturnValue(true),
+    mkdirSync: jest.fn(),
+    writeFileSync: jest.fn(),
+  };
+});
+
 describe("InstitucionService (RF-004 HU1)", () => {
   let service: InstitucionService;
   let mockRepository: jest.Mocked<Partial<InstitucionRepository>>;

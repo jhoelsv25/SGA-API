@@ -46,6 +46,7 @@ import {
   rolPermisos,
   estudianteApoderados,
   equiposAutorizados,
+  variablesSistema,
 } from "./tables";
 
 export const permisosRelations = relations(permisos, ({ one, many }) => ({
@@ -612,5 +613,12 @@ export const estudianteApoderadosRelations = relations(estudianteApoderados, ({ 
   estudiante: one(estudiantes, {
     fields: [estudianteApoderados.estudianteId],
     references: [estudiantes.id],
+  }),
+}));
+
+export const variablesSistemaRelations = relations(variablesSistema, ({ one }) => ({
+  actualizadoPor: one(usuarios, {
+    fields: [variablesSistema.actualizadoPorId],
+    references: [usuarios.id],
   }),
 }));
