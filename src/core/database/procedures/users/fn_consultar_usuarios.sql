@@ -131,7 +131,7 @@ BEGIN
         MAX(CASE WHEN rn = v_limit THEN apellido_paterno END),
         MAX(CASE WHEN rn = v_limit THEN apellido_materno END),
         MAX(CASE WHEN rn = v_limit THEN nombres END),
-        MAX(CASE WHEN rn = v_limit THEN usuario_id END)
+        MAX(CASE WHEN rn = v_limit THEN usuario_id::text END)::UUID
     INTO v_has_more, v_items, v_next_paterno, v_next_materno, v_next_nombres, v_next_id
     FROM con_numero;
 
