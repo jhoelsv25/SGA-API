@@ -35,9 +35,9 @@
 
 | RF                                                                                                                             | Módulo              | Requerimiento                                | Prioridad | Indicador           | Documento      | Pendientes                   | Back % | Front % | Estado          |
 | ------------------------------------------------------------------------------------------------------------------------------ | ------------------- | -------------------------------------------- | --------- | ------------------- | -------------- | ---------------------------- | ------ | ------- | --------------- |
-| [RF-001](requerimientos/RF-001_Acceso_al_Sistema/V1/RF-001_Acceso_al_Sistema.md)                                               | Seguridad           | Acceso al sistema                            | Alta      | —                   | Redactado      | —                            | 100 %  | 0 %     | En desarrollo   |
-| [RF-002](requerimientos/RF-002_Usuarios_Roles_y_Menu/V1/RF-002_Usuarios_Roles_y_Menu.md)                                       | Seguridad           | Usuarios, roles y menú                       | Alta      | —                   | Redactado      | —                            | 100 %  | 0 %     | En desarrollo   |
-| [RF-003](requerimientos/RF-003_Bitacora_de_Auditoria/V1/RF-003_Bitacora_de_Auditoria.md)                                       | Seguridad           | Bitácora de auditoría                        | Baja      | —                   | Redactado      | —                            | 100 %  | 0 %     | En desarrollo   |
+| [RF-001](requerimientos/RF-001_Acceso_al_Sistema/V1/RF-001_Acceso_al_Sistema.md)                                               | Seguridad           | Acceso al sistema                            | Alta      | —                   | Redactado      | —                            | 100 %  | 100 %   | Completado      |
+| [RF-002](requerimientos/RF-002_Usuarios_Roles_y_Menu/V1/RF-002_Usuarios_Roles_y_Menu.md)                                       | Seguridad           | Usuarios, roles y menú                       | Alta      | —                   | Redactado      | —                            | 100 %  | 100 %   | Completado      |
+| [RF-003](requerimientos/RF-003_Bitacora_de_Auditoria/V1/RF-003_Bitacora_de_Auditoria.md)                                       | Seguridad           | Bitácora de auditoría                        | Baja      | —                   | Redactado      | —                            | 100 %  | 100 %   | Completado      |
 | [RF-004](requerimientos/RF-004_Institucion_y_Turnos/V1/RF-004_Institucion_y_Turnos.md)                                         | Configuración       | Institución, turnos y equipos autorizados    | Alta      | —                   | Redactado      | —                            | 0 %    | 0 %     | Por desarrollar |
 | [RF-005](requerimientos/RF-005_Anio_Escolar_y_Calendario/V1/RF-005_Anio_Escolar_y_Calendario.md)                               | Configuración       | Año escolar y calendario                     | Alta      | CSP                 | Redactado      | —                            | 0 %    | 0 %     | Por desarrollar |
 | [RF-006](requerimientos/RF-006_Grados_Cursos_y_Plan_de_Estudios/V1/RF-006_Grados_Cursos_y_Plan_de_Estudios.md)                 | Configuración       | Grados, cursos y plan de estudios            | Alta      | —                   | Redactado      | —                            | 0 %    | 0 %     | Por desarrollar |
@@ -62,9 +62,9 @@
 | --------------------- | ------- |
 | RF redactados         | 11 / 20 |
 | RF con pendientes     | 3       |
-| RF completados        | 0 / 20  |
-| Avance promedio Back  | 10 %    |
-| Avance promedio Front | 0 %     |
+| RF completados        | 3 / 20  |
+| Avance promedio Back  | 15 %    |
+| Avance promedio Front | 15 %    |
 
 ---
 
@@ -72,14 +72,18 @@
 
 Una fila por cada actualización. La más reciente arriba.
 
-| Fecha      | RF              | Capa      | Antes        | Después                    | Qué se hizo                                                                                                                                | Escenarios pendientes |
-| ---------- | --------------- | --------- | ------------ | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | --------------------- |
-| 2026-10-05 | RF-001          | Back      | 0 %          | 100 %                      | [Jhoel Silvestre] Certificación de pruebas unitarias backend y migración a jerarquía test/ con aliases @/ (66 tests pasando en 9 suites)   | —                     |
-| 2026-10-05 | RF-002          | Back      | 0 %          | 100 %                      | [Jhoel Silvestre] Implementación completa backend: HU1 Cuentas, HU2 Roles/Permisos, HU3 Módulos y Menú (25 escenarios cubiertos con tests) | —                     |
-| 2026-10-03 | RF-011          | Documento | Por redactar | Con pendientes             | Redacción V1 (kiosko de sesiones, justificación por subdirector)                                                                           | —                     |
-| 2026-10-03 | RF-010          | Documento | Por redactar | Redactado                  | Redacción V1 (asistencia por sesión)                                                                                                       | —                     |
-| 2026-10-03 | RF-009          | Documento | Por redactar | Redactado                  | Redacción V1                                                                                                                               | —                     |
-| 2026-10-03 | RF-001 a RF-008 | Documento | Por redactar | Redactado / Con pendientes | Redacción V1 con la skill Gherkin                                                                                                          | —                     |
+| Fecha      | RF              | Capa      | Antes        | Después                    | Qué se hizo                                                                                                                                                                                          | Escenarios pendientes |
+| ---------- | --------------- | --------- | ------------ | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
+| 2026-10-07 | RF-003          | Front     | 0 %          | 100 %                      | [Jhoel Silvestre] Implementación completa frontend en Next.js / Bun: Bitácora de Auditoría (/admin/audit), filtros de fecha (máx 31d), acciones, modal comparativo antes/después y sellado inmutable | —                     |
+| 2026-10-07 | RF-001          | Front     | 0 %          | 100 %                      | [Jhoel Silvestre] Implementación completa frontend de Autenticación: Login institucional, auto-redirección de sesión activa, cambio forzoso de clave y guards                                        | —                     |
+| 2026-10-05 | RF-002          | Front     | 0 %          | 100 %                      | [Jhoel Silvestre] Implementación completa frontend en Next.js / Bun: Gestión de Usuarios, Roles, Permisos RBAC, modales y exportación Excel                                                          | —                     |
+| 2026-10-05 | RF-003          | Back      | 0 %          | 100 %                      | [Jhoel Silvestre] Implementación completa backend de Bitácora de Auditoría: DTOs, filtros, paginación, servicio, controlador y unit tests (81 tests en 11 suites)                                    | —                     |
+| 2026-10-05 | RF-001          | Back      | 0 %          | 100 %                      | [Jhoel Silvestre] Certificación de pruebas unitarias backend y migración a jerarquía test/ con aliases @/ (66 tests pasando en 9 suites)                                                             | —                     |
+| 2026-10-05 | RF-002          | Back      | 0 %          | 100 %                      | [Jhoel Silvestre] Implementación completa backend: HU1 Cuentas, HU2 Roles/Permisos, HU3 Módulos y Menú (25 escenarios cubiertos con tests)                                                           | —                     |
+| 2026-10-03 | RF-011          | Documento | Por redactar | Con pendientes             | Redacción V1 (kiosko de sesiones, justificación por subdirector)                                                                                                                                     | —                     |
+| 2026-10-03 | RF-010          | Documento | Por redactar | Redactado                  | Redacción V1 (asistencia por sesión)                                                                                                                                                                 | —                     |
+| 2026-10-03 | RF-009          | Documento | Por redactar | Redactado                  | Redacción V1                                                                                                                                                                                         | —                     |
+| 2026-10-03 | RF-001 a RF-008 | Documento | Por redactar | Redactado / Con pendientes | Redacción V1 con la skill Gherkin                                                                                                                                                                    | —                     |
 
 ---
 

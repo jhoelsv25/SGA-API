@@ -22,6 +22,7 @@ import {
   PaginatedUsersResponseDto,
   TempPasswordResetResponseDto,
   UserCreatedResponseDto,
+  UserPersonaDto,
   UserResponseDto,
 } from "./dto/user-response.dto";
 import { UsersService } from "./users.service";
@@ -41,6 +42,15 @@ export class UsersController {
   @ApiResponse({ status: 200, type: PaginatedUsersResponseDto })
   async findUsers(@Query() query: UserQueryDto): Promise<PaginatedUsersResponseDto> {
     return this.usersService.findUsers(query);
+  }
+
+  @Get("eligible-personas")
+  @ApiOperation({
+    summary: "Listar personas del padrón que aún no tienen cuenta de usuario creada",
+  })
+  @ApiResponse({ status: 200, type: [UserPersonaDto] })
+  async findEligiblePersonas(@Query("search") search?: string): Promise<UserPersonaDto[]> {
+    return this.usersService.findEligiblePersonas(search);
   }
 
   @Get(":id")
