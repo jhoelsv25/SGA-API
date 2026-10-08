@@ -15,7 +15,7 @@ Archivos relacionados:
 | Archivo | Para qué |
 |---|---|
 | `docs/00-Plan-y-Backlog-RF.md` | Tabla de RF con avance y registro de avance |
-| `docs/requerimientos/RF-XXX_Nombre/V*/RF-XXX_Nombre.md` | Especificación del RF (escenarios Gherkin). Usar la **versión más alta** |
+| `docs/requerimientos/RF-XXX_Nombre/V*/RF-XXX_Nombre.md` | Especificación del RF (escenarios Gherkin). Usar la **versión más alta** (`V2/` sobre `V1/`) |
 | `docs/requerimientos/PENDIENTES.md` | Preguntas abiertas al colegio que pueden bloquear un RF |
 
 ## Cuándo actuar
@@ -27,6 +27,27 @@ Archivos relacionados:
 
 Si la tarea no toca ningún RF (refactor interno, configuración, dependencias), no se actualiza;
 decirlo en una línea.
+
+## Paso 0 — Cambios en un RF que ya tiene desarrollo (nueva versión)
+
+Si la especificación de un RF cambia (respuesta de un pendiente, nueva regla, nuevo escenario)
+y ese RF ya tiene desarrollo (Back % o Front % mayor que 0):
+
+1. **No editar la versión vigente.** Crear una carpeta nueva junto a la anterior
+   (`V1/` → `V2/` → `V3/`…), copiar el `.md`, subir la versión en la cabecera
+   (`**Versión:** 2.0` y `**Fecha:** actualización v2.0: AAAA-MM-DD`), agregar el bloque
+   `> **Cambios de la versión 2.0 sobre la 1.0 (...)**` y marcar lo nuevo con `(v2.0)`.
+2. **Apuntar todo a la nueva versión:** el enlace del RF en el backlog, la fuente de
+   `docs/pruebas/casos/RF-XXX_*/casos-de-prueba.md` (regenerarlo conservando los IDs; los
+   escenarios nuevos toman números nuevos) y cualquier otro `.md` que enlace a `/V1/`.
+3. **Marcar el backlog:** columna *Documento* = `V2` (o `V2 (con pendientes)`), *Estado* =
+   `Pendiente (V2)`, *Pendientes* = qué falta implementar, y **recalcular** Back % y Front %
+   con los escenarios de la nueva versión (los escenarios nuevos cuentan como no
+   implementados hasta verificarlos en el código).
+4. Registrar la fila en el *Registro de avance* explicando por qué bajó el porcentaje.
+
+Si el RF todavía no tiene desarrollo (0 %), también se crea la nueva versión cuando el
+cambio viene de un pendiente resuelto, pero el estado sigue `Por desarrollar`.
 
 ## Paso 1 — Identificar el RF
 
@@ -70,6 +91,7 @@ En `docs/00-Plan-y-Backlog-RF.md`:
    - `Por desarrollar` → Back y Front en 0 %.
    - `En desarrollo` → alguna entre 1 % y 99 %.
    - `Completado` → Back **y** Front al 100 %.
+   - `Pendiente (Vn)` → estaba desarrollado y el RF pasó a una nueva versión; falta implementar lo nuevo.
    - `Bloqueado` → no se puede avanzar porque un escenario depende de un pendiente (P-XX) sin respuesta. Indicar el P-XX en la columna *Pendientes*.
 3. **Resumen de avance:** recalcular RF completados, y el promedio de Back % y de Front % de los 20 RF.
 4. **Registro de avance:** agregar **una fila arriba** (la más reciente primero):

@@ -29,6 +29,16 @@
 - **Roles del sistema.** Los roles Administrador, Director, Subdirector, Soporte TI, Secretaria, Docente, Estudiante y Apoderado vienen precargados y son **roles del sistema**: no se eliminan ni se renombran, pero sí se pueden ajustar sus permisos (excepto el Administrador, que siempre tiene todos).
 - **Roles adicionales.** El Administrador puede crear otros roles (por ejemplo, Coordinador o Auxiliar). El nombre del rol es único. Un rol con cuentas asignadas no se puede desactivar.
 - **Permisos.** Son las acciones del sistema (por ejemplo, `sesiones.registrar` o `libretas.subir`), agrupadas por módulo. El catálogo de permisos lo define el sistema y el Administrador **solo los asigna** a los roles; no los crea ni los borra.
+- **Alcance de cada permiso (aplica a todo el sistema).** Al asignar un permiso a un rol, el Administrador indica **sobre qué datos** puede actuar ese rol. Todos los RF que dicen "quien tenga el permiso…" usan esta regla:
+
+  | Alcance | El usuario puede actuar sobre… | Ejemplo |
+  |---|---|---|
+  | `propio` | Solo sus propios datos o registros | Un docente ve solo sus sesiones |
+  | `tutoria` | La sección de la que es tutor | El tutor sube libretas de su sección |
+  | `mis_secciones` | Las secciones donde es tutor o dicta algún curso | Un docente registra conducta en sus salones |
+  | `colegio` | Todo el colegio | El Director o un Auxiliar registra conducta de cualquier estudiante |
+
+  Un mismo permiso puede tener alcances distintos según el rol (por ejemplo, `conducta.registrar` con `mis_secciones` para Docente y `colegio` para Director). El cambio rige desde el siguiente ingreso o al refrescar.
 - **Módulos y menú.** Los módulos agrupan las opciones del menú. El menú tiene dos niveles en la misma estructura:
   - **Contenedor:** un grupo dentro de un módulo (por ejemplo, "Operaciones" o "Reportes"). No tiene ruta ni padre.
   - **Opción:** una pantalla. Tiene ruta, pertenece a un contenedor y puede exigir un permiso.
@@ -154,8 +164,14 @@
 ### Escenario: Asignar permisos a un rol
 
 **Dado** que estoy en el detalle del rol Docente
-**Cuando** marco o desmarco permisos, agrupados por módulo, y presiono "Guardar"
-**Entonces** el sistema guarda los permisos del rol y registra el cambio en la bitácora.
+**Cuando** marco o desmarco permisos, agrupados por módulo, elijo el alcance de cada uno y presiono "Guardar"
+**Entonces** el sistema guarda los permisos del rol con su alcance y registra el cambio en la bitácora.
+
+### Escenario: Alcance de un permiso
+**Dado** que el rol Docente tiene `conducta.registrar` con alcance `mis_secciones`
+**Cuando** un docente intenta registrar una incidencia de un estudiante de una sección donde no dicta
+**Entonces** el sistema rechaza la acción.
+**Y** si cambio el alcance a `colegio`, desde su siguiente ingreso podrá registrar incidencias de cualquier estudiante.
 
 ### Escenario: Crear un rol adicional
 

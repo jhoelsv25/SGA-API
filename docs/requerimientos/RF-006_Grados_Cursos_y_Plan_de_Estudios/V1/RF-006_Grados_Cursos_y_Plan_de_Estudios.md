@@ -36,7 +36,7 @@
 - **Total de horas.** La pantalla muestra la suma de horas semanales del grado, como referencia para armar el horario. No bloquea.
 - **Copiar plan.** Se puede copiar el plan de un grado a otro para no empezar de cero.
 - **No se quita un curso en uso.** Si un curso del plan ya tiene carga académica en alguna sección de ese grado en el año en curso (`RF-008`), no se puede quitar del plan; primero se retira de la carga académica.
-- **Quién gestiona.** Solo el Administrador. Todos los roles internos pueden consultar.
+- **Quién gestiona.** Solo el Administrador. Todos los perfiles internos pueden consultar.
 - **Operación 100% en línea.**
 - **Auditoría inmutable.** Crear, editar o desactivar cursos y cambiar el plan de estudios queda en la bitácora (`RF-003`).
 
@@ -187,7 +187,7 @@
 
 ### Escenario: Usuario sin permiso
 
-**Dado** que mi rol no es Administrador
+**Dado** que mi perfil no es Administrador
 **Cuando** abro "Cursos" o "Plan de estudios"
 **Entonces** puedo consultar, pero el sistema no me ofrece crear, editar ni desactivar.
 
@@ -199,7 +199,7 @@
 - **Cursos:** obligatorios Código, Nombre y Área; código único; color con formato válido; se desactivan, no se eliminan; no se desactiva uno con carga académica en el año en curso.
 - **Áreas:** las del currículo nacional de secundaria más Taller.
 - **Plan de estudios:** un curso una vez por grado; horas semanales > 0; solo cursos activos; no se quita un curso con carga académica en el grado; total de horas solo informativo.
-- **Permisos:** gestión, solo el Administrador; consulta, roles internos.
+- **Permisos:** gestión, solo el Administrador; consulta, perfiles internos.
 - **Auditoría:** cursos y cambios del plan (`RF-003`).
 
 ## Anexos y Prototipo Interactivo

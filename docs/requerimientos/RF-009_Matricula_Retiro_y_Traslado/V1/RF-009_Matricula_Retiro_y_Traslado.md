@@ -219,7 +219,7 @@
 
 ### Escenario: Usuario sin permiso
 
-**Dado** que mi rol es Docente
+**Dado** que mi perfil es Docente
 **Cuando** intento abrir "Matrículas"
 **Entonces** el sistema no muestra la opción y rechaza el acceso.
 
