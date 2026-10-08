@@ -10,14 +10,12 @@ import { PermissionsGuard } from "@/common/guards/permissions.guard";
 import { RolePermissionsService } from "@/common/services/role-permissions.service";
 import { MENSAJES } from "@/features/anio-escolar/constants";
 import { AniosAcademicosService } from "@/features/anio-escolar/anios.service";
-import { CalendarioService } from "@/features/anio-escolar/calendario.service";
-import {
-  AnioPersistido,
-  BimestrePersistido,
-  EventoPersistido,
-} from "@/features/anio-escolar/interfaces";
+import { AnioPersistido, BimestrePersistido } from "@/features/anio-escolar/interfaces";
 import { AniosAcademicosRepository } from "@/features/anio-escolar/repositories/anios.repository";
-import { CalendarioRepository } from "@/features/anio-escolar/repositories/calendario.repository";
+import { MENSAJES as MENSAJES_CALENDARIO } from "@/features/calendario/constants";
+import { CalendarioService } from "@/features/calendario/calendario.service";
+import { EventoPersistido } from "@/features/calendario/interfaces";
+import { CalendarioRepository } from "@/features/calendario/repositories/calendario.repository";
 import type { ExecutionContext } from "@nestjs/common";
 
 const ACTOR = "admin-1";
@@ -457,7 +455,7 @@ describe("CalendarioService (RF-005)", () => {
     );
 
     expect(repo.eliminarSesionesPendientes).toHaveBeenCalledWith("2027-06-10", "2027-06-10");
-    expect(creado.mensaje).toBe(MENSAJES.sesionesPendientes);
+    expect(creado.mensaje).toBe(MENSAJES_CALENDARIO.sesionesPendientes);
   });
 
   it("rechaza un evento con la fecha de fin anterior al inicio", async () => {
@@ -466,7 +464,7 @@ describe("CalendarioService (RF-005)", () => {
         { titulo: "Mal", tipo: "actividad", fechaInicio: "2027-06-12", fechaFin: "2027-06-10" },
         ACTOR,
       ),
-    ).rejects.toThrow(new BadRequestException(MENSAJES.fechasInvertidas));
+    ).rejects.toThrow(new BadRequestException(MENSAJES_CALENDARIO.fechasInvertidas));
   });
 
   it("lista el mes del año en curso y marca los días sin clases", async () => {

@@ -1327,6 +1327,109 @@ async function seed() {
     console.log("✔ Usuario 'admin' creado exitosamente con credencial Admin123*.");
   }
 
+  // 9. Cursos precargados del Currículo Nacional y Taller (RF-006)
+  const CURSOS_BASE_SEED = [
+    {
+      codigo: "MAT",
+      nombre: "Matemática",
+      areaCurricular: "matematica",
+      colorHex: "#2563EB",
+      descripcion: "Área de Matemática según el CNEB",
+    },
+    {
+      codigo: "COM",
+      nombre: "Comunicación",
+      areaCurricular: "comunicacion",
+      colorHex: "#DC2626",
+      descripcion: "Área de Comunicación según el CNEB",
+    },
+    {
+      codigo: "ING",
+      nombre: "Inglés",
+      areaCurricular: "ingles",
+      colorHex: "#7C3AED",
+      descripcion: "Idioma Extranjero Inglés",
+    },
+    {
+      codigo: "ART",
+      nombre: "Arte y Cultura",
+      areaCurricular: "arte_cultura",
+      colorHex: "#DB2777",
+      descripcion: "Expresión y apreciación artística",
+    },
+    {
+      codigo: "CCSS",
+      nombre: "Ciencias Sociales",
+      areaCurricular: "ciencias_sociales",
+      colorHex: "#D97706",
+      descripcion: "Historia, Geografía y Economía",
+    },
+    {
+      codigo: "DPCC",
+      nombre: "Desarrollo Personal, Ciudadanía y Cívica",
+      areaCurricular: "dpcc",
+      colorHex: "#059669",
+      descripcion: "Formación ciudadana y cívica",
+    },
+    {
+      codigo: "EDFIS",
+      nombre: "Educación Física",
+      areaCurricular: "educacion_fisica",
+      colorHex: "#EA580C",
+      descripcion: "Desarrollo corporal y salud",
+    },
+    {
+      codigo: "REL",
+      nombre: "Educación Religiosa",
+      areaCurricular: "educacion_religiosa",
+      colorHex: "#4F46E5",
+      descripcion: "Formación en valores y religión",
+    },
+    {
+      codigo: "CYT",
+      nombre: "Ciencia y Tecnología",
+      areaCurricular: "ciencia_tecnologia",
+      colorHex: "#0D9488",
+      descripcion: "Indagación científica y tecnología",
+    },
+    {
+      codigo: "EPT",
+      nombre: "Educación para el Trabajo",
+      areaCurricular: "ept",
+      colorHex: "#CA8A04",
+      descripcion: "Gestión de proyectos de emprendimiento",
+    },
+    {
+      codigo: "TUT",
+      nombre: "Tutoría",
+      areaCurricular: "tutoria",
+      colorHex: "#64748B",
+      descripcion: "Tutoría y orientación educativa",
+    },
+    {
+      codigo: "TCOMP",
+      nombre: "Taller de Computación",
+      areaCurricular: "taller",
+      colorHex: "#0284C7",
+      descripcion: "Taller extracurricular de computación y ofimática",
+    },
+  ];
+
+  for (const c of CURSOS_BASE_SEED) {
+    const existing = await pool.query(
+      `SELECT id FROM cursos WHERE UPPER(codigo) = UPPER($1) AND eliminado_en IS NULL`,
+      [c.codigo],
+    );
+    if (existing.rows.length === 0) {
+      await pool.query(
+        `INSERT INTO cursos (codigo, nombre, area_curricular, color_hex, descripcion)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [c.codigo, c.nombre, c.areaCurricular, c.colorHex, c.descripcion],
+      );
+    }
+  }
+  console.log("✔ Cursos base del Currículo Nacional y Taller verificados y configurados.");
+
   await pool.end();
   console.log("==========================================");
   console.log("🎉 Seed maestro completado exitosamente.");

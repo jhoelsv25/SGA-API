@@ -8,7 +8,7 @@ import {
   UpdateEventoCalendarioDto,
 } from "./dto";
 import { EventoPersistido, SesionesAfectadas } from "./interfaces";
-import { AniosAcademicosService } from "./anios.service";
+import { AniosAcademicosService } from "../anio-escolar/anios.service";
 import { CalendarioRepository } from "./repositories/calendario.repository";
 import {
   diasEntre,
@@ -33,7 +33,7 @@ export class CalendarioService {
     const anioNumero = anio ?? defecto.anio;
     const mesNumero = mes ?? defecto.mes;
     if (!Number.isInteger(mesNumero) || mesNumero < 1 || mesNumero > 12) {
-      throw new BadRequestException("Indique un mes entre 1 y 12.");
+      throw new BadRequestException(MENSAJES.mesInvalido);
     }
 
     const desde = inicioDeMes(anioNumero, mesNumero);
@@ -151,15 +151,15 @@ export class CalendarioService {
 
   private async requireEvento(id: string): Promise<EventoPersistido> {
     const evento = await this.calendarioRepository.findById(id);
-    if (!evento) throw new NotFoundException("Evento de calendario no encontrado.");
+    if (!evento) throw new NotFoundException(MENSAJES.eventoNoEncontrado);
     return evento;
   }
 
   private assertRangoEvento(inicio: string, fin: string): void {
     if (!esFechaIso(inicio) || !esFechaIso(fin)) {
-      throw new BadRequestException("Indique una fecha válida (AAAA-MM-DD).");
+      throw new BadRequestException(MENSAJES.fechaInvalida);
     }
-    const mensaje = mensajeSiRangoInvalido(inicio, fin, true);
+    const mensaje = mensajeSiRangoInvalido(inicio, fin);
     if (mensaje) throw new BadRequestException(mensaje);
   }
 

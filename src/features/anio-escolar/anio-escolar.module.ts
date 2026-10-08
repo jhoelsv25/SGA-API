@@ -5,22 +5,13 @@ import { QueuesModule } from "../../core/queues/queues.module";
 import { QUEUES } from "../../core/queues/queues.constants";
 import { AniosAcademicosController } from "./anios.controller";
 import { AniosAcademicosService } from "./anios.service";
-import { CalendarioController } from "./calendario.controller";
-import { CalendarioService } from "./calendario.service";
 import { ReaperturaProcessor } from "./processors/reapertura.processor";
-import { AniosAcademicosRepository, CalendarioRepository } from "./repositories";
+import { AniosAcademicosRepository } from "./repositories";
 
 @Module({
   imports: [QueuesModule, BullModule.registerQueue({ name: QUEUES.ANIO_ESCOLAR })],
-  controllers: [AniosAcademicosController, CalendarioController],
-  providers: [
-    AniosAcademicosService,
-    AniosAcademicosRepository,
-    CalendarioService,
-    CalendarioRepository,
-    ReaperturaProcessor,
-    AuditService,
-  ],
-  exports: [AniosAcademicosService, CalendarioService],
+  controllers: [AniosAcademicosController],
+  providers: [AniosAcademicosService, AniosAcademicosRepository, ReaperturaProcessor, AuditService],
+  exports: [AniosAcademicosService],
 })
 export class AnioEscolarModule {}
