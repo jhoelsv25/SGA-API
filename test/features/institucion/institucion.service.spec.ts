@@ -74,7 +74,7 @@ describe("InstitucionService (RF-004 HU1)", () => {
 
       const result = await service.update(dto, "user-admin", "127.0.0.1");
 
-      expect(mockRepository.update).toHaveBeenCalledWith(dto);
+      expect(mockRepository.update).toHaveBeenCalledWith(expect.objectContaining(dto));
       expect(mockAuditService.log).toHaveBeenCalledWith(
         expect.objectContaining({
           usuarioId: "user-admin",

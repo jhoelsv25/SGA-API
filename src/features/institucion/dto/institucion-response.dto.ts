@@ -23,6 +23,9 @@ export class InstitucionResponseDto {
   @ApiPropertyOptional({ description: "DRE" })
   dre?: string | null;
 
+  @ApiPropertyOptional({ description: "UGEL y DRE consolidada" })
+  ugelDre?: string | null;
+
   @ApiPropertyOptional({ description: "Director general" })
   director?: string | null;
 

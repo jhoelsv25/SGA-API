@@ -28,7 +28,24 @@ export class InstitucionService {
   ): Promise<InstitucionResponseDto> {
     const current = await this.get();
 
-    const updated = await this.institucionRepository.update(dto);
+    const mergedDto: UpdateInstitucionDto = {
+      nombre: dto.nombre ?? current.nombre,
+      codigoModular: dto.codigoModular ?? current.codigoModular,
+      codigoLocal: dto.codigoLocal !== undefined ? dto.codigoLocal : current.codigoLocal,
+      tipoGestion: dto.tipoGestion ?? current.tipoGestion,
+      ugel:
+        dto.ugel !== undefined ? dto.ugel : dto.ugelDre !== undefined ? dto.ugelDre : current.ugel,
+      dre: dto.dre !== undefined ? dto.dre : current.dre,
+      director: dto.director !== undefined ? dto.director : current.director,
+      direccion: dto.direccion ?? current.direccion,
+      distrito: dto.distrito !== undefined ? dto.distrito : current.distrito,
+      provincia: dto.provincia !== undefined ? dto.provincia : current.provincia,
+      departamento: dto.departamento !== undefined ? dto.departamento : current.departamento,
+      telefono: dto.telefono !== undefined ? dto.telefono : current.telefono,
+      correo: dto.correo !== undefined ? dto.correo : current.correo,
+    };
+
+    const updated = await this.institucionRepository.update(mergedDto);
 
     await this.auditService.log({
       usuarioId: actorId,

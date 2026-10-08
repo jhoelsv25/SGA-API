@@ -1,5 +1,14 @@
-import { Body, Controller, Get, Post, Put, UploadedFile, UseInterceptors } from "@nestjs/common";
-import { FileInterceptor } from "@nestjs/platform-express";
+import {
+  Body,
+  Controller,
+  Get,
+  Patch,
+  Post,
+  Put,
+  UploadedFiles,
+  UseInterceptors,
+} from "@nestjs/common";
+import { AnyFilesInterceptor } from "@nestjs/platform-express";
 import {
   ApiBearerAuth,
   ApiBody,
@@ -32,6 +41,7 @@ export class InstitucionController {
   }
 
   @Put()
+  @Patch()
   @Roles("Administrador")
   @ApiOperation({ summary: "Actualizar datos oficiales de la institución (Solo Administrador)" })
   @ApiResponse({
@@ -49,7 +59,7 @@ export class InstitucionController {
 
   @Post("logo")
   @Roles("Administrador")
-  @UseInterceptors(FileInterceptor("logo"))
+  @UseInterceptors(AnyFilesInterceptor())
   @ApiOperation({ summary: "Subir logo institucional (PNG o JPG de hasta 1 MB)" })
   @ApiConsumes("multipart/form-data")
   @ApiBody({
@@ -70,10 +80,11 @@ export class InstitucionController {
     type: InstitucionResponseDto,
   })
   async uploadLogo(
-    @UploadedFile() file: Express.Multer.File | undefined,
+    @UploadedFiles() files: Express.Multer.File[] | undefined,
     @CurrentUser() user: AuthenticatedUser,
     @ClientInfo() clientInfo: ClientInfoData,
   ): Promise<InstitucionResponseDto> {
+    const file = files?.[0];
     return this.institucionService.uploadLogo(file, user.id, clientInfo.ip);
   }
 }

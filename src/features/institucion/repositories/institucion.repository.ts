@@ -19,6 +19,7 @@ export class InstitucionRepository implements IInstitucionRepository {
       tipoGestion: row.tipoGestion as GestionType,
       ugel: row.ugel,
       dre: row.dre,
+      ugelDre: row.ugel && row.dre ? `${row.ugel} / ${row.dre}` : row.ugel || row.dre || null,
       director: row.director,
       direccion: row.direccion,
       distrito: row.distrito,
