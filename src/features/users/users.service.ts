@@ -5,12 +5,12 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import * as bcrypt from "bcryptjs";
 import { AuditService } from "../../common/services/audit.service";
+import { hashPassword } from "../../common/utils";
 import { Database, DRIZZLE } from "../../core/database";
 import type { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface";
 import { RolesRepository } from "../roles/repositories/roles.repository";
-import { BCRYPT_SALT_ROUNDS, TEMP_PASSWORD_LENGTH, USER_ROLE_MESSAGES } from "./constants";
+import { TEMP_PASSWORD_LENGTH, USER_ROLE_MESSAGES } from "./constants";
 import { AddUserRoleDto, UserRoleAssignmentDto } from "./dto/user-role.dto";
 import { ChangeUserRoleDto } from "./dto/change-user-role.dto";
 import { CreateUserDto } from "./dto/create-user.dto";
@@ -121,7 +121,7 @@ export class UsersService {
         throw new ConflictException("El nombre de usuario ya está en uso.");
       }
       tempPassword = generateTemporaryPassword(TEMP_PASSWORD_LENGTH);
-      contrasenaHash = await bcrypt.hash(tempPassword, BCRYPT_SALT_ROUNDS);
+      contrasenaHash = await hashPassword(tempPassword);
     }
 
     // 5. Registro único en una transacción
@@ -387,7 +387,7 @@ export class UsersService {
 
     // Generar nueva contraseña temporal
     const tempPassword = generateTemporaryPassword(TEMP_PASSWORD_LENGTH);
-    const newHash = await bcrypt.hash(tempPassword, BCRYPT_SALT_ROUNDS);
+    const newHash = await hashPassword(tempPassword);
 
     await this.usersRepository.update(id, {
       contrasenaHash: newHash,

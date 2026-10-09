@@ -1,0 +1,5 @@
+export * from "./create-persona.dto";
+export * from "./update-persona.dto";
+export * from "./persona-response.dto";
+export * from "./persona-query.dto";
+export * from "./persona-search.dto";
