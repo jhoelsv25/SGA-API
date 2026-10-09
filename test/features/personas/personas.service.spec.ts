@@ -84,6 +84,7 @@ describe("PersonasService (RF-007 Core Base)", () => {
       update: jest.fn(),
       softDelete: jest.fn(),
       hasActiveRelations: jest.fn(),
+      findHistorialCritico: jest.fn(),
     };
 
     auditService = {
@@ -299,6 +300,31 @@ describe("PersonasService (RF-007 Core Base)", () => {
       await expect(service.delete("p-doc-1", "admin-1")).rejects.toThrow(
         PERSONA_MESSAGES.DELETE_WITH_RELATIONS_CONFLICT,
       );
+    });
+  });
+
+  describe("findHistorialCritico", () => {
+    it("debe retornar la lista de correcciones registradas para una persona", async () => {
+      (repository.findById as jest.Mock).mockResolvedValue(mockPersonaConFicha);
+      const mockHistorial = [
+        {
+          id: 1,
+          fechaHora: "2026-10-09T16:00:00.000Z",
+          usuarioNombre: "admin",
+          motivo: "Corrección de apellido según partida",
+          camposModificados: [
+            { campo: "apellidoMaterno", valorAnterior: "Ramos", valorNuevo: "Romero" },
+          ],
+          direccionIp: "127.0.0.1",
+        },
+      ];
+      (repository.findHistorialCritico as jest.Mock).mockResolvedValue(mockHistorial);
+
+      const result = await service.findHistorialCritico("p-doc-1");
+
+      expect(result).toEqual(mockHistorial);
+      expect(repository.findById).toHaveBeenCalledWith("p-doc-1");
+      expect(repository.findHistorialCritico).toHaveBeenCalledWith("p-doc-1");
     });
   });
 });

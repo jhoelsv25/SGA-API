@@ -1,13 +1,11 @@
 import {
   BadRequestException,
   ConflictException,
-  Inject,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
 import { AuditService } from "../../common/services/audit.service";
 import { hashPassword } from "../../common/utils";
-import { Database, DRIZZLE } from "../../core/database";
 import type { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface";
 import { RolesRepository } from "../roles/repositories/roles.repository";
 import { TEMP_PASSWORD_LENGTH, USER_ROLE_MESSAGES } from "./constants";
@@ -24,6 +22,7 @@ import {
   UserResponseDto,
 } from "./dto/user-response.dto";
 import { UsersRepository } from "./repositories/users.repository";
+import { UserRolesService } from "./services";
 import { generateTemporaryPassword } from "./utils/password-generator.util";
 
 @Injectable()
@@ -32,7 +31,7 @@ export class UsersService {
     private readonly usersRepository: UsersRepository,
     private readonly rolesRepository: RolesRepository,
     private readonly auditService: AuditService,
-    @Inject(DRIZZLE) private readonly db: Database,
+    private readonly userRolesService: UserRolesService,
   ) {}
 
   async findUsers(query: UserQueryDto): Promise<PaginatedUsersResponseDto> {
@@ -161,48 +160,19 @@ export class UsersService {
     };
   }
 
+  // ── Delegaciones a UserRolesService (RF-002 V2) ──
+
   async changeRole(
     id: string,
     dto: ChangeUserRoleDto,
     actorUser: AuthenticatedUser,
     ip?: string,
   ): Promise<UserResponseDto> {
-    // Regla: No puede cambiarse el rol a sí mismo
-    if (actorUser.id === id) {
-      throw new BadRequestException(
-        "No puede desactivar su propia cuenta ni cambiar su propio rol.",
-      );
-    }
-
-    const user = await this.findUserById(id);
-
-    const role = await this.rolesRepository.findById(dto.rolId);
-    if (!role || !role.activo) {
-      throw new NotFoundException("El rol seleccionado no existe o no está activo.");
-    }
-
-    const updated = await this.usersRepository.update(id, { rolId: dto.rolId });
-    // RF-001 V2: el rol principal en usuario_roles sigue a usuarios.rol_id
-    await this.usersRepository.syncPrincipalRole(id, dto.rolId, actorUser.id);
-
-    await this.auditService.log({
-      usuarioId: actorUser.id,
-      accion: "actualizar",
-      tabla: "usuarios",
-      registroId: id,
-      valorAnterior: { rolId: user.rol.id, rolNombre: user.rol.nombre },
-      valorNuevo: { rolId: role.id, rolNombre: role.nombre },
-      direccionIp: ip,
-    });
-
-    return updated;
+    return this.userRolesService.changeRole(id, dto, actorUser, ip);
   }
 
-  // ── RF-002 V2 (HU1): varios roles por cuenta ──────────────────────────
-
   async listRoles(id: string, includeRetired = false): Promise<UserRoleAssignmentDto[]> {
-    await this.findUserById(id);
-    return this.usersRepository.findRoles(id, includeRetired);
+    return this.userRolesService.listRoles(id, includeRetired);
   }
 
   async addRole(
@@ -211,30 +181,7 @@ export class UsersService {
     actorUser: AuthenticatedUser,
     ip?: string,
   ): Promise<UserRoleAssignmentDto[]> {
-    await this.findUserById(id);
-
-    const role = await this.rolesRepository.findById(dto.rolId);
-    if (!role || !role.activo) {
-      throw new NotFoundException(USER_ROLE_MESSAGES.ROLE_NOT_FOUND);
-    }
-
-    const vigentes = await this.usersRepository.findRoles(id, false);
-    if (vigentes.some((p) => p.rolId === dto.rolId)) {
-      throw new ConflictException(USER_ROLE_MESSAGES.ALREADY_ASSIGNED);
-    }
-
-    await this.usersRepository.addRole(id, dto.rolId, actorUser.id);
-
-    await this.auditService.log({
-      usuarioId: actorUser.id,
-      accion: "crear",
-      tabla: "usuario_roles",
-      registroId: id,
-      valorNuevo: { rolId: role.id, rolNombre: role.nombre, esPrincipal: false },
-      direccionIp: ip,
-    });
-
-    return this.usersRepository.findRoles(id, false);
+    return this.userRolesService.addRole(id, dto, actorUser, ip);
   }
 
   async setPrincipalRole(
@@ -243,30 +190,7 @@ export class UsersService {
     actorUser: AuthenticatedUser,
     ip?: string,
   ): Promise<UserRoleAssignmentDto[]> {
-    await this.findUserById(id);
-
-    const vigentes = await this.usersRepository.findRoles(id, false);
-    const target = vigentes.find((p) => p.rolId === rolId);
-    if (!target) {
-      throw new NotFoundException(USER_ROLE_MESSAGES.NOT_ASSIGNED);
-    }
-
-    const anterior = vigentes.find((p) => p.esPrincipal);
-    if (!target.esPrincipal) {
-      await this.usersRepository.setPrincipalRole(id, rolId);
-
-      await this.auditService.log({
-        usuarioId: actorUser.id,
-        accion: "actualizar",
-        tabla: "usuario_roles",
-        registroId: id,
-        valorAnterior: { rolPrincipal: anterior?.rolNombre ?? null },
-        valorNuevo: { rolPrincipal: target.rolNombre },
-        direccionIp: ip,
-      });
-    }
-
-    return this.usersRepository.findRoles(id, false);
+    return this.userRolesService.setPrincipalRole(id, rolId, actorUser, ip);
   }
 
   async retireRole(
@@ -275,37 +199,10 @@ export class UsersService {
     actorUser: AuthenticatedUser,
     ip?: string,
   ): Promise<UserRoleAssignmentDto[]> {
-    await this.findUserById(id);
-
-    const vigentes = await this.usersRepository.findRoles(id, false);
-    const target = vigentes.find((p) => p.rolId === rolId);
-    if (!target) {
-      throw new NotFoundException(USER_ROLE_MESSAGES.NOT_ASSIGNED);
-    }
-    if (actorUser.id === id && target.rolNombre === "Administrador") {
-      throw new BadRequestException(USER_ROLE_MESSAGES.SELF_ADMIN);
-    }
-    if (vigentes.length === 1) {
-      throw new BadRequestException(USER_ROLE_MESSAGES.LAST_ROLE);
-    }
-    if (target.esPrincipal) {
-      throw new BadRequestException(USER_ROLE_MESSAGES.RETIRE_PRINCIPAL);
-    }
-
-    await this.usersRepository.retireRole(id, rolId, actorUser.id);
-
-    await this.auditService.log({
-      usuarioId: actorUser.id,
-      accion: "actualizar",
-      tabla: "usuario_roles",
-      registroId: id,
-      valorAnterior: { rolId, rolNombre: target.rolNombre, vigente: true },
-      valorNuevo: { rolId, rolNombre: target.rolNombre, vigente: false },
-      direccionIp: ip,
-    });
-
-    return this.usersRepository.findRoles(id, false);
+    return this.userRolesService.retireRole(id, rolId, actorUser, ip);
   }
+
+  // ── Gestión del estado y credenciales de la cuenta ──
 
   async unlock(id: string, actorId: string, ip?: string): Promise<UserResponseDto> {
     const user = await this.findUserById(id);

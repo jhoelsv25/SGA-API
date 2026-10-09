@@ -13,6 +13,8 @@ import { PersonasModule } from "./personas";
 import { DocentesModule } from "./docentes";
 import { EstudiantesModule } from "./estudiantes";
 import { ApoderadosModule } from "./apoderados";
+import { CredencialesModule } from "./credenciales";
+import { ImportacionModule } from "./importacion";
 import { PlanEstudiosModule } from "./plan-estudios";
 import { RolesModule } from "./roles";
 import { TurnosModule } from "./turnos";
@@ -40,6 +42,8 @@ import { VariablesSistemaModule } from "./variables-sistema";
     DocentesModule,
     EstudiantesModule,
     ApoderadosModule,
+    CredencialesModule,
+    ImportacionModule,
   ],
   exports: [
     AuthModule,
@@ -61,6 +65,8 @@ import { VariablesSistemaModule } from "./variables-sistema";
     DocentesModule,
     EstudiantesModule,
     ApoderadosModule,
+    CredencialesModule,
+    ImportacionModule,
   ],
 })
 export class FeaturesModule {}

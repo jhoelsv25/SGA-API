@@ -16,6 +16,7 @@ import { ClientInfo, type ClientInfoData, CurrentUser, Roles } from "../../commo
 import type { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface";
 import {
   CreatePersonaDto,
+  HistorialCorreccionCriticaDto,
   PaginatedPersonasResponseDto,
   PersonaQueryDto,
   PersonaResponseDto,
@@ -56,6 +57,19 @@ export class PersonasController {
   @ApiResponse({ status: 404, description: "Persona no encontrada" })
   async findById(@Param("id", ParseUUIDPipe) id: string): Promise<PersonaResponseDto> {
     return this.personasService.findById(id);
+  }
+
+  @Get(":id/historial-critico")
+  @ApiOperation({
+    summary: "Consultar historial de correcciones de datos críticos de una persona (RF-007 HU6)",
+    description:
+      "Retorna la bitácora de modificaciones realizadas a los datos protegidos con motivo, autor y fecha.",
+  })
+  @ApiResponse({ status: 200, type: [HistorialCorreccionCriticaDto] })
+  async findHistorialCritico(
+    @Param("id", ParseUUIDPipe) id: string,
+  ): Promise<HistorialCorreccionCriticaDto[]> {
+    return this.personasService.findHistorialCritico(id);
   }
 
   @Post()

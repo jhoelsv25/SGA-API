@@ -1,11 +1,13 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, eq, ilike, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, isNull, sql } from "drizzle-orm";
 import { Database, DRIZZLE } from "../../../core/database";
-import { personas } from "../../../core/database/schema";
+import { bitacoraAuditoria, personas, usuarios } from "../../../core/database/schema";
 import { decodeCursor, encodeCursor } from "../../../common/utils";
 import type {
+  CampoModificadoDto,
   CreatePersonaDto,
   FichasPersonaDto,
+  HistorialCorreccionCriticaDto,
   PaginatedPersonasResponseDto,
   PersonaQueryDto,
   PersonaResponseDto,
@@ -204,5 +206,73 @@ export class PersonasRepository implements IPersonasRepository {
       hasRelations,
       details,
     };
+  }
+
+  async findHistorialCritico(personaId: string): Promise<HistorialCorreccionCriticaDto[]> {
+    const rows = await this.db
+      .select({
+        id: bitacoraAuditoria.id,
+        usuarioId: bitacoraAuditoria.usuarioId,
+        usuarioNombre: usuarios.nombreUsuario,
+        accion: bitacoraAuditoria.accion,
+        tabla: bitacoraAuditoria.tabla,
+        registroId: bitacoraAuditoria.registroId,
+        valorAnterior: bitacoraAuditoria.valorAnterior,
+        valorNuevo: bitacoraAuditoria.valorNuevo,
+        direccionIp: bitacoraAuditoria.direccionIp,
+        registradoEn: bitacoraAuditoria.registradoEn,
+      })
+      .from(bitacoraAuditoria)
+      .leftJoin(usuarios, eq(bitacoraAuditoria.usuarioId, usuarios.id))
+      .where(
+        and(
+          eq(bitacoraAuditoria.tabla, "personas"),
+          eq(bitacoraAuditoria.registroId, personaId),
+          eq(bitacoraAuditoria.accion, "actualizar"),
+        ),
+      )
+      .orderBy(desc(bitacoraAuditoria.registradoEn))
+      .limit(50);
+
+    return rows.map((r) => {
+      const valorAnt: Record<string, unknown> =
+        r.valorAnterior && typeof r.valorAnterior === "object"
+          ? (r.valorAnterior as Record<string, unknown>)
+          : {};
+      const valorNue: Record<string, unknown> =
+        r.valorNuevo && typeof r.valorNuevo === "object"
+          ? (r.valorNuevo as Record<string, unknown>)
+          : {};
+
+      const rawMotivo = valorNue.motivo;
+      const motivo =
+        typeof rawMotivo === "string" && rawMotivo.trim().length > 0
+          ? rawMotivo.trim()
+          : "Corrección registrada";
+
+      const camposModificados: CampoModificadoDto[] = [];
+      for (const [key, valNuevo] of Object.entries(valorNue)) {
+        if (key === "motivo") continue;
+        const valAnterior = valorAnt[key];
+        if (valNuevo !== valAnterior) {
+          camposModificados.push({
+            campo: key,
+            valorAnterior: valAnterior ?? null,
+            valorNuevo: valNuevo ?? null,
+          });
+        }
+      }
+
+      return {
+        id: r.id,
+        fechaHora: r.registradoEn
+          ? new Date(r.registradoEn).toISOString()
+          : new Date().toISOString(),
+        usuarioNombre: r.usuarioNombre ?? null,
+        motivo,
+        camposModificados,
+        direccionIp: r.direccionIp ?? null,
+      };
+    });
   }
 }

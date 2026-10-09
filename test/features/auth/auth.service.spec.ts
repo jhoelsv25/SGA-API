@@ -16,7 +16,7 @@ import type {
   UserWithPersonaBirthdate,
 } from "@/features/auth/interfaces/auth-repository.interface";
 import { AuthRepository } from "@/features/auth/repositories/auth.repository";
-import { SessionService } from "@/features/auth/services/session.service";
+import { AuthPasswordService, SessionService } from "@/features/auth/services";
 
 describe("AuthService (RF-001: Acceso al Sistema)", () => {
   let authService: AuthService;
@@ -106,6 +106,7 @@ describe("AuthService (RF-001: Acceso al Sistema)", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
+        AuthPasswordService,
         { provide: AuthRepository, useValue: mockRepo },
         { provide: SessionService, useValue: mockSession },
         {

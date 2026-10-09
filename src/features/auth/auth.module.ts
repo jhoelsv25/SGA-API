@@ -7,7 +7,7 @@ import { VariablesSistemaModule } from "../variables-sistema/variables-sistema.m
 import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
 import { AuthRepository } from "./repositories/auth.repository";
-import { SessionService } from "./services/session.service";
+import { AuthPasswordService, SessionService } from "./services";
 import { JwtStrategy } from "./strategies/jwt.strategy";
 
 @Module({
@@ -29,7 +29,21 @@ import { JwtStrategy } from "./strategies/jwt.strategy";
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, SessionService, AuthRepository, JwtStrategy, AuditService],
-  exports: [AuthService, SessionService, AuthRepository, JwtModule, PassportModule],
+  providers: [
+    AuthService,
+    SessionService,
+    AuthPasswordService,
+    AuthRepository,
+    JwtStrategy,
+    AuditService,
+  ],
+  exports: [
+    AuthService,
+    SessionService,
+    AuthPasswordService,
+    AuthRepository,
+    JwtModule,
+    PassportModule,
+  ],
 })
 export class AuthModule {}

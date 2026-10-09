@@ -4,6 +4,7 @@ import type { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface
 import { PERSONA_MESSAGES } from "./constants";
 import type {
   CreatePersonaDto,
+  HistorialCorreccionCriticaDto,
   PaginatedPersonasResponseDto,
   PersonaQueryDto,
   PersonaResponseDto,
@@ -234,5 +235,10 @@ export class PersonasService {
     } catch (error) {
       handlePersonaDatabaseError(error, this.logger);
     }
+  }
+
+  async findHistorialCritico(id: string): Promise<HistorialCorreccionCriticaDto[]> {
+    await this.findById(id);
+    return this.repository.findHistorialCritico(id);
   }
 }

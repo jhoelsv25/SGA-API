@@ -5,6 +5,7 @@ import { DRIZZLE } from "@/core/database";
 import type { AuthenticatedUser } from "@/features/auth/interfaces/jwt-payload.interface";
 import { RolesRepository } from "@/features/roles/repositories/roles.repository";
 import { UsersRepository } from "@/features/users/repositories/users.repository";
+import { UserRolesService } from "@/features/users/services";
 import { UsersService } from "@/features/users/users.service";
 
 describe("UsersService (RF-002: HU 1)", () => {
@@ -86,6 +87,7 @@ describe("UsersService (RF-002: HU 1)", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UsersService,
+        UserRolesService,
         { provide: UsersRepository, useValue: mockUsersRepo },
         { provide: RolesRepository, useValue: mockRolesRepo },
         { provide: AuditService, useValue: mockAudit },

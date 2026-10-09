@@ -1,6 +1,7 @@
 import type {
   CreatePersonaDto,
   FichasPersonaDto,
+  HistorialCorreccionCriticaDto,
   PaginatedPersonasResponseDto,
   PersonaQueryDto,
   PersonaResponseDto,
@@ -49,4 +50,5 @@ export interface IPersonasRepository {
   update(id: string, dto: Partial<CreatePersonaDto>): Promise<PersonaResponseDto | null>;
   softDelete(id: string): Promise<boolean>;
   hasActiveRelations(id: string): Promise<{ hasRelations: boolean; details: FichasPersonaDto }>;
+  findHistorialCritico(personaId: string): Promise<HistorialCorreccionCriticaDto[]>;
 }
