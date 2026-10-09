@@ -9,8 +9,8 @@ log="TAREAS/VALIDACION/verificar_${tarea}.log"
 mkdir -p TAREAS/VALIDACION
 : > "$log"
 paso() { if ! "$@" >>"$log" 2>&1; then echo "FALLA: $tarea · $* (ver $log)"; exit 1; fi; }
-paso pnpm typecheck
-paso pnpm lint
+paso pnpm exec tsc -p .agents/tools/tsconfig.verificacion.json
+paso pnpm exec eslint src test
 if [ "$modo" != "--rojo" ]; then paso pnpm test; fi
 if [ "$modo" = "--suite-completa" ] || [ "$modo" = "--fase" ]; then paso pnpm build; fi
 nuevos=$( { git diff HEAD -U0 -- src test ':!TAREAS' | grep -E '^\+[^+]'; git ls-files --others --exclude-standard -z -- src test | xargs -0 -r cat; } 2>/dev/null \

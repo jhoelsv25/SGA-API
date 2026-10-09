@@ -1,9 +1,10 @@
-# Estado de la orquestación — 2026-10-09
-**Motivo del corte:** el clasificador del modo automático bloqueó el lanzamiento de `agy` con permisos omitidos («Create Unsafe Agents»). Esperando que el usuario decida el modo de permisos.
+# Estado de la orquestación — 2026-10-09 (corte por memoria del sistema)
+**Motivo del corte:** Claude Code detuvo los 3 validadores de T08 (VAL-1, VAL-2, VAL-3) porque el sistema se quedó sin memoria («system is running low on memory»). No es un fallo de las tareas. No se relanzan sin que el usuario lo pida.
 **Plan/tarea en curso:** /home/heverlima/DEV_LINUX/Tesis/SGA-API/TAREAS/00_plan_orden_desarrollo.md (VALIDADO 2026-10-09; orden «inicia el desarrollo» recibida 2026-10-09)
-**Rama:** feat/rf-008-secciones-carga-horarios (SGA-API y SGA-WEB)
-**Tareas terminadas y commiteadas:** —
-**Tarea en curso:** T00 — harness creado por Claude; falta commit por agy
-**Cambios sin commitear:** .agents/**, AGENTS.md (T00); `.claude/` y `TAREAS/` fuera de git
-**Tareas pendientes en orden:** T01, T02, T03, T04, T05, T06, T07, T08, W01..W05
-**Próxima acción exacta al reanudar:** lanzar agy DEV-1 con `TAREAS/T00_commit_harness.md` (prompt ya escrito) y seguir con T01
+**Rama:** feat/rf-008-secciones-carga-horarios (SGA-API y SGA-WEB; SGA-WEB sin cambios todavía)
+**Tareas terminadas y commiteadas (SGA-API):** T00 (77f9dfe), T01 (826d142), T03 (96d3e3e), T04 (1719ec7), T05 (caf09b8), T06 (10e78f5), T07 (b3fa121). T02 (pruebas en rojo) sin commit propio: viven en TAREAS/pruebas_rojo/*.spec.ts.txt y entraron con cada módulo.
+**Tarea interrumpida:** T08 (registro de módulos, cableado, auditoría, backlog) — DEV hecho y verificado por Claude (`verificar_tarea.sh T08 --suite-completa` = OK, 319 pruebas); validadores detenidos antes de escribir sus veredictos. Sin commit. Conversación del DEV: ver TAREAS/T08_salida.json (`conversation_id`).
+**Cambios sin commitear:** `docs/00-Plan-y-Backlog-RF.md`, `docs/requerimientos/PENDIENTES.md`, `src/features/features.module.ts`, `src/features/horarios/horarios.module.ts`, `test/features/rf-008-cableado.spec.ts` (T08); `.agents/memory/*`, `.agents/tools/verificar_tarea.sh`, `.agents/tools/tsconfig.verificacion.json`, `.agents/skills/validar_entrega.md` (commit `chore(harness)` pendiente por agy). `.claude/` y `TAREAS/` fuera de git. No revertir nada.
+**Tareas pendientes en orden:** validar T08 (3 VAL, uno a uno por la memoria) y commitear; commit chore(harness); W01..W05 (SGA-WEB, misma rama).
+**Próxima acción exacta al reanudar:** cuando el usuario lo pida (y haya memoria libre): lanzar VAL-1, VAL-2 y VAL-3 de T08 con los mismos prompts (están en el historial; el criterio está en TAREAS/T08_registro_auditoria_backlog.md), de a uno o de a dos, consolidar con `.agents/tools/consolidar_veredictos.sh FASE_01 T08` y confirmar el commit.
+**Propuestas (R3) para el informe final:** (1) el rol `Subdirector` no existe en ROLES_SEED; los menús ya lo prevén (anotado como P-23). (2) T02 sin commit propio por el hook pre-commit (ver decisiones.md). (3) Condición de carrera al crear sección con el mismo nombre: la cubre la restricción única de la BD. (4) T04 usa 2700 s (45 min) fijos en `horasHorario`; debería leer `jornada.minutos_hora_pedagogica`. (5) `copiar` horario inserta bloque por bloque sin transacción (riesgo de copia parcial). (6) Autorización de `horarioDeEstudiante`: lista de exclusión por rol y parámetro `estudianteId` que acepta id de estudiante o de persona (el estudiante llama con su personaId; el apoderado con el id del hijo). (7) Throw new Error genéricos corregidos en T06; revisar. (8) Las consultas Drizzle nunca se ejecutaron contra una base de datos real (solo mocks y la prueba de cableado): falta una prueba manual con seed y datos.
