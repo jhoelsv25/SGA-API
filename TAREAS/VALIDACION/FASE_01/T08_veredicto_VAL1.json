@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "tarea": "T08",
+  "validador": "VAL-1",
+  "veredicto": "APROBADA",
+  "criterios": {
+    "total": 6,
+    "pasan": 6
+  },
+  "pruebas": {
+    "corridas": 3,
+    "fallan": 0,
+    "nuevas": 3
+  },
+  "hallazgos": [
+    {
+      "severidad": "baja",
+      "archivo": "src/features/horarios/horarios.module.ts",
+      "detalle": "AuditService se registra directamente como provider en cada módulo feature (HorariosModule, SeccionesModule, CargaAcademicaModule) en lugar de exportarse desde un módulo transversal compartido. Aunque resuelve la inyección de dependencias limpiamente y sin dependencias circulares, genera instancias separadas del servicio en el contenedor de NestJS."
+    },
+    {
+      "severidad": "baja",
+      "archivo": "test/features/rf-008-cableado.spec.ts",
+      "detalle": "La prueba de cableado sobreescribe las colas de BullMQ con un mock en memoria tipado como Queue<unknown>, lo que permite compilar los módulos reales rápidamente sin requerir conexión física a Redis, cumpliendo con la consigna de aislar la infraestructura externa de red."
+    }
+  ]
+}

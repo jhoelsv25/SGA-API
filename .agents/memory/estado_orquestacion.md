@@ -1,10 +1,24 @@
-# Estado de la orquestación — 2026-10-09 (corte por memoria del sistema)
-**Motivo del corte:** Claude Code detuvo los 3 validadores de T08 (VAL-1, VAL-2, VAL-3) porque el sistema se quedó sin memoria («system is running low on memory»). No es un fallo de las tareas. No se relanzan sin que el usuario lo pida.
-**Plan/tarea en curso:** /home/heverlima/DEV_LINUX/Tesis/SGA-API/TAREAS/00_plan_orden_desarrollo.md (VALIDADO 2026-10-09; orden «inicia el desarrollo» recibida 2026-10-09)
-**Rama:** feat/rf-008-secciones-carga-horarios (SGA-API y SGA-WEB; SGA-WEB sin cambios todavía)
-**Tareas terminadas y commiteadas (SGA-API):** T00 (77f9dfe), T01 (826d142), T03 (96d3e3e), T04 (1719ec7), T05 (caf09b8), T06 (10e78f5), T07 (b3fa121). T02 (pruebas en rojo) sin commit propio: viven en TAREAS/pruebas_rojo/*.spec.ts.txt y entraron con cada módulo.
-**Tarea interrumpida:** T08 (registro de módulos, cableado, auditoría, backlog) — DEV hecho y verificado por Claude (`verificar_tarea.sh T08 --suite-completa` = OK, 319 pruebas); validadores detenidos antes de escribir sus veredictos. Sin commit. Conversación del DEV: ver TAREAS/T08_salida.json (`conversation_id`).
-**Cambios sin commitear:** `docs/00-Plan-y-Backlog-RF.md`, `docs/requerimientos/PENDIENTES.md`, `src/features/features.module.ts`, `src/features/horarios/horarios.module.ts`, `test/features/rf-008-cableado.spec.ts` (T08); `.agents/memory/*`, `.agents/tools/verificar_tarea.sh`, `.agents/tools/tsconfig.verificacion.json`, `.agents/skills/validar_entrega.md` (commit `chore(harness)` pendiente por agy). `.claude/` y `TAREAS/` fuera de git. No revertir nada.
-**Tareas pendientes en orden:** validar T08 (3 VAL, uno a uno por la memoria) y commitear; commit chore(harness); W01..W05 (SGA-WEB, misma rama).
-**Próxima acción exacta al reanudar:** cuando el usuario lo pida (y haya memoria libre): lanzar VAL-1, VAL-2 y VAL-3 de T08 con los mismos prompts (están en el historial; el criterio está en TAREAS/T08_registro_auditoria_backlog.md), de a uno o de a dos, consolidar con `.agents/tools/consolidar_veredictos.sh FASE_01 T08` y confirmar el commit.
-**Propuestas (R3) para el informe final:** (1) el rol `Subdirector` no existe en ROLES_SEED; los menús ya lo prevén (anotado como P-23). (2) T02 sin commit propio por el hook pre-commit (ver decisiones.md). (3) Condición de carrera al crear sección con el mismo nombre: la cubre la restricción única de la BD. (4) T04 usa 2700 s (45 min) fijos en `horasHorario`; debería leer `jornada.minutos_hora_pedagogica`. (5) `copiar` horario inserta bloque por bloque sin transacción (riesgo de copia parcial). (6) Autorización de `horarioDeEstudiante`: lista de exclusión por rol y parámetro `estudianteId` que acepta id de estudiante o de persona (el estudiante llama con su personaId; el apoderado con el id del hijo). (7) Throw new Error genéricos corregidos en T06; revisar. (8) Las consultas Drizzle nunca se ejecutaron contra una base de datos real (solo mocks y la prueba de cableado): falta una prueba manual con seed y datos.
+# Estado de la orquestación — 2026-10-09 (RF-008 COMPLETADO, pendiente de revisión y push del usuario)
+**Plan:** /home/heverlima/DEV_LINUX/Tesis/SGA-API/TAREAS/00_plan_orden_desarrollo.md (VALIDADO 2026-10-09; orden «inicia el desarrollo» recibida 2026-10-09). Todas las tareas del plan terminadas.
+**Rama (SGA-API y SGA-WEB):** feat/rf-008-secciones-carga-horarios — solo commits locales, sin push, sin merge.
+
+**SGA-API (10 commits desde d988aec):** T00 77f9dfe · T01 826d142 · T03 96d3e3e · T04 1719ec7 · T05 caf09b8 · T06 10e78f5 · T07 b3fa121 · T08 18d1477 · harness 649c3ea · T09 3724416. T02 (pruebas primero) sin commit propio: entraron con cada módulo.
+**SGA-WEB (5 commits desde 3a67b46):** W01 8324d15 · W04 e001c33 · W02 89ea26c · W03 a4d249a · W05 fa225b5.
+**Verificación final:** API `verificar_tarea.sh --suite-completa` OK (319 pruebas); WEB `typecheck`, `lint` y `build` OK.
+
+**Rechazos y reparaciones:** T05 (horas del plan deducidas del nombre del curso y 45 min fijos), W02 (claves de caché sin Año académico, «perfil», tabla monolítica, 40 px, hex) y W03 (horas fijas de jornada, colores de paleta, claves sin año, 28–32 px, archivos de 400 líneas). Detalle en `errores_frecuentes.md`.
+
+**Propuestas (R3) para el informe final y el usuario:**
+1. El rol `Subdirector` no existe en ROLES_SEED; los menús ya lo prevén (P-23).
+2. No existe el menú «Mi horario» (`/admin/mi-horario`) sembrado en la API: el WEB tiene la ruta y la opción de menú, pero ningún rol salvo el Administrador la ve hasta que se cree ese menú y se asigne en Roles-Menú. Falta una tarea pequeña de seed (Docente, Estudiante, Apoderado).
+3. El apoderado no puede elegir a sus estudiantes: falta una consulta en la API (P-24).
+4. T04 usa 2700 s (45 min) fijos en `horasHorario`; debería leer `jornada.minutos_hora_pedagogica`.
+5. `copiar` horario inserta bloque por bloque sin transacción (copia parcial posible).
+6. `horarioDeEstudiante`: lista de exclusión por rol y parámetro que acepta id de estudiante o de persona (el estudiante llama con su personaId; el apoderado con el id del hijo).
+7. Un 409 en la asignación de docente abre siempre el diálogo de exceso de jornada (hoy la API solo usa 409 para eso).
+8. Las consultas Drizzle nunca se ejecutaron contra Postgres, ni las pantallas contra un navegador: solo mocks, prueba de cableado, typecheck, lint, build y revisión. SGA-WEB no tiene ejecutor de pruebas.
+9. Tipos y llamadas mínimas duplicados entre `features/horarios`, `features/mi-horario` y `features/carga-academica` (se hicieron en paralelo).
+10. T02 sin commit propio por el hook pre-commit (ver decisiones.md).
+
+**Cambios sin commitear:** este archivo y `.agents/memory/*` si cambió algo; `.claude/` y `TAREAS/` fuera de git.
+**Próxima acción:** el usuario revisa, valida en el sistema y hace el push de las dos ramas; integra (merge/PR) cuando quiera.

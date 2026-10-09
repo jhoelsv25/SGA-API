@@ -1,0 +1,26 @@
+{
+  "tarea": "T01",
+  "validador": "VAL-3",
+  "veredicto": "APROBADA",
+  "criterios": {
+    "total": 6,
+    "pasan": 6
+  },
+  "pruebas": {
+    "corridas": 253,
+    "fallan": 0,
+    "nuevas": 0
+  },
+  "hallazgos": [
+    {
+      "severidad": "baja",
+      "archivo": "src/core/database/seed.ts:474-510",
+      "detalle": "El rol 'Subdirector' no existe en ROLES_SEED. El desarrollador cumplió con no inventarlo y reportarlo en el informe; la consulta asocia únicamente a 'Administrador' por ahora."
+    },
+    {
+      "severidad": "baja",
+      "archivo": "src/core/database/seed.ts:773-807",
+      "detalle": "Se omitió el console.log solicitado en la instrucción 5 para priorizar la regla estricta de cero console.log nuevos de restricciones_agy.md y verificar_tarea.sh."
+    }
+  ]
+}

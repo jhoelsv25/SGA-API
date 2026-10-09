@@ -1,0 +1,30 @@
+{
+  "tarea": "T04",
+  "validador": "VAL-1+2+3",
+  "veredicto": "APROBADA",
+  "validadores_recibidos": 3,
+  "criterios": {
+    "total": 28,
+    "pasan": 28
+  },
+  "hallazgos": [
+    {
+      "severidad": "baja",
+      "archivo": "src/features/carga-academica/repositories/carga-academica.repository.ts",
+      "detalle": "En la subconsulta SQL de findBySeccion y findCargaItemById para calcular horasHorario programadas, se utiliza el divisor literal 2700 segundos (EXTRACT(EPOCH FROM ...) / 2700). Aunque coincide exactamente con la duración estándar de 45 minutos pedagógicos (45 * 60 = 2700), se recomienda vincular este cálculo con la constante MINUTOS_HORA_PEDAGOGICA_DEFAULT o parametrizarla para evitar números mágicos en el SQL.",
+      "validador": "VAL-1"
+    },
+    {
+      "severidad": "baja",
+      "archivo": "src/features/carga-academica/carga-academica.service.ts",
+      "detalle": "Al desasignar un docente (docenteId: null), el método retorna cargaDocente con horasAsignadas: 0, jornadaHoras: 0 y excede: false. Es funcionalmente adecuado ya que no hay docente asignado, pero para fines informativos en el frontend podría evaluarse si se prefiere retornar la carga del docente previo o null.",
+      "validador": "VAL-1"
+    },
+    {
+      "severidad": "baja",
+      "archivo": "src/features/horarios/",
+      "detalle": "Durante la ejecución paralela previa se había observado un error transitorio de tipos en el módulo de horarios (T05); la verificación final confirma que la compilación global con tsc --noEmit y la suite completa de 298 pruebas pasan con 0 errores y 0 fallos.",
+      "validador": "VAL-3"
+    }
+  ]
+}

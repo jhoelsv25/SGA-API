@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "tarea": "T01",
+  "validador": "VAL-1",
+  "veredicto": "APROBADA",
+  "criterios": {
+    "total": 8,
+    "pasan": 8
+  },
+  "pruebas": {
+    "corridas": 253,
+    "fallan": 0,
+    "nuevas": 0
+  },
+  "hallazgos": [
+    {
+      "severidad": "baja",
+      "archivo": "src/core/database/seed.ts",
+      "detalle": "El rol 'Subdirector' no existe en ROLES_SEED. El DEV actuó según la directriz de no inventarlo y reportarlo, manteniendo la cláusula WHERE r.nombre IN ('Administrador', 'Subdirector') lista para su incorporación futura."
+    },
+    {
+      "severidad": "baja",
+      "archivo": "src/core/database/seed.ts",
+      "detalle": "La cláusula de idempotencia para menús hijos comprueba NOT EXISTS por ruta global. Es segura actualmente, pero se sugiere contemplar modulo_id si a futuro existieran rutas duplicadas entre módulos."
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "tarea": "T05",
+  "validador": "VAL-1",
+  "veredicto": "APROBADA",
+  "criterios": {
+    "total": 6,
+    "pasan": 6
+  },
+  "pruebas": {
+    "corridas": 20,
+    "fallan": 0,
+    "nuevas": 20
+  },
+  "hallazgos": [
+    {
+      "severidad": "baja",
+      "archivo": "src/features/horarios/horarios.service.ts",
+      "detalle": "En HorariosService se inyecta opcionalmente VariablesSistemaRepository, pero la consulta de jornada.minutos_hora_pedagogica se realiza directamente en HorariosRepository.horasPorCurso sobre la tabla variables_sistema. Se recomienda unificar el consumo de variables mediante VariablesSistemaRepository para T06 y T07."
+    },
+    {
+      "severidad": "baja",
+      "archivo": "src/features/horarios/repositories/horarios.repository.ts",
+      "detalle": "En findCruceDocente, se recomienda verificar en migraciones futuras un índice compuesto sobre horarios(dia_semana, hora_inicio, hora_fin) y cursos_seccion(docente_id) para optimizar consultas concurrentes a gran escala."
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "tarea": "T03",
+  "validador": "VAL-1+2+3",
+  "veredicto": "APROBADA",
+  "validadores_recibidos": 3,
+  "criterios": {
+    "total": 28,
+    "pasan": 28
+  },
+  "hallazgos": [
+    {
+      "severidad": "baja",
+      "archivo": "src/features/secciones/repositories/secciones.repository.ts",
+      "detalle": "Las subconsultas escalares para matriculados, totalCursos y cursosSinDocente en getSeccionesSelect() evitan el problema de N+1 consultas en findAll. Conforme aumente el volumen de datos, se sugiere considerar índices compuestos en matriculas(seccion_id, estado) y cursos_seccion(seccion_id, docente_id) para optimizar los agregados.",
+      "validador": "VAL-1"
+    },
+    {
+      "severidad": "baja",
+      "archivo": "src/features/secciones/secciones.service.ts",
+      "detalle": "En update(), la validación de nombre duplicado valida contra findPorNombre excluyendo el propio ID. Se aconseja asegurar un constraint de unicidad compuesto uq_secciones_anio_grado_nombre(anio_academico_id, grado_id, nombre) a nivel de esquema PostgreSQL para blindar la concurrencia relacional.",
+      "validador": "VAL-1"
+    },
+    {
+      "severidad": "baja",
+      "archivo": "TAREAS/pruebas_rojo/",
+      "detalle": "En trabajo paralelo, pnpm typecheck global reporta errores en módulos posteriores pendientes (T04/T05); se verificó con tsconfig.verificacion.json que el código y pruebas de secciones compilan al 100 % con 0 errores de tipos.",
+      "validador": "VAL-3"
+    }
+  ]
+}
