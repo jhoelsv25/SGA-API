@@ -18,6 +18,9 @@ import { RolesModule } from "./roles";
 import { TurnosModule } from "./turnos";
 import { UsersModule } from "./users";
 import { VariablesSistemaModule } from "./variables-sistema";
+import { SeccionesModule } from "./secciones";
+import { CargaAcademicaModule } from "./carga-academica";
+import { HorariosModule } from "./horarios";
 
 @Module({
   imports: [
@@ -40,6 +43,9 @@ import { VariablesSistemaModule } from "./variables-sistema";
     DocentesModule,
     EstudiantesModule,
     ApoderadosModule,
+    SeccionesModule,
+    CargaAcademicaModule,
+    HorariosModule,
   ],
   exports: [
     AuthModule,
@@ -61,6 +67,9 @@ import { VariablesSistemaModule } from "./variables-sistema";
     DocentesModule,
     EstudiantesModule,
     ApoderadosModule,
+    SeccionesModule,
+    CargaAcademicaModule,
+    HorariosModule,
   ],
 })
 export class FeaturesModule {}
