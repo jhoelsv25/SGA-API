@@ -1,6 +1,10 @@
 import { Pool } from "pg";
 import * as bcrypt from "bcryptjs";
-import { MENU_CORREGIR_DATOS_CRITICOS } from "../../common/constants";
+import {
+  MENU_CORREGIR_DATOS_CRITICOS,
+  MENU_HORARIOS,
+  MENU_SECCIONES,
+} from "../../common/constants";
 
 const pool = new Pool({
   connectionString:
@@ -239,6 +243,26 @@ async function seed() {
       unidad: "horas",
       valorMinimo: 1,
       valorMaximo: 12,
+    },
+    {
+      codigo: "jornada.recreo_despues_de_hora",
+      descripcion: "Hora pedagógica después de la cual va el recreo",
+      modulo: "organizacion",
+      tipo: "entero",
+      valor: "3",
+      unidad: "horas",
+      valorMinimo: 1,
+      valorMaximo: 11,
+    },
+    {
+      codigo: "jornada.minutos_recreo",
+      descripcion: "Duración del recreo",
+      modulo: "organizacion",
+      tipo: "entero",
+      valor: "15",
+      unidad: "minutos",
+      valorMinimo: 5,
+      valorMaximo: 60,
     },
     {
       codigo: "sesion.minutos_antes_firma_ingreso",
@@ -745,6 +769,41 @@ async function seed() {
     [MENU_CORREGIR_DATOS_CRITICOS],
   );
   console.log("✔ Opción 'Corregir datos críticos' registrada (solo Administrador).");
+
+  // RF-008: Menús "Secciones" y "Horarios" bajo el contenedor "Organización escolar"
+  await pool.query(
+    `INSERT INTO menus (modulo_id, nombre, orden, es_contenedor)
+     SELECT m.id, 'Organización escolar', 1, true FROM modulos m
+     WHERE m.codigo = 'academico'
+       AND NOT EXISTS (
+         SELECT 1 FROM menus x
+         WHERE x.modulo_id = m.id AND x.es_contenedor AND x.nombre = 'Organización escolar'
+       );`,
+  );
+  await pool.query(
+    `INSERT INTO menus (modulo_id, menu_padre_id, nombre, ruta, icono, orden, es_contenedor)
+     SELECT c.modulo_id, c.id, 'Secciones', $1::varchar, 'UserGroupIcon', 1, false
+     FROM menus c JOIN modulos m ON m.id = c.modulo_id
+     WHERE m.codigo = 'academico' AND c.es_contenedor AND c.nombre = 'Organización escolar'
+       AND NOT EXISTS (SELECT 1 FROM menus x WHERE x.ruta = $1::varchar);`,
+    [MENU_SECCIONES],
+  );
+  await pool.query(
+    `INSERT INTO menus (modulo_id, menu_padre_id, nombre, ruta, icono, orden, es_contenedor)
+     SELECT c.modulo_id, c.id, 'Horarios', $1::varchar, 'Clock01Icon', 2, false
+     FROM menus c JOIN modulos m ON m.id = c.modulo_id
+     WHERE m.codigo = 'academico' AND c.es_contenedor AND c.nombre = 'Organización escolar'
+       AND NOT EXISTS (SELECT 1 FROM menus x WHERE x.ruta = $1::varchar);`,
+    [MENU_HORARIOS],
+  );
+  await pool.query(
+    `INSERT INTO rol_menus (rol_id, menu_id)
+     SELECT r.id, m.id FROM roles r, menus m
+     WHERE r.nombre IN ('Administrador', 'Subdirector')
+       AND m.ruta IN ($1, $2)
+     ON CONFLICT DO NOTHING;`,
+    [MENU_SECCIONES, MENU_HORARIOS],
+  );
 
   await pool.end();
   console.log("==========================================");
