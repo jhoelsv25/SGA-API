@@ -11,11 +11,14 @@ import { AniosAcademicosService } from "../anio-escolar/anios.service";
 import { DocentesRepository } from "../docentes";
 import { SeccionesRepository } from "../secciones";
 import { VariablesSistemaRepository } from "../variables-sistema/repositories";
-import { MENSAJES_HORARIOS, TABLA_HORARIOS } from "./constants";
+import { DIAS_SEMANA_CLASE, MENSAJES_HORARIOS, TABLA_HORARIOS } from "./constants";
 import {
   BloqueHorarioResponseDto,
   BloqueMutacionResponseDto,
+  ConflictoHorarioCopiaDto,
+  CopiarHorarioResponseDto,
   CreateBloqueHorarioDto,
+  GrillaPropuestaResponseDto,
   ListarPorSeccionResponseDto,
   ResumenHorasCursoDto,
   UpdateBloqueHorarioDto,
@@ -25,6 +28,8 @@ import {
   construirAdvertenciaHorasPlan,
   construirMensajeCruceDocente,
   convertirHoraAMinutos,
+  minutosAHora,
+  normalizarHora,
 } from "./utils";
 
 @Injectable()
@@ -255,6 +260,198 @@ export class HorariosService {
       bloques,
       resumenHoras,
       advertencias,
+    };
+  }
+
+  async proponerGrilla(
+    seccionId: string,
+    horaEntrada?: string,
+  ): Promise<GrillaPropuestaResponseDto> {
+    const seccion = await this.seccionesRepo.findById(seccionId);
+    if (!seccion) {
+      throw new NotFoundException(MENSAJES_HORARIOS.SECCION_NO_ENCONTRADA);
+    }
+
+    const { minutosHoraPedagogica, horasPedagogicasDia, recreoDespuesDeHora, minutosRecreo } =
+      await this.horariosRepo.obtenerParametrosJornada();
+
+    const horaInicioBase = horaEntrada
+      ? normalizarHora(horaEntrada)
+      : await this.horariosRepo.horaEntradaEstudiantes();
+
+    const bloques: GrillaPropuestaResponseDto["bloques"] = [];
+
+    for (const diaSemana of DIAS_SEMANA_CLASE) {
+      let minutoActual = convertirHoraAMinutos(horaInicioBase);
+
+      for (let horaPedagogica = 1; horaPedagogica <= horasPedagogicasDia; horaPedagogica++) {
+        const horaInicioBloque = minutosAHora(minutoActual);
+        minutoActual += minutosHoraPedagogica;
+        const horaFinBloque = minutosAHora(minutoActual);
+
+        bloques.push({
+          diaSemana,
+          horaInicio: horaInicioBloque,
+          horaFin: horaFinBloque,
+          tipoBloque: "clase",
+        });
+
+        if (horaPedagogica === recreoDespuesDeHora) {
+          const horaInicioReceso = minutosAHora(minutoActual);
+          minutoActual += minutosRecreo;
+          const horaFinReceso = minutosAHora(minutoActual);
+
+          bloques.push({
+            diaSemana,
+            horaInicio: horaInicioReceso,
+            horaFin: horaFinReceso,
+            tipoBloque: "receso",
+          });
+        }
+      }
+    }
+
+    return {
+      horaEntrada: horaInicioBase,
+      bloques,
+    };
+  }
+
+  async copiar(
+    origenId: string,
+    destinoId: string,
+    actorId: string,
+    ip?: string,
+  ): Promise<CopiarHorarioResponseDto> {
+    const anio = await this.resolverAnio(true);
+
+    const [seccionOrigen, seccionDestino] = await Promise.all([
+      this.seccionesRepo.findById(origenId),
+      this.seccionesRepo.findById(destinoId),
+    ]);
+
+    if (!seccionOrigen || !seccionDestino) {
+      throw new NotFoundException(MENSAJES_HORARIOS.SECCION_NO_ENCONTRADA);
+    }
+
+    if (seccionOrigen.gradoId !== seccionDestino.gradoId) {
+      throw new BadRequestException(MENSAJES_HORARIOS.COPIA_DISTINTO_GRADO);
+    }
+
+    const bloquesDestinoExistentes = await this.horariosRepo.findBySeccion(destinoId);
+    if (bloquesDestinoExistentes.length > 0) {
+      throw new ConflictException(MENSAJES_HORARIOS.COPIA_DESTINO_CON_BLOQUES);
+    }
+
+    const [bloquesOrigen, cursosOrigen, cursosDestino] = await Promise.all([
+      this.horariosRepo.findBySeccion(origenId),
+      this.horariosRepo.cursosSeccionPorSeccion(origenId),
+      this.horariosRepo.cursosSeccionPorSeccion(destinoId),
+    ]);
+
+    const mapaCursoOrigen = new Map<string, { cursoId: string; cursoNombre: string }>();
+    for (const co of cursosOrigen) {
+      mapaCursoOrigen.set(co.cursoSeccionId, { cursoId: co.cursoId, cursoNombre: co.cursoNombre });
+    }
+
+    const mapaCursoDestinoPorCursoId = new Map<
+      string,
+      { cursoSeccionId: string; cursoNombre: string; docenteId: string | null }
+    >();
+    for (const cd of cursosDestino) {
+      mapaCursoDestinoPorCursoId.set(cd.cursoId, {
+        cursoSeccionId: cd.cursoSeccionId,
+        cursoNombre: cd.cursoNombre,
+        docenteId: cd.docenteId,
+      });
+    }
+
+    let bloquesCreados = 0;
+    const conflictos: ConflictoHorarioCopiaDto[] = [];
+
+    for (const bo of bloquesOrigen) {
+      if (bo.tipoBloque === "receso") {
+        const bloqueCreado = await this.horariosRepo.create({
+          seccionId: destinoId,
+          cursoSeccionId: null,
+          diaSemana: bo.diaSemana,
+          horaInicio: bo.horaInicio,
+          horaFin: bo.horaFin,
+          tipoBloque: "receso",
+          aula: bo.aula,
+        });
+        bloquesCreados++;
+
+        await this.auditService.log({
+          usuarioId: actorId,
+          accion: "crear",
+          tabla: TABLA_HORARIOS,
+          registroId: bloqueCreado.id,
+          direccionIp: ip,
+          valorNuevo: this.serializarAuditoria(bloqueCreado),
+        });
+        continue;
+      }
+
+      if (!bo.cursoSeccionId) {
+        continue;
+      }
+
+      const cursoOrigen = mapaCursoOrigen.get(bo.cursoSeccionId);
+      if (!cursoOrigen) {
+        continue;
+      }
+
+      const cursoDestino = mapaCursoDestinoPorCursoId.get(cursoOrigen.cursoId);
+      if (!cursoDestino) {
+        continue;
+      }
+
+      if (cursoDestino.docenteId) {
+        const cruce = await this.horariosRepo.findCruceDocente(
+          anio.id,
+          cursoDestino.docenteId,
+          bo.diaSemana,
+          bo.horaInicio,
+          bo.horaFin,
+          destinoId,
+        );
+
+        if (cruce) {
+          conflictos.push({
+            diaSemana: bo.diaSemana,
+            horaInicio: normalizarHora(bo.horaInicio),
+            horaFin: normalizarHora(bo.horaFin),
+            cursoNombre: cursoDestino.cursoNombre,
+            mensaje: construirMensajeCruceDocente(cruce, true),
+          });
+        }
+      }
+
+      const bloqueCreado = await this.horariosRepo.create({
+        seccionId: destinoId,
+        cursoSeccionId: cursoDestino.cursoSeccionId,
+        diaSemana: bo.diaSemana,
+        horaInicio: bo.horaInicio,
+        horaFin: bo.horaFin,
+        tipoBloque: "clase",
+        aula: bo.aula,
+      });
+      bloquesCreados++;
+
+      await this.auditService.log({
+        usuarioId: actorId,
+        accion: "crear",
+        tabla: TABLA_HORARIOS,
+        registroId: bloqueCreado.id,
+        direccionIp: ip,
+        valorNuevo: this.serializarAuditoria(bloqueCreado),
+      });
+    }
+
+    return {
+      bloquesCreados,
+      conflictos,
     };
   }
 

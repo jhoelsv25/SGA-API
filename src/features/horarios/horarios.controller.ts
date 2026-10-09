@@ -1,9 +1,21 @@
-import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post } from "@nestjs/common";
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
+} from "@nestjs/common";
 import {
   ApiBearerAuth,
   ApiHeader,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiResponse,
   ApiTags,
 } from "@nestjs/swagger";
@@ -11,9 +23,12 @@ import { HEADER_ANIO_ACADEMICO } from "../../common/anio-lectivo";
 import { MENU_HORARIOS } from "../../common/constants";
 import { ClientInfo, type ClientInfoData, CurrentUser, MenuAccess } from "../../common/decorators";
 import type { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface";
+import { MENSAJES_HORARIOS, REGEX_HORA_HH_MM } from "./constants";
 import {
   BloqueMutacionResponseDto,
+  CopiarHorarioResponseDto,
   CreateBloqueHorarioDto,
+  GrillaPropuestaResponseDto,
   ListarPorSeccionResponseDto,
   UpdateBloqueHorarioDto,
 } from "./dto";
@@ -96,5 +111,51 @@ export class HorariosController {
     @Param("seccionId", ParseUUIDPipe) seccionId: string,
   ): Promise<ListarPorSeccionResponseDto> {
     return this.service.listarPorSeccion(seccionId);
+  }
+
+  @Get("seccion/:seccionId/grilla")
+  @ApiOperation({
+    summary: "Proponer la grilla semanal de horario para una sección",
+  })
+  @ApiParam({ name: "seccionId", description: "UUID de la sección escolar" })
+  @ApiQuery({
+    name: "horaEntrada",
+    required: false,
+    description: "Hora de entrada en formato HH:mm (opcional)",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Grilla propuesta con bloques de clase y recesos",
+    type: GrillaPropuestaResponseDto,
+  })
+  async proponerGrilla(
+    @Param("seccionId", ParseUUIDPipe) seccionId: string,
+    @Query("horaEntrada") horaEntrada?: string,
+  ): Promise<GrillaPropuestaResponseDto> {
+    if (horaEntrada && !REGEX_HORA_HH_MM.test(horaEntrada)) {
+      throw new BadRequestException(MENSAJES_HORARIOS.FORMATO_HORA_INVALIDO);
+    }
+    return this.service.proponerGrilla(seccionId, horaEntrada);
+  }
+
+  @Post("seccion/:destinoId/copiar-de/:origenId")
+  @MenuAccess(MENU_HORARIOS)
+  @ApiOperation({
+    summary: "Copiar el horario de una sección a otra del mismo grado",
+  })
+  @ApiParam({ name: "destinoId", description: "UUID de la sección destino" })
+  @ApiParam({ name: "origenId", description: "UUID de la sección origen" })
+  @ApiResponse({
+    status: 201,
+    description: "Horario copiado exitosamente con detalle de posibles conflictos",
+    type: CopiarHorarioResponseDto,
+  })
+  async copiar(
+    @Param("origenId", ParseUUIDPipe) origenId: string,
+    @Param("destinoId", ParseUUIDPipe) destinoId: string,
+    @CurrentUser() usuario: AuthenticatedUser,
+    @ClientInfo() clientInfo: ClientInfoData,
+  ): Promise<CopiarHorarioResponseDto> {
+    return this.service.copiar(origenId, destinoId, usuario.id, clientInfo.ip);
   }
 }

@@ -26,6 +26,20 @@ export interface CursoPlanDetalle {
   horasPlan: number;
 }
 
+export interface ParametrosJornadaResultado {
+  minutosHoraPedagogica: number;
+  horasPedagogicasDia: number;
+  recreoDespuesDeHora: number;
+  minutosRecreo: number;
+}
+
+export interface CursoSeccionDetalle {
+  cursoSeccionId: string;
+  cursoId: string;
+  cursoNombre: string;
+  docenteId: string | null;
+}
+
 export interface CreateBloqueData {
   seccionId: string;
   cursoSeccionId?: string | null;
@@ -65,6 +79,9 @@ export interface IHorariosRepository {
   ): Promise<CruceDocenteResultado | null>;
   horasPorCurso(seccionId: string): Promise<Record<string, number>>;
   horasPlanPorCurso(seccionId: string): Promise<Record<string, CursoPlanDetalle>>;
+  obtenerParametrosJornada(): Promise<ParametrosJornadaResultado>;
+  horaEntradaEstudiantes(): Promise<string>;
+  cursosSeccionPorSeccion(seccionId: string): Promise<CursoSeccionDetalle[]>;
   create(data: CreateBloqueData): Promise<BloqueHorarioResponseDto>;
   update(id: string, data: UpdateBloqueData): Promise<BloqueHorarioResponseDto>;
   delete(id: string): Promise<boolean>;

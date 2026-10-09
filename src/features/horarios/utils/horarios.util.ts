@@ -1,3 +1,4 @@
+import { InternalServerErrorException } from "@nestjs/common";
 import { DIAS_SEMANA_MAP } from "../constants";
 
 /**
@@ -9,6 +10,15 @@ export function convertirHoraAMinutos(hora: string): number {
   const horas = parseInt(partes[0], 10) || 0;
   const minutos = parseInt(partes[1], 10) || 0;
   return horas * 60 + minutos;
+}
+
+/**
+ * Convierte una cantidad de minutos del día al formato estándar "HH:mm".
+ */
+export function minutosAHora(totalMinutos: number): string {
+  const horas = Math.floor(totalMinutos / 60);
+  const minutos = totalMinutos % 60;
+  return `${horas.toString().padStart(2, "0")}:${minutos.toString().padStart(2, "0")}`;
 }
 
 /**
@@ -33,18 +43,27 @@ export function obtenerNombreDiaSemana(dia: number): string {
 /**
  * Construye el mensaje oficial de conflicto cuando un docente ya dicta en otra sección.
  * Ejemplo: "El docente ya dicta en 4.° B el lunes de 08:30 a 09:15."
+ * O al copiar horarios: "El docente Docente B ya dicta en 5.° C el lunes de 08:00 a 08:40."
  */
-export function construirMensajeCruceDocente(cruce: {
-  gradoNumero: number;
-  seccionNombre: string;
-  diaSemana: number;
-  horaInicio: string;
-  horaFin: string;
-}): string {
+export function construirMensajeCruceDocente(
+  cruce: {
+    docenteNombre?: string;
+    gradoNumero: number;
+    seccionNombre: string;
+    diaSemana: number;
+    horaInicio: string;
+    horaFin: string;
+  },
+  incluirNombreDocente = false,
+): string {
   const diaNombre = obtenerNombreDiaSemana(cruce.diaSemana);
   const inicio = normalizarHora(cruce.horaInicio);
   const fin = normalizarHora(cruce.horaFin);
-  return `El docente ya dicta en ${cruce.gradoNumero}.° ${cruce.seccionNombre} el ${diaNombre} de ${inicio} a ${fin}.`;
+  const prefijoDocente =
+    incluirNombreDocente && cruce.docenteNombre
+      ? `El docente ${cruce.docenteNombre}`
+      : "El docente";
+  return `${prefijoDocente} ya dicta en ${cruce.gradoNumero}.° ${cruce.seccionNombre} el ${diaNombre} de ${inicio} a ${fin}.`;
 }
 
 /**
@@ -68,7 +87,9 @@ export function calcularHorasPedagogicas(
   minutosHoraPedagogica: number,
 ): number {
   if (!minutosHoraPedagogica || minutosHoraPedagogica <= 0) {
-    throw new Error("Los minutos por hora pedagógica deben ser mayores a cero.");
+    throw new InternalServerErrorException(
+      "Los minutos por hora pedagógica deben ser mayores a cero.",
+    );
   }
   const minutos = convertirHoraAMinutos(horaFin) - convertirHoraAMinutos(horaInicio);
   return Math.round(minutos / minutosHoraPedagogica);

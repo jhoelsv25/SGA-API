@@ -1,5 +1,5 @@
-import { Inject, Injectable } from "@nestjs/common";
-import { and, asc, eq, ne, sql } from "drizzle-orm";
+import { Inject, Injectable, InternalServerErrorException } from "@nestjs/common";
+import { and, asc, eq, inArray, ne, sql } from "drizzle-orm";
 import { Database, DRIZZLE } from "../../../core/database";
 import {
   cursos,
@@ -11,16 +11,19 @@ import {
   planEstudios,
   secciones,
   sesionesClase,
+  turnos,
   variablesSistema,
 } from "../../../core/database/schema";
-import { VARIABLE_MINUTOS_HORA_PEDAGOGICA } from "../constants";
+import { VARIABLES_JORNADA } from "../constants";
 import type { BloqueHorarioResponseDto } from "../dto";
 import type {
   BloqueDocenteResultado,
   CreateBloqueData,
   CruceDocenteResultado,
   CursoPlanDetalle,
+  CursoSeccionDetalle,
   IHorariosRepository,
+  ParametrosJornadaResultado,
   UpdateBloqueData,
 } from "../interfaces";
 import { convertirHoraAMinutos, normalizarHora } from "../utils";
@@ -209,29 +212,7 @@ export class HorariosRepository implements IHorariosRepository {
   }
 
   async horasPorCurso(seccionId: string): Promise<Record<string, number>> {
-    const [variableMinutos] = await this.db
-      .select({ valor: variablesSistema.valor })
-      .from(variablesSistema)
-      .where(
-        and(
-          eq(variablesSistema.codigo, VARIABLE_MINUTOS_HORA_PEDAGOGICA),
-          eq(variablesSistema.vigente, true),
-        ),
-      )
-      .limit(1);
-
-    if (!variableMinutos || !variableMinutos.valor) {
-      throw new Error(
-        `Variable de sistema '${VARIABLE_MINUTOS_HORA_PEDAGOGICA}' no configurada o no vigente.`,
-      );
-    }
-
-    const minutosHoraPedagogica = parseInt(variableMinutos.valor, 10);
-    if (isNaN(minutosHoraPedagogica) || minutosHoraPedagogica <= 0) {
-      throw new Error(
-        `Valor inválido para la variable de sistema '${VARIABLE_MINUTOS_HORA_PEDAGOGICA}': ${variableMinutos.valor}`,
-      );
-    }
+    const { minutosHoraPedagogica } = await this.obtenerParametrosJornada();
 
     const bloquesClase = await this.db
       .select({
@@ -253,6 +234,100 @@ export class HorariosRepository implements IHorariosRepository {
     }
 
     return resultado;
+  }
+
+  async obtenerParametrosJornada(): Promise<ParametrosJornadaResultado> {
+    const codigos = [
+      VARIABLES_JORNADA.MINUTOS_HORA_PEDAGOGICA,
+      VARIABLES_JORNADA.HORAS_PEDAGOGICAS_DIA,
+      VARIABLES_JORNADA.RECREO_DESPUES_DE_HORA,
+      VARIABLES_JORNADA.MINUTOS_RECREO,
+    ];
+
+    const filas = await this.db
+      .select({
+        codigo: variablesSistema.codigo,
+        valor: variablesSistema.valor,
+      })
+      .from(variablesSistema)
+      .where(and(inArray(variablesSistema.codigo, codigos), eq(variablesSistema.vigente, true)));
+
+    const mapa = new Map<string, string>();
+    for (const f of filas) {
+      if (f.valor !== null && f.valor !== undefined) {
+        mapa.set(f.codigo, f.valor);
+      }
+    }
+
+    for (const codigo of codigos) {
+      if (!mapa.has(codigo)) {
+        throw new InternalServerErrorException(
+          `Variable de sistema obligatoria '${codigo}' no encontrada o no vigente.`,
+        );
+      }
+    }
+
+    const minutosHoraPedagogica = parseInt(
+      mapa.get(VARIABLES_JORNADA.MINUTOS_HORA_PEDAGOGICA)!,
+      10,
+    );
+    const horasPedagogicasDia = parseInt(mapa.get(VARIABLES_JORNADA.HORAS_PEDAGOGICAS_DIA)!, 10);
+    const recreoDespuesDeHora = parseInt(mapa.get(VARIABLES_JORNADA.RECREO_DESPUES_DE_HORA)!, 10);
+    const minutosRecreo = parseInt(mapa.get(VARIABLES_JORNADA.MINUTOS_RECREO)!, 10);
+
+    if (
+      isNaN(minutosHoraPedagogica) ||
+      minutosHoraPedagogica <= 0 ||
+      isNaN(horasPedagogicasDia) ||
+      horasPedagogicasDia <= 0 ||
+      isNaN(recreoDespuesDeHora) ||
+      recreoDespuesDeHora <= 0 ||
+      isNaN(minutosRecreo) ||
+      minutosRecreo <= 0
+    ) {
+      throw new InternalServerErrorException(
+        "Una o más variables de jornada contienen valores inválidos o menores o iguales a cero.",
+      );
+    }
+
+    return {
+      minutosHoraPedagogica,
+      horasPedagogicasDia,
+      recreoDespuesDeHora,
+      minutosRecreo,
+    };
+  }
+
+  async horaEntradaEstudiantes(): Promise<string> {
+    const filas = await this.db
+      .select({ horaEntrada: turnos.horaEntrada })
+      .from(turnos)
+      .where(and(eq(turnos.aplicaA, "estudiantes"), eq(turnos.activo, true)))
+      .limit(1);
+
+    if (filas.length === 0 || !filas[0].horaEntrada) {
+      throw new InternalServerErrorException(
+        "No se encontró un turno activo configurado para estudiantes.",
+      );
+    }
+
+    return normalizarHora(filas[0].horaEntrada);
+  }
+
+  async cursosSeccionPorSeccion(seccionId: string): Promise<CursoSeccionDetalle[]> {
+    const filas = await this.db
+      .select({
+        cursoSeccionId: cursosSeccion.id,
+        cursoId: cursosSeccion.cursoId,
+        cursoNombre: cursos.nombre,
+        docenteId: cursosSeccion.docenteId,
+      })
+      .from(cursosSeccion)
+      .innerJoin(cursos, eq(cursosSeccion.cursoId, cursos.id))
+      .where(eq(cursosSeccion.seccionId, seccionId))
+      .orderBy(asc(cursos.nombre));
+
+    return filas;
   }
 
   async horasPlanPorCurso(seccionId: string): Promise<Record<string, CursoPlanDetalle>> {
@@ -302,7 +377,9 @@ export class HorariosRepository implements IHorariosRepository {
 
     const bloque = await this.findById(nuevo.id);
     if (!bloque) {
-      throw new Error("No se pudo recuperar el bloque de horario recién registrado.");
+      throw new InternalServerErrorException(
+        "No se pudo recuperar el bloque de horario recién registrado.",
+      );
     }
     return bloque;
   }
@@ -325,7 +402,9 @@ export class HorariosRepository implements IHorariosRepository {
 
     const bloque = await this.findById(id);
     if (!bloque) {
-      throw new Error("No se pudo recuperar el bloque de horario actualizado.");
+      throw new InternalServerErrorException(
+        "No se pudo recuperar el bloque de horario actualizado.",
+      );
     }
     return bloque;
   }
