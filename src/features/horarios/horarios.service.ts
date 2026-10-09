@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
   Optional,
@@ -19,7 +20,9 @@ import {
   CopiarHorarioResponseDto,
   CreateBloqueHorarioDto,
   GrillaPropuestaResponseDto,
+  HorarioEstudianteResponseDto,
   ListarPorSeccionResponseDto,
+  MiHorarioResponseDto,
   ResumenHorasCursoDto,
   UpdateBloqueHorarioDto,
 } from "./dto";
@@ -31,6 +34,13 @@ import {
   minutosAHora,
   normalizarHora,
 } from "./utils";
+
+export interface UsuarioConsultaEstudiante {
+  id: string;
+  personaId?: string;
+  role?: string;
+  rol?: string;
+}
 
 @Injectable()
 export class HorariosService {
@@ -452,6 +462,65 @@ export class HorariosService {
     return {
       bloquesCreados,
       conflictos,
+    };
+  }
+
+  async miHorario(personaId: string): Promise<MiHorarioResponseDto> {
+    const anio = await this.resolverAnio(false);
+
+    const docente = await this.horariosRepo.docentePorPersonaId(personaId);
+    if (!docente) {
+      throw new NotFoundException("No se encontró el docente asociado al usuario.");
+    }
+
+    const bloques = await this.horariosRepo.findByDocente(anio.id, docente.id);
+
+    return {
+      docenteId: docente.id,
+      bloques,
+    };
+  }
+
+  async horarioDeEstudiante(
+    estudianteId: string,
+    usuario: UsuarioConsultaEstudiante,
+  ): Promise<HorarioEstudianteResponseDto> {
+    const rol = (usuario.role ?? usuario.rol ?? "").trim().toLowerCase();
+
+    if (rol === "estudiante") {
+      const estudiantePersonaId = usuario.personaId ?? usuario.id;
+      if (estudiantePersonaId !== estudianteId) {
+        throw new ForbiddenException(
+          "No tiene permiso para consultar el horario de otro estudiante.",
+        );
+      }
+    } else if (rol === "apoderado") {
+      const apoderadoPersonaId = usuario.personaId ?? usuario.id;
+      const esVinculado = await this.horariosRepo.esApoderadoDeEstudiante(
+        apoderadoPersonaId,
+        estudianteId,
+      );
+      if (!esVinculado) {
+        throw new ForbiddenException(
+          "No tiene permiso para consultar el horario de este estudiante.",
+        );
+      }
+    }
+
+    const anio = await this.resolverAnio(false);
+
+    const matricula = await this.horariosRepo.matriculaEstudiante(anio.id, estudianteId);
+    if (!matricula || matricula.estado !== "matriculado") {
+      throw new NotFoundException(
+        "El estudiante no cuenta con matrícula activa en el año académico.",
+      );
+    }
+
+    const bloques = await this.horariosRepo.findBySeccion(matricula.seccionId);
+
+    return {
+      seccionId: matricula.seccionId,
+      bloques,
     };
   }
 

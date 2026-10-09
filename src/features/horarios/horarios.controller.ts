@@ -29,7 +29,9 @@ import {
   CopiarHorarioResponseDto,
   CreateBloqueHorarioDto,
   GrillaPropuestaResponseDto,
+  HorarioEstudianteResponseDto,
   ListarPorSeccionResponseDto,
+  MiHorarioResponseDto,
   UpdateBloqueHorarioDto,
 } from "./dto";
 import { HorariosService } from "./horarios.service";
@@ -157,5 +159,35 @@ export class HorariosController {
     @ClientInfo() clientInfo: ClientInfoData,
   ): Promise<CopiarHorarioResponseDto> {
     return this.service.copiar(origenId, destinoId, usuario.id, clientInfo.ip);
+  }
+
+  @Get("mi-horario")
+  @ApiOperation({
+    summary: "Consultar el horario semanal propio del docente autenticado",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Horario semanal del docente con bloques, sección, aula y color",
+    type: MiHorarioResponseDto,
+  })
+  async miHorario(@CurrentUser() usuario: AuthenticatedUser): Promise<MiHorarioResponseDto> {
+    return this.service.miHorario(usuario.personaId);
+  }
+
+  @Get("estudiante/:estudianteId")
+  @ApiOperation({
+    summary: "Consultar el horario semanal de la sección asignada a un estudiante",
+  })
+  @ApiParam({ name: "estudianteId", description: "UUID del estudiante a consultar" })
+  @ApiResponse({
+    status: 200,
+    description: "Horario de la sección asignada al estudiante",
+    type: HorarioEstudianteResponseDto,
+  })
+  async horarioDeEstudiante(
+    @Param("estudianteId", ParseUUIDPipe) estudianteId: string,
+    @CurrentUser() usuario: AuthenticatedUser,
+  ): Promise<HorarioEstudianteResponseDto> {
+    return this.service.horarioDeEstudiante(estudianteId, usuario);
   }
 }

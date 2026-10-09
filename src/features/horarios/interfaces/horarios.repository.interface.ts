@@ -1,4 +1,4 @@
-import type { BloqueHorarioResponseDto } from "../dto";
+import type { BloqueDocenteResponseDto, BloqueHorarioResponseDto } from "../dto";
 
 export interface CruceDocenteResultado {
   docenteNombre: string;
@@ -19,6 +19,15 @@ export interface BloqueDocenteResultado {
   seccionNombre: string;
   gradoNumero: number;
   aula: string | null;
+}
+
+export interface DocenteSimpleResultado {
+  id: string;
+}
+
+export interface MatriculaEstudianteResultado {
+  seccionId: string;
+  estado: string;
 }
 
 export interface CursoPlanDetalle {
@@ -86,5 +95,11 @@ export interface IHorariosRepository {
   update(id: string, data: UpdateBloqueData): Promise<BloqueHorarioResponseDto>;
   delete(id: string): Promise<boolean>;
   tieneSesiones(id: string): Promise<boolean>;
-  findByDocente(anioId: string, docenteId: string): Promise<BloqueDocenteResultado[]>;
+  findByDocente(anioId: string, docenteId: string): Promise<BloqueDocenteResponseDto[]>;
+  docentePorPersonaId(personaId: string): Promise<DocenteSimpleResultado | null>;
+  matriculaEstudiante(
+    anioId: string,
+    estudianteId: string,
+  ): Promise<MatriculaEstudianteResultado | null>;
+  esApoderadoDeEstudiante(apoderadoPersonaId: string, estudianteId: string): Promise<boolean>;
 }

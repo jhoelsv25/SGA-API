@@ -6,3 +6,6 @@ export * from "./bloque-mutacion-response.dto";
 export * from "./listar-por-seccion-response.dto";
 export * from "./grilla-propuesta-response.dto";
 export * from "./copiar-horario-response.dto";
+export * from "./bloque-docente-response.dto";
+export * from "./mi-horario-response.dto";
+export * from "./horario-estudiante-response.dto";

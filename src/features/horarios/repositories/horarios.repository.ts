@@ -1,12 +1,16 @@
 import { Inject, Injectable, InternalServerErrorException } from "@nestjs/common";
-import { and, asc, eq, inArray, ne, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, ne, or, sql } from "drizzle-orm";
 import { Database, DRIZZLE } from "../../../core/database";
 import {
+  apoderados,
   cursos,
   cursosSeccion,
   docentes,
+  estudiantes,
+  estudianteApoderados,
   grados,
   horarios,
+  matriculas,
   personas,
   planEstudios,
   secciones,
@@ -15,14 +19,15 @@ import {
   variablesSistema,
 } from "../../../core/database/schema";
 import { VARIABLES_JORNADA } from "../constants";
-import type { BloqueHorarioResponseDto } from "../dto";
+import type { BloqueDocenteResponseDto, BloqueHorarioResponseDto } from "../dto";
 import type {
-  BloqueDocenteResultado,
   CreateBloqueData,
   CruceDocenteResultado,
   CursoPlanDetalle,
   CursoSeccionDetalle,
+  DocenteSimpleResultado,
   IHorariosRepository,
+  MatriculaEstudianteResultado,
   ParametrosJornadaResultado,
   UpdateBloqueData,
 } from "../interfaces";
@@ -424,7 +429,7 @@ export class HorariosRepository implements IHorariosRepository {
     return resultado.length > 0;
   }
 
-  async findByDocente(anioId: string, docenteId: string): Promise<BloqueDocenteResultado[]> {
+  async findByDocente(anioId: string, docenteId: string): Promise<BloqueDocenteResponseDto[]> {
     const filas = await this.db
       .select({
         id: horarios.id,
@@ -446,10 +451,84 @@ export class HorariosRepository implements IHorariosRepository {
       .orderBy(asc(horarios.diaSemana), asc(horarios.horaInicio));
 
     return filas.map((f) => ({
-      ...f,
+      id: f.id,
+      diaSemana: f.diaSemana,
       horaInicio: normalizarHora(f.horaInicio),
       horaFin: normalizarHora(f.horaFin),
+      cursoNombre: f.cursoNombre,
+      colorHex: f.colorHex,
+      seccionNombre: f.seccionNombre,
+      gradoNumero: f.gradoNumero,
+      aula: f.aula,
     }));
+  }
+
+  async docentePorPersonaId(personaId: string): Promise<DocenteSimpleResultado | null> {
+    const filas = await this.db
+      .select({ id: docentes.id })
+      .from(docentes)
+      .where(or(eq(docentes.personaId, personaId), eq(docentes.id, personaId)))
+      .limit(1);
+
+    if (filas.length === 0) {
+      return null;
+    }
+
+    return { id: filas[0].id };
+  }
+
+  async matriculaEstudiante(
+    anioId: string,
+    estudianteId: string,
+  ): Promise<MatriculaEstudianteResultado | null> {
+    const filas = await this.db
+      .select({
+        seccionId: matriculas.seccionId,
+        estado: matriculas.estado,
+      })
+      .from(matriculas)
+      .innerJoin(estudiantes, eq(matriculas.estudianteId, estudiantes.id))
+      .where(
+        and(
+          eq(matriculas.anioAcademicoId, anioId),
+          or(eq(matriculas.estudianteId, estudianteId), eq(estudiantes.personaId, estudianteId)),
+        ),
+      )
+      .limit(1);
+
+    if (filas.length === 0) {
+      return null;
+    }
+
+    return {
+      seccionId: filas[0].seccionId,
+      estado: filas[0].estado,
+    };
+  }
+
+  async esApoderadoDeEstudiante(
+    apoderadoPersonaId: string,
+    estudianteId: string,
+  ): Promise<boolean> {
+    const filas = await this.db
+      .select({
+        estudianteId: estudianteApoderados.estudianteId,
+      })
+      .from(estudianteApoderados)
+      .innerJoin(apoderados, eq(estudianteApoderados.apoderadoId, apoderados.id))
+      .innerJoin(estudiantes, eq(estudianteApoderados.estudianteId, estudiantes.id))
+      .where(
+        and(
+          or(eq(apoderados.personaId, apoderadoPersonaId), eq(apoderados.id, apoderadoPersonaId)),
+          or(
+            eq(estudianteApoderados.estudianteId, estudianteId),
+            eq(estudiantes.personaId, estudianteId),
+          ),
+        ),
+      )
+      .limit(1);
+
+    return filas.length > 0;
   }
 
   private mapearFilaABloqueResponse(fila: {
