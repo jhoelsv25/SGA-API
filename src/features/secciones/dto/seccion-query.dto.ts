@@ -1,5 +1,4 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
-<<<<<<< HEAD
 import { IsIn, IsOptional, IsUUID } from "class-validator";
 import { ESTADOS_SECCION, type EstadoSeccion } from "../constants";
 
@@ -20,25 +19,4 @@ export class SeccionQueryDto {
   @IsOptional()
   @IsIn(ESTADOS_SECCION, { message: "El estado debe ser 'activa' o 'cerrada'." })
   estado?: EstadoSeccion;
-=======
-import { Transform } from "class-transformer";
-import { IsBoolean, IsOptional, IsUUID } from "class-validator";
-
-export class SeccionQueryDto {
-  @ApiPropertyOptional({ description: "Filtrar por año académico" })
-  @IsOptional()
-  @IsUUID("all", { message: "ID de año académico inválido" })
-  anioAcademicoId?: string;
-
-  @ApiPropertyOptional({ description: "Filtrar por grado" })
-  @IsOptional()
-  @IsUUID("all", { message: "ID de grado inválido" })
-  gradoId?: string;
-
-  @ApiPropertyOptional({ description: "Solo secciones en estado activa" })
-  @IsOptional()
-  @Transform(({ value }) => value === "true" || value === true)
-  @IsBoolean()
-  soloActivas?: boolean;
->>>>>>> ab15606 (feat(api): implementar RF-009 matriculas, retiro, traslado y base de secciones)
 }
