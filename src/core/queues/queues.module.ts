@@ -20,7 +20,11 @@ import { QUEUES } from "./queues.constants";
     BullModule.registerQueue({
       name: QUEUES.AUDIT,
     }),
+    BullModule.registerQueue({
+      name: QUEUES.NOTIFICATIONS,
+    }),
   ],
+
   providers: [AuditProcessor],
   exports: [BullModule],
 })

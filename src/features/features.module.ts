@@ -17,7 +17,9 @@ import { ImportacionModule } from "./importacion";
 import { InstitucionModule } from "./institucion";
 import { MatriculasModule } from "./matriculas";
 import { MenusModule } from "./menus";
+import { NotificacionesModule } from "./notificaciones";
 import { PersonasModule } from "./personas";
+
 import { PlanEstudiosModule } from "./plan-estudios";
 import { RolesModule } from "./roles";
 import { SeccionesModule } from "./secciones";
@@ -52,6 +54,7 @@ import { VariablesSistemaModule } from "./variables-sistema";
     ApoderadosModule,
     CredencialesModule,
     ImportacionModule,
+    NotificacionesModule,
   ],
   exports: [
     AuthModule,
@@ -79,7 +82,7 @@ import { VariablesSistemaModule } from "./variables-sistema";
     ApoderadosModule,
     CredencialesModule,
     ImportacionModule,
+    NotificacionesModule,
   ],
 })
 export class FeaturesModule {}
-
