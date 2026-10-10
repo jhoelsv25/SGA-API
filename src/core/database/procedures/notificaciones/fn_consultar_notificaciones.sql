@@ -1,10 +1,14 @@
 -- ============================================================================
 -- Función: fn_consultar_notificaciones
 -- Descripción: Consulta la bandeja personal de notificaciones de un usuario
---              con filtros, conteo de no leídas y paginación por cursor.
+--              con filtros (search, tipo, estado), conteo de no leídas y
+--              paginación por cursor.
 -- Parámetro: p_params (JSONB) con:
 --   - usuarioId: UUID (obligatorio)
 --   - soloNoLeidas: BOOLEAN | null
+--   - estado: TEXT | null ('no_leidas', 'leidas', 'all')
+--   - tipo: TEXT | null ('informacion', 'alerta', 'recordatorio', 'all')
+--   - search: TEXT | null (búsqueda en título o mensaje)
 --   - cursorCreadoEn: TEXT | null (ISO timestamp)
 --   - cursorId: UUID | null
 --   - limit: INT (default 20, max 50)
@@ -18,6 +22,9 @@ AS $$
 DECLARE
     v_usuario_id       UUID;
     v_solo_no_leidas   BOOLEAN;
+    v_estado           TEXT;
+    v_tipo             TEXT;
+    v_search           TEXT;
     v_cursor_creado_en TIMESTAMPTZ;
     v_cursor_id        UUID;
     v_limit            INT;
@@ -29,13 +36,16 @@ DECLARE
 BEGIN
     v_usuario_id     := (p_params->>'usuarioId')::UUID;
     v_solo_no_leidas := COALESCE((p_params->>'soloNoLeidas')::BOOLEAN, FALSE);
+    v_estado         := NULLIF(TRIM(p_params->>'estado'), '');
+    v_tipo           := NULLIF(TRIM(p_params->>'tipo'), '');
+    v_search         := NULLIF(TRIM(p_params->>'search'), '');
     v_limit          := LEAST(COALESCE((p_params->>'limit')::INT, 20), 50);
 
     IF v_usuario_id IS NULL THEN
         RAISE EXCEPTION 'El parámetro usuarioId es obligatorio para consultar notificaciones.';
     END IF;
 
-    -- Conteo total de no leídas del usuario
+    -- Conteo total de no leídas del usuario (siempre global)
     SELECT COUNT(*)
     INTO v_unread_count
     FROM notificaciones
@@ -61,7 +71,20 @@ BEGIN
             n.creado_en
         FROM notificaciones n
         WHERE n.usuario_id = v_usuario_id
-          AND (NOT v_solo_no_leidas OR NOT n.leida)
+          AND (
+              CASE 
+                  WHEN v_solo_no_leidas THEN NOT n.leida
+                  WHEN v_estado = 'no_leidas' THEN NOT n.leida
+                  WHEN v_estado = 'leidas' THEN n.leida
+                  ELSE TRUE
+              END
+          )
+          AND (v_tipo IS NULL OR v_tipo = 'all' OR n.tipo = v_tipo)
+          AND (
+              v_search IS NULL
+              OR n.titulo ILIKE ('%' || v_search || '%')
+              OR n.mensaje ILIKE ('%' || v_search || '%')
+          )
     ),
     filtradas AS (
         SELECT *
@@ -101,11 +124,11 @@ BEGIN
 
     IF v_has_more THEN
         SELECT 
-            creado_en::TEXT,
-            id
+            f.creado_en::TEXT,
+            f.id
         INTO v_next_creado_en, v_next_id
-        FROM con_numero
-        WHERE rn = v_limit;
+        FROM con_numero f
+        WHERE f.rn = v_limit;
     END IF;
 
     RETURN jsonb_build_object(

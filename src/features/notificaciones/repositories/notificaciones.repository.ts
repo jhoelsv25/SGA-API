@@ -56,6 +56,9 @@ export class NotificacionesRepository {
     const payload = {
       usuarioId,
       soloNoLeidas: Boolean(query?.soloNoLeidas),
+      estado: query?.estado || null,
+      tipo: query?.tipo || null,
+      search: query?.search?.trim() || null,
       cursorCreadoEn: decodedCursor?.creadoEn || null,
       cursorId: decodedCursor?.id || null,
       limit,

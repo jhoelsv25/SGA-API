@@ -17,6 +17,30 @@ export class NotificacionQueryDto {
   soloNoLeidas?: boolean = false;
 
   @ApiPropertyOptional({
+    description: "Estado de la notificación: all | no_leidas | leidas",
+    example: "no_leidas",
+  })
+  @IsOptional()
+  @IsString()
+  estado?: string;
+
+  @ApiPropertyOptional({
+    description: "Tipo de notificación: all | informacion | alerta | recordatorio",
+    example: "alerta",
+  })
+  @IsOptional()
+  @IsString()
+  tipo?: string;
+
+  @ApiPropertyOptional({
+    description: "Término de búsqueda en título o mensaje",
+    example: "matrícula",
+  })
+  @IsOptional()
+  @IsString()
+  search?: string;
+
+  @ApiPropertyOptional({
     description: "Cantidad de notificaciones por página (máx. 50)",
     default: 20,
   })
