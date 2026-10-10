@@ -32,9 +32,12 @@ const CARGOS_ESTUDIANTE_APODERADO = ["Estudiante", "Apoderado(a)"];
 export class DocentesRepository implements IDocentesRepository {
   constructor(@Inject(DRIZZLE) private readonly db: Database) {}
 
-  async findById(id: string): Promise<DocenteResponseDto | null> {
+  async findById(
+    id: string,
+    ejecutor: Pick<Database, "execute"> = this.db,
+  ): Promise<DocenteResponseDto | null> {
     const payload = { id, limit: 1 };
-    const result = (await this.db.execute(sql`
+    const result = (await ejecutor.execute(sql`
       SELECT fn_consultar_docentes(${JSON.stringify(payload)}::jsonb) AS resultado
     `)) as unknown as DbDocentesProcedureExecutionResult;
 
@@ -245,8 +248,8 @@ export class DocentesRepository implements IDocentesRepository {
         });
       }
 
-      // Buscar el docente recién creado invocando el procedimiento
-      const docenteResponse = (await this.findById(nuevoDocente.id))!;
+      // Buscar el docente recién creado dentro de la misma transacción (aún no confirmada)
+      const docenteResponse = (await this.findById(nuevoDocente.id, tx))!;
 
       return {
         docente: docenteResponse,
