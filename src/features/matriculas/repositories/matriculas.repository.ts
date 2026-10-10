@@ -1,5 +1,6 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, count, desc, eq, ilike, or, type SQL, sql } from "drizzle-orm";
+import { and, count, eq, sql } from "drizzle-orm";
+
 import { Database, DRIZZLE } from "../../../core/database";
 import {
   aniosAcademicos,
@@ -15,12 +16,15 @@ import {
   secciones,
   usuarios,
 } from "../../../core/database/schema";
+import { decodeCursor, encodeCursor } from "../../../common/utils";
 import {
   DatosConstanciaMatricula,
+  DbMatriculasProcedureExecutionResult,
   EstudianteParaMatricula,
+  MatriculaCursorPayload,
   SeccionConVacantes,
 } from "../interfaces";
-import { MatriculaQueryDto, MatriculaResponseDto } from "../dto";
+import { MatriculaQueryDto, MatriculaResponseDto, PaginatedMatriculasResponseDto } from "../dto";
 
 @Injectable()
 export class MatriculasRepository {
@@ -308,98 +312,43 @@ export class MatriculasRepository {
     }
   }
 
-  async findMatriculas(
-    query: MatriculaQueryDto,
-  ): Promise<{ items: MatriculaResponseDto[]; total: number }> {
-    const conditions: SQL<unknown>[] = [];
+  async findMatriculas(query?: MatriculaQueryDto): Promise<PaginatedMatriculasResponseDto> {
+    const limit = query?.limit && query.limit > 0 ? query.limit : 20;
+    const decodedCursor = decodeCursor<MatriculaCursorPayload>(query?.cursor);
 
-    if (query.anioAcademicoId) {
-      conditions.push(eq(matriculas.anioAcademicoId, query.anioAcademicoId));
-    }
-    if (query.gradoId) {
-      conditions.push(eq(secciones.gradoId, query.gradoId));
-    }
-    if (query.seccionId) {
-      conditions.push(eq(matriculas.seccionId, query.seccionId));
-    }
-    if (query.tipo) {
-      conditions.push(eq(matriculas.tipo, query.tipo));
-    }
-    if (query.estado) {
-      conditions.push(eq(matriculas.estado, query.estado));
-    }
-    if (query.search?.trim()) {
-      const term = `%${query.search.trim()}%`;
-      const searchCondition = or(
-        ilike(matriculas.codigo, term),
-        ilike(estudiantes.codigo, term),
-        ilike(personas.numeroDocumento, term),
-        ilike(personas.nombres, term),
-        ilike(personas.apellidoPaterno, term),
-        ilike(personas.apellidoMaterno, term),
-      );
-      if (searchCondition) {
-        conditions.push(searchCondition);
-      }
-    }
+    const payload = {
+      anioAcademicoId: query?.anioAcademicoId || null,
+      gradoId: query?.gradoId || null,
+      seccionId: query?.seccionId || null,
+      tipo: query?.tipo || null,
+      estado: query?.estado || null,
+      search: query?.search?.trim() || null,
+      cursorCreadoEn: decodedCursor?.creadoEn || null,
+      cursorId: decodedCursor?.id || null,
+      limit,
+    };
 
-    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    const result = (await this.db.execute(sql`
+      SELECT fn_consultar_matriculas(${JSON.stringify(payload)}::jsonb) AS resultado
+    `)) as unknown as DbMatriculasProcedureExecutionResult;
 
-    // Conteo total
-    const [totalRow] = await this.db
-      .select({ total: count() })
-      .from(matriculas)
-      .innerJoin(secciones, eq(matriculas.seccionId, secciones.id))
-      .innerJoin(estudiantes, eq(matriculas.estudianteId, estudiantes.id))
-      .innerJoin(personas, eq(estudiantes.personaId, personas.id))
-      .where(whereClause);
+    const jsonResult = result.rows?.[0]?.resultado ?? {};
+    const data = jsonResult.data ?? [];
+    const hasMore = Boolean(jsonResult.hasMore);
 
-    const total = Number(totalRow?.total ?? 0);
-
-    // Registros
-    const rows = await this.db
-      .select({
-        id: matriculas.id,
-        codigo: matriculas.codigo,
-        fechaMatricula: matriculas.fechaMatricula,
-        tipo: matriculas.tipo,
-        estado: matriculas.estado,
-        esRepitente: matriculas.esRepitente,
-        colegioProcedencia: matriculas.colegioProcedencia,
-        fechaRetiro: matriculas.fechaRetiro,
-        motivoRetiro: matriculas.motivoRetiro,
-        observaciones: matriculas.observaciones,
-        creadoEn: matriculas.creadoEn,
-        anioAcademicoId: matriculas.anioAcademicoId,
-        anioNumero: aniosAcademicos.anio,
-        gradoId: secciones.gradoId,
-        gradoNumero: grados.numero,
-        gradoNombre: grados.nombre,
-        seccionId: matriculas.seccionId,
-        seccionNombre: secciones.nombre,
-        estudianteId: estudiantes.id,
-        codigoEstudiante: estudiantes.codigo,
-        estudianteEstado: estudiantes.estado,
-        personaNombres: personas.nombres,
-        personaApellidoPaterno: personas.apellidoPaterno,
-        personaApellidoMaterno: personas.apellidoMaterno,
-        personaTipoDocumento: personas.tipoDocumento,
-        personaNumeroDocumento: personas.numeroDocumento,
-      })
-      .from(matriculas)
-      .innerJoin(aniosAcademicos, eq(matriculas.anioAcademicoId, aniosAcademicos.id))
-      .innerJoin(secciones, eq(matriculas.seccionId, secciones.id))
-      .innerJoin(grados, eq(secciones.gradoId, grados.id))
-      .innerJoin(estudiantes, eq(matriculas.estudianteId, estudiantes.id))
-      .innerJoin(personas, eq(estudiantes.personaId, personas.id))
-      .where(whereClause)
-      .orderBy(desc(matriculas.creadoEn))
-      .limit(query.limit)
-      .offset(query.offset);
+    const nextCursor =
+      hasMore && jsonResult.nextCursorId && jsonResult.nextCursorCreadoEn != null
+        ? encodeCursor<MatriculaCursorPayload>({
+            creadoEn: jsonResult.nextCursorCreadoEn,
+            id: jsonResult.nextCursorId,
+          })
+        : null;
 
     return {
-      items: rows.map((r) => this.mapToResponseDto(r)),
-      total,
+      data,
+      nextCursor,
+      hasMore,
+      limit,
     };
   }
 

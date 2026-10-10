@@ -22,9 +22,11 @@ import {
   MatriculaMasivaResultadoDto,
   MatriculaQueryDto,
   MatriculaResponseDto,
+  PaginatedMatriculasResponseDto,
   RetirarMatriculaDto,
   TrasladarMatriculaDto,
 } from "./dto";
+
 import { MatriculasService } from "./matriculas.service";
 
 @ApiTags("Matrícula - Matrícula, Retiro y Traslado")
@@ -35,11 +37,9 @@ export class MatriculasController {
 
   @Get()
   @Roles("Administrador", "Secretaria", "Director", "Subdirector")
-  @ApiOperation({ summary: "Listar matrículas con filtros por año, grado, sección, tipo y estado" })
-  @ApiResponse({ status: 200, type: [MatriculaResponseDto] })
-  async findAll(
-    @Query() query: MatriculaQueryDto,
-  ): Promise<{ items: MatriculaResponseDto[]; total: number }> {
+  @ApiOperation({ summary: "Listar matrículas con paginación por cursor y filtros avanzados" })
+  @ApiResponse({ status: 200, type: PaginatedMatriculasResponseDto })
+  async findAll(@Query() query: MatriculaQueryDto): Promise<PaginatedMatriculasResponseDto> {
     return this.matriculasService.findAll(query);
   }
 

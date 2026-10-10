@@ -3,6 +3,13 @@ import { Type } from "class-transformer";
 import { IsInt, IsOptional, IsString, IsUUID, Max, Min } from "class-validator";
 
 export class MatriculaQueryDto {
+  @ApiPropertyOptional({
+    description: "Cursor opaco en base64url para la siguiente página de matrículas",
+  })
+  @IsOptional()
+  @IsString()
+  cursor?: string;
+
   @ApiPropertyOptional({ description: "Filtrar por año académico" })
   @IsOptional()
   @IsUUID("all")
@@ -44,11 +51,4 @@ export class MatriculaQueryDto {
   @Min(1)
   @Max(100)
   limit: number = 20;
-
-  @ApiPropertyOptional({ description: "Desplazamiento para paginación", default: 0 })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(0)
-  offset: number = 0;
 }

@@ -14,9 +14,11 @@ import {
   MatriculaMasivaResultadoDto,
   MatriculaQueryDto,
   MatriculaResponseDto,
+  PaginatedMatriculasResponseDto,
   RetirarMatriculaDto,
   TrasladarMatriculaDto,
 } from "./dto";
+
 import { MatriculasRepository } from "./repositories";
 import { MatriculaMasivaService, MatriculaOperacionesService } from "./services";
 import { generarCodigoMatricula, generarConstanciaMatriculaPdf } from "./utils";
@@ -176,9 +178,7 @@ export class MatriculasService {
 
   // ── Consultas y Constancias ──
 
-  async findAll(
-    query: MatriculaQueryDto,
-  ): Promise<{ items: MatriculaResponseDto[]; total: number }> {
+  async findAll(query?: MatriculaQueryDto): Promise<PaginatedMatriculasResponseDto> {
     return this.matriculasRepository.findMatriculas(query);
   }
 

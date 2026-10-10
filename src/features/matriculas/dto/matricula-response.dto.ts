@@ -126,3 +126,20 @@ export class MatriculaMasivaResultadoDto {
   @ApiProperty({ type: [MatriculaNoProcesadaItemDto] })
   noMatriculados!: MatriculaNoProcesadaItemDto[];
 }
+
+export class PaginatedMatriculasResponseDto {
+  @ApiProperty({ type: [MatriculaResponseDto] })
+  data!: MatriculaResponseDto[];
+
+  @ApiPropertyOptional({
+    description: "Cursor opaco en base64url para la página siguiente, o null si es la última",
+    example: "eyJjcmVhZG9FbiI6IjIwMjctMDMtMDEiLCJpZCI6IjEyMyJ9",
+  })
+  nextCursor!: string | null;
+
+  @ApiProperty({ example: true })
+  hasMore!: boolean;
+
+  @ApiProperty({ example: 20 })
+  limit!: number;
+}

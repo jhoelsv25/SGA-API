@@ -68,3 +68,19 @@ export interface DatosConstanciaMatricula {
     telefono?: string | null;
   };
 }
+
+export interface MatriculaCursorPayload {
+  creadoEn: string;
+  id: string;
+}
+
+export interface DbMatriculasProcedureExecutionResult {
+  rows?: Array<{
+    resultado?: {
+      data?: import("../dto").MatriculaResponseDto[];
+      hasMore?: boolean;
+      nextCursorCreadoEn?: string | null;
+      nextCursorId?: string | null;
+    };
+  }>;
+}
