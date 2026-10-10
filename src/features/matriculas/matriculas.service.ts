@@ -3,8 +3,10 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  Optional,
 } from "@nestjs/common";
 import { AuditService } from "../../common/services/audit.service";
+import { NotificacionesService } from "../notificaciones/notificaciones.service";
 import { MATRICULA_MESSAGES } from "./constants";
 import {
   CambiarSeccionDto,
@@ -30,6 +32,7 @@ export class MatriculasService {
     private readonly matriculaOperacionesService: MatriculaOperacionesService,
     private readonly matriculaMasivaService: MatriculaMasivaService,
     private readonly auditService: AuditService,
+    @Optional() private readonly notificacionesService?: NotificacionesService,
   ) {}
 
   /**
@@ -126,6 +129,20 @@ export class MatriculasService {
       },
       direccionIp: ip,
     });
+
+    // 10. Notificación (asíncrona vía BullMQ)
+    if (this.notificacionesService) {
+      await this.notificacionesService
+        .enviar({
+          usuarioId: actorId,
+          titulo: "Matrícula registrada",
+          mensaje: `Se matriculó exitosamente al estudiante ${creada.estudiante.nombres} ${creada.estudiante.apellidos} en ${creada.gradoNombre} - ${creada.seccionNombre}.`,
+          tipo: "informacion",
+          enlaceUrl: `/admin/enrollment/${creada.id}`,
+          canales: ["in_app"],
+        })
+        .catch(() => undefined);
+    }
 
     return {
       matricula: creada,

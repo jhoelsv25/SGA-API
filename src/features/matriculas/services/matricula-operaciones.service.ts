@@ -1,5 +1,6 @@
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException, Optional } from "@nestjs/common";
 import { AuditService } from "../../../common/services/audit.service";
+import { NotificacionesService } from "../../notificaciones/notificaciones.service";
 import { MATRICULA_MESSAGES } from "../constants";
 import {
   CambiarSeccionDto,
@@ -14,6 +15,7 @@ export class MatriculaOperacionesService {
   constructor(
     private readonly matriculasRepository: MatriculasRepository,
     private readonly auditService: AuditService,
+    @Optional() private readonly notificacionesService?: NotificacionesService,
   ) {}
 
   /**
@@ -71,6 +73,19 @@ export class MatriculaOperacionesService {
       },
       direccionIp: ip,
     });
+
+    if (this.notificacionesService) {
+      await this.notificacionesService
+        .enviar({
+          usuarioId: actorId,
+          titulo: "Estudiante retirado",
+          mensaje: `Se procesó el retiro de la matrícula para ${matricula.estudiante.nombres} ${matricula.estudiante.apellidos}.`,
+          tipo: "alerta",
+          enlaceUrl: `/admin/enrollment/${id}`,
+          canales: ["in_app"],
+        })
+        .catch(() => undefined);
+    }
 
     return updated;
   }
@@ -132,6 +147,19 @@ export class MatriculaOperacionesService {
       },
       direccionIp: ip,
     });
+
+    if (this.notificacionesService) {
+      await this.notificacionesService
+        .enviar({
+          usuarioId: actorId,
+          titulo: "Estudiante trasladado",
+          mensaje: `Se procesó el traslado de ${matricula.estudiante.nombres} ${matricula.estudiante.apellidos} hacia ${dto.colegioDestino.trim()}.`,
+          tipo: "alerta",
+          enlaceUrl: `/admin/enrollment/${id}`,
+          canales: ["in_app"],
+        })
+        .catch(() => undefined);
+    }
 
     return updated;
   }
@@ -204,6 +232,19 @@ export class MatriculaOperacionesService {
       },
       direccionIp: ip,
     });
+
+    if (this.notificacionesService) {
+      await this.notificacionesService
+        .enviar({
+          usuarioId: actorId,
+          titulo: "Cambio de sección",
+          mensaje: `Se cambió la sección de ${matricula.estudiante.nombres} ${matricula.estudiante.apellidos} a ${nuevaSeccion.gradoNombre} - ${nuevaSeccion.nombre}.`,
+          tipo: "informacion",
+          enlaceUrl: `/admin/enrollment/${id}`,
+          canales: ["in_app"],
+        })
+        .catch(() => undefined);
+    }
 
     return updated;
   }
