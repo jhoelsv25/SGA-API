@@ -4,6 +4,7 @@ import {
   MENU_CORREGIR_DATOS_CRITICOS,
   MENU_HORARIOS,
   MENU_SECCIONES,
+  MENU_MI_HORARIO,
 } from "../../common/constants";
 
 const pool = new Pool({
@@ -804,6 +805,23 @@ async function seed() {
      ON CONFLICT DO NOTHING;`,
     [MENU_SECCIONES, MENU_HORARIOS],
   );
+  await pool.query(
+    `INSERT INTO menus (modulo_id, menu_padre_id, nombre, ruta, icono, orden, es_contenedor)
+     SELECT c.modulo_id, c.id, 'Mi horario', $1::varchar, 'Clock01Icon', 3, false
+     FROM menus c JOIN modulos m ON m.id = c.modulo_id
+     WHERE m.codigo = 'academico' AND c.es_contenedor AND c.nombre = 'Organización escolar'
+       AND NOT EXISTS (SELECT 1 FROM menus x WHERE x.ruta = $1::varchar);`,
+    [MENU_MI_HORARIO],
+  );
+  await pool.query(
+    `INSERT INTO rol_menus (rol_id, menu_id)
+     SELECT r.id, m.id FROM roles r, menus m
+     WHERE r.nombre IN ('Docente', 'Estudiante', 'Apoderado')
+       AND m.ruta = $1
+     ON CONFLICT DO NOTHING;`,
+    [MENU_MI_HORARIO],
+  );
+  console.log("✔ Opción 'Mi horario' registrada (Docente, Estudiante y Apoderado).");
 
   await pool.end();
   console.log("==========================================");

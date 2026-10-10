@@ -9,3 +9,4 @@ export const MENU_CORREGIR_DATOS_CRITICOS = "/personas/corregir-datos-criticos";
  */
 export const MENU_SECCIONES = "/admin/secciones";
 export const MENU_HORARIOS = "/admin/horarios";
+export const MENU_MI_HORARIO = "/admin/mi-horario";
