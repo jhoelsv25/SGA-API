@@ -1,0 +1,7 @@
+export * from "./crear-matricula.dto";
+export * from "./matricula-masiva.dto";
+export * from "./retirar-matricula.dto";
+export * from "./trasladar-matricula.dto";
+export * from "./cambiar-seccion.dto";
+export * from "./matricula-query.dto";
+export * from "./matricula-response.dto";

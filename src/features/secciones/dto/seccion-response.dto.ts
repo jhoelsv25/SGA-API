@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 
 export class SeccionTutorDto {
+<<<<<<< HEAD
   @ApiProperty({
     example: "doc-perez",
     description: "UUID del docente tutor",
@@ -100,4 +101,64 @@ export class SeccionResponseDto {
     description: "Cantidad de cursos de la sección sin docente asignado",
   })
   cursosSinDocente!: number;
+=======
+  @ApiProperty()
+  id!: string;
+
+  @ApiProperty()
+  nombres!: string;
+
+  @ApiProperty()
+  apellidos!: string;
+
+  @ApiPropertyOptional()
+  numeroDocumento?: string;
+}
+
+export class SeccionResponseDto {
+  @ApiProperty({ example: "550e8400-e29b-41d4-a716-446655440000" })
+  id!: string;
+
+  @ApiProperty()
+  anioAcademicoId!: string;
+
+  @ApiProperty({ example: 2027 })
+  anioNumero!: number;
+
+  @ApiProperty()
+  gradoId!: string;
+
+  @ApiProperty({ example: 1 })
+  gradoNumero!: number;
+
+  @ApiProperty({ example: "1.° de Secundaria" })
+  gradoNombre!: string;
+
+  @ApiProperty({ example: "A" })
+  nombre!: string;
+
+  @ApiPropertyOptional({ example: "Aula 101" })
+  aula?: string | null;
+
+  @ApiProperty({ example: 35 })
+  vacantes!: number;
+
+  @ApiProperty({ example: 30, description: "Total de estudiantes en estado matriculado" })
+  matriculadosCount!: number;
+
+  @ApiProperty({ example: 5, description: "Vacantes disponibles restantes" })
+  vacantesDisponibles!: number;
+
+  @ApiProperty({ example: "activa", enum: ["activa", "cerrada"] })
+  estado!: string;
+
+  @ApiPropertyOptional({ type: SeccionTutorDto })
+  tutor?: SeccionTutorDto | null;
+
+  @ApiProperty()
+  creadoEn!: string;
+
+  @ApiProperty()
+  actualizadoEn!: string;
+>>>>>>> ab15606 (feat(api): implementar RF-009 matriculas, retiro, traslado y base de secciones)
 }

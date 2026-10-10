@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+<<<<<<< HEAD
 import { AnioLectivoCls } from "../../common/anio-lectivo";
 import { AuditService } from "../../common/services/audit.service";
 import { AniosAcademicosService } from "../anio-escolar/anios.service";
@@ -13,10 +14,16 @@ import { MENSAJES_SECCIONES, TABLA_SECCIONES } from "./constants";
 import { CreateSeccionDto, SeccionQueryDto, SeccionResponseDto, UpdateSeccionDto } from "./dto";
 import { SeccionesRepository } from "./repositories";
 import { construirMensajeSeccionRepetida } from "./utils";
+=======
+import { AuditService } from "../../common/services/audit.service";
+import { CreateSeccionDto, SeccionQueryDto, SeccionResponseDto, UpdateSeccionDto } from "./dto";
+import { SeccionesRepository } from "./repositories";
+>>>>>>> ab15606 (feat(api): implementar RF-009 matriculas, retiro, traslado y base de secciones)
 
 @Injectable()
 export class SeccionesService {
   constructor(
+<<<<<<< HEAD
     private readonly seccionesRepo: SeccionesRepository,
     private readonly gradosService: GradosService,
     private readonly docentesRepo: DocentesRepository,
@@ -74,6 +81,69 @@ export class SeccionesService {
     });
 
     return creada;
+=======
+    private readonly seccionesRepository: SeccionesRepository,
+    private readonly auditService: AuditService,
+  ) {}
+
+  async findAll(query: SeccionQueryDto): Promise<SeccionResponseDto[]> {
+    return this.seccionesRepository.findAll(query);
+  }
+
+  async findById(id: string): Promise<SeccionResponseDto> {
+    const seccion = await this.seccionesRepository.findById(id);
+    if (!seccion) {
+      throw new NotFoundException("Sección no encontrada.");
+    }
+    return seccion;
+  }
+
+  async create(dto: CreateSeccionDto, actorId: string, ip?: string): Promise<SeccionResponseDto> {
+    // 1. Validar que no exista otra sección con el mismo nombre en el mismo año y grado
+    const existing = await this.seccionesRepository.findExistingByName(
+      dto.anioAcademicoId,
+      dto.gradoId,
+      dto.nombre,
+    );
+    if (existing) {
+      throw new ConflictException(
+        `Ya existe la sección ${dto.nombre} en este grado y año escolar.`,
+      );
+    }
+
+    // 2. Si se asigna tutor, validar que no sea tutor de otra sección en el mismo año
+    if (dto.tutorId) {
+      const tutorOcupado = await this.seccionesRepository.isTutorOcupado(
+        dto.anioAcademicoId,
+        dto.tutorId,
+      );
+      if (tutorOcupado) {
+        throw new BadRequestException("Este docente ya es tutor de otra sección en este año.");
+      }
+    }
+
+    // 3. Crear sección
+    const id = await this.seccionesRepository.create(dto);
+    const created = (await this.seccionesRepository.findById(id))!;
+
+    // 4. Auditoría
+    await this.auditService.log({
+      usuarioId: actorId,
+      accion: "crear",
+      tabla: "secciones",
+      registroId: id,
+      valorNuevo: {
+        nombre: created.nombre,
+        gradoNombre: created.gradoNombre,
+        anioNumero: created.anioNumero,
+        vacantes: created.vacantes,
+        tutorId: dto.tutorId ?? null,
+      },
+      direccionIp: ip,
+    });
+
+    return created;
+>>>>>>> ab15606 (feat(api): implementar RF-009 matriculas, retiro, traslado y base de secciones)
   }
 
   async update(
@@ -82,6 +152,7 @@ export class SeccionesService {
     actorId: string,
     ip?: string,
   ): Promise<SeccionResponseDto> {
+<<<<<<< HEAD
     const seccion = await this.seccionesRepo.findById(id);
     if (!seccion) {
       throw new NotFoundException(MENSAJES_SECCIONES.SECCION_NO_ENCONTRADA);
@@ -117,11 +188,34 @@ export class SeccionesService {
       }
 
       const tutorOcupado = await this.seccionesRepo.tutorOcupado(
+=======
+    const seccion = await this.findById(id);
+
+    // 1. Validar nombre único si se actualiza
+    if (dto.nombre && dto.nombre.trim().toLowerCase() !== seccion.nombre.toLowerCase()) {
+      const existing = await this.seccionesRepository.findExistingByName(
+        seccion.anioAcademicoId,
+        seccion.gradoId,
+        dto.nombre,
+        id,
+      );
+      if (existing) {
+        throw new ConflictException(
+          `Ya existe la sección ${dto.nombre} en este grado y año escolar.`,
+        );
+      }
+    }
+
+    // 2. Validar tutor único si se asigna o cambia
+    if (dto.tutorId && dto.tutorId !== seccion.tutor?.id) {
+      const tutorOcupado = await this.seccionesRepository.isTutorOcupado(
+>>>>>>> ab15606 (feat(api): implementar RF-009 matriculas, retiro, traslado y base de secciones)
         seccion.anioAcademicoId,
         dto.tutorId,
         id,
       );
       if (tutorOcupado) {
+<<<<<<< HEAD
         throw new ConflictException(MENSAJES_SECCIONES.TUTOR_OCUPADO);
       }
     }
@@ -210,5 +304,54 @@ export class SeccionesService {
       totalCursos: seccion.totalCursos,
       cursosSinDocente: seccion.cursosSinDocente,
     };
+=======
+        throw new BadRequestException("Este docente ya es tutor de otra sección en este año.");
+      }
+    }
+
+    // 3. Si se intenta cerrar la sección, validar que no tenga matriculados activos
+    if (dto.estado === "cerrada" && seccion.estado !== "cerrada") {
+      const matriculados = await this.seccionesRepository.countMatriculadosActivos(id);
+      if (matriculados > 0) {
+        throw new BadRequestException(
+          "No se puede cerrar una sección con estudiantes matriculados.",
+        );
+      }
+    }
+
+    // 4. Si se reducen las vacantes, no pueden ser menores al número de matriculados actuales
+    if (dto.vacantes !== undefined && dto.vacantes < seccion.matriculadosCount) {
+      throw new BadRequestException(
+        `Las vacantes (${dto.vacantes}) no pueden ser menores a los estudiantes ya matriculados (${seccion.matriculadosCount}).`,
+      );
+    }
+
+    // 5. Actualizar
+    await this.seccionesRepository.update(id, dto);
+    const updated = (await this.seccionesRepository.findById(id))!;
+
+    // 6. Auditoría
+    await this.auditService.log({
+      usuarioId: actorId,
+      accion: "actualizar",
+      tabla: "secciones",
+      registroId: id,
+      valorAnterior: {
+        nombre: seccion.nombre,
+        vacantes: seccion.vacantes,
+        estado: seccion.estado,
+        tutorId: seccion.tutor?.id ?? null,
+      },
+      valorNuevo: {
+        nombre: updated.nombre,
+        vacantes: updated.vacantes,
+        estado: updated.estado,
+        tutorId: updated.tutor?.id ?? null,
+      },
+      direccionIp: ip,
+    });
+
+    return updated;
+>>>>>>> ab15606 (feat(api): implementar RF-009 matriculas, retiro, traslado y base de secciones)
   }
 }

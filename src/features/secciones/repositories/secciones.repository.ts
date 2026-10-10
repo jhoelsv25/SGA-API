@@ -1,13 +1,21 @@
 import { Inject, Injectable } from "@nestjs/common";
+<<<<<<< HEAD
 import { and, asc, eq, isNull, ne, sql } from "drizzle-orm";
 import { Database, DRIZZLE } from "../../../core/database";
 import {
   cursos,
   cursosSeccion,
+=======
+import { and, count, eq, ne, type SQL, sql } from "drizzle-orm";
+import { Database, DRIZZLE } from "../../../core/database";
+import {
+  aniosAcademicos,
+>>>>>>> ab15606 (feat(api): implementar RF-009 matriculas, retiro, traslado y base de secciones)
   docentes,
   grados,
   matriculas,
   personas,
+<<<<<<< HEAD
   planEstudios,
   secciones,
 } from "../../../core/database/schema";
@@ -301,5 +309,187 @@ export class SeccionesRepository implements ISeccionesRepository {
       throw new Error("No se pudo recuperar la sección cerrada.");
     }
     return cerrada;
+=======
+  secciones,
+} from "../../../core/database/schema";
+import { CreateSeccionDto, SeccionQueryDto, SeccionResponseDto, UpdateSeccionDto } from "../dto";
+
+@Injectable()
+export class SeccionesRepository {
+  constructor(@Inject(DRIZZLE) private readonly db: Database) {}
+
+  async findAll(query: SeccionQueryDto): Promise<SeccionResponseDto[]> {
+    const conditions: SQL<unknown>[] = [];
+
+    if (query.anioAcademicoId) {
+      conditions.push(eq(secciones.anioAcademicoId, query.anioAcademicoId));
+    }
+    if (query.gradoId) {
+      conditions.push(eq(secciones.gradoId, query.gradoId));
+    }
+    if (query.soloActivas) {
+      conditions.push(eq(secciones.estado, "activa"));
+    }
+
+    const rows = await this.db
+      .select({
+        id: secciones.id,
+        anioAcademicoId: secciones.anioAcademicoId,
+        anioNumero: aniosAcademicos.anio,
+        gradoId: secciones.gradoId,
+        gradoNumero: grados.numero,
+        gradoNombre: grados.nombre,
+        nombre: secciones.nombre,
+        aula: secciones.aula,
+        vacantes: secciones.vacantes,
+        estado: secciones.estado,
+        creadoEn: secciones.creadoEn,
+        actualizadoEn: secciones.actualizadoEn,
+        tutorId: docentes.id,
+        tutorNombres: personas.nombres,
+        tutorApellidoPaterno: personas.apellidoPaterno,
+        tutorApellidoMaterno: personas.apellidoMaterno,
+        tutorDocumento: personas.numeroDocumento,
+        matriculadosCount: count(sql`CASE WHEN ${matriculas.estado} = 'matriculado' THEN 1 END`),
+      })
+      .from(secciones)
+      .innerJoin(aniosAcademicos, eq(secciones.anioAcademicoId, aniosAcademicos.id))
+      .innerJoin(grados, eq(secciones.gradoId, grados.id))
+      .leftJoin(docentes, eq(secciones.tutorId, docentes.id))
+      .leftJoin(personas, eq(docentes.personaId, personas.id))
+      .leftJoin(matriculas, eq(secciones.id, matriculas.seccionId))
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .groupBy(
+        secciones.id,
+        aniosAcademicos.anio,
+        grados.numero,
+        grados.nombre,
+        docentes.id,
+        personas.nombres,
+        personas.apellidoPaterno,
+        personas.apellidoMaterno,
+        personas.numeroDocumento,
+      )
+      .orderBy(grados.numero, secciones.nombre);
+
+    return rows.map((r) => {
+      const matriculados = Number(r.matriculadosCount ?? 0);
+      return {
+        id: r.id,
+        anioAcademicoId: r.anioAcademicoId,
+        anioNumero: r.anioNumero,
+        gradoId: r.gradoId,
+        gradoNumero: r.gradoNumero,
+        gradoNombre: r.gradoNombre,
+        nombre: r.nombre,
+        aula: r.aula,
+        vacantes: r.vacantes,
+        matriculadosCount: matriculados,
+        vacantesDisponibles: Math.max(0, r.vacantes - matriculados),
+        estado: r.estado,
+        tutor: r.tutorId
+          ? {
+              id: r.tutorId,
+              nombres: r.tutorNombres ?? "",
+              apellidos: `${r.tutorApellidoPaterno ?? ""} ${r.tutorApellidoMaterno ?? ""}`.trim(),
+              numeroDocumento: r.tutorDocumento ?? undefined,
+            }
+          : null,
+        creadoEn: r.creadoEn,
+        actualizadoEn: r.actualizadoEn,
+      };
+    });
+  }
+
+  async findById(id: string): Promise<SeccionResponseDto | null> {
+    const list = await this.findAll({});
+    return list.find((s) => s.id === id) ?? null;
+  }
+
+  async findExistingByName(
+    anioAcademicoId: string,
+    gradoId: string,
+    nombre: string,
+    excludeId?: string,
+  ): Promise<{ id: string } | null> {
+    const conditions = [
+      eq(secciones.anioAcademicoId, anioAcademicoId),
+      eq(secciones.gradoId, gradoId),
+      sql`LOWER(${secciones.nombre}) = LOWER(${nombre.trim()})`,
+    ];
+    if (excludeId) {
+      conditions.push(ne(secciones.id, excludeId));
+    }
+
+    const [found] = await this.db
+      .select({ id: secciones.id })
+      .from(secciones)
+      .where(and(...conditions))
+      .limit(1);
+
+    return found ?? null;
+  }
+
+  async isTutorOcupado(
+    anioAcademicoId: string,
+    tutorId: string,
+    excludeSeccionId?: string,
+  ): Promise<boolean> {
+    const conditions = [
+      eq(secciones.anioAcademicoId, anioAcademicoId),
+      eq(secciones.tutorId, tutorId),
+    ];
+    if (excludeSeccionId) {
+      conditions.push(ne(secciones.id, excludeSeccionId));
+    }
+
+    const [found] = await this.db
+      .select({ id: secciones.id })
+      .from(secciones)
+      .where(and(...conditions))
+      .limit(1);
+
+    return Boolean(found);
+  }
+
+  async countMatriculadosActivos(seccionId: string): Promise<number> {
+    const [row] = await this.db
+      .select({ total: count() })
+      .from(matriculas)
+      .where(and(eq(matriculas.seccionId, seccionId), eq(matriculas.estado, "matriculado")));
+
+    return Number(row?.total ?? 0);
+  }
+
+  async create(dto: CreateSeccionDto): Promise<string> {
+    const [inserted] = await this.db
+      .insert(secciones)
+      .values({
+        anioAcademicoId: dto.anioAcademicoId,
+        gradoId: dto.gradoId,
+        nombre: dto.nombre.trim(),
+        aula: dto.aula?.trim() || null,
+        vacantes: dto.vacantes,
+        tutorId: dto.tutorId || null,
+        estado: "activa",
+      })
+      .returning({ id: secciones.id });
+
+    return inserted.id;
+  }
+
+  async update(id: string, dto: UpdateSeccionDto): Promise<void> {
+    const updateData: Partial<typeof secciones.$inferInsert> = {
+      actualizadoEn: new Date().toISOString(),
+    };
+
+    if (dto.nombre !== undefined) updateData.nombre = dto.nombre.trim();
+    if (dto.aula !== undefined) updateData.aula = dto.aula ? dto.aula.trim() : null;
+    if (dto.vacantes !== undefined) updateData.vacantes = dto.vacantes;
+    if (dto.tutorId !== undefined) updateData.tutorId = dto.tutorId || null;
+    if (dto.estado !== undefined) updateData.estado = dto.estado;
+
+    await this.db.update(secciones).set(updateData).where(eq(secciones.id, id));
+>>>>>>> ab15606 (feat(api): implementar RF-009 matriculas, retiro, traslado y base de secciones)
   }
 }

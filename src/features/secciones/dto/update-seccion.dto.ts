@@ -1,4 +1,5 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
+<<<<<<< HEAD
 import { IsInt, IsOptional, IsString, IsUUID, MaxLength, Min } from "class-validator";
 
 export class UpdateSeccionDto {
@@ -36,4 +37,36 @@ export class UpdateSeccionDto {
   @IsOptional()
   @IsUUID("4", { message: "El tutor debe ser un UUID válido." })
   tutorId?: string | null;
+=======
+import { IsIn, IsInt, IsOptional, IsString, IsUUID, MaxLength, Min } from "class-validator";
+
+export class UpdateSeccionDto {
+  @ApiPropertyOptional({ description: "Nombre de la sección", example: "B" })
+  @IsOptional()
+  @IsString({ message: "El nombre debe ser una cadena de texto" })
+  @MaxLength(10, { message: "El nombre no puede exceder 10 caracteres" })
+  nombre?: string;
+
+  @ApiPropertyOptional({ description: "Aula física o ubicación", example: "Aula 102" })
+  @IsOptional()
+  @IsString({ message: "El aula debe ser una cadena de texto" })
+  @MaxLength(50, { message: "El aula no puede exceder 50 caracteres" })
+  aula?: string;
+
+  @ApiPropertyOptional({ description: "Número de vacantes", example: 35 })
+  @IsOptional()
+  @IsInt({ message: "Las vacantes deben ser un número entero" })
+  @Min(1, { message: "Las vacantes deben ser mayores que 0." })
+  vacantes?: number;
+
+  @ApiPropertyOptional({ description: "ID del docente tutor (null para desasignar)" })
+  @IsOptional()
+  @IsUUID("all", { message: "ID de tutor inválido" })
+  tutorId?: string | null;
+
+  @ApiPropertyOptional({ description: "Estado de la sección", enum: ["activa", "cerrada"] })
+  @IsOptional()
+  @IsIn(["activa", "cerrada"], { message: "El estado debe ser 'activa' o 'cerrada'" })
+  estado?: "activa" | "cerrada";
+>>>>>>> ab15606 (feat(api): implementar RF-009 matriculas, retiro, traslado y base de secciones)
 }
