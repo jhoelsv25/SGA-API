@@ -1,0 +1,36 @@
+{
+  "tarea": "T09",
+  "validador": "VAL-1+2+3",
+  "veredicto": "APROBADA",
+  "validadores_recibidos": 3,
+  "criterios": {
+    "total": 25,
+    "pasan": 25
+  },
+  "hallazgos": [
+    {
+      "severidad": "baja",
+      "archivo": "SGA-WEB/features/mi-horario/mi-horario-page.tsx",
+      "detalle": "La exclusión de CP-RF008-19 para el cómputo de avance del Front está correctamente fundamentada: la pantalla 'Mi horario' gestiona el rol apoderado mostrando un EmptyState informativo ('Consulta de horario de estudiantes' - 'Actualmente el sistema no dispone de un mecanismo para que el apoderado elija a sus estudiantes vinculados'), preservando la consistencia de la interfaz mientras se resuelve el pendiente P-24 en la API.",
+      "validador": "VAL-1"
+    },
+    {
+      "severidad": "baja",
+      "archivo": "docs/00-Plan-y-Backlog-RF.md",
+      "detalle": "El promedio general de la capa Front fue recalculado con precisión matemática a 30.85 % (suma 617 % dividido entre 20 requerimientos funcionales). Las columnas de la capa Back y el resto de los requerimientos permanecieron inalterados.",
+      "validador": "VAL-1"
+    },
+    {
+      "severidad": "baja",
+      "archivo": "docs/00-Plan-y-Backlog-RF.md:79, TAREAS/T09_informe.md:18",
+      "detalle": "Transparencia de la verificación en frontend sin ejecución contra entorno real: La nota de verificación en el registro de avance señala correctamente que SGA-WEB no cuenta con ejecutor de pruebas automáticas (la verificación se limitó a typecheck, lint, build estático y revisión de código por validadores W01–W05). Se deja constancia técnica de que ninguna pantalla ni consulta fue ejecutada contra una base de datos PostgreSQL real ni probada en un navegador real automatizado (ej. Playwright/Cypress), quedando la validación funcional E2E sujeta a la posterior etapa de pruebas integradas de la aplicación.",
+      "validador": "VAL-3"
+    },
+    {
+      "severidad": "baja",
+      "archivo": "docs/00-Plan-y-Backlog-RF.md:47, docs/requerimientos/PENDIENTES.md:30",
+      "detalle": "Dependencia de consulta en API para completar el 100 % de Front en RF-008 (P-24): El escenario CP-RF008-19 no alcanza el 100 % debido a que la API actual carece de un endpoint para consultar los estudiantes asociados a un apoderado autenticado. El registro riguroso de P-24 en PENDIENTES.md y la deducción del 5 % en Front % (dejándolo en 95 %) reflejan con exactitud el principio de que un escenario no cubierto no suma, protegiendo la veracidad del avance.",
+      "validador": "VAL-3"
+    }
+  ]
+}

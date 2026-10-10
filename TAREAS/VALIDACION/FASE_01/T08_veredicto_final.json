@@ -1,0 +1,36 @@
+{
+  "tarea": "T08",
+  "validador": "VAL-1+2+3",
+  "veredicto": "APROBADA",
+  "validadores_recibidos": 3,
+  "criterios": {
+    "total": 26,
+    "pasan": 26
+  },
+  "hallazgos": [
+    {
+      "severidad": "baja",
+      "archivo": "src/features/horarios/horarios.module.ts",
+      "detalle": "AuditService se registra directamente como provider en cada módulo feature (HorariosModule, SeccionesModule, CargaAcademicaModule) en lugar de exportarse desde un módulo transversal compartido. Aunque resuelve la inyección de dependencias limpiamente y sin dependencias circulares, genera instancias separadas del servicio en el contenedor de NestJS.",
+      "validador": "VAL-1"
+    },
+    {
+      "severidad": "baja",
+      "archivo": "test/features/rf-008-cableado.spec.ts",
+      "detalle": "La prueba de cableado sobreescribe las colas de BullMQ con un mock en memoria tipado como Queue<unknown>, lo que permite compilar los módulos reales rápidamente sin requerir conexión física a Redis, cumpliendo con la consigna de aislar la infraestructura externa de red.",
+      "validador": "VAL-1"
+    },
+    {
+      "severidad": "baja",
+      "archivo": "src/features/horarios/horarios.module.ts:14, src/features/secciones/secciones.module.ts:13, src/features/carga-academica/carga-academica.module.ts:12",
+      "detalle": "Instanciación duplicada de AuditService por módulo feature (nestjs-best-practices arch-module-sharing): AuditService se provee de forma aislada en el arreglo providers de múltiples módulos de dominio (SeccionesModule, CargaAcademicaModule, HorariosModule, etc.) en lugar de ser exportado desde un módulo transversal compartido (ej. AuditCoreModule o CommonModule). Si bien resuelve la inyección exigida por T08 siguiendo el patrón preexistente del proyecto, provoca que NestJS instancie copias independientes del servicio en cada contexto inyector.",
+      "validador": "VAL-3"
+    },
+    {
+      "severidad": "baja",
+      "archivo": "TAREAS/T08_informe.md:70-96, docs/00-Plan-y-Backlog-RF.md:47",
+      "detalle": "Verificación backend sustentada en mocks unitarios sin comprobación de base de datos real: Los 20 escenarios del RF-008 fueron verificados con pruebas unitarias que simulan repositorios y la base de datos (DRIZZLE = {}). Las consultas SQL y Joins reales construidos con Drizzle ORM en SeccionesRepository, CargaAcademicaRepository y HorariosRepository nunca se ejecutaron contra un motor PostgreSQL real (lo cual está prohibido en las fases unitarias). Aunque la regla de la skill actualizar-backlog-rf convalida el 100 % de Back % al existir pruebas unitarias asociadas a cada escenario, se deja constancia técnica de que la validación relacional completa queda sujeta a las pruebas de integración / E2E con PostgreSQL.",
+      "validador": "VAL-3"
+    }
+  ]
+}

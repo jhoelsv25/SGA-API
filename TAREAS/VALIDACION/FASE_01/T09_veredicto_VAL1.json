@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "tarea": "T09",
+  "validador": "VAL-1",
+  "veredicto": "APROBADA",
+  "criterios": {
+    "total": 6,
+    "pasan": 6
+  },
+  "pruebas": {
+    "corridas": 319,
+    "fallan": 0,
+    "nuevas": 0
+  },
+  "hallazgos": [
+    {
+      "severidad": "baja",
+      "archivo": "SGA-WEB/features/mi-horario/mi-horario-page.tsx",
+      "detalle": "La exclusión de CP-RF008-19 para el cómputo de avance del Front está correctamente fundamentada: la pantalla 'Mi horario' gestiona el rol apoderado mostrando un EmptyState informativo ('Consulta de horario de estudiantes' - 'Actualmente el sistema no dispone de un mecanismo para que el apoderado elija a sus estudiantes vinculados'), preservando la consistencia de la interfaz mientras se resuelve el pendiente P-24 en la API."
+    },
+    {
+      "severidad": "baja",
+      "archivo": "docs/00-Plan-y-Backlog-RF.md",
+      "detalle": "El promedio general de la capa Front fue recalculado con precisión matemática a 30.85 % (suma 617 % dividido entre 20 requerimientos funcionales). Las columnas de la capa Back y el resto de los requerimientos permanecieron inalterados."
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "tarea": "T07",
+  "validador": "VAL-3",
+  "veredicto": "APROBADA",
+  "criterios": {
+    "total": 15,
+    "pasan": 15
+  },
+  "pruebas": {
+    "corridas": 316,
+    "fallan": 0,
+    "nuevas": 6
+  },
+  "hallazgos": [
+    {
+      "severidad": "media",
+      "archivo": "src/features/horarios/horarios.service.ts:487-512",
+      "detalle": "Autorización basada en deny-list / exclusión condicional en lugar de allow-list (RBAC): En horarioDeEstudiante, se restringen únicamente 'estudiante' y 'apoderado', asumiendo por omisión (fallthrough) que cualquier otro rol (ej. 'docente', 'auxiliar' o sin rol) es administrativo y otorgándole acceso irrestricto para consultar el horario de cualquier estudiante del colegio. Viola Fail-Safe Defaults y Menor Privilegio (OWASP API5 - BFLA). Debe implementarse una lista blanca explícita de roles de gestión autorizados y arrojar ForbiddenException por defecto ante roles no contemplados."
+    },
+    {
+      "severidad": "media",
+      "archivo": "src/features/horarios/horarios.service.ts:489-494",
+      "detalle": "Inconsistencia de identificadores (ID Mismatch) entre personaId y estudianteId: En horarioDeEstudiante, la validación if (estudiantePersonaId !== estudianteId) compara el ID de la persona (usuario.personaId ?? usuario.id) contra el parámetro :estudianteId de la ruta. Si un estudiante real consulta el endpoint con su estudianteId real (clave primaria en tabla estudiantes), la comparación falla y arroja 403 Forbidden indebidamente. Solo funciona si el cliente envía personaId en un parámetro nombrado estudianteId."
+    },
+    {
+      "severidad": "media",
+      "archivo": "src/features/horarios/repositories/horarios.repository.ts:470, 493, 521-525",
+      "detalle": "Uso de cláusulas or(...) polimórficas entre dos tipos de ID en el repositorio: En matriculaEstudiante, esApoderadoDeEstudiante y docentePorPersonaId, el repositorio evalúa simultáneamente el ID de la entidad del rol o el personaId (ej. or(eq(matriculas.estudianteId, estudianteId), eq(estudiantes.personaId, estudianteId))). Evaluar condiciones OR cruzando columnas de tablas unidas dificulta el uso de índices B-Tree específicos en PostgreSQL en tablas de alto volumen y genera asimetría con el servicio, ya que este último rechaza a los estudiantes que usan estudianteId."
+    },
+    {
+      "severidad": "baja",
+      "archivo": "src/features/horarios/horarios.controller.ts:164, 177",
+      "detalle": "Documentación OpenAPI sin esquema de seguridad explícito: Los nuevos endpoints GET /api/horarios/mi-horario y GET /api/horarios/estudiante/:estudianteId carecen del decorador @ApiBearerAuth() en Swagger para señalar formalmente en la documentación interactiva que requieren autenticación JWT."
+    }
+  ]
+}

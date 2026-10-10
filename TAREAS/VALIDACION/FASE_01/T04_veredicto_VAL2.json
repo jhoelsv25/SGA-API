@@ -1,0 +1,15 @@
+{
+  "tarea": "T04",
+  "validador": "VAL-2",
+  "veredicto": "APROBADA",
+  "criterios": {
+    "total": 8,
+    "pasan": 8
+  },
+  "pruebas": {
+    "corridas": 298,
+    "fallan": 0,
+    "nuevas": 8
+  },
+  "hallazgos": []
+}

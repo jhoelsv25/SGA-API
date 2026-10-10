@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "tarea": "T04",
+  "validador": "VAL-1",
+  "veredicto": "APROBADA",
+  "criterios": {
+    "total": 6,
+    "pasan": 6
+  },
+  "pruebas": {
+    "corridas": 8,
+    "fallan": 0,
+    "nuevas": 8
+  },
+  "hallazgos": [
+    {
+      "severidad": "baja",
+      "archivo": "src/features/carga-academica/repositories/carga-academica.repository.ts",
+      "detalle": "En la subconsulta SQL de findBySeccion y findCargaItemById para calcular horasHorario programadas, se utiliza el divisor literal 2700 segundos (EXTRACT(EPOCH FROM ...) / 2700). Aunque coincide exactamente con la duración estándar de 45 minutos pedagógicos (45 * 60 = 2700), se recomienda vincular este cálculo con la constante MINUTOS_HORA_PEDAGOGICA_DEFAULT o parametrizarla para evitar números mágicos en el SQL."
+    },
+    {
+      "severidad": "baja",
+      "archivo": "src/features/carga-academica/carga-academica.service.ts",
+      "detalle": "Al desasignar un docente (docenteId: null), el método retorna cargaDocente con horasAsignadas: 0, jornadaHoras: 0 y excede: false. Es funcionalmente adecuado ya que no hay docente asignado, pero para fines informativos en el frontend podría evaluarse si se prefiere retornar la carga del docente previo o null."
+    }
+  ]
+}

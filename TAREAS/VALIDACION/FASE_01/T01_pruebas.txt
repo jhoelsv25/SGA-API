@@ -1,0 +1,49 @@
+=== 1. PNPM TYPECHECK ===
+
+> sga-api@0.0.1 typecheck /home/heverlima/DEV_LINUX/Tesis/SGA-API
+> tsc --noEmit
+
+
+=== 2. ESLINT ARCHIVOS CAMBIADOS ===
+
+=== 3. PNPM TEST ===
+
+> sga-api@0.0.1 test /home/heverlima/DEV_LINUX/Tesis/SGA-API
+> jest
+
+PASS test/features/cargos/cargos.service.spec.ts (9.264 s)
+PASS test/features/audit/audit.service.spec.ts (9.869 s)
+PASS test/features/auth/auth.service.spec.ts (10.081 s)
+PASS test/features/anio-escolar/anio-escolar.service.spec.ts
+PASS test/features/roles/roles.service.spec.ts
+[31m[Nest] 1694773  - [39m10/09/2026, 9:20:02 AM [31m  ERROR[39m [38;5;3m[SessionService] [39m[31mError al firmar token JWT: Signing failed[39m
+PASS test/common/services/audit.service.spec.ts (10.348 s)
+PASS test/features/auth/services/session.service.spec.ts
+[33m[Nest] 1694798  - [39m10/09/2026, 9:20:02 AM [33m   WARN[39m [38;5;3m[AuditService] [39m[33mNo se pudo encolar en BullMQ (Redis connection lost), insertando directamente en BD...[39m
+PASS test/features/institucion/institucion.service.spec.ts (10.473 s)
+PASS test/features/variables-sistema/variables-sistema.service.spec.ts (10.538 s)
+PASS test/features/users/users.service.spec.ts (10.591 s)
+PASS test/app.controller.spec.ts
+PASS test/features/auth/strategies/jwt.strategy.spec.ts
+PASS test/common/utils/cursor.util.spec.ts
+PASS test/features/plan-estudios/plan-estudios.service.spec.ts (10.638 s)
+PASS test/features/auth/utils/auth-cookie.util.spec.ts
+PASS test/features/turnos/utils/turno-validator.util.spec.ts
+PASS test/features/personas/personas.service.spec.ts (10.658 s)
+PASS test/features/equipos/equipos.service.spec.ts
+PASS test/features/docentes/docentes.service.spec.ts (10.602 s)
+PASS test/features/turnos/turnos.service.spec.ts
+PASS test/features/audit/audit.controller.spec.ts (10.899 s)
+PASS test/features/menus/menus.service.spec.ts (11.109 s)
+PASS test/features/auth/auth.controller.spec.ts (11.145 s)
+PASS test/features/estudiantes/estudiantes.service.spec.ts (11.083 s)
+PASS test/features/apoderados/apoderados.service.spec.ts (11.435 s)
+
+Test Suites: 25 passed, 25 total
+Tests:       253 passed, 253 total
+Snapshots:   0 total
+Time:        12.32 s, estimated 13 s
+Ran all test suites.
+
+=== 4. VERIFICAR TAREA SCRIPT ===
+OK
