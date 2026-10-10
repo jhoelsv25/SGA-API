@@ -16,6 +16,8 @@ export class NotificacionesService {
     @Optional()
     @InjectQueue(QUEUES.NOTIFICATIONS)
     private readonly notificationsQueue?: Queue<EnviarNotificacionParams>,
+    @Optional()
+    private readonly emitter?: import("./services").NotificacionesRealtimeEmitter,
   ) {}
 
   /**
@@ -45,7 +47,10 @@ export class NotificacionesService {
 
     // Fallback directo a base de datos si Redis no está disponible
     try {
-      await this.repository.insertDirect(params);
+      const inserted = await this.repository.insertDirect(params);
+      if (this.emitter) {
+        this.emitter.emit(inserted);
+      }
     } catch (insertError) {
       this.logger.error(
         `Error al persistir notificación directamente: ${(insertError as Error).message}`,
@@ -93,6 +98,28 @@ export class NotificacionesService {
     return {
       message: "Todas las notificaciones han sido marcadas como leídas.",
       actualizadas,
+    };
+  }
+
+  /**
+   * Elimina una notificación específica del usuario
+   */
+  async eliminar(id: string, usuarioId: string): Promise<{ message: string; id: string }> {
+    const deleted = await this.repository.delete(id, usuarioId);
+    if (!deleted) {
+      throw new NotFoundException("Notificación no encontrada o no pertenece al usuario.");
+    }
+    return { message: "Notificación eliminada correctamente.", id };
+  }
+
+  /**
+   * Elimina todas las notificaciones que ya han sido leídas
+   */
+  async eliminarTodasLeidas(usuarioId: string): Promise<{ message: string; eliminadas: number }> {
+    const eliminadas = await this.repository.deleteAllRead(usuarioId);
+    return {
+      message: "Todas las notificaciones leídas han sido eliminadas.",
+      eliminadas,
     };
   }
 }

@@ -1,5 +1,6 @@
 import {
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -7,19 +8,33 @@ import {
   ParseUUIDPipe,
   Patch,
   Query,
+  Sse,
 } from "@nestjs/common";
+import type { MessageEvent } from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
+import type { Observable } from "rxjs";
 import { CurrentUser } from "../../common/decorators";
 import type { AuthenticatedUser } from "../auth/interfaces";
 import { NotificacionesService } from "./notificaciones.service";
-
+import { NotificacionesRealtimeEmitter } from "./services";
 import { NotificacionQueryDto, PaginatedNotificacionesResponseDto } from "./dto";
 
 @ApiTags("Comunicación - Notificaciones Personales (RF-019)")
 @ApiBearerAuth()
 @Controller("notificaciones")
 export class NotificacionesController {
-  constructor(private readonly notificacionesService: NotificacionesService) {}
+  constructor(
+    private readonly notificacionesService: NotificacionesService,
+    private readonly realtimeEmitter: NotificacionesRealtimeEmitter,
+  ) {}
+
+  @Sse("stream")
+  @ApiOperation({
+    summary: "Canal Server-Sent Events (SSE) para recibir notificaciones en tiempo real",
+  })
+  stream(@CurrentUser() user: AuthenticatedUser): Observable<MessageEvent> {
+    return this.realtimeEmitter.getStream(user.id);
+  }
 
   @Get()
   @ApiOperation({
@@ -62,5 +77,29 @@ export class NotificacionesController {
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<{ message: string; actualizadas: number }> {
     return this.notificacionesService.marcarTodasComoLeidas(user.id);
+  }
+
+  @Delete("leidas/todas")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Eliminar todas las notificaciones leídas de la bandeja" })
+  @ApiResponse({ status: 200, schema: { example: { message: "...", eliminadas: 4 } } })
+  async eliminarTodasLeidas(
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<{ message: string; eliminadas: number }> {
+    return this.notificacionesService.eliminarTodasLeidas(user.id);
+  }
+
+  @Delete(":id")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Eliminar una notificación específica" })
+  @ApiResponse({
+    status: 200,
+    schema: { example: { message: "Notificación eliminada correctamente.", id: "..." } },
+  })
+  async eliminar(
+    @Param("id", ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<{ message: string; id: string }> {
+    return this.notificacionesService.eliminar(id, user.id);
   }
 }

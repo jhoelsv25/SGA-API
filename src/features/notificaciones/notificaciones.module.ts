@@ -4,6 +4,7 @@ import { QUEUES } from "../../core/queues/queues.constants";
 import { QueuesModule } from "../../core/queues/queues.module";
 import { NotificacionesController } from "./notificaciones.controller";
 import { NotificacionesService } from "./notificaciones.service";
+import { NotificacionesRealtimeEmitter } from "./services";
 import { NotificacionesRepository } from "./repositories";
 import { EmailNotificationStrategy, InAppNotificationStrategy } from "./strategies";
 import { NotificationsProcessor } from "./processors";
@@ -18,11 +19,12 @@ import { NotificationsProcessor } from "./processors";
   controllers: [NotificacionesController],
   providers: [
     NotificacionesRepository,
+    NotificacionesRealtimeEmitter,
     NotificacionesService,
     InAppNotificationStrategy,
     EmailNotificationStrategy,
     NotificationsProcessor,
   ],
-  exports: [NotificacionesService],
+  exports: [NotificacionesService, NotificacionesRealtimeEmitter],
 })
 export class NotificacionesModule {}

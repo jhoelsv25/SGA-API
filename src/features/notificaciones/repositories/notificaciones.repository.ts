@@ -14,7 +14,9 @@ import type { NotificacionQueryDto, PaginatedNotificacionesResponseDto } from ".
 export class NotificacionesRepository {
   constructor(@Inject(DRIZZLE) private readonly db: Database) {}
 
-  async insertDirect(params: EnviarNotificacionParams): Promise<string> {
+  async insertDirect(
+    params: EnviarNotificacionParams,
+  ): Promise<import("../interfaces").NotificacionItem> {
     const [inserted] = await this.db
       .insert(notificaciones)
       .values({
@@ -27,9 +29,21 @@ export class NotificacionesRepository {
         sesionClaseId: params.sesionClaseId ?? null,
         leida: false,
       })
-      .returning({ id: notificaciones.id });
+      .returning();
 
-    return inserted.id;
+    return {
+      id: inserted.id,
+      usuarioId: inserted.usuarioId,
+      titulo: inserted.titulo,
+      mensaje: inserted.mensaje,
+      tipo: inserted.tipo as import("../interfaces").TipoNotificacion,
+      enlaceUrl: inserted.enlaceUrl,
+      comunicadoId: inserted.comunicadoId,
+      sesionClaseId: inserted.sesionClaseId,
+      leida: inserted.leida,
+      leidaEn: inserted.leidaEn ?? null,
+      creadoEn: inserted.creadoEn,
+    };
   }
 
   async findByUsuario(
@@ -118,5 +132,23 @@ export class NotificacionesRepository {
       .returning({ id: notificaciones.id });
 
     return updated.length;
+  }
+
+  async delete(id: string, usuarioId: string): Promise<boolean> {
+    const deleted = await this.db
+      .delete(notificaciones)
+      .where(and(eq(notificaciones.id, id), eq(notificaciones.usuarioId, usuarioId)))
+      .returning({ id: notificaciones.id });
+
+    return deleted.length > 0;
+  }
+
+  async deleteAllRead(usuarioId: string): Promise<number> {
+    const deleted = await this.db
+      .delete(notificaciones)
+      .where(and(eq(notificaciones.usuarioId, usuarioId), eq(notificaciones.leida, true)))
+      .returning({ id: notificaciones.id });
+
+    return deleted.length;
   }
 }

@@ -17,6 +17,8 @@ describe("NotificacionesService", () => {
       countUnread: jest.fn(),
       markAsRead: jest.fn(),
       markAllAsRead: jest.fn(),
+      delete: jest.fn(),
+      deleteAllRead: jest.fn(),
     };
 
     mockQueue = {
@@ -101,6 +103,37 @@ describe("NotificacionesService", () => {
         actualizadas: 4,
       });
       expect(repository.markAllAsRead).toHaveBeenCalledWith("user-1");
+    });
+  });
+
+  describe("eliminar", () => {
+    it("debe eliminar la notificación y retornar confirmación", async () => {
+      repository.delete.mockResolvedValue(true);
+
+      const result = await service.eliminar("notif-1", "user-1");
+
+      expect(result).toEqual({ message: "Notificación eliminada correctamente.", id: "notif-1" });
+      expect(repository.delete).toHaveBeenCalledWith("notif-1", "user-1");
+    });
+
+    it("debe lanzar NotFoundException si no existe o no pertenece al usuario", async () => {
+      repository.delete.mockResolvedValue(false);
+
+      await expect(service.eliminar("notif-1", "user-2")).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe("eliminarTodasLeidas", () => {
+    it("debe eliminar todas las leídas y retornar conteo", async () => {
+      repository.deleteAllRead.mockResolvedValue(3);
+
+      const result = await service.eliminarTodasLeidas("user-1");
+
+      expect(result).toEqual({
+        message: "Todas las notificaciones leídas han sido eliminadas.",
+        eliminadas: 3,
+      });
+      expect(repository.deleteAllRead).toHaveBeenCalledWith("user-1");
     });
   });
 });
