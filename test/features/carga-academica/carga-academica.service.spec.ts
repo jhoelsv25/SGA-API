@@ -358,4 +358,17 @@ describe("RF-008: Carga Académica (HU2)", () => {
       ).rejects.toThrow(NotFoundException);
     });
   });
+
+  describe("Sección cerrada: solo consulta", () => {
+    it("debe rechazar la asignación de docente en una sección cerrada", async () => {
+      mockCargaRepo.findCursoSeccionById = jest
+        .fn()
+        .mockResolvedValue({ ...mockCursoSeccionMatematica, seccionEstado: "cerrada" });
+
+      await expect(
+        service.asignarDocente("cs-mat-5a", { docenteId: "doc-quispe" }, "user-admin"),
+      ).rejects.toThrow("La sección está cerrada y solo admite consulta.");
+      expect(mockCargaRepo.updateDocente).not.toHaveBeenCalled();
+    });
+  });
 });

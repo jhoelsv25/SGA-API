@@ -18,6 +18,7 @@ export const MENSAJES_HORARIOS = {
   BLOQUES_SUPERPUESTOS: "El bloque se cruza con otro bloque de la sección.",
   SECCION_NO_ENCONTRADA: "Sección no encontrada.",
   BLOQUE_NO_ENCONTRADO: "Bloque de horario no encontrado.",
+  SECCION_CERRADA: "La sección está cerrada y solo admite consulta.",
   ANIO_CERRADO: "No se pueden realizar cambios en un año lectivo cerrado.",
   ELIMINAR_CON_SESIONES: "No se puede eliminar un bloque que ya tiene sesiones de clase.",
   HORARIO_GUARDADO_VIGENCIA: "El horario se guardó. Los cambios rigen desde mañana.",

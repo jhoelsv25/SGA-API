@@ -87,6 +87,10 @@ export class SeccionesService {
       throw new NotFoundException(MENSAJES_SECCIONES.SECCION_NO_ENCONTRADA);
     }
 
+    if (seccion.estado === "cerrada") {
+      throw new BadRequestException(MENSAJES_SECCIONES.SECCION_CERRADA);
+    }
+
     const anio = await this.aniosService.findById(seccion.anioAcademicoId);
     if (anio.estado === "cerrado") {
       throw new BadRequestException(MENSAJES_SECCIONES.ANIO_CERRADO);

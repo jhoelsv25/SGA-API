@@ -412,4 +412,18 @@ describe("RF-008: Horario Semanal — Grilla y Copia (HU3)", () => {
       );
     });
   });
+
+  describe("Sección cerrada: solo consulta", () => {
+    it("debe bloquear la copia hacia una sección cerrada", async () => {
+      mockSeccionesRepo.findById = jest.fn().mockImplementation((id: string) => {
+        if (id === "sec-5a") return Promise.resolve(mockSeccion5A);
+        if (id === "sec-5b") return Promise.resolve({ ...mockSeccion5B, estado: "cerrada" });
+        return Promise.resolve(null);
+      });
+
+      await expect(service.copiar("sec-5a", "sec-5b", "user-admin")).rejects.toThrow(
+        "La sección está cerrada y solo admite consulta.",
+      );
+    });
+  });
 });

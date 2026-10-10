@@ -72,6 +72,7 @@ export class HorariosService {
     if (!seccion) {
       throw new NotFoundException(MENSAJES_HORARIOS.SECCION_NO_ENCONTRADA);
     }
+    this.exigirSeccionAbierta(seccion);
 
     if (dto.tipoBloque === "clase" && !dto.cursoSeccionId) {
       throw new BadRequestException(MENSAJES_HORARIOS.CLASE_REQUIERE_CURSO);
@@ -161,6 +162,7 @@ export class HorariosService {
     }
 
     const anio = await this.resolverAnio(true);
+    this.exigirSeccionAbierta(await this.seccionesRepo.findById(bloqueActual.seccionId));
 
     // 1. Validar superposición en la sección (excluyendo el bloque actual)
     const solapados = await this.horariosRepo.findSolapados(
@@ -222,6 +224,7 @@ export class HorariosService {
     if (!bloque) {
       throw new NotFoundException(MENSAJES_HORARIOS.BLOQUE_NO_ENCONTRADO);
     }
+    this.exigirSeccionAbierta(await this.seccionesRepo.findById(bloque.seccionId));
 
     const tieneSesiones = await this.horariosRepo.tieneSesiones(id);
     if (tieneSesiones) {
@@ -343,6 +346,8 @@ export class HorariosService {
     if (!seccionOrigen || !seccionDestino) {
       throw new NotFoundException(MENSAJES_HORARIOS.SECCION_NO_ENCONTRADA);
     }
+
+    this.exigirSeccionAbierta(seccionDestino);
 
     if (seccionOrigen.gradoId !== seccionDestino.gradoId) {
       throw new BadRequestException(MENSAJES_HORARIOS.COPIA_DISTINTO_GRADO);
@@ -545,6 +550,13 @@ export class HorariosService {
     }
 
     return advertencias;
+  }
+
+  /** Una sección cerrada solo admite consulta: no se le crean, editan, borran ni copian bloques. */
+  private exigirSeccionAbierta(seccion: { estado: string } | null | undefined): void {
+    if (seccion?.estado === "cerrada") {
+      throw new BadRequestException(MENSAJES_HORARIOS.SECCION_CERRADA);
+    }
   }
 
   private async resolverAnio(requiereEscritura: boolean) {

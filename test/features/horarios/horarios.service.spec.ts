@@ -418,4 +418,36 @@ describe("RF-008: Horario Semanal — Núcleo (HU3: Bloques)", () => {
       );
     });
   });
+
+  describe("Sección cerrada: solo consulta", () => {
+    const cerrada = () =>
+      jest
+        .fn()
+        .mockImplementation((id: string) =>
+          Promise.resolve(id === "sec-5a" ? { ...mockSeccion5A, estado: "cerrada" } : null),
+        );
+
+    it("debe rechazar crear, editar y eliminar bloques de una sección cerrada", async () => {
+      mockSeccionesRepo.findById = cerrada();
+      const mensaje = "La sección está cerrada y solo admite consulta.";
+
+      await expect(
+        service.crearBloque(
+          "sec-5a",
+          {
+            cursoSeccionId: "cs-mat-5a",
+            diaSemana: 1,
+            horaInicio: "07:45",
+            horaFin: "08:30",
+            tipoBloque: "clase",
+          },
+          "user-admin",
+        ),
+      ).rejects.toThrow(mensaje);
+      await expect(
+        service.actualizarBloque("bloque-1", { aula: "Aula 1" }, "user-admin"),
+      ).rejects.toThrow(mensaje);
+      await expect(service.eliminarBloque("bloque-1", "user-admin")).rejects.toThrow(mensaje);
+    });
+  });
 });

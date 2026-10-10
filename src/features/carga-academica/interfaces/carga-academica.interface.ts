@@ -10,4 +10,5 @@ export interface CursoSeccionDetalle {
   docenteId: string | null;
   horasPlan: number;
   anioAcademicoId: string;
+  seccionEstado?: string;
 }

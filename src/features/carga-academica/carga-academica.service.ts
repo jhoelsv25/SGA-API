@@ -39,6 +39,10 @@ export class CargaAcademicaService {
       throw new NotFoundException(MENSAJES_CARGA_ACADEMICA.CURSO_SECCION_NO_ENCONTRADO);
     }
 
+    if (cursoSeccion.seccionEstado === "cerrada") {
+      throw new BadRequestException(MENSAJES_CARGA_ACADEMICA.SECCION_CERRADA);
+    }
+
     const anio = await this.resolverAnio(true);
 
     if (dto.docenteId) {
