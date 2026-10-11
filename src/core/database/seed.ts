@@ -13,6 +13,9 @@ import {
   MENU_SESIONES_HOY,
   MENU_JUSTIFICACIONES_SESION,
   MENU_MIS_SESIONES,
+  MENU_AULA_VIRTUAL,
+  MENU_SOLICITUDES_CAMBIO_FECHA,
+  MENU_MATERIALES_BIMESTRE,
 } from "../../common/constants";
 
 const pool = new Pool({
@@ -960,6 +963,64 @@ async function seed() {
     );
   }
   console.log("✔ Opciones de Seguimiento docente registradas (RF-011).");
+
+  // RF-015: menús del Aula virtual bajo el contenedor "Aula virtual"
+  await pool.query(
+    `INSERT INTO menus (modulo_id, nombre, orden, es_contenedor)
+     SELECT m.id, 'Aula virtual', 1, true FROM modulos m
+     WHERE m.codigo = 'aula-virtual'
+       AND NOT EXISTS (
+         SELECT 1 FROM menus x
+         WHERE x.modulo_id = m.id AND x.es_contenedor AND x.nombre = 'Aula virtual'
+       );`,
+  );
+  const MENUS_AULA_VIRTUAL: {
+    nombre: string;
+    ruta: string;
+    icono: string;
+    orden: number;
+    roles: string[];
+  }[] = [
+    {
+      nombre: "Mis aulas virtuales",
+      ruta: MENU_AULA_VIRTUAL,
+      icono: "BookOpen01Icon",
+      orden: 1,
+      roles: ["Docente", "Estudiante"],
+    },
+    {
+      nombre: "Materiales del bimestre",
+      ruta: MENU_MATERIALES_BIMESTRE,
+      icono: "ChartBarLineIcon",
+      orden: 2,
+      roles: ["Director", "Subdirector"],
+    },
+    {
+      nombre: "Solicitudes de cambio de fecha",
+      ruta: MENU_SOLICITUDES_CAMBIO_FECHA,
+      icono: "Calendar03Icon",
+      orden: 3,
+      roles: ["Docente", "Subdirector"],
+    },
+  ];
+  for (const menu of MENUS_AULA_VIRTUAL) {
+    await pool.query(
+      `INSERT INTO menus (modulo_id, menu_padre_id, nombre, ruta, icono, orden, es_contenedor)
+       SELECT c.modulo_id, c.id, $2::varchar, $1::varchar, $3::varchar, $4::int, false
+       FROM menus c JOIN modulos m ON m.id = c.modulo_id
+       WHERE m.codigo = 'aula-virtual' AND c.es_contenedor AND c.nombre = 'Aula virtual'
+         AND NOT EXISTS (SELECT 1 FROM menus x WHERE x.ruta = $1::varchar);`,
+      [menu.ruta, menu.nombre, menu.icono, menu.orden],
+    );
+    await pool.query(
+      `INSERT INTO rol_menus (rol_id, menu_id)
+       SELECT r.id, m.id FROM roles r, menus m
+       WHERE r.nombre = ANY($2::varchar[]) AND m.ruta = $1
+       ON CONFLICT DO NOTHING;`,
+      [menu.ruta, menu.roles],
+    );
+  }
+  console.log("✔ Opciones del Aula virtual registradas (RF-015).");
 
   await pool.end();
   console.log("==========================================");

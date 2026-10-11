@@ -30,6 +30,7 @@ import { VariablesSistemaModule } from "./variables-sistema";
 import { MarcacionesModule } from "./marcaciones";
 import { AsistenciaClaseModule } from "./asistencia-clase";
 import { SesionesClaseModule } from "./sesiones-clase";
+import { AulaVirtualModule } from "./aula-virtual";
 
 @Module({
   imports: [
@@ -63,6 +64,7 @@ import { SesionesClaseModule } from "./sesiones-clase";
     MarcacionesModule,
     AsistenciaClaseModule,
     SesionesClaseModule,
+    AulaVirtualModule,
   ],
   exports: [
     AuthModule,
@@ -95,6 +97,7 @@ import { SesionesClaseModule } from "./sesiones-clase";
     MarcacionesModule,
     AsistenciaClaseModule,
     SesionesClaseModule,
+    AulaVirtualModule,
   ],
 })
 export class FeaturesModule {}
