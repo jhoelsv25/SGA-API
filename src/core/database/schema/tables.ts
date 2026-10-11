@@ -1700,11 +1700,17 @@ export const materiales = pgTable(
     titulo: varchar({ length: 150 }).notNull(),
     descripcion: varchar({ length: 1000 }),
     tipo: varchar({ length: 20 }).notNull(),
-    url: varchar({ length: 500 }).notNull(),
+    url: varchar({ length: 500 }),
+    archivoNombre: varchar("archivo_nombre", { length: 255 }),
+    archivoTamanoBytes: integer("archivo_tamano_bytes"),
+    horarioId: uuid("horario_id"),
+    esPlanificado: boolean("es_planificado").default(false).notNull(),
+    fechaCongelada: boolean("fecha_congelada").default(false).notNull(),
+    vigente: boolean().default(true).notNull(),
     permiteDescarga: boolean("permite_descarga").default(true).notNull(),
     visible: boolean().default(true).notNull(),
     orden: smallint().default(1).notNull(),
-    fechaProgramada: timestamp("fecha_programada", { precision: 0, mode: "string" }),
+    fechaProgramada: date("fecha_programada"),
     publicadoEn: timestamp("publicado_en", { precision: 0, mode: "string" }),
     creadoEn: timestamp("creado_en", { precision: 0, mode: "string" })
       .default(sql`CURRENT_TIMESTAMP`)
@@ -1730,13 +1736,108 @@ export const materiales = pgTable(
       name: "fk_materiales_sesion_clase",
     }),
     foreignKey({
+      columns: [table.horarioId],
+      foreignColumns: [horarios.id],
+      name: "fk_materiales_horario",
+    }),
+    foreignKey({
       columns: [table.unidadId],
       foreignColumns: [unidadesAprendizaje.id],
       name: "fk_materiales_unidad",
     }),
     check(
       "ck_materiales_tipo",
-      sql`(tipo)::text = ANY ((ARRAY['documento'::character varying, 'presentacion'::character varying, 'video'::character varying, 'audio'::character varying, 'enlace'::character varying, 'otro'::character varying])::text[])`,
+      sql`(tipo)::text = ANY ((ARRAY['documento'::character varying, 'presentacion'::character varying, 'hoja_calculo'::character varying, 'imagen'::character varying, 'audio'::character varying, 'video'::character varying, 'enlace'::character varying])::text[])`,
+    ),
+    check("ck_materiales_planificado", sql`(NOT es_planificado) OR (fecha_programada IS NOT NULL)`),
+    check("ck_materiales_publicado", sql`(publicado_en IS NULL) OR (url IS NOT NULL)`),
+  ],
+);
+
+/** RF-015: historial de archivos o enlaces de un material (el reemplazo deja vigente = false). */
+export const materialVersiones = pgTable(
+  "material_versiones",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    materialId: uuid("material_id").notNull(),
+    url: varchar({ length: 500 }).notNull(),
+    archivoNombre: varchar("archivo_nombre", { length: 255 }),
+    archivoTamanoBytes: integer("archivo_tamano_bytes"),
+    vigente: boolean().default(true).notNull(),
+    creadoPorId: uuid("creado_por_id").notNull(),
+    creadoEn: timestamp("creado_en", { precision: 0, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    index("ix_material_versiones_material").using(
+      "btree",
+      table.materialId.asc().nullsLast().op("uuid_ops"),
+    ),
+    uniqueIndex("ux_material_versiones_vigente")
+      .on(table.materialId)
+      .where(sql`vigente = true`),
+    foreignKey({
+      columns: [table.materialId],
+      foreignColumns: [materiales.id],
+      name: "fk_material_versiones_material",
+    }),
+    foreignKey({
+      columns: [table.creadoPorId],
+      foreignColumns: [usuarios.id],
+      name: "fk_material_versiones_creado_por",
+    }),
+  ],
+);
+
+/** RF-015: solicitudes de cambio de fecha programada de un material con fecha congelada. */
+export const materialCambiosFecha = pgTable(
+  "material_cambios_fecha",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    materialId: uuid("material_id").notNull(),
+    fechaAnterior: date("fecha_anterior").notNull(),
+    fechaSolicitada: date("fecha_solicitada").notNull(),
+    motivo: varchar({ length: 500 }).notNull(),
+    estado: varchar({ length: 20 }).default("solicitada").notNull(),
+    solicitadoPorId: uuid("solicitado_por_id").notNull(),
+    solicitadoEn: timestamp("solicitado_en", { precision: 0, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    resueltoPorId: uuid("resuelto_por_id"),
+    resueltoEn: timestamp("resuelto_en", { precision: 0, mode: "string" }),
+    respuesta: varchar({ length: 500 }),
+  },
+  (table) => [
+    index("ix_material_cambios_fecha_material").using(
+      "btree",
+      table.materialId.asc().nullsLast().op("uuid_ops"),
+    ),
+    uniqueIndex("ux_material_cambios_fecha_abierta")
+      .on(table.materialId)
+      .where(sql`((estado)::text = 'solicitada'::text)`),
+    foreignKey({
+      columns: [table.materialId],
+      foreignColumns: [materiales.id],
+      name: "fk_material_cambios_fecha_material",
+    }),
+    foreignKey({
+      columns: [table.solicitadoPorId],
+      foreignColumns: [usuarios.id],
+      name: "fk_material_cambios_fecha_solicitado_por",
+    }),
+    foreignKey({
+      columns: [table.resueltoPorId],
+      foreignColumns: [usuarios.id],
+      name: "fk_material_cambios_fecha_resuelto_por",
+    }),
+    check(
+      "ck_material_cambios_fecha_estado",
+      sql`(estado)::text = ANY ((ARRAY['solicitada'::character varying, 'aprobada'::character varying, 'rechazada'::character varying])::text[])`,
+    ),
+    check(
+      "ck_material_cambios_fecha_resuelto",
+      sql`((estado)::text = 'solicitada'::text) OR ((resuelto_por_id IS NOT NULL) AND (resuelto_en IS NOT NULL))`,
     ),
   ],
 );

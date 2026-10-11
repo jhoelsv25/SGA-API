@@ -19,3 +19,10 @@ export const MENU_MARCACION_MANUAL = "/admin/marcacion-manual";
 export const MENU_ASISTENCIA_CLASE = "/admin/asistencia";
 export const MENU_ASISTENCIA_SECCION = "/admin/asistencia-seccion";
 export const MENU_MI_ASISTENCIA = "/admin/mi-asistencia";
+
+/**
+ * RF-015: aula virtual (unidades y materiales de reforzamiento).
+ */
+export const MENU_AULA_VIRTUAL = "/admin/aula-virtual";
+export const MENU_SOLICITUDES_CAMBIO_FECHA = "/admin/solicitudes-cambio-fecha";
+export const MENU_MATERIALES_BIMESTRE = "/admin/materiales-bimestre";
