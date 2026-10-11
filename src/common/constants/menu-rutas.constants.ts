@@ -10,3 +10,12 @@ export const MENU_CORREGIR_DATOS_CRITICOS = "/personas/corregir-datos-criticos";
 export const MENU_SECCIONES = "/admin/secciones";
 export const MENU_HORARIOS = "/admin/horarios";
 export const MENU_MI_HORARIO = "/admin/mi-horario";
+
+/**
+ * RF-010: marcación y asistencia de estudiantes.
+ */
+export const MENU_MARCACIONES_HOY = "/admin/marcaciones-hoy";
+export const MENU_MARCACION_MANUAL = "/admin/marcacion-manual";
+export const MENU_ASISTENCIA_CLASE = "/admin/asistencia";
+export const MENU_ASISTENCIA_SECCION = "/admin/asistencia-seccion";
+export const MENU_MI_ASISTENCIA = "/admin/mi-asistencia";

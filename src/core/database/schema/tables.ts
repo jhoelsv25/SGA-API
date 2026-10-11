@@ -1107,6 +1107,8 @@ export const marcaciones = pgTable(
     motivoJustificacion: varchar("motivo_justificacion", { length: 500 }),
     justificadaPorId: uuid("justificada_por_id"),
     justificadaEn: timestamp("justificada_en", { precision: 0, mode: "string" }),
+    observacion: varchar({ length: 500 }),
+    registradaPorId: uuid("registrada_por_id"),
   },
   (table) => [
     index("ix_marcaciones_fecha").using(
@@ -1128,6 +1130,15 @@ export const marcaciones = pgTable(
       foreignColumns: [usuarios.id],
       name: "fk_marcaciones_justificada_por",
     }),
+    foreignKey({
+      columns: [table.registradaPorId],
+      foreignColumns: [usuarios.id],
+      name: "fk_marcaciones_registrada_por",
+    }),
+    check(
+      "ck_marcaciones_manual",
+      sql`((origen)::text <> 'manual'::text) OR ((observacion IS NOT NULL) AND (registrada_por_id IS NOT NULL))`,
+    ),
     foreignKey({
       columns: [table.personaId],
       foreignColumns: [personas.id],

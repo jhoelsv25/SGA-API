@@ -5,6 +5,11 @@ import {
   MENU_HORARIOS,
   MENU_SECCIONES,
   MENU_MI_HORARIO,
+  MENU_MARCACIONES_HOY,
+  MENU_MARCACION_MANUAL,
+  MENU_ASISTENCIA_CLASE,
+  MENU_ASISTENCIA_SECCION,
+  MENU_MI_ASISTENCIA,
 } from "../../common/constants";
 
 const pool = new Pool({
@@ -822,6 +827,78 @@ async function seed() {
     [MENU_MI_HORARIO],
   );
   console.log("✔ Opción 'Mi horario' registrada (Docente, Estudiante y Apoderado).");
+
+  // RF-010: menús de Asistencia bajo el contenedor "Asistencia"
+  await pool.query(
+    `INSERT INTO menus (modulo_id, nombre, orden, es_contenedor)
+     SELECT m.id, 'Asistencia', 1, true FROM modulos m
+     WHERE m.codigo = 'asistencia'
+       AND NOT EXISTS (
+         SELECT 1 FROM menus x
+         WHERE x.modulo_id = m.id AND x.es_contenedor AND x.nombre = 'Asistencia'
+       );`,
+  );
+  const MENUS_ASISTENCIA: {
+    nombre: string;
+    ruta: string;
+    icono: string;
+    orden: number;
+    roles: string[];
+  }[] = [
+    {
+      nombre: "Marcaciones de hoy",
+      ruta: MENU_MARCACIONES_HOY,
+      icono: "Clock01Icon",
+      orden: 1,
+      roles: ["Director", "Subdirector", "Secretaria"],
+    },
+    {
+      nombre: "Marcación manual",
+      ruta: MENU_MARCACION_MANUAL,
+      icono: "Clock01Icon",
+      orden: 2,
+      roles: ["Secretaria"],
+    },
+    {
+      nombre: "Asistencia",
+      ruta: MENU_ASISTENCIA_CLASE,
+      icono: "UserGroupIcon",
+      orden: 3,
+      roles: ["Docente"],
+    },
+    {
+      nombre: "Asistencia de mi sección",
+      ruta: MENU_ASISTENCIA_SECCION,
+      icono: "UserGroupIcon",
+      orden: 4,
+      roles: ["Docente", "Director", "Subdirector", "Secretaria"],
+    },
+    {
+      nombre: "Mi asistencia",
+      ruta: MENU_MI_ASISTENCIA,
+      icono: "UserGroupIcon",
+      orden: 5,
+      roles: ["Estudiante", "Apoderado"],
+    },
+  ];
+  for (const menu of MENUS_ASISTENCIA) {
+    await pool.query(
+      `INSERT INTO menus (modulo_id, menu_padre_id, nombre, ruta, icono, orden, es_contenedor)
+       SELECT c.modulo_id, c.id, $2::varchar, $1::varchar, $3::varchar, $4::int, false
+       FROM menus c JOIN modulos m ON m.id = c.modulo_id
+       WHERE m.codigo = 'asistencia' AND c.es_contenedor AND c.nombre = 'Asistencia'
+         AND NOT EXISTS (SELECT 1 FROM menus x WHERE x.ruta = $1::varchar);`,
+      [menu.ruta, menu.nombre, menu.icono, menu.orden],
+    );
+    await pool.query(
+      `INSERT INTO rol_menus (rol_id, menu_id)
+       SELECT r.id, m.id FROM roles r, menus m
+       WHERE r.nombre = ANY($2::varchar[]) AND m.ruta = $1
+       ON CONFLICT DO NOTHING;`,
+      [menu.ruta, menu.roles],
+    );
+  }
+  console.log("✔ Opciones de Asistencia registradas (RF-010).");
 
   await pool.end();
   console.log("==========================================");

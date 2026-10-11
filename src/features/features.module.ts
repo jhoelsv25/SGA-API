@@ -23,6 +23,8 @@ import { VariablesSistemaModule } from "./variables-sistema";
 import { SeccionesModule } from "./secciones";
 import { CargaAcademicaModule } from "./carga-academica";
 import { HorariosModule } from "./horarios";
+import { MarcacionesModule } from "./marcaciones";
+import { AsistenciaClaseModule } from "./asistencia-clase";
 
 @Module({
   imports: [
@@ -50,6 +52,8 @@ import { HorariosModule } from "./horarios";
     SeccionesModule,
     CargaAcademicaModule,
     HorariosModule,
+    MarcacionesModule,
+    AsistenciaClaseModule,
   ],
   exports: [
     AuthModule,
@@ -76,6 +80,8 @@ import { HorariosModule } from "./horarios";
     SeccionesModule,
     CargaAcademicaModule,
     HorariosModule,
+    MarcacionesModule,
+    AsistenciaClaseModule,
   ],
 })
 export class FeaturesModule {}

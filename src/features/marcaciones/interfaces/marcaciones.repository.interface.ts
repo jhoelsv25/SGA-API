@@ -1,0 +1,71 @@
+import type {
+  OrigenMarcacion,
+  ResultadoMarcacion,
+  TipoMarcacion,
+  TipoPersonaMarcacion,
+} from "../constants";
+import type {
+  GrupoPanelDto,
+  MarcacionResponseDto,
+  ReporteMarcacionesQueryDto,
+  ReporteMarcacionesResponseDto,
+} from "../dto";
+
+export interface CredencialParaMarcar {
+  id: string;
+  personaId: string;
+  pinHash: string | null;
+  activa: boolean;
+  venceEn: string | null;
+}
+
+export interface PersonaParaMarcar {
+  personaId: string;
+  nombres: string;
+  nombreCompleto: string;
+  fotoUrl: string | null;
+  tipoPersona: TipoPersonaMarcacion | null;
+  estudianteId: string | null;
+  /** Docente o administrativo con vínculo activo; los estudiantes dependen de la matrícula. */
+  vigente: boolean;
+}
+
+export interface NuevaMarcacion {
+  personaId: string;
+  credencialId: string | null;
+  turnoId: string;
+  tipo: TipoMarcacion;
+  fechaHora: string;
+  origen: OrigenMarcacion;
+  resultado: ResultadoMarcacion;
+  minutosTardanza: number;
+  observacion?: string;
+  registradaPorId?: string;
+}
+
+export interface MarcacionDelDia {
+  id: string;
+  tipo: TipoMarcacion;
+  fechaHora: string;
+}
+
+export interface IMarcacionesRepository {
+  findCredencialPorCodigo(codigo: string): Promise<CredencialParaMarcar | null>;
+  findPersonaParaMarcar(personaId: string): Promise<PersonaParaMarcar | null>;
+  tieneMatriculaVigente(estudianteId: string, anioAcademicoId: string): Promise<boolean>;
+  marcacionesDePersonaEnFecha(personaId: string, fecha: string): Promise<MarcacionDelDia[]>;
+  insertar(data: NuevaMarcacion): Promise<MarcacionResponseDto>;
+  findById(id: string): Promise<MarcacionResponseDto | null>;
+  justificar(id: string, motivo: string, usuarioId: string): Promise<MarcacionResponseDto>;
+  panelDelDia(
+    fecha: string,
+    anioAcademicoId: string | null,
+  ): Promise<{
+    estudiantes: GrupoPanelDto;
+    personal: GrupoPanelDto;
+  }>;
+  reporte(
+    query: ReporteMarcacionesQueryDto,
+    limite: number,
+  ): Promise<ReporteMarcacionesResponseDto>;
+}

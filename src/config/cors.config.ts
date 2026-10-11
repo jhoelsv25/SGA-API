@@ -26,6 +26,8 @@ export const getCorsConfig = (configService: ConfigService): CorsOptions => {
       "X-Requested-With",
       "x-csrf-token",
       HEADER_ANIO_ACADEMICO,
+      // RF-004/RF-010: el kiosko se identifica con el token de su equipo autorizado
+      "x-kiosk-token",
     ],
     exposedHeaders: ["x-csrf-token"],
   };
