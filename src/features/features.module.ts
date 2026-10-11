@@ -29,6 +29,7 @@ import { UsersModule } from "./users";
 import { VariablesSistemaModule } from "./variables-sistema";
 import { MarcacionesModule } from "./marcaciones";
 import { AsistenciaClaseModule } from "./asistencia-clase";
+import { SesionesClaseModule } from "./sesiones-clase";
 
 @Module({
   imports: [
@@ -61,6 +62,7 @@ import { AsistenciaClaseModule } from "./asistencia-clase";
     ComunicadosModule,
     MarcacionesModule,
     AsistenciaClaseModule,
+    SesionesClaseModule,
   ],
   exports: [
     AuthModule,
@@ -92,6 +94,7 @@ import { AsistenciaClaseModule } from "./asistencia-clase";
     ComunicadosModule,
     MarcacionesModule,
     AsistenciaClaseModule,
+    SesionesClaseModule,
   ],
 })
 export class FeaturesModule {}
