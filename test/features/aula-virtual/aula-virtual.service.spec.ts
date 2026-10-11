@@ -135,9 +135,17 @@ describe("RF-015: Aula virtual - unidades y materiales", () => {
       findSolicitud: jest.fn(),
       aprobarSolicitud: jest.fn().mockResolvedValue(undefined),
       rechazarSolicitud: jest.fn().mockResolvedValue(undefined),
-      reemplazarContenido: jest.fn(),
+      reemplazarContenido: jest.fn((id: string, contenido: ContenidoMaterial) =>
+        Promise.resolve(material({ id, ...contenido })),
+      ),
       retirarMaterial: jest.fn().mockResolvedValue(undefined),
       actualizarMaterial: jest.fn(),
+      estudianteTieneMatriculaEnSeccion: jest.fn().mockResolvedValue(true),
+      listarUnidades: jest.fn().mockResolvedValue([unidad]),
+      listarMateriales: jest
+        .fn()
+        .mockResolvedValue([material({ publicadoEn: "2027-05-14 10:00:00" })]),
+      bloquesDelCurso: jest.fn().mockResolvedValue([]),
     };
     notificaciones = { enviar: jest.fn().mockResolvedValue(undefined) };
     audit = { log: jest.fn().mockResolvedValue(undefined) };
@@ -202,6 +210,40 @@ describe("RF-015: Aula virtual - unidades y materiales", () => {
           fechaCongelada: false,
         }),
       );
+    });
+
+    it("enlaza el material con la sesión real cuando ya existe (RF-011)", async () => {
+      repo.findSesionDeBloque?.mockResolvedValue({
+        id: "ses-1",
+        fecha: "2027-05-13",
+        tema: "Ecuaciones de primer grado",
+      });
+      repo.findMaterial?.mockResolvedValue(
+        material({ tipo: "enlace", horarioId: "hor-1", fechaProgramada: "2027-05-13" }),
+      );
+      repo.publicarMaterial?.mockResolvedValue(
+        material({
+          tipo: "enlace",
+          horarioId: "hor-1",
+          fechaProgramada: "2027-05-13",
+          url: "https://youtu.be/abc",
+          publicadoEn: "2027-05-13 10:00:00",
+        }),
+      );
+
+      const resultado = await service.publicarPlanificado(
+        "mat-1",
+        { enlace: "https://youtu.be/abc" },
+        undefined,
+        docente,
+      );
+
+      expect(repo.findSesionDeBloque).toHaveBeenCalledWith("hor-1", "2027-05-13");
+      expect(resultado.material.sesionClase).toEqual({
+        id: "ses-1",
+        fecha: "2027-05-13",
+        tema: "Ecuaciones de primer grado",
+      });
     });
 
     it("rechaza una fecha de clase que no cae en el día del bloque", async () => {
@@ -468,6 +510,92 @@ describe("RF-015: Aula virtual - unidades y materiales", () => {
       await expect(service.retirarMaterial("mat-1", docente)).rejects.toThrow(
         "Solo se puede retirar un material ya publicado.",
       );
+    });
+
+    it("reemplaza un material publicado y conserva la primera publicación", async () => {
+      repo.findMaterial?.mockResolvedValue(
+        material({
+          tipo: "enlace",
+          url: "https://youtu.be/viejo",
+          publicadoEn: "2027-05-14 10:00:00",
+        }),
+      );
+      repo.reemplazarContenido?.mockResolvedValue(
+        material({
+          tipo: "enlace",
+          url: "https://youtu.be/nuevo",
+          publicadoEn: "2027-05-14 10:00:00",
+        }),
+      );
+
+      const resultado = await service.reemplazarMaterial(
+        "mat-1",
+        { enlace: "https://youtu.be/nuevo" },
+        undefined,
+        docente,
+      );
+
+      expect(resultado.mensaje).toBe(
+        "Material reemplazado. La versión anterior quedó en el historial.",
+      );
+      expect(repo.reemplazarContenido).toHaveBeenCalledWith(
+        "mat-1",
+        expect.objectContaining({ url: "https://youtu.be/nuevo" }),
+        "u-doc",
+      );
+      // La primera publicación (fechaProgramada/publicadoEn) no cambia con el reemplazo.
+      expect(resultado.material.plazo).toBe("a_tiempo");
+    });
+
+    it("rechaza reemplazar un material que aún no se publicó", async () => {
+      repo.findMaterial?.mockResolvedValue(material({ publicadoEn: null }));
+
+      await expect(
+        service.reemplazarMaterial("mat-1", { enlace: "https://youtu.be/x" }, undefined, docente),
+      ).rejects.toThrow("El material aún no está publicado.");
+    });
+  });
+
+  describe("Consulta del aula virtual", () => {
+    it("un estudiante matriculado ve solo las unidades publicadas y los materiales vigentes y publicados", async () => {
+      const estudiante: AuthenticatedUser = {
+        ...docente,
+        id: "u-est",
+        role: "Estudiante",
+        personaId: "per-est",
+      };
+      repo.findDocenteIdPorPersona?.mockResolvedValue(null);
+
+      const aula = await service.obtenerAula("cs-mate", estudiante);
+
+      expect(repo.estudianteTieneMatriculaEnSeccion).toHaveBeenCalledWith("per-est", "sec-5a");
+      expect(repo.listarUnidades).toHaveBeenCalledWith("cs-mate", true);
+      expect(repo.listarMateriales).toHaveBeenCalledWith("cs-mate", { soloPublicados: true });
+      expect(aula.puedeAdministrar).toBe(false);
+      expect(aula.unidades[0].materiales[0].titulo).toBe("Separata de práctica");
+    });
+
+    it("rechaza a un estudiante sin matrícula vigente en la sección", async () => {
+      const estudiante: AuthenticatedUser = {
+        ...docente,
+        id: "u-est",
+        role: "Estudiante",
+        personaId: "per-est",
+      };
+      repo.findDocenteIdPorPersona?.mockResolvedValue(null);
+      repo.estudianteTieneMatriculaEnSeccion?.mockResolvedValue(false);
+
+      await expect(service.obtenerAula("cs-mate", estudiante)).rejects.toThrow(
+        "No tiene acceso a esta aula virtual.",
+      );
+    });
+
+    it("el docente asignado ve todo, incluidos los materiales no publicados", async () => {
+      const aula = await service.obtenerAula("cs-mate", docente);
+
+      expect(repo.listarUnidades).toHaveBeenCalledWith("cs-mate", false);
+      expect(repo.listarMateriales).toHaveBeenCalledWith("cs-mate", { soloPublicados: false });
+      expect(aula.puedeAdministrar).toBe(true);
     });
   });
 
