@@ -390,4 +390,17 @@ describe("RF-008: Secciones (HU1)", () => {
       expect(mockSeccionesRepo.findAll).toHaveBeenCalledWith("anio-2027", query);
     });
   });
+
+  describe("Sección cerrada: solo consulta", () => {
+    it("debe rechazar la edición de una sección cerrada", async () => {
+      mockSeccionesRepo.findById = jest
+        .fn()
+        .mockResolvedValue({ ...mockSeccion5A, estado: "cerrada" });
+
+      await expect(service.update("sec-5a", { vacantes: 20 }, "user-admin")).rejects.toThrow(
+        "La sección está cerrada y solo admite consulta.",
+      );
+      expect(mockSeccionesRepo.update).not.toHaveBeenCalled();
+    });
+  });
 });

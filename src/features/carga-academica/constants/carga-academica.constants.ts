@@ -3,6 +3,7 @@
  */
 export const MENSAJES_CARGA_ACADEMICA = {
   DOCENTE_INACTIVO: "Solo se pueden asignar docentes activos.",
+  SECCION_CERRADA: "La sección está cerrada y solo admite consulta.",
   CURSO_SECCION_NO_ENCONTRADO: "Curso de la sección no encontrado.",
   DOCENTE_NO_ENCONTRADO: "Docente no encontrado.",
   ANIO_CERRADO: "No se pueden realizar cambios en un año escolar cerrado.",

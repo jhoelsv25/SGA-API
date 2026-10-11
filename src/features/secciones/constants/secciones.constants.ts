@@ -6,6 +6,7 @@ export const MENSAJES_SECCIONES = {
   TUTOR_DOCENTE_INACTIVO: "Solo se pueden asignar docentes activos.",
   TUTOR_OCUPADO: "Este docente ya es tutor de otra sección en este año.",
   SECCION_CON_MATRICULADOS: "No se puede cerrar una sección con estudiantes matriculados.",
+  SECCION_CERRADA: "La sección está cerrada y solo admite consulta.",
   SECCION_NO_ENCONTRADA: "Sección no encontrada.",
   ANIO_CERRADO: "No se pueden realizar cambios en un año escolar cerrado.",
 } as const;

@@ -12,7 +12,7 @@
 - **Propósito.** Organizar el año escolar en secciones, asignar qué docente dicta cada curso en cada sección y armar el horario semanal. El horario es la **planificación** de la que nacen las sesiones de clase (`RF-011`) y, por tanto, el denominador del CSP (`RF-020`).
 - **Secciones.** Cada sección pertenece a un año escolar y a un grado, y tiene nombre (A, B, Única…), aula, vacantes (mayor que 0) y un docente tutor (opcional). No puede haber dos secciones con el mismo nombre en el mismo grado y año.
 - **Tutor.** Debe ser un docente `activo`. Un docente puede ser tutor de una sola sección por año.
-- **Estados de la sección.** `activa` o `cerrada`. Solo se cierra una sección sin estudiantes matriculados vigentes (`RF-009`).
+- **Estados de la sección.** `activa` o `cerrada`. Solo se cierra una sección sin estudiantes matriculados vigentes (`RF-009`). Una sección cerrada queda **solo de consulta**: no se edita, no se le asignan docentes ni se cambia su horario (`P-26`).
 - **Carga académica automática.** Al crear una sección, el sistema crea su carga académica con **todos los cursos del plan de estudios de su grado** (`RF-006`), sin docente. Luego se asigna el docente de cada curso.
 - **Asignación de docentes.**
   - Solo docentes `activo`.

@@ -57,6 +57,13 @@
       "when": 1791498219787,
       "tag": "0007_un_cargo_vigente",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791724900415,
+      "tag": "0008_marcaciones_manual",
+      "breakpoints": true
     }
   ]
 }

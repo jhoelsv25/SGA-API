@@ -29,6 +29,7 @@ export class CargaAcademicaRepository implements ICargaAcademicaRepository {
         docenteId: cursosSeccion.docenteId,
         horasPlan: sql<number>`COALESCE(${planEstudios.horasSemanales}, 0)`.mapWith(Number),
         anioAcademicoId: secciones.anioAcademicoId,
+        seccionEstado: secciones.estado,
       })
       .from(cursosSeccion)
       .innerJoin(secciones, eq(cursosSeccion.seccionId, secciones.id))
