@@ -1263,6 +1263,26 @@ export const sesionesClase = pgTable(
     latitud: numeric({ precision: 10, scale: 7 }),
     longitud: numeric({ precision: 10, scale: 7 }),
     dentroGeocerca: boolean("dentro_geocerca"),
+    // RF-011 V2: horas planificadas (bloque doble = una sesión) y detalle de la firma
+    horaInicioPlan: time("hora_inicio_plan", { precision: 0 }),
+    horaFinPlan: time("hora_fin_plan", { precision: 0 }),
+    minutosRetraso: smallint("minutos_retraso").default(0).notNull(),
+    salidaAutomatica: boolean("salida_automatica").default(false).notNull(),
+    equipoIngresoId: uuid("equipo_ingreso_id"),
+    equipoSalidaId: uuid("equipo_salida_id"),
+    docenteTitularId: uuid("docente_titular_id"),
+    justificacionEstado: varchar("justificacion_estado", { length: 15 }),
+    justificacionDocumentoUrl: varchar("justificacion_documento_url", { length: 255 }),
+    justificacionSolicitadaEn: timestamp("justificacion_solicitada_en", {
+      precision: 0,
+      mode: "string",
+    }),
+    justificacionRevisadaPorId: uuid("justificacion_revisada_por_id"),
+    justificacionRevisadaEn: timestamp("justificacion_revisada_en", {
+      precision: 0,
+      mode: "string",
+    }),
+    justificacionComentario: varchar("justificacion_comentario", { length: 500 }),
     creadoEn: timestamp("creado_en", { precision: 0, mode: "string" })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
@@ -1292,6 +1312,31 @@ export const sesionesClase = pgTable(
       name: "fk_sesiones_clase_horario",
     }),
     unique("uq_sesiones_clase_horario_fecha").on(table.horarioId, table.fecha),
+    foreignKey({
+      columns: [table.equipoIngresoId],
+      foreignColumns: [equiposAutorizados.id],
+      name: "fk_sesiones_clase_equipo_ingreso",
+    }),
+    foreignKey({
+      columns: [table.equipoSalidaId],
+      foreignColumns: [equiposAutorizados.id],
+      name: "fk_sesiones_clase_equipo_salida",
+    }),
+    foreignKey({
+      columns: [table.docenteTitularId],
+      foreignColumns: [docentes.id],
+      name: "fk_sesiones_clase_docente_titular",
+    }),
+    foreignKey({
+      columns: [table.justificacionRevisadaPorId],
+      foreignColumns: [usuarios.id],
+      name: "fk_sesiones_clase_justificacion_revisada_por",
+    }),
+    check(
+      "ck_sesiones_clase_justificacion_estado",
+      sql`(justificacion_estado IS NULL) OR ((justificacion_estado)::text = ANY ((ARRAY['solicitada'::character varying, 'aprobada'::character varying, 'rechazada'::character varying])::text[]))`,
+    ),
+    check("ck_sesiones_clase_retraso", sql`minutos_retraso >= 0`),
     check(
       "ck_sesiones_clase_estado",
       sql`(estado)::text = ANY ((ARRAY['pendiente'::character varying, 'en_curso'::character varying, 'cumplida'::character varying, 'parcial'::character varying, 'no_cumplida'::character varying, 'justificada'::character varying, 'reprogramada'::character varying])::text[])`,

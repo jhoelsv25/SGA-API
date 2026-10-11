@@ -29,6 +29,7 @@ import { UsersModule } from "./users";
 import { VariablesSistemaModule } from "./variables-sistema";
 import { MarcacionesModule } from "./marcaciones";
 import { AsistenciaClaseModule } from "./asistencia-clase";
+import { SesionesClaseModule } from "./sesiones-clase";
 import { AulaVirtualModule } from "./aula-virtual";
 
 @Module({
@@ -62,6 +63,7 @@ import { AulaVirtualModule } from "./aula-virtual";
     ComunicadosModule,
     MarcacionesModule,
     AsistenciaClaseModule,
+    SesionesClaseModule,
     AulaVirtualModule,
   ],
   exports: [
@@ -94,6 +96,7 @@ import { AulaVirtualModule } from "./aula-virtual";
     ComunicadosModule,
     MarcacionesModule,
     AsistenciaClaseModule,
+    SesionesClaseModule,
     AulaVirtualModule,
   ],
 })

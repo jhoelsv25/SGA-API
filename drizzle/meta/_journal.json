@@ -68,8 +68,15 @@
     {
       "idx": 9,
       "version": "7",
+      "when": 1791729818433,
+      "tag": "0009_sesiones_firma_y_justificacion",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
       "when": 1791730277822,
-      "tag": "0009_aula_virtual_materiales",
+      "tag": "0010_aula_virtual_materiales",
       "breakpoints": true
     }
   ]

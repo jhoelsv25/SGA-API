@@ -34,7 +34,7 @@ import type {
   ReporteMarcacionesQueryDto,
   ReporteMarcacionesResponseDto,
 } from "./dto";
-import type { PersonaParaMarcar } from "./interfaces";
+import type { CredencialParaMarcar, PersonaAutenticada, PersonaParaMarcar } from "./interfaces";
 import { MarcacionesRepository } from "./repositories";
 import {
   ahoraEnColegio,
@@ -72,21 +72,8 @@ export class MarcacionesService {
       throw new ForbiddenException(MENSAJES_MARCACION.EQUIPO_SIN_PROPOSITO);
     }
 
-    const credencial = await this.repository.findCredencialPorCodigo(dto.codigo.trim());
-    if (!credencial || !credencial.pinHash || credencial.pinHash !== hashSha256(dto.pin)) {
-      throw new BadRequestException(MENSAJES_MARCACION.CODIGO_O_PIN_INCORRECTO);
-    }
-
+    const { credencial, persona } = await this.autenticarCredencial(dto.codigo, dto.pin);
     const { fecha, hora, fechaHora } = ahoraEnColegio();
-    const vencida = credencial.venceEn !== null && credencial.venceEn < fecha;
-    if (!credencial.activa || vencida) {
-      throw new ForbiddenException(MENSAJES_MARCACION.CREDENCIAL_INACTIVA);
-    }
-
-    const persona = await this.repository.findPersonaParaMarcar(credencial.personaId);
-    if (!persona || !persona.tipoPersona || !persona.vigente) {
-      throw new ForbiddenException(MENSAJES_MARCACION.CREDENCIAL_INACTIVA);
-    }
     if (!equipoPermite(equipo.usuariosPermitidos, persona.tipoPersona)) {
       throw new ForbiddenException(MENSAJES_MARCACION.EQUIPO_EQUIVOCADO);
     }
@@ -133,6 +120,29 @@ export class MarcacionesService {
       minutosTardanza: creada.minutosTardanza,
       hora: horaMarcada,
     };
+  }
+
+  /**
+   * Valida código (o DNI) + PIN y que la credencial y la persona estén activas.
+   * También lo usa el Kiosko de Sesiones (RF-011).
+   */
+  async autenticarCredencial(
+    codigo: string,
+    pin: string,
+  ): Promise<{ credencial: CredencialParaMarcar; persona: PersonaAutenticada }> {
+    const credencial = await this.repository.findCredencialPorCodigo(codigo.trim());
+    if (!credencial || !credencial.pinHash || credencial.pinHash !== hashSha256(pin)) {
+      throw new BadRequestException(MENSAJES_MARCACION.CODIGO_O_PIN_INCORRECTO);
+    }
+    const vencida = credencial.venceEn !== null && credencial.venceEn < ahoraEnColegio().fecha;
+    if (!credencial.activa || vencida) {
+      throw new ForbiddenException(MENSAJES_MARCACION.CREDENCIAL_INACTIVA);
+    }
+    const persona = await this.repository.findPersonaParaMarcar(credencial.personaId);
+    if (!persona || !persona.tipoPersona || !persona.vigente) {
+      throw new ForbiddenException(MENSAJES_MARCACION.CREDENCIAL_INACTIVA);
+    }
+    return { credencial, persona: { ...persona, tipoPersona: persona.tipoPersona } };
   }
 
   /** Marcación a mano (equipo con falla u olvido del carné): hora real y observación obligatoria. */

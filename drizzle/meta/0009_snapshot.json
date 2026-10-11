@@ -1,5 +1,5 @@
 {
-  "id": "637038f5-8ba0-40ef-b00d-a31c4d5d6f45",
+  "id": "bb393c44-c512-4361-b959-a90a9a7caccd",
   "prevId": "9dd1970d-33c4-4ca4-89dd-c3c017f631eb",
   "version": "7",
   "dialect": "postgresql",
@@ -3526,274 +3526,6 @@
       },
       "isRLSEnabled": false
     },
-    "public.material_cambios_fecha": {
-      "name": "material_cambios_fecha",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "material_id": {
-          "name": "material_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "fecha_anterior": {
-          "name": "fecha_anterior",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "fecha_solicitada": {
-          "name": "fecha_solicitada",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "motivo": {
-          "name": "motivo",
-          "type": "varchar(500)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "estado": {
-          "name": "estado",
-          "type": "varchar(20)",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'solicitada'"
-        },
-        "solicitado_por_id": {
-          "name": "solicitado_por_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "solicitado_en": {
-          "name": "solicitado_en",
-          "type": "timestamp(0)",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "CURRENT_TIMESTAMP"
-        },
-        "resuelto_por_id": {
-          "name": "resuelto_por_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "resuelto_en": {
-          "name": "resuelto_en",
-          "type": "timestamp(0)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "respuesta": {
-          "name": "respuesta",
-          "type": "varchar(500)",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "ix_material_cambios_fecha_material": {
-          "name": "ix_material_cambios_fecha_material",
-          "columns": [
-            {
-              "expression": "material_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last",
-              "opclass": "uuid_ops"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "ux_material_cambios_fecha_abierta": {
-          "name": "ux_material_cambios_fecha_abierta",
-          "columns": [
-            {
-              "expression": "material_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "((estado)::text = 'solicitada'::text)",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "fk_material_cambios_fecha_material": {
-          "name": "fk_material_cambios_fecha_material",
-          "tableFrom": "material_cambios_fecha",
-          "tableTo": "materiales",
-          "columnsFrom": ["material_id"],
-          "columnsTo": ["id"],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "fk_material_cambios_fecha_solicitado_por": {
-          "name": "fk_material_cambios_fecha_solicitado_por",
-          "tableFrom": "material_cambios_fecha",
-          "tableTo": "usuarios",
-          "columnsFrom": ["solicitado_por_id"],
-          "columnsTo": ["id"],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "fk_material_cambios_fecha_resuelto_por": {
-          "name": "fk_material_cambios_fecha_resuelto_por",
-          "tableFrom": "material_cambios_fecha",
-          "tableTo": "usuarios",
-          "columnsFrom": ["resuelto_por_id"],
-          "columnsTo": ["id"],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "ck_material_cambios_fecha_estado": {
-          "name": "ck_material_cambios_fecha_estado",
-          "value": "(estado)::text = ANY ((ARRAY['solicitada'::character varying, 'aprobada'::character varying, 'rechazada'::character varying])::text[])"
-        },
-        "ck_material_cambios_fecha_resuelto": {
-          "name": "ck_material_cambios_fecha_resuelto",
-          "value": "((estado)::text = 'solicitada'::text) OR ((resuelto_por_id IS NOT NULL) AND (resuelto_en IS NOT NULL))"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.material_versiones": {
-      "name": "material_versiones",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "material_id": {
-          "name": "material_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "url": {
-          "name": "url",
-          "type": "varchar(500)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "archivo_nombre": {
-          "name": "archivo_nombre",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "archivo_tamano_bytes": {
-          "name": "archivo_tamano_bytes",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "vigente": {
-          "name": "vigente",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        },
-        "creado_por_id": {
-          "name": "creado_por_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "creado_en": {
-          "name": "creado_en",
-          "type": "timestamp(0)",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "CURRENT_TIMESTAMP"
-        }
-      },
-      "indexes": {
-        "ix_material_versiones_material": {
-          "name": "ix_material_versiones_material",
-          "columns": [
-            {
-              "expression": "material_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last",
-              "opclass": "uuid_ops"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "ux_material_versiones_vigente": {
-          "name": "ux_material_versiones_vigente",
-          "columns": [
-            {
-              "expression": "material_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "vigente = true",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "fk_material_versiones_material": {
-          "name": "fk_material_versiones_material",
-          "tableFrom": "material_versiones",
-          "tableTo": "materiales",
-          "columnsFrom": ["material_id"],
-          "columnsTo": ["id"],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "fk_material_versiones_creado_por": {
-          "name": "fk_material_versiones_creado_por",
-          "tableFrom": "material_versiones",
-          "tableTo": "usuarios",
-          "columnsFrom": ["creado_por_id"],
-          "columnsTo": ["id"],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.materiales": {
       "name": "materiales",
       "schema": "",
@@ -3845,46 +3577,7 @@
           "name": "url",
           "type": "varchar(500)",
           "primaryKey": false,
-          "notNull": false
-        },
-        "archivo_nombre": {
-          "name": "archivo_nombre",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "archivo_tamano_bytes": {
-          "name": "archivo_tamano_bytes",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "horario_id": {
-          "name": "horario_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "es_planificado": {
-          "name": "es_planificado",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "fecha_congelada": {
-          "name": "fecha_congelada",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "vigente": {
-          "name": "vigente",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
+          "notNull": true
         },
         "permite_descarga": {
           "name": "permite_descarga",
@@ -3909,7 +3602,7 @@
         },
         "fecha_programada": {
           "name": "fecha_programada",
-          "type": "date",
+          "type": "timestamp(0)",
           "primaryKey": false,
           "notNull": false
         },
@@ -3978,15 +3671,6 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "fk_materiales_horario": {
-          "name": "fk_materiales_horario",
-          "tableFrom": "materiales",
-          "tableTo": "horarios",
-          "columnsFrom": ["horario_id"],
-          "columnsTo": ["id"],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
         "fk_materiales_unidad": {
           "name": "fk_materiales_unidad",
           "tableFrom": "materiales",
@@ -4003,15 +3687,7 @@
       "checkConstraints": {
         "ck_materiales_tipo": {
           "name": "ck_materiales_tipo",
-          "value": "(tipo)::text = ANY ((ARRAY['documento'::character varying, 'presentacion'::character varying, 'hoja_calculo'::character varying, 'imagen'::character varying, 'audio'::character varying, 'video'::character varying, 'enlace'::character varying])::text[])"
-        },
-        "ck_materiales_planificado": {
-          "name": "ck_materiales_planificado",
-          "value": "(NOT es_planificado) OR (fecha_programada IS NOT NULL)"
-        },
-        "ck_materiales_publicado": {
-          "name": "ck_materiales_publicado",
-          "value": "(publicado_en IS NULL) OR (url IS NOT NULL)"
+          "value": "(tipo)::text = ANY ((ARRAY['documento'::character varying, 'presentacion'::character varying, 'video'::character varying, 'audio'::character varying, 'enlace'::character varying, 'otro'::character varying])::text[])"
         }
       },
       "isRLSEnabled": false
@@ -6071,6 +5747,86 @@
           "primaryKey": false,
           "notNull": false
         },
+        "hora_inicio_plan": {
+          "name": "hora_inicio_plan",
+          "type": "time(0)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "hora_fin_plan": {
+          "name": "hora_fin_plan",
+          "type": "time(0)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "minutos_retraso": {
+          "name": "minutos_retraso",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "salida_automatica": {
+          "name": "salida_automatica",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "equipo_ingreso_id": {
+          "name": "equipo_ingreso_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "equipo_salida_id": {
+          "name": "equipo_salida_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "docente_titular_id": {
+          "name": "docente_titular_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "justificacion_estado": {
+          "name": "justificacion_estado",
+          "type": "varchar(15)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "justificacion_documento_url": {
+          "name": "justificacion_documento_url",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "justificacion_solicitada_en": {
+          "name": "justificacion_solicitada_en",
+          "type": "timestamp(0)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "justificacion_revisada_por_id": {
+          "name": "justificacion_revisada_por_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "justificacion_revisada_en": {
+          "name": "justificacion_revisada_en",
+          "type": "timestamp(0)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "justificacion_comentario": {
+          "name": "justificacion_comentario",
+          "type": "varchar(500)",
+          "primaryKey": false,
+          "notNull": false
+        },
         "creado_en": {
           "name": "creado_en",
           "type": "timestamp(0)",
@@ -6152,6 +5908,42 @@
           "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
+        },
+        "fk_sesiones_clase_equipo_ingreso": {
+          "name": "fk_sesiones_clase_equipo_ingreso",
+          "tableFrom": "sesiones_clase",
+          "tableTo": "equipos_autorizados",
+          "columnsFrom": ["equipo_ingreso_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "fk_sesiones_clase_equipo_salida": {
+          "name": "fk_sesiones_clase_equipo_salida",
+          "tableFrom": "sesiones_clase",
+          "tableTo": "equipos_autorizados",
+          "columnsFrom": ["equipo_salida_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "fk_sesiones_clase_docente_titular": {
+          "name": "fk_sesiones_clase_docente_titular",
+          "tableFrom": "sesiones_clase",
+          "tableTo": "docentes",
+          "columnsFrom": ["docente_titular_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "fk_sesiones_clase_justificacion_revisada_por": {
+          "name": "fk_sesiones_clase_justificacion_revisada_por",
+          "tableFrom": "sesiones_clase",
+          "tableTo": "usuarios",
+          "columnsFrom": ["justificacion_revisada_por_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -6164,6 +5956,14 @@
       },
       "policies": {},
       "checkConstraints": {
+        "ck_sesiones_clase_justificacion_estado": {
+          "name": "ck_sesiones_clase_justificacion_estado",
+          "value": "(justificacion_estado IS NULL) OR ((justificacion_estado)::text = ANY ((ARRAY['solicitada'::character varying, 'aprobada'::character varying, 'rechazada'::character varying])::text[]))"
+        },
+        "ck_sesiones_clase_retraso": {
+          "name": "ck_sesiones_clase_retraso",
+          "value": "minutos_retraso >= 0"
+        },
         "ck_sesiones_clase_estado": {
           "name": "ck_sesiones_clase_estado",
           "value": "(estado)::text = ANY ((ARRAY['pendiente'::character varying, 'en_curso'::character varying, 'cumplida'::character varying, 'parcial'::character varying, 'no_cumplida'::character varying, 'justificada'::character varying, 'reprogramada'::character varying])::text[])"

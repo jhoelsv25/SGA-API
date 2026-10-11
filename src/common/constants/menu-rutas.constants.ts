@@ -21,6 +21,13 @@ export const MENU_ASISTENCIA_SECCION = "/admin/asistencia-seccion";
 export const MENU_MI_ASISTENCIA = "/admin/mi-asistencia";
 
 /**
+ * RF-011: registro de sesión de clase.
+ */
+export const MENU_SESIONES_HOY = "/admin/sesiones-hoy";
+export const MENU_JUSTIFICACIONES_SESION = "/admin/justificaciones-sesion";
+export const MENU_MIS_SESIONES = "/admin/mis-sesiones";
+
+/**
  * RF-015: aula virtual (unidades y materiales de reforzamiento).
  */
 export const MENU_AULA_VIRTUAL = "/admin/aula-virtual";

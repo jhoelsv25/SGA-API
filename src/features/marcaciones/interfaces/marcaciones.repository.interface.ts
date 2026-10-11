@@ -30,6 +30,8 @@ export interface PersonaParaMarcar {
   vigente: boolean;
 }
 
+export type PersonaAutenticada = PersonaParaMarcar & { tipoPersona: TipoPersonaMarcacion };
+
 export interface NuevaMarcacion {
   personaId: string;
   credencialId: string | null;
