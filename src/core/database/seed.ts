@@ -492,6 +492,12 @@ async function seed() {
       esSistema: true,
     },
     {
+      nombre: "Subdirector",
+      descripcion:
+        "Organización académica, seguimiento de sesiones de clase y marcación de asistencia (P-23)",
+      esSistema: true,
+    },
+    {
       nombre: "Secretaria",
       descripcion: "Gestión administrativa, matrícula de alumnos y emisión de constancias",
       esSistema: true,
