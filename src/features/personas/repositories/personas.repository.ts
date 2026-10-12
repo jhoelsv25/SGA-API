@@ -301,7 +301,9 @@ export class PersonasRepository implements IPersonasRepository {
         .update(personaCargos)
         .set({
           vigente: false,
-          fechaFin: sql`${fechaInicio}::date - interval '1 day'`,
+          // GREATEST evita violar el CHECK fecha_fin >= fecha_inicio cuando el
+          // cargo anterior empezó el mismo día (fechaInicio - 1 día quedaría antes).
+          fechaFin: sql`GREATEST(${personaCargos.fechaInicio}, ${fechaInicio}::date - interval '1 day')`,
         })
         .where(and(eq(personaCargos.personaId, personaId), eq(personaCargos.vigente, true)));
 
