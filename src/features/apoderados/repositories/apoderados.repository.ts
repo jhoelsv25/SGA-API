@@ -1,11 +1,14 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { Database, DRIZZLE } from "../../../core/database";
 import {
   apoderados,
   estudianteApoderados,
+  estudiantes,
+  matriculas,
   personaCargos,
   personas,
+  secciones,
   usuarioRoles,
   usuarios,
 } from "../../../core/database/schema";
@@ -14,6 +17,7 @@ import type {
   ApoderadoQueryDto,
   ApoderadoResponseDto,
   CreateApoderadoResponseDto,
+  EstudianteDelApoderadoResponseDto,
   PaginatedApoderadosResponseDto,
   UpdateApoderadoDto,
   VincularEstudianteApoderadoDto,
@@ -57,6 +61,42 @@ export class ApoderadosRepository implements IApoderadosRepository {
     `)) as unknown as DbApoderadosProcedureExecutionResult;
 
     return result.rows?.[0]?.resultado?.data ?? [];
+  }
+
+  async findEstudiantesByApoderadoPersonaId(
+    apoderadoPersonaId: string,
+  ): Promise<EstudianteDelApoderadoResponseDto[]> {
+    const filas = await this.db
+      .select({
+        estudianteId: estudiantes.id,
+        personaId: personas.id,
+        apellidoPaterno: personas.apellidoPaterno,
+        apellidoMaterno: personas.apellidoMaterno,
+        nombres: personas.nombres,
+        parentesco: estudianteApoderados.parentesco,
+        seccionId: secciones.id,
+        seccionNombre: secciones.nombre,
+      })
+      .from(estudianteApoderados)
+      .innerJoin(apoderados, eq(estudianteApoderados.apoderadoId, apoderados.id))
+      .innerJoin(estudiantes, eq(estudianteApoderados.estudianteId, estudiantes.id))
+      .innerJoin(personas, eq(estudiantes.personaId, personas.id))
+      .leftJoin(
+        matriculas,
+        and(eq(matriculas.estudianteId, estudiantes.id), eq(matriculas.estado, "matriculado")),
+      )
+      .leftJoin(secciones, eq(secciones.id, matriculas.seccionId))
+      .where(and(eq(apoderados.personaId, apoderadoPersonaId), isNull(personas.eliminadoEn)))
+      .orderBy(desc(estudianteApoderados.esPrincipal), personas.apellidoPaterno);
+
+    return filas.map((fila) => ({
+      estudianteId: fila.estudianteId,
+      personaId: fila.personaId,
+      nombreCompleto: `${fila.apellidoPaterno} ${fila.apellidoMaterno} ${fila.nombres}`.trim(),
+      parentesco: fila.parentesco,
+      seccionId: fila.seccionId ?? null,
+      seccionNombre: fila.seccionNombre ?? null,
+    }));
   }
 
   async findAll(query?: ApoderadoQueryDto): Promise<PaginatedApoderadosResponseDto> {
