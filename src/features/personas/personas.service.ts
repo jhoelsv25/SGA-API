@@ -1,8 +1,10 @@
 import { ConflictException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { AuditService } from "../../common/services/audit.service";
 import type { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface";
+import { CargosService } from "../cargos/cargos.service";
 import { PERSONA_MESSAGES } from "./constants";
 import type {
+  CargoAsignadoResponseDto,
   CreatePersonaDto,
   HistorialCorreccionCriticaDto,
   PaginatedPersonasResponseDto,
@@ -25,6 +27,7 @@ export class PersonasService {
   constructor(
     private readonly repository: PersonasRepository,
     private readonly auditService: AuditService,
+    private readonly cargosService: CargosService,
   ) {}
 
   async findAll(query?: PersonaQueryDto): Promise<PaginatedPersonasResponseDto> {
@@ -240,5 +243,49 @@ export class PersonasService {
   async findHistorialCritico(id: string): Promise<HistorialCorreccionCriticaDto[]> {
     await this.findById(id);
     return this.repository.findHistorialCritico(id);
+  }
+
+  /**
+   * Cambia el cargo vigente de una persona (RF-002 V3, "Cambiar el cargo de una persona").
+   * El cargo anterior termina con vigencia 0 y queda en el historial; el nuevo
+   * sugiere roles sin retirar los que la cuenta ya tiene.
+   */
+  async changeCargo(
+    id: string,
+    nuevoCargoId: string,
+    fechaInicio: string | undefined,
+    actorId: string,
+    ip?: string,
+  ): Promise<CargoAsignadoResponseDto> {
+    await this.findById(id);
+    const nuevoCargo = await this.cargosService.findById(nuevoCargoId);
+
+    const cargoActual = await this.repository.findCargoVigente(id);
+    if (cargoActual?.cargoId === nuevoCargoId) {
+      throw new ConflictException(PERSONA_MESSAGES.CARGO_SAME);
+    }
+
+    const fecha = fechaInicio ?? new Date().toISOString().slice(0, 10);
+
+    try {
+      await this.repository.changeCargo(id, nuevoCargoId, fecha, actorId);
+
+      await this.auditService.log({
+        usuarioId: actorId,
+        accion: "actualizar",
+        tabla: "persona_cargos",
+        registroId: id,
+        valorAnterior: { cargoId: cargoActual?.cargoId ?? null },
+        valorNuevo: { cargoId: nuevoCargoId, fechaInicio: fecha },
+        direccionIp: ip,
+      });
+
+      return {
+        cargoVigente: nuevoCargo.nombre,
+        rolesSugeridosIds: nuevoCargo.rolesSugeridos.map((rol) => rol.id),
+      };
+    } catch (error) {
+      handlePersonaDatabaseError(error, this.logger);
+    }
   }
 }

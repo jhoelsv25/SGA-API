@@ -1,7 +1,12 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { and, desc, eq, ilike, isNull, sql } from "drizzle-orm";
 import { Database, DRIZZLE } from "../../../core/database";
-import { bitacoraAuditoria, personas, usuarios } from "../../../core/database/schema";
+import {
+  bitacoraAuditoria,
+  personaCargos,
+  personas,
+  usuarios,
+} from "../../../core/database/schema";
 import { decodeCursor, encodeCursor } from "../../../common/utils";
 import type {
   CampoModificadoDto,
@@ -273,6 +278,40 @@ export class PersonasRepository implements IPersonasRepository {
         camposModificados,
         direccionIp: r.direccionIp ?? null,
       };
+    });
+  }
+
+  async findCargoVigente(personaId: string): Promise<{ id: string; cargoId: string } | null> {
+    const [row] = await this.db
+      .select({ id: personaCargos.id, cargoId: personaCargos.cargoId })
+      .from(personaCargos)
+      .where(and(eq(personaCargos.personaId, personaId), eq(personaCargos.vigente, true)))
+      .limit(1);
+    return row ?? null;
+  }
+
+  async changeCargo(
+    personaId: string,
+    nuevoCargoId: string,
+    fechaInicio: string,
+    actorId: string,
+  ): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      await tx
+        .update(personaCargos)
+        .set({
+          vigente: false,
+          fechaFin: sql`${fechaInicio}::date - interval '1 day'`,
+        })
+        .where(and(eq(personaCargos.personaId, personaId), eq(personaCargos.vigente, true)));
+
+      await tx.insert(personaCargos).values({
+        personaId,
+        cargoId: nuevoCargoId,
+        fechaInicio,
+        esPrincipal: true,
+        registradoPorId: actorId,
+      });
     });
   }
 }

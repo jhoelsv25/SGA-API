@@ -13,6 +13,8 @@ export const PERSONA_MESSAGES = {
   UPDATED_SUCCESS: "Los datos de la persona se actualizaron correctamente.",
   CRITICAL_UPDATED_SUCCESS: "Los datos críticos fueron corregidos y registrados en la bitácora.",
   DELETED_SUCCESS: "Persona eliminada del padrón.",
+  CARGO_SAME: "La persona ya tiene vigente ese cargo.",
+  CARGO_CHANGED_SUCCESS: "El cargo de la persona se actualizó correctamente.",
 } as const;
 
 export const TIPOS_DOCUMENTO = [

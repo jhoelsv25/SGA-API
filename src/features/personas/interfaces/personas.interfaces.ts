@@ -51,4 +51,11 @@ export interface IPersonasRepository {
   softDelete(id: string): Promise<boolean>;
   hasActiveRelations(id: string): Promise<{ hasRelations: boolean; details: FichasPersonaDto }>;
   findHistorialCritico(personaId: string): Promise<HistorialCorreccionCriticaDto[]>;
+  findCargoVigente(personaId: string): Promise<{ id: string; cargoId: string } | null>;
+  changeCargo(
+    personaId: string,
+    nuevoCargoId: string,
+    fechaInicio: string,
+    actorId: string,
+  ): Promise<void>;
 }
