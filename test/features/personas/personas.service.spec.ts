@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, ForbiddenException } from "@nes
 import { Test, TestingModule } from "@nestjs/testing";
 import { AuditService } from "../../../src/common/services/audit.service";
 import type { AuthenticatedUser } from "../../../src/features/auth/interfaces/jwt-payload.interface";
+import { CargosService } from "../../../src/features/cargos/cargos.service";
 import { PERSONA_MESSAGES } from "../../../src/features/personas/constants";
 import type {
   CreatePersonaDto,
@@ -15,6 +16,7 @@ describe("PersonasService (RF-007 Core Base)", () => {
   let service: PersonasService;
   let repository: jest.Mocked<Partial<PersonasRepository>>;
   let auditService: jest.Mocked<Partial<AuditService>>;
+  let cargosService: jest.Mocked<Partial<CargosService>>;
 
   const mockAdminUser: AuthenticatedUser = {
     id: "admin-uuid",
@@ -85,10 +87,16 @@ describe("PersonasService (RF-007 Core Base)", () => {
       softDelete: jest.fn(),
       hasActiveRelations: jest.fn(),
       findHistorialCritico: jest.fn(),
+      findCargoVigente: jest.fn(),
+      changeCargo: jest.fn(),
     };
 
     auditService = {
       log: jest.fn().mockResolvedValue(undefined),
+    };
+
+    cargosService = {
+      findById: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -96,6 +104,7 @@ describe("PersonasService (RF-007 Core Base)", () => {
         PersonasService,
         { provide: PersonasRepository, useValue: repository },
         { provide: AuditService, useValue: auditService },
+        { provide: CargosService, useValue: cargosService },
       ],
     }).compile();
 
@@ -325,6 +334,62 @@ describe("PersonasService (RF-007 Core Base)", () => {
       expect(result).toEqual(mockHistorial);
       expect(repository.findById).toHaveBeenCalledWith("p-doc-1");
       expect(repository.findHistorialCritico).toHaveBeenCalledWith("p-doc-1");
+    });
+  });
+
+  describe("changeCargo (RF-002 V3)", () => {
+    const mockCargoSubdirector = {
+      id: "cargo-subdir",
+      nombre: "Subdirector(a)",
+      descripcion: null,
+      vigente: true,
+      rolesSugeridos: [{ id: "rol-subdir", nombre: "Subdirector" }],
+      personasCount: 1,
+    };
+
+    it("termina el cargo anterior y asigna el nuevo, retornando los roles sugeridos", async () => {
+      (repository.findById as jest.Mock).mockResolvedValue(mockPersonaConFicha);
+      (cargosService.findById as jest.Mock).mockResolvedValue(mockCargoSubdirector);
+      (repository.findCargoVigente as jest.Mock).mockResolvedValue({
+        id: "pc-1",
+        cargoId: "cargo-docente",
+      });
+
+      const result = await service.changeCargo(
+        "p-doc-1",
+        "cargo-subdir",
+        "2027-08-01",
+        "admin-uuid",
+        "127.0.0.1",
+      );
+
+      expect(result).toEqual({
+        cargoVigente: "Subdirector(a)",
+        rolesSugeridosIds: ["rol-subdir"],
+      });
+      expect(repository.changeCargo).toHaveBeenCalledWith(
+        "p-doc-1",
+        "cargo-subdir",
+        "2027-08-01",
+        "admin-uuid",
+      );
+      expect(auditService.log).toHaveBeenCalledWith(
+        expect.objectContaining({ tabla: "persona_cargos", registroId: "p-doc-1" }),
+      );
+    });
+
+    it("rechaza si la persona ya tiene vigente ese cargo", async () => {
+      (repository.findById as jest.Mock).mockResolvedValue(mockPersonaConFicha);
+      (cargosService.findById as jest.Mock).mockResolvedValue(mockCargoSubdirector);
+      (repository.findCargoVigente as jest.Mock).mockResolvedValue({
+        id: "pc-1",
+        cargoId: "cargo-subdir",
+      });
+
+      await expect(
+        service.changeCargo("p-doc-1", "cargo-subdir", undefined, "admin-uuid"),
+      ).rejects.toThrow(ConflictException);
+      expect(repository.changeCargo).not.toHaveBeenCalled();
     });
   });
 });

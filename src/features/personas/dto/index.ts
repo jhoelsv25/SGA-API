@@ -4,3 +4,4 @@ export * from "./persona-response.dto";
 export * from "./persona-query.dto";
 export * from "./persona-search.dto";
 export * from "./historial-correccion.dto";
+export * from "./change-cargo.dto";

@@ -15,6 +15,8 @@ import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagg
 import { ClientInfo, type ClientInfoData, CurrentUser, Roles } from "../../common/decorators";
 import type { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface";
 import {
+  CargoAsignadoResponseDto,
+  ChangeCargoDto,
   CreatePersonaDto,
   HistorialCorreccionCriticaDto,
   PaginatedPersonasResponseDto,
@@ -105,6 +107,23 @@ export class PersonasController {
     @ClientInfo() client: ClientInfoData,
   ): Promise<PersonaResponseDto> {
     return this.personasService.update(id, dto, user, client.ip);
+  }
+
+  @Patch(":id/cargo")
+  @ApiOperation({
+    summary:
+      "Cambiar el cargo vigente de una persona (RF-002 V3): el cargo anterior termina y queda en el historial",
+  })
+  @ApiResponse({ status: 200, type: CargoAsignadoResponseDto })
+  @ApiResponse({ status: 404, description: "Persona o cargo no encontrado" })
+  @ApiResponse({ status: 409, description: "La persona ya tiene vigente ese cargo" })
+  async changeCargo(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: ChangeCargoDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @ClientInfo() client: ClientInfoData,
+  ): Promise<CargoAsignadoResponseDto> {
+    return this.personasService.changeCargo(id, dto.cargoId, dto.fechaInicio, user.id, client.ip);
   }
 
   @Delete(":id")
