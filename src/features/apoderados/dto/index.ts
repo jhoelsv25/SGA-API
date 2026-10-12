@@ -3,3 +3,4 @@ export * from "./update-apoderado.dto";
 export * from "./vincular-estudiante-apoderado.dto";
 export * from "./apoderado-query.dto";
 export * from "./apoderado-response.dto";
+export * from "./estudiante-del-apoderado-response.dto";

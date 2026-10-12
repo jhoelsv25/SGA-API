@@ -17,6 +17,7 @@ import type {
   ApoderadoResponseDto,
   CreateApoderadoDto,
   CreateApoderadoResponseDto,
+  EstudianteDelApoderadoResponseDto,
   PaginatedApoderadosResponseDto,
   UpdateApoderadoDto,
   VincularEstudianteApoderadoDto,
@@ -50,6 +51,12 @@ export class ApoderadosService {
 
   async findByEstudianteId(estudianteId: string): Promise<ApoderadoResponseDto[]> {
     return this.repository.findByEstudianteId(estudianteId);
+  }
+
+  async findMisEstudiantes(
+    apoderadoPersonaId: string,
+  ): Promise<EstudianteDelApoderadoResponseDto[]> {
+    return this.repository.findEstudiantesByApoderadoPersonaId(apoderadoPersonaId);
   }
 
   async create(

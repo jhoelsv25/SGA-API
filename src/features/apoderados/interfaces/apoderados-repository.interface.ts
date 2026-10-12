@@ -3,6 +3,7 @@ import type {
   ApoderadoResponseDto,
   CreateApoderadoDto,
   CreateApoderadoResponseDto,
+  EstudianteDelApoderadoResponseDto,
   PaginatedApoderadosResponseDto,
   UpdateApoderadoDto,
   VincularEstudianteApoderadoDto,
@@ -22,6 +23,9 @@ export interface IApoderadosRepository {
   findById(id: string): Promise<ApoderadoResponseDto | null>;
   findByPersonaId(personaId: string): Promise<ApoderadoResponseDto | null>;
   findByEstudianteId(estudianteId: string): Promise<ApoderadoResponseDto[]>;
+  findEstudiantesByApoderadoPersonaId(
+    apoderadoPersonaId: string,
+  ): Promise<EstudianteDelApoderadoResponseDto[]>;
   findAll(query?: ApoderadoQueryDto): Promise<PaginatedApoderadosResponseDto>;
   create(data: RegistrarApoderadoTransactionData): Promise<CreateApoderadoResponseDto>;
   update(id: string, dto: UpdateApoderadoDto): Promise<ApoderadoResponseDto | null>;

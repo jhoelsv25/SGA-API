@@ -20,6 +20,7 @@ import {
   ApoderadoResponseDto,
   CreateApoderadoDto,
   CreateApoderadoResponseDto,
+  EstudianteDelApoderadoResponseDto,
   PaginatedApoderadosResponseDto,
   UpdateApoderadoDto,
   VincularEstudianteApoderadoDto,
@@ -40,6 +41,18 @@ export class ApoderadosController {
   @ApiResponse({ status: 200, type: PaginatedApoderadosResponseDto })
   async findAll(@Query() query: ApoderadoQueryDto): Promise<PaginatedApoderadosResponseDto> {
     return this.apoderadosService.findAll(query);
+  }
+
+  @Get("mis-estudiantes")
+  @Roles("Apoderado")
+  @ApiOperation({
+    summary: "Listar los estudiantes vinculados al apoderado autenticado (RF-008 P-24)",
+  })
+  @ApiResponse({ status: 200, type: [EstudianteDelApoderadoResponseDto] })
+  async misEstudiantes(
+    @CurrentUser() usuario: AuthenticatedUser,
+  ): Promise<EstudianteDelApoderadoResponseDto[]> {
+    return this.apoderadosService.findMisEstudiantes(usuario.personaId);
   }
 
   @Get("estudiante/:estudianteId")
