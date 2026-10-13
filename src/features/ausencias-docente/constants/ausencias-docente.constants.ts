@@ -53,4 +53,6 @@ export const MENSAJES_AUSENCIA = {
   DESCARGO_REPETIDO: "Ya presentó su descargo para esta ausencia.",
   BIMESTRE_CERRADO:
     "El bimestre está cerrado o consolidado. Las ausencias ya no se pueden modificar.",
+  SESION_FUTURA: "Solo se pueden registrar ausencias en sesiones de hoy o anteriores.",
+  METADATOS_FOTOS_INVALIDOS: "El formato de los metadatos de fotos es inválido.",
 } as const;
