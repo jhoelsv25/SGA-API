@@ -55,4 +55,6 @@ export const MENSAJES_AUSENCIA = {
     "El bimestre está cerrado o consolidado. Las ausencias ya no se pueden modificar.",
   SESION_FUTURA: "Solo se pueden registrar ausencias en sesiones de hoy o anteriores.",
   METADATOS_FOTOS_INVALIDOS: "El formato de los metadatos de fotos es inválido.",
+  AUSENCIA_NO_VIGENTE: "Solo se puede modificar o anular la versión vigente de la ausencia.",
+  AUSENCIA_YA_ANULADA: "La ausencia ya se encuentra anulada.",
 } as const;

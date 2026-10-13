@@ -1,36 +1,21 @@
-import { randomUUID } from "node:crypto";
-import * as fs from "node:fs";
-import * as path from "node:path";
 import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
-  InternalServerErrorException,
   NotFoundException,
 } from "@nestjs/common";
 import { AnioLectivoCls } from "../../common/anio-lectivo";
 import { AuditService } from "../../common/services/audit.service";
 import { NotificacionesService } from "../notificaciones/notificaciones.service";
-import {
-  FOTO_MIME_TYPES,
-  FOTO_TAMANO_MAXIMO_BYTES,
-  MENSAJES_AUSENCIA,
-  type FotoMimeType,
-  VALORES_DEFECTO_AUSENCIA,
-  VARIABLES_AUSENCIA,
-} from "./constants";
+import { MENSAJES_AUSENCIA, VALORES_DEFECTO_AUSENCIA, VARIABLES_AUSENCIA } from "./constants";
 import type { AusenciaResponseDto, MensajeAusenciaResponseDto, RegistrarAusenciaDto } from "./dto";
-import type { DatosCrearEvidencia } from "./interfaces";
 import { AusenciasDocenteRepository } from "./repositories";
 import { calcularMinutosEntre, mapearAAusenciaResponseDto } from "./utils";
-
-function obtenerExtensionPorMime(mimetype: string): string {
-  if (mimetype === "image/jpeg") {
-    return ".jpg";
-  }
-  return ".png";
-}
+import {
+  guardarFotosEnDisco,
+  prepararEvidenciasParaGuardar,
+} from "./utils/evidencias-ausencia.util";
 
 @Injectable()
 export class AusenciasRegistroService {
@@ -123,53 +108,13 @@ export class AusenciasRegistroService {
       throw new BadRequestException(MENSAJES_AUSENCIA.FALTA_OBSERVACION);
     }
 
-    // 8. Validar fotos (CP-RF012-07)
-    const listaFotos = fotos ?? [];
-    for (const foto of listaFotos) {
-      const esMimeValido = FOTO_MIME_TYPES.includes(foto.mimetype as FotoMimeType);
-      const esTamanoValido = foto.size <= FOTO_TAMANO_MAXIMO_BYTES;
-      if (!esMimeValido || !esTamanoValido) {
-        throw new BadRequestException(MENSAJES_AUSENCIA.FOTO_INVALIDA);
-      }
-    }
+    // 8. Preparar evidencias fotográficas y validar metadatos (CP-RF012-07, 08)
+    const { evidencias, nombresArchivos, listaFotos } = prepararEvidenciasParaGuardar(
+      fotos,
+      dto.metadatosFotos,
+    );
 
-    // 9. Procesar metadatos de fotos (rechaza JSON inválido con BadRequestException)
-    let metadatosFotos: Array<{ tomadaEn?: string }> = [];
-    if (dto.metadatosFotos) {
-      try {
-        const parsed: unknown = JSON.parse(dto.metadatosFotos);
-        if (!Array.isArray(parsed)) {
-          throw new BadRequestException(MENSAJES_AUSENCIA.METADATOS_FOTOS_INVALIDOS);
-        }
-        metadatosFotos = parsed as Array<{ tomadaEn?: string }>;
-      } catch (error) {
-        if (error instanceof BadRequestException) {
-          throw error;
-        }
-        throw new BadRequestException(MENSAJES_AUSENCIA.METADATOS_FOTOS_INVALIDOS);
-      }
-    }
-
-    // 10. Generar identificadores y rutas de evidencias fotográficas (extensión SOLO por mimetype)
-    const evidenciasParaGuardar: DatosCrearEvidencia[] = [];
-    const nombresArchivos: string[] = [];
-
-    for (let i = 0; i < listaFotos.length; i++) {
-      const foto = listaFotos[i];
-      const idFoto = randomUUID();
-      const extension = obtenerExtensionPorMime(foto.mimetype);
-      const nombreArchivo = `${idFoto}${extension}`;
-      nombresArchivos.push(nombreArchivo);
-
-      const tomadaEn = metadatosFotos[i]?.tomadaEn ?? null;
-      evidenciasParaGuardar.push({
-        archivoUrl: `/uploads/ausencias/${nombreArchivo}`,
-        tomadaEn,
-        orden: i + 1,
-      });
-    }
-
-    // 11. Calcular minutos y persistir primero en Base de Datos (evita archivos huérfanos)
+    // 9. Calcular minutos y persistir primero en Base de Datos (evita archivos huérfanos)
     const minutos = calcularMinutosEntre(dto.horaDesde, dto.horaHasta);
     const nuevaAusencia = await this.repository.crearAusenciaConFotos(
       {
@@ -180,43 +125,11 @@ export class AusenciasRegistroService {
         motivo: dto.motivo,
         observacion: dto.observacion?.trim() ?? null,
       },
-      evidenciasParaGuardar,
+      evidencias,
     );
 
-    // 12. Escribir archivos en disco después de la persistencia exitosa en BD
-    if (listaFotos.length > 0) {
-      const carpeta = path.join(process.cwd(), "uploads", "ausencias");
-      const archivosEscritos: string[] = [];
-      try {
-        let carpetaCreada = false;
-        for (let i = 0; i < listaFotos.length; i++) {
-          const foto = listaFotos[i];
-          if (foto.buffer && foto.buffer.length > 0) {
-            if (!carpetaCreada) {
-              await fs.promises.mkdir(carpeta, { recursive: true });
-              carpetaCreada = true;
-            }
-            const rutaCompleta = path.join(carpeta, nombresArchivos[i]);
-            await fs.promises.writeFile(rutaCompleta, foto.buffer);
-            archivosEscritos.push(rutaCompleta);
-          }
-        }
-      } catch {
-        // En caso de fallo de escritura, eliminar archivos ya escritos para evitar huérfanos
-        await Promise.all(
-          archivosEscritos.map(async (ruta) => {
-            try {
-              await fs.promises.unlink(ruta);
-            } catch {
-              // Silenciar error al borrar archivo durante cleanup
-            }
-          }),
-        );
-        throw new InternalServerErrorException(
-          "No se pudieron guardar las evidencias fotográficas en disco.",
-        );
-      }
-    }
+    // 10. Escribir archivos en disco después de la persistencia exitosa en BD
+    await guardarFotosEnDisco(listaFotos, nombresArchivos);
 
     // 13. Notificar al docente (CP-RF012-01)
     await this.notificacionesService.enviar({
