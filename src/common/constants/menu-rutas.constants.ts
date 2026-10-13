@@ -33,3 +33,9 @@ export const MENU_MIS_SESIONES = "/admin/mis-sesiones";
 export const MENU_AULA_VIRTUAL = "/admin/aula-virtual";
 export const MENU_SOLICITUDES_CAMBIO_FECHA = "/admin/solicitudes-cambio-fecha";
 export const MENU_MATERIALES_BIMESTRE = "/admin/materiales-bimestre";
+
+/**
+ * RF-012: supervisión y ausencias del docente.
+ */
+export const MENU_AUSENCIAS_DOCENTES = "/admin/ausencias-docentes";
+export const MENU_MIS_AUSENCIAS = "/admin/mis-ausencias";

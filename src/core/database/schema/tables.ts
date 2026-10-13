@@ -1368,6 +1368,14 @@ export const ausenciasSesion = pgTable(
     observacion: varchar({ length: 1000 }),
     descargo: varchar({ length: 1000 }),
     descargoEn: timestamp("descargo_en", { precision: 0, mode: "string" }),
+    ausenciaRaizId: uuid("ausencia_raiz_id"),
+    version: smallint().default(1).notNull(),
+    vigente: boolean().default(true).notNull(),
+    motivoCambio: varchar("motivo_cambio", { length: 500 }),
+    anulada: boolean().default(false).notNull(),
+    anuladaPorId: uuid("anulada_por_id"),
+    anuladaEn: timestamp("anulada_en", { precision: 0, mode: "string" }),
+    motivoAnulacion: varchar("motivo_anulacion", { length: 500 }),
     registradoEn: timestamp("registrado_en", { precision: 0, mode: "string" })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
@@ -1380,6 +1388,11 @@ export const ausenciasSesion = pgTable(
       "btree",
       table.sesionClaseId.asc().nullsLast().op("uuid_ops"),
     ),
+    index("ix_ausencias_sesion_raiz").using(
+      "btree",
+      table.ausenciaRaizId.asc().nullsLast().op("uuid_ops"),
+    ),
+    index("ix_ausencias_sesion_sesion_vigente").on(table.sesionClaseId, table.vigente),
     foreignKey({
       columns: [table.registradoPorId],
       foreignColumns: [usuarios.id],
@@ -1390,6 +1403,11 @@ export const ausenciasSesion = pgTable(
       foreignColumns: [sesionesClase.id],
       name: "fk_ausencias_sesion_sesion",
     }).onDelete("cascade"),
+    foreignKey({
+      columns: [table.anuladaPorId],
+      foreignColumns: [usuarios.id],
+      name: "fk_ausencias_sesion_anulada_por",
+    }),
     check("ck_ausencias_sesion_descargo", sql`(descargo IS NULL) OR (descargo_en IS NOT NULL)`),
     check("ck_ausencias_sesion_horas", sql`hora_hasta > hora_desde`),
     check(
@@ -1400,6 +1418,12 @@ export const ausenciasSesion = pgTable(
       "ck_ausencias_sesion_otro",
       sql`((motivo)::text <> 'otro'::text) OR (observacion IS NOT NULL)`,
     ),
+    check(
+      "ck_ausencias_anulada",
+      sql`(NOT anulada) OR (motivo_anulacion IS NOT NULL AND anulada_por_id IS NOT NULL AND anulada_en IS NOT NULL)`,
+    ),
+    check("ck_ausencias_version", sql`version >= 1`),
+    check("ck_ausencias_cambio", sql`version = 1 OR motivo_cambio IS NOT NULL`),
   ],
 );
 
@@ -1411,6 +1435,7 @@ export const evidenciasAusencia = pgTable(
     archivoUrl: varchar("archivo_url", { length: 500 }).notNull(),
     tomadaEn: timestamp("tomada_en", { precision: 0, mode: "string" }),
     orden: smallint().default(1).notNull(),
+    vigente: boolean().default(true).notNull(),
     creadoEn: timestamp("creado_en", { precision: 0, mode: "string" })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
@@ -1421,7 +1446,9 @@ export const evidenciasAusencia = pgTable(
       foreignColumns: [ausenciasSesion.id],
       name: "fk_evidencias_ausencia_ausencia",
     }).onDelete("cascade"),
-    unique("uq_evidencias_ausencia_orden").on(table.ausenciaId, table.orden),
+    uniqueIndex("uq_evidencias_ausencia_orden")
+      .on(table.ausenciaId, table.orden)
+      .where(sql`vigente = true`),
   ],
 );
 
