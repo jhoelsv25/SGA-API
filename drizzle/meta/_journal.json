@@ -78,6 +78,13 @@
       "when": 1791730277822,
       "tag": "0010_aula_virtual_materiales",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791735000000,
+      "tag": "0011_tareas_y_calificacion",
+      "breakpoints": true
     }
   ]
 }

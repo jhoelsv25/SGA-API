@@ -111,3 +111,103 @@ export interface SeguimientoResponse {
     solicitudesPendientes: number;
   };
 }
+
+/* === RF-016 Interfaces de respuesta === */
+
+export interface OpcionPreguntaResponse {
+  id: string;
+  texto: string;
+  esCorrecta?: boolean;
+  orden: number;
+}
+
+export interface PreguntaResponse {
+  id: string;
+  enunciado: string;
+  tipo: string;
+  puntaje: number;
+  orden: number;
+  opciones: OpcionPreguntaResponse[];
+}
+
+export interface TareaResponse {
+  id: string;
+  cursoSeccionId: string;
+  periodoId: string | null;
+  unidadId: string | null;
+  sesionClaseId: string | null;
+  titulo: string;
+  instrucciones: string | null;
+  tipo: string;
+  puntajeMaximo: number;
+  publicadaEn: string | null;
+  fechaLimite: string;
+  permiteEntregaTardia: boolean;
+  intentosMaximos: number;
+  limiteTiempoMinutos: number | null;
+  calculoNotaIntentos: string;
+  revelarRespuestas: string;
+  tiposArchivo: string | null;
+  estado: string;
+  preguntas?: PreguntaResponse[];
+  miEntrega?: EntregaResponse | null;
+  intentosRestantes?: number;
+}
+
+export interface EntregaResponse {
+  id: string;
+  tareaId: string;
+  matriculaId: string;
+  estudianteId?: string;
+  estudianteNombre?: string;
+  intento: number;
+  iniciadoEn: string;
+  entregadaEn: string | null;
+  texto: string | null;
+  archivoUrl: string | null;
+  archivoNombre: string | null;
+  archivoTamanoBytes: number | null;
+  enlaceUrl: string | null;
+  respuestas: Record<string, unknown> | null;
+  esTardia: boolean;
+  estado: string;
+  nota: number | null;
+  retroalimentacion: string | null;
+  calificadaPorId: string | null;
+  calificadaEn: string | null;
+}
+
+export interface FilaEstudianteLibroNotas {
+  matriculaId: string;
+  estudianteId: string;
+  codigo: string;
+  estudianteNombre: string;
+  notasPorTarea: Record<
+    string,
+    {
+      nota: number | null;
+      estado: string;
+      esTardia: boolean;
+    }
+  >;
+  promediosPorTipo: Record<string, number | null>;
+  notaFinal: number;
+  notaLiteral: string;
+}
+
+export interface LibroNotasResponse {
+  cursoSeccionId: string;
+  cursoNombre: string;
+  seccionNombre: string;
+  periodoId: string;
+  periodoNombre: string;
+  pesosConfig: Record<string, number>;
+  pesosEfectivos: Record<string, number>;
+  tareas: Array<{
+    id: string;
+    titulo: string;
+    tipo: string;
+    fechaLimite: string;
+  }>;
+  estudiantes: FilaEstudianteLibroNotas[];
+}

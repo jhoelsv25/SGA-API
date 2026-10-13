@@ -1,10 +1,11 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, asc, desc, eq, inArray, isNotNull, isNull, max, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, isNull, max, or, sql } from "drizzle-orm";
 import { Database, DRIZZLE } from "../../../core/database";
 import {
   cursos,
   cursosSeccion,
   docentes,
+  entregasTarea,
   estudiantes,
   grados,
   horarios,
@@ -12,31 +13,49 @@ import {
   materialVersiones,
   materiales,
   matriculas,
+  opcionesPregunta,
   periodosAcademicos,
   personas,
+  preguntasTarea,
   roles,
   secciones,
   sesionesClase,
+  tareas,
   unidadesAprendizaje,
   usuarioRoles,
   usuarios,
   variablesSistema,
 } from "../../../core/database/schema";
-import type { EstadoSolicitudFecha, TipoMaterial } from "../constants";
+import {
+  VARIABLES_NOTA_PESO,
+  type CalculoNotaIntentos,
+  type EstadoEntrega,
+  type EstadoSolicitudFecha,
+  type EstadoTarea,
+  type RevelarRespuestas,
+  type TipoMaterial,
+  type TipoPregunta,
+  type TipoTarea,
+} from "../constants";
 import type {
   CambioFechaHistorial,
   ContenidoMaterial,
   CursoAula,
   CursoAulaResumen,
+  EntregaFila,
   FilaSeguimiento,
   HorarioBloque,
   IAulaVirtualRepository,
   MaterialFila,
+  NuevaTarea,
   NuevaUnidad,
   NuevoMaterial,
   PeriodoAula,
+  PreguntaConOpciones,
   SesionEnlazada,
   SolicitudFila,
+  TareaConPreguntas,
+  TareaFila,
   UnidadFila,
 } from "../interfaces";
 
@@ -72,6 +91,106 @@ type FilaMaterialBruta = Omit<MaterialFila, "tipo"> & { tipo: string };
 
 function aMaterial(fila: FilaMaterialBruta): MaterialFila {
   return { ...fila, tipo: fila.tipo as TipoMaterial };
+}
+
+const columnasTarea = {
+  id: tareas.id,
+  cursoSeccionId: tareas.cursoSeccionId,
+  periodoId: tareas.periodoId,
+  unidadId: tareas.unidadId,
+  sesionClaseId: tareas.sesionClaseId,
+  titulo: tareas.titulo,
+  instrucciones: tareas.instrucciones,
+  tipo: tareas.tipo,
+  puntajeMaximo: sql<number>`${tareas.puntajeMaximo}::float`,
+  publicadaEn: tareas.publicadaEn,
+  fechaLimite: tareas.fechaLimite,
+  permiteEntregaTardia: tareas.permiteEntregaTardia,
+  intentosMaximos: sql<number>`${tareas.intentosMaximos}::int`,
+  limiteTiempoMinutos: tareas.limiteTiempoMinutos,
+  calculoNotaIntentos: tareas.calculoNotaIntentos,
+  revelarRespuestas: tareas.revelarRespuestas,
+  tiposArchivo: tareas.tiposArchivo,
+  estado: tareas.estado,
+  creadoEn: tareas.creadoEn,
+  actualizadoEn: tareas.actualizadoEn,
+};
+
+function aTarea(fila: Record<string, unknown>): TareaFila {
+  return {
+    id: String(fila.id),
+    cursoSeccionId: String(fila.cursoSeccionId),
+    periodoId: (fila.periodoId as string | null) ?? null,
+    unidadId: (fila.unidadId as string | null) ?? null,
+    sesionClaseId: (fila.sesionClaseId as string | null) ?? null,
+    titulo: String(fila.titulo),
+    instrucciones: (fila.instrucciones as string | null) ?? null,
+    tipo: (fila.tipo as TipoTarea) || "trabajo",
+    puntajeMaximo: Number(fila.puntajeMaximo) || 20,
+    publicadaEn: (fila.publicadaEn as string | null) ?? null,
+    fechaLimite: String(fila.fechaLimite),
+    permiteEntregaTardia: Boolean(fila.permiteEntregaTardia),
+    intentosMaximos: Number(fila.intentosMaximos) || 1,
+    limiteTiempoMinutos:
+      fila.limiteTiempoMinutos !== null && fila.limiteTiempoMinutos !== undefined
+        ? Number(fila.limiteTiempoMinutos)
+        : null,
+    calculoNotaIntentos: (fila.calculoNotaIntentos as CalculoNotaIntentos) || "mas_alta",
+    revelarRespuestas: (fila.revelarRespuestas as RevelarRespuestas) || "al_terminar_intentos",
+    tiposArchivo: (fila.tiposArchivo as string | null) ?? null,
+    estado: (fila.estado as EstadoTarea) || "borrador",
+    creadoEn: String(fila.creadoEn),
+    actualizadoEn: String(fila.actualizadoEn),
+  };
+}
+
+const columnasEntrega = {
+  id: entregasTarea.id,
+  tareaId: entregasTarea.tareaId,
+  matriculaId: entregasTarea.matriculaId,
+  intento: sql<number>`${entregasTarea.intento}::int`,
+  iniciadoEn: entregasTarea.iniciadoEn,
+  entregadaEn: entregasTarea.entregadaEn,
+  texto: entregasTarea.texto,
+  archivoUrl: entregasTarea.archivoUrl,
+  archivoNombre: entregasTarea.archivoNombre,
+  archivoTamanoBytes: entregasTarea.archivoTamanoBytes,
+  enlaceUrl: entregasTarea.enlaceUrl,
+  respuestas: entregasTarea.respuestas,
+  esTardia: entregasTarea.esTardia,
+  estado: entregasTarea.estado,
+  nota: sql<number | null>`${entregasTarea.nota}::float`,
+  retroalimentacion: entregasTarea.retroalimentacion,
+  calificadaPorId: entregasTarea.calificadaPorId,
+  calificadaEn: entregasTarea.calificadaEn,
+};
+
+function aEntrega(fila: Record<string, unknown>): EntregaFila {
+  return {
+    id: String(fila.id),
+    tareaId: String(fila.tareaId),
+    matriculaId: String(fila.matriculaId),
+    estudianteId: typeof fila.estudianteId === "string" ? fila.estudianteId : undefined,
+    estudianteNombre: typeof fila.estudianteNombre === "string" ? fila.estudianteNombre : undefined,
+    intento: Number(fila.intento) || 1,
+    iniciadoEn: String(fila.iniciadoEn),
+    entregadaEn: (fila.entregadaEn as string | null) ?? null,
+    texto: (fila.texto as string | null) ?? null,
+    archivoUrl: (fila.archivoUrl as string | null) ?? null,
+    archivoNombre: (fila.archivoNombre as string | null) ?? null,
+    archivoTamanoBytes:
+      fila.archivoTamanoBytes !== null && fila.archivoTamanoBytes !== undefined
+        ? Number(fila.archivoTamanoBytes)
+        : null,
+    enlaceUrl: (fila.enlaceUrl as string | null) ?? null,
+    respuestas: (fila.respuestas as Record<string, unknown> | null) ?? null,
+    esTardia: Boolean(fila.esTardia),
+    estado: (fila.estado as EstadoEntrega) || "entregada",
+    nota: fila.nota !== null && fila.nota !== undefined ? Number(fila.nota) : null,
+    retroalimentacion: (fila.retroalimentacion as string | null) ?? null,
+    calificadaPorId: (fila.calificadaPorId as string | null) ?? null,
+    calificadaEn: (fila.calificadaEn as string | null) ?? null,
+  };
 }
 
 @Injectable()
@@ -668,6 +787,488 @@ export class AulaVirtualRepository implements IAulaVirtualRepository {
         unidadesAprendizaje.cursoSeccionId,
       )
       .orderBy(asc(personas.apellidoPaterno), asc(cursos.nombre));
+  }
+
+  /* === RF-016: Tareas, Entregas y Calificación === */
+  async listarTareas(
+    cursoSeccionId: string,
+    opciones: { soloPublicadas?: boolean; unidadId?: string; periodoId?: string },
+  ): Promise<TareaFila[]> {
+    const condiciones = [eq(tareas.cursoSeccionId, cursoSeccionId)];
+    if (opciones.soloPublicadas) {
+      condiciones.push(eq(tareas.estado, "publicada"));
+    }
+    if (opciones.unidadId) {
+      condiciones.push(eq(tareas.unidadId, opciones.unidadId));
+    }
+    if (opciones.periodoId) {
+      condiciones.push(eq(tareas.periodoId, opciones.periodoId));
+    }
+
+    const filas = await this.db
+      .select(columnasTarea)
+      .from(tareas)
+      .where(and(...condiciones))
+      .orderBy(asc(tareas.fechaLimite), asc(tareas.creadoEn));
+
+    return filas.map(aTarea);
+  }
+
+  async findTarea(tareaId: string): Promise<TareaConPreguntas | null> {
+    const [fila] = await this.db
+      .select(columnasTarea)
+      .from(tareas)
+      .where(eq(tareas.id, tareaId))
+      .limit(1);
+
+    if (!fila) return null;
+    const tareaBase = aTarea(fila);
+
+    const filasPreguntas = await this.db
+      .select({
+        id: preguntasTarea.id,
+        tareaId: preguntasTarea.tareaId,
+        enunciado: preguntasTarea.enunciado,
+        tipo: preguntasTarea.tipo,
+        puntaje: sql<number>`${preguntasTarea.puntaje}::float`,
+        orden: preguntasTarea.orden,
+      })
+      .from(preguntasTarea)
+      .where(eq(preguntasTarea.tareaId, tareaId))
+      .orderBy(asc(preguntasTarea.orden));
+
+    const preguntasIds = filasPreguntas.map((p) => p.id);
+    const filasOpciones =
+      preguntasIds.length > 0
+        ? await this.db
+            .select({
+              id: opcionesPregunta.id,
+              preguntaId: opcionesPregunta.preguntaId,
+              texto: opcionesPregunta.texto,
+              esCorrecta: opcionesPregunta.esCorrecta,
+              orden: opcionesPregunta.orden,
+            })
+            .from(opcionesPregunta)
+            .where(inArray(opcionesPregunta.preguntaId, preguntasIds))
+            .orderBy(asc(opcionesPregunta.orden))
+        : [];
+
+    const opcionesPorPregunta = new Map<
+      string,
+      Array<{ id: string; texto: string; esCorrecta: boolean; orden: number }>
+    >();
+    for (const o of filasOpciones) {
+      const arr = opcionesPorPregunta.get(o.preguntaId) || [];
+      arr.push({
+        id: o.id,
+        texto: o.texto,
+        esCorrecta: o.esCorrecta,
+        orden: o.orden,
+      });
+      opcionesPorPregunta.set(o.preguntaId, arr);
+    }
+
+    const preguntas: PreguntaConOpciones[] = filasPreguntas.map((p) => ({
+      id: p.id,
+      tareaId: p.tareaId,
+      enunciado: p.enunciado,
+      tipo: p.tipo as TipoPregunta,
+      puntaje: Number(p.puntaje) || 1,
+      orden: p.orden,
+      opciones: opcionesPorPregunta.get(p.id) || [],
+    }));
+
+    return {
+      ...tareaBase,
+      preguntas,
+    };
+  }
+
+  async crearTarea(datos: NuevaTarea): Promise<TareaFila> {
+    const [creada] = await this.db
+      .insert(tareas)
+      .values({
+        cursoSeccionId: datos.cursoSeccionId,
+        periodoId: datos.periodoId ?? null,
+        unidadId: datos.unidadId ?? null,
+        sesionClaseId: datos.sesionClaseId ?? null,
+        titulo: datos.titulo,
+        instrucciones: datos.instrucciones ?? null,
+        tipo: datos.tipo,
+        fechaLimite: datos.fechaLimite,
+        permiteEntregaTardia: datos.permiteEntregaTardia ?? false,
+        intentosMaximos: datos.intentosMaximos ?? 1,
+        limiteTiempoMinutos: datos.limiteTiempoMinutos ?? null,
+        calculoNotaIntentos: datos.calculoNotaIntentos ?? "mas_alta",
+        revelarRespuestas: datos.revelarRespuestas ?? "al_terminar_intentos",
+        tiposArchivo: datos.tiposArchivo ?? null,
+        estado: datos.estado ?? "borrador",
+      })
+      .returning(columnasTarea);
+
+    return aTarea(creada);
+  }
+
+  async actualizarTarea(tareaId: string, datos: Partial<NuevaTarea>): Promise<TareaFila> {
+    const updates: Record<string, unknown> = { actualizadoEn: sql`CURRENT_TIMESTAMP` };
+    if (datos.titulo !== undefined) updates.titulo = datos.titulo;
+    if (datos.instrucciones !== undefined) updates.instrucciones = datos.instrucciones;
+    if (datos.fechaLimite !== undefined) updates.fechaLimite = datos.fechaLimite;
+    if (datos.permiteEntregaTardia !== undefined)
+      updates.permiteEntregaTardia = datos.permiteEntregaTardia;
+    if (datos.intentosMaximos !== undefined) updates.intentosMaximos = datos.intentosMaximos;
+    if (datos.limiteTiempoMinutos !== undefined)
+      updates.limiteTiempoMinutos = datos.limiteTiempoMinutos;
+    if (datos.calculoNotaIntentos !== undefined)
+      updates.calculoNotaIntentos = datos.calculoNotaIntentos;
+    if (datos.revelarRespuestas !== undefined) updates.revelarRespuestas = datos.revelarRespuestas;
+    if (datos.tiposArchivo !== undefined) updates.tiposArchivo = datos.tiposArchivo;
+    if (datos.periodoId !== undefined) updates.periodoId = datos.periodoId;
+    if (datos.unidadId !== undefined) updates.unidadId = datos.unidadId;
+
+    const [actualizada] = await this.db
+      .update(tareas)
+      .set(updates)
+      .where(eq(tareas.id, tareaId))
+      .returning(columnasTarea);
+
+    return aTarea(actualizada);
+  }
+
+  async publicarTarea(tareaId: string, publicadaEn: string): Promise<TareaFila> {
+    const [publicada] = await this.db
+      .update(tareas)
+      .set({
+        estado: "publicada",
+        publicadaEn,
+        actualizadoEn: sql`CURRENT_TIMESTAMP`,
+      })
+      .where(eq(tareas.id, tareaId))
+      .returning(columnasTarea);
+
+    return aTarea(publicada);
+  }
+
+  async cerrarTarea(tareaId: string, _cerradaEn: string): Promise<TareaFila> {
+    const [cerrada] = await this.db
+      .update(tareas)
+      .set({
+        estado: "cerrada",
+        actualizadoEn: sql`CURRENT_TIMESTAMP`,
+      })
+      .where(eq(tareas.id, tareaId))
+      .returning(columnasTarea);
+
+    return aTarea(cerrada);
+  }
+
+  async eliminarTarea(tareaId: string): Promise<void> {
+    await this.db.delete(tareas).where(eq(tareas.id, tareaId));
+  }
+
+  async guardarPreguntasTarea(
+    tareaId: string,
+    preguntas: Array<{
+      enunciado: string;
+      tipo: TipoPregunta;
+      puntaje: number;
+      orden: number;
+      opciones?: Array<{ texto: string; esCorrecta: boolean; orden: number }>;
+    }>,
+  ): Promise<void> {
+    await this.db.delete(preguntasTarea).where(eq(preguntasTarea.tareaId, tareaId));
+
+    for (const p of preguntas) {
+      const [insertada] = await this.db
+        .insert(preguntasTarea)
+        .values({
+          tareaId,
+          enunciado: p.enunciado,
+          tipo: p.tipo,
+          puntaje: String(p.puntaje),
+          orden: p.orden,
+        })
+        .returning({ id: preguntasTarea.id });
+
+      if (p.opciones && p.opciones.length > 0) {
+        await this.db.insert(opcionesPregunta).values(
+          p.opciones.map((o) => ({
+            preguntaId: insertada.id,
+            texto: o.texto,
+            esCorrecta: o.esCorrecta,
+            orden: o.orden,
+          })),
+        );
+      }
+    }
+  }
+
+  async findEntrega(entregaId: string): Promise<EntregaFila | null> {
+    const [fila] = await this.db
+      .select({
+        ...columnasEntrega,
+        estudianteId: estudiantes.id,
+        estudianteNombre: nombreSql(personas),
+      })
+      .from(entregasTarea)
+      .innerJoin(matriculas, eq(matriculas.id, entregasTarea.matriculaId))
+      .innerJoin(estudiantes, eq(estudiantes.id, matriculas.estudianteId))
+      .innerJoin(personas, eq(personas.id, estudiantes.personaId))
+      .where(eq(entregasTarea.id, entregaId))
+      .limit(1);
+
+    return fila ? aEntrega(fila) : null;
+  }
+
+  async findEntregasDeTarea(tareaId: string): Promise<EntregaFila[]> {
+    const filas = await this.db
+      .select({
+        ...columnasEntrega,
+        estudianteId: estudiantes.id,
+        estudianteNombre: nombreSql(personas),
+      })
+      .from(entregasTarea)
+      .innerJoin(matriculas, eq(matriculas.id, entregasTarea.matriculaId))
+      .innerJoin(estudiantes, eq(estudiantes.id, matriculas.estudianteId))
+      .innerJoin(personas, eq(personas.id, estudiantes.personaId))
+      .where(eq(entregasTarea.tareaId, tareaId))
+      .orderBy(asc(personas.apellidoPaterno), asc(entregasTarea.intento));
+
+    return filas.map(aEntrega);
+  }
+
+  async findEntregasDeEstudiante(tareaId: string, matriculaId: string): Promise<EntregaFila[]> {
+    const filas = await this.db
+      .select(columnasEntrega)
+      .from(entregasTarea)
+      .where(and(eq(entregasTarea.tareaId, tareaId), eq(entregasTarea.matriculaId, matriculaId)))
+      .orderBy(asc(entregasTarea.intento));
+
+    return filas.map(aEntrega);
+  }
+
+  async findEntregaActiva(tareaId: string, matriculaId: string): Promise<EntregaFila | null> {
+    const [fila] = await this.db
+      .select(columnasEntrega)
+      .from(entregasTarea)
+      .where(and(eq(entregasTarea.tareaId, tareaId), eq(entregasTarea.matriculaId, matriculaId)))
+      .orderBy(desc(entregasTarea.intento))
+      .limit(1);
+
+    return fila ? aEntrega(fila) : null;
+  }
+
+  async guardarEntrega(datos: {
+    tareaId: string;
+    matriculaId: string;
+    intento: number;
+    iniciadoEn?: string;
+    entregadaEn?: string | null;
+    texto?: string | null;
+    archivoUrl?: string | null;
+    archivoNombre?: string | null;
+    archivoTamanoBytes?: number | null;
+    enlaceUrl?: string | null;
+    respuestas?: Record<string, unknown> | null;
+    esTardia?: boolean;
+    estado?: EstadoEntrega;
+    nota?: number | null;
+    retroalimentacion?: string | null;
+    calificadaPorId?: string | null;
+    calificadaEn?: string | null;
+  }): Promise<EntregaFila> {
+    const existente = await this.db
+      .select({ id: entregasTarea.id })
+      .from(entregasTarea)
+      .where(
+        and(
+          eq(entregasTarea.tareaId, datos.tareaId),
+          eq(entregasTarea.matriculaId, datos.matriculaId),
+          eq(entregasTarea.intento, datos.intento),
+        ),
+      )
+      .limit(1);
+
+    if (existente.length > 0) {
+      const [actualizada] = await this.db
+        .update(entregasTarea)
+        .set({
+          entregadaEn: datos.entregadaEn !== undefined ? datos.entregadaEn : sql`CURRENT_TIMESTAMP`,
+          texto: datos.texto !== undefined ? datos.texto : undefined,
+          archivoUrl: datos.archivoUrl !== undefined ? datos.archivoUrl : undefined,
+          archivoNombre: datos.archivoNombre !== undefined ? datos.archivoNombre : undefined,
+          archivoTamanoBytes:
+            datos.archivoTamanoBytes !== undefined ? datos.archivoTamanoBytes : undefined,
+          enlaceUrl: datos.enlaceUrl !== undefined ? datos.enlaceUrl : undefined,
+          respuestas: datos.respuestas !== undefined ? datos.respuestas : undefined,
+          esTardia: datos.esTardia !== undefined ? datos.esTardia : undefined,
+          estado: datos.estado !== undefined ? datos.estado : undefined,
+          nota:
+            datos.nota !== undefined
+              ? datos.nota !== null
+                ? String(datos.nota)
+                : null
+              : undefined,
+          retroalimentacion:
+            datos.retroalimentacion !== undefined ? datos.retroalimentacion : undefined,
+          calificadaPorId: datos.calificadaPorId !== undefined ? datos.calificadaPorId : undefined,
+          calificadaEn: datos.calificadaEn !== undefined ? datos.calificadaEn : undefined,
+        })
+        .where(eq(entregasTarea.id, existente[0].id))
+        .returning(columnasEntrega);
+
+      return aEntrega(actualizada);
+    }
+
+    const [insertada] = await this.db
+      .insert(entregasTarea)
+      .values({
+        tareaId: datos.tareaId,
+        matriculaId: datos.matriculaId,
+        intento: datos.intento,
+        iniciadoEn: datos.iniciadoEn,
+        entregadaEn: datos.entregadaEn ?? null,
+        texto: datos.texto ?? null,
+        archivoUrl: datos.archivoUrl ?? null,
+        archivoNombre: datos.archivoNombre ?? null,
+        archivoTamanoBytes: datos.archivoTamanoBytes ?? null,
+        enlaceUrl: datos.enlaceUrl ?? null,
+        respuestas: datos.respuestas ?? null,
+        esTardia: datos.esTardia ?? false,
+        estado: datos.estado ?? "entregada",
+        nota: datos.nota !== undefined && datos.nota !== null ? String(datos.nota) : null,
+        retroalimentacion: datos.retroalimentacion ?? null,
+        calificadaPorId: datos.calificadaPorId ?? null,
+        calificadaEn: datos.calificadaEn ?? null,
+      })
+      .returning(columnasEntrega);
+
+    return aEntrega(insertada);
+  }
+
+  async calificarEntrega(
+    entregaId: string,
+    datos: {
+      nota: number;
+      retroalimentacion?: string | null;
+      calificadaPorId: string;
+      calificadaEn: string;
+      respuestas?: Record<string, unknown> | null;
+      estado?: EstadoEntrega;
+    },
+  ): Promise<EntregaFila> {
+    const [calificada] = await this.db
+      .update(entregasTarea)
+      .set({
+        nota: String(datos.nota),
+        retroalimentacion: datos.retroalimentacion ?? null,
+        calificadaPorId: datos.calificadaPorId,
+        calificadaEn: datos.calificadaEn,
+        respuestas: datos.respuestas !== undefined ? datos.respuestas : undefined,
+        estado: datos.estado ?? "calificada",
+      })
+      .where(eq(entregasTarea.id, entregaId))
+      .returning(columnasEntrega);
+
+    return aEntrega(calificada);
+  }
+
+  async devolverEntrega(
+    entregaId: string,
+    retroalimentacion: string,
+    calificadaPorId: string,
+  ): Promise<EntregaFila> {
+    const [devuelta] = await this.db
+      .update(entregasTarea)
+      .set({
+        estado: "devuelta",
+        retroalimentacion,
+        calificadaPorId,
+        calificadaEn: sql`CURRENT_TIMESTAMP`,
+      })
+      .where(eq(entregasTarea.id, entregaId))
+      .returning(columnasEntrega);
+
+    return aEntrega(devuelta);
+  }
+
+  async findMatriculaDeEstudiante(
+    seccionId: string,
+    estudiantePersonaIdOId: string,
+  ): Promise<{ id: string; estudianteId: string; codigo: string; nombreCompleto: string } | null> {
+    const [fila] = await this.db
+      .select({
+        id: matriculas.id,
+        estudianteId: estudiantes.id,
+        codigo: matriculas.codigo,
+        nombreCompleto: nombreSql(personas),
+      })
+      .from(matriculas)
+      .innerJoin(estudiantes, eq(estudiantes.id, matriculas.estudianteId))
+      .innerJoin(personas, eq(personas.id, estudiantes.personaId))
+      .where(
+        and(
+          eq(matriculas.seccionId, seccionId),
+          eq(matriculas.estado, "vigente"),
+          or(
+            eq(estudiantes.personaId, estudiantePersonaIdOId),
+            eq(estudiantes.id, estudiantePersonaIdOId),
+          ),
+        ),
+      )
+      .limit(1);
+
+    return fila ?? null;
+  }
+
+  async listarEstudiantesDeSeccion(
+    seccionId: string,
+  ): Promise<
+    Array<{ matriculaId: string; estudianteId: string; codigo: string; nombreCompleto: string }>
+  > {
+    const filas = await this.db
+      .select({
+        matriculaId: matriculas.id,
+        estudianteId: estudiantes.id,
+        codigo: matriculas.codigo,
+        nombreCompleto: nombreSql(personas),
+      })
+      .from(matriculas)
+      .innerJoin(estudiantes, eq(estudiantes.id, matriculas.estudianteId))
+      .innerJoin(personas, eq(personas.id, estudiantes.personaId))
+      .where(and(eq(matriculas.seccionId, seccionId), eq(matriculas.estado, "vigente")))
+      .orderBy(asc(personas.apellidoPaterno), asc(personas.nombres));
+
+    return filas;
+  }
+
+  async obtenerPesosVariables(): Promise<Record<TipoTarea, number>> {
+    const vars = await this.db
+      .select({ codigo: variablesSistema.codigo, valor: variablesSistema.valor })
+      .from(variablesSistema)
+      .where(
+        and(
+          inArray(variablesSistema.codigo, [
+            VARIABLES_NOTA_PESO.EXAMEN,
+            VARIABLES_NOTA_PESO.CUESTIONARIO,
+            VARIABLES_NOTA_PESO.TRABAJO,
+            VARIABLES_NOTA_PESO.PROYECTO,
+          ]),
+          eq(variablesSistema.vigente, true),
+        ),
+      );
+
+    const mapa: Record<string, number> = {};
+    for (const v of vars) {
+      mapa[v.codigo] = parseFloat(v.valor) || 25;
+    }
+
+    return {
+      examen: mapa[VARIABLES_NOTA_PESO.EXAMEN] ?? 25,
+      cuestionario: mapa[VARIABLES_NOTA_PESO.CUESTIONARIO] ?? 25,
+      trabajo: mapa[VARIABLES_NOTA_PESO.TRABAJO] ?? 25,
+      proyecto: mapa[VARIABLES_NOTA_PESO.PROYECTO] ?? 25,
+    };
   }
 
   private async requerirMaterial(materialId: string): Promise<MaterialFila> {

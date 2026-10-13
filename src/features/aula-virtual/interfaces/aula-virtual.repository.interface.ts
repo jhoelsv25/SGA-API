@@ -1,4 +1,13 @@
-import type { EstadoSolicitudFecha, TipoMaterial } from "../constants";
+import type {
+  CalculoNotaIntentos,
+  EstadoEntrega,
+  EstadoSolicitudFecha,
+  EstadoTarea,
+  RevelarRespuestas,
+  TipoMaterial,
+  TipoPregunta,
+  TipoTarea,
+} from "../constants";
 
 export interface CursoAula {
   id: string;
@@ -222,4 +231,155 @@ export interface IAulaVirtualRepository {
   usuariosEstudiantesDeSeccion(seccionId: string, anioAcademicoId: string): Promise<string[]>;
 
   seguimiento(periodoId: string, hoy: string): Promise<FilaSeguimiento[]>;
+
+  /* === RF-016: Tareas, Entregas y Calificación === */
+  listarTareas(
+    cursoSeccionId: string,
+    opciones: { soloPublicadas?: boolean; unidadId?: string; periodoId?: string },
+  ): Promise<TareaFila[]>;
+  findTarea(tareaId: string): Promise<TareaConPreguntas | null>;
+  crearTarea(datos: NuevaTarea): Promise<TareaFila>;
+  actualizarTarea(tareaId: string, datos: Partial<NuevaTarea>): Promise<TareaFila>;
+  publicarTarea(tareaId: string, publicadaEn: string): Promise<TareaFila>;
+  cerrarTarea(tareaId: string, cerradaEn: string): Promise<TareaFila>;
+  eliminarTarea(tareaId: string): Promise<void>;
+  guardarPreguntasTarea(
+    tareaId: string,
+    preguntas: Array<{
+      enunciado: string;
+      tipo: TipoPregunta;
+      puntaje: number;
+      orden: number;
+      opciones?: Array<{ texto: string; esCorrecta: boolean; orden: number }>;
+    }>,
+  ): Promise<void>;
+
+  findEntrega(entregaId: string): Promise<EntregaFila | null>;
+  findEntregasDeTarea(tareaId: string): Promise<EntregaFila[]>;
+  findEntregasDeEstudiante(tareaId: string, matriculaId: string): Promise<EntregaFila[]>;
+  findEntregaActiva(tareaId: string, matriculaId: string): Promise<EntregaFila | null>;
+  guardarEntrega(datos: {
+    tareaId: string;
+    matriculaId: string;
+    intento: number;
+    iniciadoEn?: string;
+    entregadaEn?: string | null;
+    texto?: string | null;
+    archivoUrl?: string | null;
+    archivoNombre?: string | null;
+    archivoTamanoBytes?: number | null;
+    enlaceUrl?: string | null;
+    respuestas?: Record<string, unknown> | null;
+    esTardia?: boolean;
+    estado?: EstadoEntrega;
+    nota?: number | null;
+    retroalimentacion?: string | null;
+    calificadaPorId?: string | null;
+    calificadaEn?: string | null;
+  }): Promise<EntregaFila>;
+  calificarEntrega(
+    entregaId: string,
+    datos: {
+      nota: number;
+      retroalimentacion?: string | null;
+      calificadaPorId: string;
+      calificadaEn: string;
+      respuestas?: Record<string, unknown> | null;
+      estado?: EstadoEntrega;
+    },
+  ): Promise<EntregaFila>;
+  devolverEntrega(
+    entregaId: string,
+    retroalimentacion: string,
+    calificadaPorId: string,
+  ): Promise<EntregaFila>;
+
+  findMatriculaDeEstudiante(
+    seccionId: string,
+    estudiantePersonaIdOId: string,
+  ): Promise<{ id: string; estudianteId: string; codigo: string; nombreCompleto: string } | null>;
+  listarEstudiantesDeSeccion(
+    seccionId: string,
+  ): Promise<
+    Array<{ matriculaId: string; estudianteId: string; codigo: string; nombreCompleto: string }>
+  >;
+  obtenerPesosVariables(): Promise<Record<TipoTarea, number>>;
+}
+
+export interface TareaFila {
+  id: string;
+  cursoSeccionId: string;
+  periodoId: string | null;
+  unidadId: string | null;
+  sesionClaseId: string | null;
+  titulo: string;
+  instrucciones: string | null;
+  tipo: TipoTarea;
+  puntajeMaximo: number;
+  publicadaEn: string | null;
+  fechaLimite: string;
+  permiteEntregaTardia: boolean;
+  intentosMaximos: number;
+  limiteTiempoMinutos: number | null;
+  calculoNotaIntentos: CalculoNotaIntentos;
+  revelarRespuestas: RevelarRespuestas;
+  tiposArchivo: string | null;
+  estado: EstadoTarea;
+  creadoEn: string;
+  actualizadoEn: string;
+}
+
+export interface PreguntaConOpciones {
+  id: string;
+  tareaId: string;
+  enunciado: string;
+  tipo: TipoPregunta;
+  puntaje: number;
+  orden: number;
+  opciones: Array<{ id: string; texto: string; esCorrecta: boolean; orden: number }>;
+}
+
+export interface TareaConPreguntas extends TareaFila {
+  preguntas: PreguntaConOpciones[];
+}
+
+export interface EntregaFila {
+  id: string;
+  tareaId: string;
+  matriculaId: string;
+  estudianteId?: string;
+  estudianteNombre?: string;
+  intento: number;
+  iniciadoEn: string;
+  entregadaEn: string | null;
+  texto: string | null;
+  archivoUrl: string | null;
+  archivoNombre: string | null;
+  archivoTamanoBytes: number | null;
+  enlaceUrl: string | null;
+  respuestas: Record<string, unknown> | null;
+  esTardia: boolean;
+  estado: EstadoEntrega;
+  nota: number | null;
+  retroalimentacion: string | null;
+  calificadaPorId: string | null;
+  calificadaEn: string | null;
+}
+
+export interface NuevaTarea {
+  cursoSeccionId: string;
+  periodoId?: string | null;
+  unidadId?: string | null;
+  sesionClaseId?: string | null;
+  titulo: string;
+  instrucciones?: string | null;
+  tipo: TipoTarea;
+  fechaLimite: string;
+  permiteEntregaTardia?: boolean;
+  intentosMaximos?: number;
+  limiteTiempoMinutos?: number | null;
+  calculoNotaIntentos?: CalculoNotaIntentos;
+  revelarRespuestas?: RevelarRespuestas;
+  tiposArchivo?: string | null;
+  estado?: EstadoTarea;
 }
