@@ -2,6 +2,10 @@ import { Inject, Injectable } from "@nestjs/common";
 import { and, asc, desc, eq, inArray, isNotNull, isNull, max, or, sql } from "drizzle-orm";
 import { Database, DRIZZLE } from "../../../core/database";
 import {
+  actividadAula,
+  aniosAcademicos,
+  chatLecturas,
+  comentariosPublicacion,
   cursos,
   cursosSeccion,
   docentes,
@@ -13,10 +17,12 @@ import {
   materialVersiones,
   materiales,
   matriculas,
+  mensajesChat,
   opcionesPregunta,
   periodosAcademicos,
   personas,
   preguntasTarea,
+  publicacionesAula,
   roles,
   secciones,
   sesionesClase,
@@ -28,30 +34,38 @@ import {
 } from "../../../core/database/schema";
 import {
   VARIABLES_NOTA_PESO,
+  type AccionActividadAula,
   type CalculoNotaIntentos,
   type EstadoEntrega,
   type EstadoSolicitudFecha,
   type EstadoTarea,
   type RevelarRespuestas,
   type TipoMaterial,
+  type TipoModeracion,
   type TipoPregunta,
   type TipoTarea,
 } from "../constants";
 import type {
+  ActividadEstudianteMaterial,
+  ActividadEstudianteTarea,
   CambioFechaHistorial,
+  ComentarioMuroFila,
   ContenidoMaterial,
   CursoAula,
   CursoAulaResumen,
   EntregaFila,
   FilaSeguimiento,
+  HistorialModeracionFila,
   HorarioBloque,
   IAulaVirtualRepository,
   MaterialFila,
+  MensajeChatFila,
   NuevaTarea,
   NuevaUnidad,
   NuevoMaterial,
   PeriodoAula,
   PreguntaConOpciones,
+  PublicacionMuroFila,
   SesionEnlazada,
   SolicitudFila,
   TareaConPreguntas,
@@ -1269,6 +1283,709 @@ export class AulaVirtualRepository implements IAulaVirtualRepository {
       trabajo: mapa[VARIABLES_NOTA_PESO.TRABAJO] ?? 25,
       proyecto: mapa[VARIABLES_NOTA_PESO.PROYECTO] ?? 25,
     };
+  }
+
+  // ───────────────────────── RF-017: Interacción y Actividad ─────────────────────────
+
+  async obtenerAnioPorCursoSeccion(
+    cursoSeccionId: string,
+  ): Promise<{ id: string; anio: number; estado: string } | null> {
+    const [fila] = await this.db
+      .select({
+        id: aniosAcademicos.id,
+        anio: aniosAcademicos.anio,
+        estado: aniosAcademicos.estado,
+      })
+      .from(cursosSeccion)
+      .innerJoin(secciones, eq(secciones.id, cursosSeccion.seccionId))
+      .innerJoin(aniosAcademicos, eq(aniosAcademicos.id, secciones.anioAcademicoId))
+      .where(eq(cursosSeccion.id, cursoSeccionId))
+      .limit(1);
+    return fila ?? null;
+  }
+
+  async obtenerDocenteUsuarioId(cursoSeccionId: string): Promise<string | null> {
+    const [fila] = await this.db
+      .select({ usuarioId: usuarios.id })
+      .from(cursosSeccion)
+      .innerJoin(docentes, eq(docentes.id, cursosSeccion.docenteId))
+      .innerJoin(usuarios, eq(usuarios.personaId, docentes.personaId))
+      .where(eq(cursosSeccion.id, cursoSeccionId))
+      .limit(1);
+    return fila?.usuarioId ?? null;
+  }
+
+  async obtenerMatriculaActivaEstudiante(
+    personaId: string,
+    seccionId: string,
+  ): Promise<{ id: string; estudianteId: string } | null> {
+    const [fila] = await this.db
+      .select({ id: matriculas.id, estudianteId: estudiantes.id })
+      .from(matriculas)
+      .innerJoin(estudiantes, eq(estudiantes.id, matriculas.estudianteId))
+      .where(
+        and(
+          eq(estudiantes.personaId, personaId),
+          eq(matriculas.seccionId, seccionId),
+          inArray(matriculas.estado, ["matriculado", "vigente"]),
+        ),
+      )
+      .limit(1);
+    return fila ?? null;
+  }
+
+  async listarPublicacionesMuro(
+    cursoSeccionId: string,
+    verOcultos: boolean,
+  ): Promise<PublicacionMuroFila[]> {
+    const condiciones = [eq(publicacionesAula.cursoSeccionId, cursoSeccionId)];
+    if (!verOcultos) {
+      condiciones.push(eq(publicacionesAula.vigente, true));
+    }
+
+    const comentariosCountSql = sql<number>`(
+      SELECT COUNT(*)::int FROM comentarios_publicacion cp
+      WHERE cp.publicacion_id = ${publicacionesAula.id}
+      ${verOcultos ? sql`` : sql`AND cp.vigente = true`}
+    )`;
+
+    const filas = await this.db
+      .select({
+        id: publicacionesAula.id,
+        cursoSeccionId: publicacionesAula.cursoSeccionId,
+        autorId: publicacionesAula.autorId,
+        autorNombre: nombreSql(personas),
+        contenido: publicacionesAula.contenido,
+        adjuntoUrl: publicacionesAula.adjuntoUrl,
+        fijada: publicacionesAula.fijada,
+        vigente: publicacionesAula.vigente,
+        creadoEn: sql<string>`${publicacionesAula.creadoEn}::text`,
+        actualizadoEn: sql<string>`${publicacionesAula.actualizadoEn}::text`,
+        ocultadoPorId: publicacionesAula.ocultadoPorId,
+        ocultadoEn: sql<string>`${publicacionesAula.ocultadoEn}::text`,
+        motivoOcultamiento: publicacionesAula.motivoOcultamiento,
+        comentariosCount: comentariosCountSql,
+      })
+      .from(publicacionesAula)
+      .innerJoin(usuarios, eq(usuarios.id, publicacionesAula.autorId))
+      .innerJoin(personas, eq(personas.id, usuarios.personaId))
+      .where(and(...condiciones))
+      .orderBy(desc(publicacionesAula.fijada), desc(publicacionesAula.creadoEn));
+
+    return filas;
+  }
+
+  async obtenerPublicacion(id: string): Promise<PublicacionMuroFila | null> {
+    const comentariosCountSql = sql<number>`(
+      SELECT COUNT(*)::int FROM comentarios_publicacion cp
+      WHERE cp.publicacion_id = ${publicacionesAula.id}
+    )`;
+
+    const [fila] = await this.db
+      .select({
+        id: publicacionesAula.id,
+        cursoSeccionId: publicacionesAula.cursoSeccionId,
+        autorId: publicacionesAula.autorId,
+        autorNombre: nombreSql(personas),
+        contenido: publicacionesAula.contenido,
+        adjuntoUrl: publicacionesAula.adjuntoUrl,
+        fijada: publicacionesAula.fijada,
+        vigente: publicacionesAula.vigente,
+        creadoEn: sql<string>`${publicacionesAula.creadoEn}::text`,
+        actualizadoEn: sql<string>`${publicacionesAula.actualizadoEn}::text`,
+        ocultadoPorId: publicacionesAula.ocultadoPorId,
+        ocultadoEn: sql<string>`${publicacionesAula.ocultadoEn}::text`,
+        motivoOcultamiento: publicacionesAula.motivoOcultamiento,
+        comentariosCount: comentariosCountSql,
+      })
+      .from(publicacionesAula)
+      .innerJoin(usuarios, eq(usuarios.id, publicacionesAula.autorId))
+      .innerJoin(personas, eq(personas.id, usuarios.personaId))
+      .where(eq(publicacionesAula.id, id))
+      .limit(1);
+
+    return fila ?? null;
+  }
+
+  async crearPublicacion(datos: {
+    cursoSeccionId: string;
+    autorId: string;
+    contenido?: string | null;
+    adjuntoUrl?: string | null;
+    fijada?: boolean;
+  }): Promise<PublicacionMuroFila> {
+    const [insertada] = await this.db
+      .insert(publicacionesAula)
+      .values({
+        cursoSeccionId: datos.cursoSeccionId,
+        autorId: datos.autorId,
+        contenido: datos.contenido ?? "",
+        adjuntoUrl: datos.adjuntoUrl ?? null,
+        fijada: datos.fijada ?? false,
+        vigente: true,
+      })
+      .returning({ id: publicacionesAula.id });
+
+    const pub = await this.obtenerPublicacion(insertada.id);
+    if (!pub) throw new Error("Error al recuperar la publicación creada.");
+    return pub;
+  }
+
+  async actualizarPublicacion(
+    id: string,
+    datos: {
+      contenido?: string | null;
+      adjuntoUrl?: string | null;
+    },
+  ): Promise<PublicacionMuroFila> {
+    const valores: Record<string, unknown> = {
+      actualizadoEn: sql`CURRENT_TIMESTAMP`,
+    };
+    if (datos.contenido !== undefined) valores.contenido = datos.contenido ?? "";
+    if (datos.adjuntoUrl !== undefined) valores.adjuntoUrl = datos.adjuntoUrl;
+
+    await this.db.update(publicacionesAula).set(valores).where(eq(publicacionesAula.id, id));
+
+    const pub = await this.obtenerPublicacion(id);
+    if (!pub) throw new Error("Publicación no encontrada tras actualización.");
+    return pub;
+  }
+
+  async fijarPublicacion(id: string, fijada: boolean): Promise<PublicacionMuroFila> {
+    await this.db
+      .update(publicacionesAula)
+      .set({ fijada, actualizadoEn: sql`CURRENT_TIMESTAMP` })
+      .where(eq(publicacionesAula.id, id));
+
+    const pub = await this.obtenerPublicacion(id);
+    if (!pub) throw new Error("Publicación no encontrada tras fijar.");
+    return pub;
+  }
+
+  async listarComentarios(
+    publicacionId: string,
+    verOcultos: boolean,
+  ): Promise<ComentarioMuroFila[]> {
+    const condiciones = [eq(comentariosPublicacion.publicacionId, publicacionId)];
+    if (!verOcultos) {
+      condiciones.push(eq(comentariosPublicacion.vigente, true));
+    }
+
+    const filas = await this.db
+      .select({
+        id: comentariosPublicacion.id,
+        publicacionId: comentariosPublicacion.publicacionId,
+        autorId: comentariosPublicacion.autorId,
+        autorNombre: nombreSql(personas),
+        contenido: comentariosPublicacion.contenido,
+        vigente: comentariosPublicacion.vigente,
+        creadoEn: sql<string>`${comentariosPublicacion.creadoEn}::text`,
+        actualizadoEn: sql<string>`${comentariosPublicacion.actualizadoEn}::text`,
+        ocultadoPorId: comentariosPublicacion.ocultadoPorId,
+        ocultadoEn: sql<string>`${comentariosPublicacion.ocultadoEn}::text`,
+        motivoOcultamiento: comentariosPublicacion.motivoOcultamiento,
+      })
+      .from(comentariosPublicacion)
+      .innerJoin(usuarios, eq(usuarios.id, comentariosPublicacion.autorId))
+      .innerJoin(personas, eq(personas.id, usuarios.personaId))
+      .where(and(...condiciones))
+      .orderBy(asc(comentariosPublicacion.creadoEn));
+
+    return filas;
+  }
+
+  async obtenerComentario(id: string): Promise<ComentarioMuroFila | null> {
+    const [fila] = await this.db
+      .select({
+        id: comentariosPublicacion.id,
+        publicacionId: comentariosPublicacion.publicacionId,
+        autorId: comentariosPublicacion.autorId,
+        autorNombre: nombreSql(personas),
+        contenido: comentariosPublicacion.contenido,
+        vigente: comentariosPublicacion.vigente,
+        creadoEn: sql<string>`${comentariosPublicacion.creadoEn}::text`,
+        actualizadoEn: sql<string>`${comentariosPublicacion.actualizadoEn}::text`,
+        ocultadoPorId: comentariosPublicacion.ocultadoPorId,
+        ocultadoEn: sql<string>`${comentariosPublicacion.ocultadoEn}::text`,
+        motivoOcultamiento: comentariosPublicacion.motivoOcultamiento,
+      })
+      .from(comentariosPublicacion)
+      .innerJoin(usuarios, eq(usuarios.id, comentariosPublicacion.autorId))
+      .innerJoin(personas, eq(personas.id, usuarios.personaId))
+      .where(eq(comentariosPublicacion.id, id))
+      .limit(1);
+
+    return fila ?? null;
+  }
+
+  async crearComentario(datos: {
+    publicacionId: string;
+    autorId: string;
+    contenido: string;
+  }): Promise<ComentarioMuroFila> {
+    const [insertado] = await this.db
+      .insert(comentariosPublicacion)
+      .values({
+        publicacionId: datos.publicacionId,
+        autorId: datos.autorId,
+        contenido: datos.contenido,
+        vigente: true,
+      })
+      .returning({ id: comentariosPublicacion.id });
+
+    const com = await this.obtenerComentario(insertado.id);
+    if (!com) throw new Error("Error al recuperar comentario creado.");
+    return com;
+  }
+
+  async actualizarComentario(
+    id: string,
+    datos: { contenido: string },
+  ): Promise<ComentarioMuroFila> {
+    await this.db
+      .update(comentariosPublicacion)
+      .set({
+        contenido: datos.contenido,
+        actualizadoEn: sql`CURRENT_TIMESTAMP`,
+      })
+      .where(eq(comentariosPublicacion.id, id));
+
+    const com = await this.obtenerComentario(id);
+    if (!com) throw new Error("Comentario no encontrado tras actualización.");
+    return com;
+  }
+
+  async listarMensajesChat(
+    cursoSeccionId: string,
+    verOcultos: boolean,
+    limite: number = 100,
+  ): Promise<MensajeChatFila[]> {
+    const condiciones = [
+      eq(mensajesChat.cursoSeccionId, cursoSeccionId),
+      isNull(mensajesChat.eliminadoEn),
+    ];
+    if (!verOcultos) {
+      condiciones.push(eq(mensajesChat.vigente, true));
+    }
+
+    const filas = await this.db
+      .select({
+        id: mensajesChat.id,
+        cursoSeccionId: mensajesChat.cursoSeccionId,
+        emisorId: mensajesChat.emisorId,
+        emisorNombre: nombreSql(personas),
+        contenido: mensajesChat.contenido,
+        adjuntoUrl: mensajesChat.adjuntoUrl,
+        vigente: mensajesChat.vigente,
+        enviadoEn: sql<string>`${mensajesChat.enviadoEn}::text`,
+        actualizadoEn: sql<string>`${mensajesChat.actualizadoEn}::text`,
+        ocultadoPorId: mensajesChat.ocultadoPorId,
+        ocultadoEn: sql<string>`${mensajesChat.ocultadoEn}::text`,
+        motivoOcultamiento: mensajesChat.motivoOcultamiento,
+      })
+      .from(mensajesChat)
+      .innerJoin(usuarios, eq(usuarios.id, mensajesChat.emisorId))
+      .innerJoin(personas, eq(personas.id, usuarios.personaId))
+      .where(and(...condiciones))
+      .orderBy(asc(mensajesChat.enviadoEn))
+      .limit(limite);
+
+    return filas;
+  }
+
+  async obtenerMensajeChat(id: string): Promise<MensajeChatFila | null> {
+    const [fila] = await this.db
+      .select({
+        id: mensajesChat.id,
+        cursoSeccionId: mensajesChat.cursoSeccionId,
+        emisorId: mensajesChat.emisorId,
+        emisorNombre: nombreSql(personas),
+        contenido: mensajesChat.contenido,
+        adjuntoUrl: mensajesChat.adjuntoUrl,
+        vigente: mensajesChat.vigente,
+        enviadoEn: sql<string>`${mensajesChat.enviadoEn}::text`,
+        actualizadoEn: sql<string>`${mensajesChat.actualizadoEn}::text`,
+        ocultadoPorId: mensajesChat.ocultadoPorId,
+        ocultadoEn: sql<string>`${mensajesChat.ocultadoEn}::text`,
+        motivoOcultamiento: mensajesChat.motivoOcultamiento,
+      })
+      .from(mensajesChat)
+      .innerJoin(usuarios, eq(usuarios.id, mensajesChat.emisorId))
+      .innerJoin(personas, eq(personas.id, usuarios.personaId))
+      .where(eq(mensajesChat.id, id))
+      .limit(1);
+
+    return fila ?? null;
+  }
+
+  async enviarMensajeChat(datos: {
+    cursoSeccionId: string;
+    emisorId: string;
+    contenido: string;
+    adjuntoUrl?: string | null;
+  }): Promise<MensajeChatFila> {
+    const [insertado] = await this.db
+      .insert(mensajesChat)
+      .values({
+        cursoSeccionId: datos.cursoSeccionId,
+        emisorId: datos.emisorId,
+        receptorId: null, // Sin mensajes privados (CP-RF017-10)
+        contenido: datos.contenido,
+        adjuntoUrl: datos.adjuntoUrl ?? null,
+        vigente: true,
+      })
+      .returning({ id: mensajesChat.id });
+
+    const msg = await this.obtenerMensajeChat(insertado.id);
+    if (!msg) throw new Error("Error al recuperar el mensaje de chat creado.");
+    return msg;
+  }
+
+  async actualizarUltimaLecturaChat(
+    cursoSeccionId: string,
+    usuarioId: string,
+    fecha: Date = new Date(),
+  ): Promise<void> {
+    const fechaSql = fecha.toISOString();
+    await this.db
+      .insert(chatLecturas)
+      .values({
+        cursoSeccionId,
+        usuarioId,
+        ultimoLeidoEn: fechaSql,
+      })
+      .onConflictDoUpdate({
+        target: [chatLecturas.cursoSeccionId, chatLecturas.usuarioId],
+        set: {
+          ultimoLeidoEn: fechaSql,
+        },
+      });
+  }
+
+  async contarMensajesNoLeidosChat(cursoSeccionId: string, usuarioId: string): Promise<number> {
+    const [lectura] = await this.db
+      .select({ ultimoLeidoEn: chatLecturas.ultimoLeidoEn })
+      .from(chatLecturas)
+      .where(
+        and(eq(chatLecturas.cursoSeccionId, cursoSeccionId), eq(chatLecturas.usuarioId, usuarioId)),
+      )
+      .limit(1);
+
+    const condiciones = [
+      eq(mensajesChat.cursoSeccionId, cursoSeccionId),
+      eq(mensajesChat.vigente, true),
+      isNull(mensajesChat.eliminadoEn),
+      sql`${mensajesChat.emisorId} <> ${usuarioId}`,
+    ];
+
+    if (lectura?.ultimoLeidoEn) {
+      condiciones.push(sql`${mensajesChat.enviadoEn} > ${lectura.ultimoLeidoEn}`);
+    }
+
+    const [resultado] = await this.db
+      .select({ total: sql<number>`COUNT(*)::int` })
+      .from(mensajesChat)
+      .where(and(...condiciones));
+
+    return resultado?.total ?? 0;
+  }
+
+  async ocultarContenido(
+    tipo: TipoModeracion,
+    id: string,
+    ocultadoPorId: string,
+    motivo: string,
+  ): Promise<void> {
+    const ahora = sql`CURRENT_TIMESTAMP`;
+    if (tipo === "publicacion") {
+      await this.db
+        .update(publicacionesAula)
+        .set({
+          vigente: false,
+          ocultadoPorId,
+          ocultadoEn: ahora,
+          motivoOcultamiento: motivo,
+        })
+        .where(eq(publicacionesAula.id, id));
+    } else if (tipo === "comentario") {
+      await this.db
+        .update(comentariosPublicacion)
+        .set({
+          vigente: false,
+          ocultadoPorId,
+          ocultadoEn: ahora,
+          motivoOcultamiento: motivo,
+        })
+        .where(eq(comentariosPublicacion.id, id));
+    } else {
+      await this.db
+        .update(mensajesChat)
+        .set({
+          vigente: false,
+          ocultadoPorId,
+          ocultadoEn: ahora,
+          motivoOcultamiento: motivo,
+        })
+        .where(eq(mensajesChat.id, id));
+    }
+  }
+
+  async restaurarContenido(tipo: TipoModeracion, id: string): Promise<void> {
+    if (tipo === "publicacion") {
+      await this.db
+        .update(publicacionesAula)
+        .set({
+          vigente: true,
+          ocultadoPorId: null,
+          ocultadoEn: null,
+          motivoOcultamiento: null,
+        })
+        .where(eq(publicacionesAula.id, id));
+    } else if (tipo === "comentario") {
+      await this.db
+        .update(comentariosPublicacion)
+        .set({
+          vigente: true,
+          ocultadoPorId: null,
+          ocultadoEn: null,
+          motivoOcultamiento: null,
+        })
+        .where(eq(comentariosPublicacion.id, id));
+    } else {
+      await this.db
+        .update(mensajesChat)
+        .set({
+          vigente: true,
+          ocultadoPorId: null,
+          ocultadoEn: null,
+          motivoOcultamiento: null,
+        })
+        .where(eq(mensajesChat.id, id));
+    }
+  }
+
+  async listarHistorialModeracion(cursoSeccionId: string): Promise<HistorialModeracionFila[]> {
+    // 1. Publicaciones ocultadas
+    const pubs = await this.db
+      .select({
+        id: publicacionesAula.id,
+        tipo: sql<TipoModeracion>`'publicacion'`,
+        cursoSeccionId: publicacionesAula.cursoSeccionId,
+        contenido: publicacionesAula.contenido,
+        adjuntoUrl: publicacionesAula.adjuntoUrl,
+        autorNombre: nombreSql(personas),
+        ocultadoPorNombre: sql<string>`TRIM(p_oc.apellido_paterno || ' ' || COALESCE(p_oc.apellido_materno, '') || ', ' || p_oc.nombres)`,
+        ocultadoEn: sql<string>`${publicacionesAula.ocultadoEn}::text`,
+        motivoOcultamiento: sql<string>`COALESCE(${publicacionesAula.motivoOcultamiento}, '')`,
+      })
+      .from(publicacionesAula)
+      .innerJoin(usuarios, eq(usuarios.id, publicacionesAula.autorId))
+      .innerJoin(personas, eq(personas.id, usuarios.personaId))
+      .innerJoin(sql`usuarios u_oc`, sql`u_oc.id = ${publicacionesAula.ocultadoPorId}`)
+      .innerJoin(sql`personas p_oc`, sql`p_oc.id = u_oc.persona_id`)
+      .where(
+        and(
+          eq(publicacionesAula.cursoSeccionId, cursoSeccionId),
+          eq(publicacionesAula.vigente, false),
+        ),
+      );
+
+    // 2. Comentarios ocultados
+    const coms = await this.db
+      .select({
+        id: comentariosPublicacion.id,
+        tipo: sql<TipoModeracion>`'comentario'`,
+        cursoSeccionId: publicacionesAula.cursoSeccionId,
+        contenido: comentariosPublicacion.contenido,
+        adjuntoUrl: sql<string | null>`NULL`,
+        autorNombre: nombreSql(personas),
+        ocultadoPorNombre: sql<string>`TRIM(p_oc.apellido_paterno || ' ' || COALESCE(p_oc.apellido_materno, '') || ', ' || p_oc.nombres)`,
+        ocultadoEn: sql<string>`${comentariosPublicacion.ocultadoEn}::text`,
+        motivoOcultamiento: sql<string>`COALESCE(${comentariosPublicacion.motivoOcultamiento}, '')`,
+      })
+      .from(comentariosPublicacion)
+      .innerJoin(publicacionesAula, eq(publicacionesAula.id, comentariosPublicacion.publicacionId))
+      .innerJoin(usuarios, eq(usuarios.id, comentariosPublicacion.autorId))
+      .innerJoin(personas, eq(personas.id, usuarios.personaId))
+      .innerJoin(sql`usuarios u_oc`, sql`u_oc.id = ${comentariosPublicacion.ocultadoPorId}`)
+      .innerJoin(sql`personas p_oc`, sql`p_oc.id = u_oc.persona_id`)
+      .where(
+        and(
+          eq(publicacionesAula.cursoSeccionId, cursoSeccionId),
+          eq(comentariosPublicacion.vigente, false),
+        ),
+      );
+
+    // 3. Mensajes de chat ocultados
+    const chats = await this.db
+      .select({
+        id: mensajesChat.id,
+        tipo: sql<TipoModeracion>`'chat'`,
+        cursoSeccionId: mensajesChat.cursoSeccionId,
+        contenido: mensajesChat.contenido,
+        adjuntoUrl: mensajesChat.adjuntoUrl,
+        autorNombre: nombreSql(personas),
+        ocultadoPorNombre: sql<string>`TRIM(p_oc.apellido_paterno || ' ' || COALESCE(p_oc.apellido_materno, '') || ', ' || p_oc.nombres)`,
+        ocultadoEn: sql<string>`${mensajesChat.ocultadoEn}::text`,
+        motivoOcultamiento: sql<string>`COALESCE(${mensajesChat.motivoOcultamiento}, '')`,
+      })
+      .from(mensajesChat)
+      .innerJoin(usuarios, eq(usuarios.id, mensajesChat.emisorId))
+      .innerJoin(personas, eq(personas.id, usuarios.personaId))
+      .innerJoin(sql`usuarios u_oc`, sql`u_oc.id = ${mensajesChat.ocultadoPorId}`)
+      .innerJoin(sql`personas p_oc`, sql`p_oc.id = u_oc.persona_id`)
+      .where(and(eq(mensajesChat.cursoSeccionId, cursoSeccionId), eq(mensajesChat.vigente, false)));
+
+    const combinado: HistorialModeracionFila[] = [...pubs, ...coms, ...chats];
+    combinado.sort((a, b) => (b.ocultadoEn > a.ocultadoEn ? 1 : -1));
+    return combinado;
+  }
+
+  async registrarActividad(datos: {
+    matriculaId: string;
+    materialId?: string | null;
+    tareaId?: string | null;
+    accion: AccionActividadAula;
+  }): Promise<void> {
+    await this.db.insert(actividadAula).values({
+      matriculaId: datos.matriculaId,
+      materialId: datos.materialId ?? null,
+      tareaId: datos.tareaId ?? null,
+      accion: datos.accion,
+    });
+  }
+
+  async obtenerActividadMaterial(
+    materialId: string,
+    cursoSeccionId: string,
+  ): Promise<ActividadEstudianteMaterial[]> {
+    const curso = await this.findCurso(cursoSeccionId);
+    if (!curso) return [];
+
+    const estudiantesSeccion = await this.listarEstudiantesDeSeccion(curso.seccionId);
+
+    const registros = await this.db
+      .select({
+        matriculaId: actividadAula.matriculaId,
+        accion: actividadAula.accion,
+        registradoEn: sql<string>`${actividadAula.registradoEn}::text`,
+      })
+      .from(actividadAula)
+      .where(eq(actividadAula.materialId, materialId));
+
+    const mapaPorMatricula = new Map<
+      string,
+      {
+        visualizo: boolean;
+        visualizoEn: string | null;
+        descargo: boolean;
+        descargoEn: string | null;
+      }
+    >();
+
+    for (const r of registros) {
+      const item = mapaPorMatricula.get(r.matriculaId) ?? {
+        visualizo: false,
+        visualizoEn: null,
+        descargo: false,
+        descargoEn: null,
+      };
+      if (r.accion === "visualizo") {
+        item.visualizo = true;
+        if (!item.visualizoEn || r.registradoEn < item.visualizoEn) {
+          item.visualizoEn = r.registradoEn;
+        }
+      } else if (r.accion === "descargo") {
+        item.descargo = true;
+        if (!item.descargoEn || r.registradoEn < item.descargoEn) {
+          item.descargoEn = r.registradoEn;
+        }
+      }
+      mapaPorMatricula.set(r.matriculaId, item);
+    }
+
+    return estudiantesSeccion.map((e) => {
+      const act = mapaPorMatricula.get(e.matriculaId) ?? {
+        visualizo: false,
+        visualizoEn: null,
+        descargo: false,
+        descargoEn: null,
+      };
+      return {
+        matriculaId: e.matriculaId,
+        estudianteId: e.estudianteId,
+        codigo: e.codigo,
+        nombreCompleto: e.nombreCompleto,
+        visualizo: act.visualizo,
+        visualizoEn: act.visualizoEn,
+        descargo: act.descargo,
+        descargoEn: act.descargoEn,
+      };
+    });
+  }
+
+  async obtenerActividadTarea(
+    tareaId: string,
+    cursoSeccionId: string,
+  ): Promise<ActividadEstudianteTarea[]> {
+    const curso = await this.findCurso(cursoSeccionId);
+    if (!curso) return [];
+
+    const estudiantesSeccion = await this.listarEstudiantesDeSeccion(curso.seccionId);
+
+    const registros = await this.db
+      .select({
+        matriculaId: actividadAula.matriculaId,
+        accion: actividadAula.accion,
+        registradoEn: sql<string>`${actividadAula.registradoEn}::text`,
+      })
+      .from(actividadAula)
+      .where(eq(actividadAula.tareaId, tareaId));
+
+    const mapaPorMatricula = new Map<
+      string,
+      { abrio: boolean; abrioEn: string | null; completo: boolean; completoEn: string | null }
+    >();
+
+    for (const r of registros) {
+      const item = mapaPorMatricula.get(r.matriculaId) ?? {
+        abrio: false,
+        abrioEn: null,
+        completo: false,
+        completoEn: null,
+      };
+      if (r.accion === "abrio") {
+        item.abrio = true;
+        if (!item.abrioEn || r.registradoEn < item.abrioEn) {
+          item.abrioEn = r.registradoEn;
+        }
+      } else if (r.accion === "completo") {
+        item.completo = true;
+        if (!item.completoEn || r.registradoEn < item.completoEn) {
+          item.completoEn = r.registradoEn;
+        }
+      }
+      mapaPorMatricula.set(r.matriculaId, item);
+    }
+
+    return estudiantesSeccion.map((e) => {
+      const act = mapaPorMatricula.get(e.matriculaId) ?? {
+        abrio: false,
+        abrioEn: null,
+        completo: false,
+        completoEn: null,
+      };
+      return {
+        matriculaId: e.matriculaId,
+        estudianteId: e.estudianteId,
+        codigo: e.codigo,
+        nombreCompleto: e.nombreCompleto,
+        abrio: act.abrio,
+        abrioEn: act.abrioEn,
+        completo: act.completo,
+        completoEn: act.completoEn,
+      };
+    });
   }
 
   private async requerirMaterial(materialId: string): Promise<MaterialFila> {

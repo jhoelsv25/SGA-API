@@ -43,6 +43,7 @@ import {
   publicacionesAula,
   comentariosPublicacion,
   mensajesChat,
+  chatLecturas,
   actividadAula,
   estudianteApoderados,
   equiposAutorizados,
@@ -91,14 +92,28 @@ export const usuariosRelations = relations(usuarios, ({ one, many }) => ({
   comunicados: many(comunicados),
   notificaciones: many(notificaciones),
   entregasTareas: many(entregasTarea),
-  publicacionesAulas: many(publicacionesAula),
-  comentariosPublicacions: many(comentariosPublicacion),
+  publicacionesAulas: many(publicacionesAula, {
+    relationName: "publicacionesAula_autorId_usuarios_id",
+  }),
+  publicacionesAulas_ocultadoPor: many(publicacionesAula, {
+    relationName: "publicacionesAula_ocultadoPorId_usuarios_id",
+  }),
+  comentariosPublicacions: many(comentariosPublicacion, {
+    relationName: "comentariosPublicacion_autorId_usuarios_id",
+  }),
+  comentariosPublicacions_ocultadoPor: many(comentariosPublicacion, {
+    relationName: "comentariosPublicacion_ocultadoPorId_usuarios_id",
+  }),
   mensajesChats_emisorId: many(mensajesChat, {
     relationName: "mensajesChat_emisorId_usuarios_id",
   }),
   mensajesChats_receptorId: many(mensajesChat, {
     relationName: "mensajesChat_receptorId_usuarios_id",
   }),
+  mensajesChats_ocultadoPorId: many(mensajesChat, {
+    relationName: "mensajesChat_ocultadoPorId_usuarios_id",
+  }),
+  chatLecturas: many(chatLecturas),
   equiposAutorizados: many(equiposAutorizados),
 }));
 
@@ -267,6 +282,7 @@ export const cursosSeccionRelations = relations(cursosSeccion, ({ one, many }) =
   tareas: many(tareas),
   publicacionesAulas: many(publicacionesAula),
   mensajesChats: many(mensajesChat),
+  chatLecturas: many(chatLecturas),
 }));
 
 export const horariosRelations = relations(horarios, ({ one, many }) => ({
@@ -542,6 +558,12 @@ export const publicacionesAulaRelations = relations(publicacionesAula, ({ one, m
   usuario: one(usuarios, {
     fields: [publicacionesAula.autorId],
     references: [usuarios.id],
+    relationName: "publicacionesAula_autorId_usuarios_id",
+  }),
+  ocultadoPor: one(usuarios, {
+    fields: [publicacionesAula.ocultadoPorId],
+    references: [usuarios.id],
+    relationName: "publicacionesAula_ocultadoPorId_usuarios_id",
   }),
   cursosSeccion: one(cursosSeccion, {
     fields: [publicacionesAula.cursoSeccionId],
@@ -554,6 +576,12 @@ export const comentariosPublicacionRelations = relations(comentariosPublicacion,
   usuario: one(usuarios, {
     fields: [comentariosPublicacion.autorId],
     references: [usuarios.id],
+    relationName: "comentariosPublicacion_autorId_usuarios_id",
+  }),
+  ocultadoPor: one(usuarios, {
+    fields: [comentariosPublicacion.ocultadoPorId],
+    references: [usuarios.id],
+    relationName: "comentariosPublicacion_ocultadoPorId_usuarios_id",
   }),
   publicacionesAula: one(publicacionesAula, {
     fields: [comentariosPublicacion.publicacionId],
@@ -575,6 +603,22 @@ export const mensajesChatRelations = relations(mensajesChat, ({ one }) => ({
     fields: [mensajesChat.receptorId],
     references: [usuarios.id],
     relationName: "mensajesChat_receptorId_usuarios_id",
+  }),
+  usuario_ocultadoPorId: one(usuarios, {
+    fields: [mensajesChat.ocultadoPorId],
+    references: [usuarios.id],
+    relationName: "mensajesChat_ocultadoPorId_usuarios_id",
+  }),
+}));
+
+export const chatLecturasRelations = relations(chatLecturas, ({ one }) => ({
+  cursosSeccion: one(cursosSeccion, {
+    fields: [chatLecturas.cursoSeccionId],
+    references: [cursosSeccion.id],
+  }),
+  usuario: one(usuarios, {
+    fields: [chatLecturas.usuarioId],
+    references: [usuarios.id],
   }),
 }));
 

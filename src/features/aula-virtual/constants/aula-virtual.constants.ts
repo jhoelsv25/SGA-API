@@ -149,3 +149,34 @@ export const MENSAJES_TAREA = {
   TRABAJO_SIN_INTENTOS:
     "El sistema no ofrece varios intentos para trabajos o proyectos porque tienen una sola entrega editable.",
 } as const;
+
+/**
+ * Constantes y mensajes de interacción y actividad del curso (RF-017).
+ */
+export const TAMANO_MAXIMO_ADJUNTO_INTERACCION_BYTES = 10 * 1024 * 1024; // 10 MB
+export const MINUTOS_MAXIMO_EDICION_INTERACCION = 15;
+
+export const CARPETA_INTERACCION = "interaccion";
+
+export const TIPOS_MODERACION = ["publicacion", "comentario", "chat"] as const;
+export type TipoModeracion = (typeof TIPOS_MODERACION)[number];
+
+export const ACCIONES_ACTIVIDAD_AULA = ["visualizo", "descargo", "abrio", "completo"] as const;
+export type AccionActividadAula = (typeof ACCIONES_ACTIVIDAD_AULA)[number];
+
+export const MENSAJES_INTERACCION = {
+  PUBLICACION_VACIA: "Escriba un texto o agregue un adjunto.",
+  ADJUNTO_MUY_PESADO: "El adjunto supera el máximo de 10 MB.",
+  EDICION_FUERA_DE_PLAZO: "Solo puede editar dentro de los 15 minutos de publicado.",
+  MOTIVO_REQUERIDO: "Indique el motivo para ocultar el contenido.",
+  CONTENIDO_OCULTADO: "El contenido se ocultó para los estudiantes.",
+  CONTENIDO_RESTAURADO: "El contenido volvió a estar visible.",
+  SIN_ACCESO: "No participa en esta aula virtual.",
+  ANIO_CERRADO: "El año escolar está cerrado. El muro y el chat son de solo lectura.",
+  PUBLICACION_NO_ENCONTRADA: "La publicación no existe.",
+  COMENTARIO_NO_ENCONTRADO: "El comentario no existe.",
+  MENSAJE_NO_ENCONTRADO: "El mensaje no existe.",
+  SOLO_DOCENTE_FIJA: "Solo el docente asignado puede fijar publicaciones.",
+  SOLO_DOCENTE_MODERA: "Solo el docente puede moderar el contenido del curso.",
+  SOLO_AUTOR_EDITA: "Solo el autor puede editar su contenido dentro del plazo permitido.",
+} as const;

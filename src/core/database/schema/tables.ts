@@ -2091,6 +2091,10 @@ export const publicacionesAula = pgTable(
     contenido: text().notNull(),
     adjuntoUrl: varchar("adjunto_url", { length: 500 }),
     fijada: boolean().default(false).notNull(),
+    vigente: boolean().default(true).notNull(),
+    ocultadoPorId: uuid("ocultado_por_id"),
+    ocultadoEn: timestamp("ocultado_en", { precision: 0, mode: "string" }),
+    motivoOcultamiento: varchar("motivo_ocultamiento", { length: 255 }),
     creadoEn: timestamp("creado_en", { precision: 0, mode: "string" })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
@@ -2115,6 +2119,11 @@ export const publicacionesAula = pgTable(
       foreignColumns: [cursosSeccion.id],
       name: "fk_publicaciones_aula_curso_seccion",
     }),
+    foreignKey({
+      columns: [table.ocultadoPorId],
+      foreignColumns: [usuarios.id],
+      name: "fk_publicaciones_aula_ocultado_por",
+    }),
   ],
 );
 
@@ -2125,7 +2134,14 @@ export const comentariosPublicacion = pgTable(
     publicacionId: uuid("publicacion_id").notNull(),
     autorId: uuid("autor_id").notNull(),
     contenido: varchar({ length: 1000 }).notNull(),
+    vigente: boolean().default(true).notNull(),
+    ocultadoPorId: uuid("ocultado_por_id"),
+    ocultadoEn: timestamp("ocultado_en", { precision: 0, mode: "string" }),
+    motivoOcultamiento: varchar("motivo_ocultamiento", { length: 255 }),
     creadoEn: timestamp("creado_en", { precision: 0, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    actualizadoEn: timestamp("actualizado_en", { precision: 0, mode: "string" })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
     eliminadoEn: timestamp("eliminado_en", { precision: 0, mode: "string" }),
@@ -2146,6 +2162,11 @@ export const comentariosPublicacion = pgTable(
       foreignColumns: [publicacionesAula.id],
       name: "fk_comentarios_publicacion_publicacion",
     }).onDelete("cascade"),
+    foreignKey({
+      columns: [table.ocultadoPorId],
+      foreignColumns: [usuarios.id],
+      name: "fk_comentarios_publicacion_ocultado_por",
+    }),
   ],
 );
 
@@ -2158,7 +2179,14 @@ export const mensajesChat = pgTable(
     receptorId: uuid("receptor_id"),
     contenido: varchar({ length: 2000 }).notNull(),
     adjuntoUrl: varchar("adjunto_url", { length: 500 }),
+    vigente: boolean().default(true).notNull(),
+    ocultadoPorId: uuid("ocultado_por_id"),
+    ocultadoEn: timestamp("ocultado_en", { precision: 0, mode: "string" }),
+    motivoOcultamiento: varchar("motivo_ocultamiento", { length: 255 }),
     enviadoEn: timestamp("enviado_en", { precision: 0, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    actualizadoEn: timestamp("actualizado_en", { precision: 0, mode: "string" })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
     leidoEn: timestamp("leido_en", { precision: 0, mode: "string" }),
@@ -2185,7 +2213,42 @@ export const mensajesChat = pgTable(
       foreignColumns: [usuarios.id],
       name: "fk_mensajes_chat_receptor",
     }),
+    foreignKey({
+      columns: [table.ocultadoPorId],
+      foreignColumns: [usuarios.id],
+      name: "fk_mensajes_chat_ocultado_por",
+    }),
     check("ck_mensajes_chat_receptor", sql`(receptor_id IS NULL) OR (receptor_id <> emisor_id)`),
+  ],
+);
+
+export const chatLecturas = pgTable(
+  "chat_lecturas",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    cursoSeccionId: uuid("curso_seccion_id").notNull(),
+    usuarioId: uuid("usuario_id").notNull(),
+    ultimoLeidoEn: timestamp("ultimo_leido_en", { precision: 0, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    unique("uq_chat_lecturas_curso_usuario").on(table.cursoSeccionId, table.usuarioId),
+    index("ix_chat_lecturas_curso_usuario").using(
+      "btree",
+      table.cursoSeccionId.asc().nullsLast().op("timestamp_ops"),
+      table.usuarioId.asc().nullsLast().op("timestamp_ops"),
+    ),
+    foreignKey({
+      columns: [table.cursoSeccionId],
+      foreignColumns: [cursosSeccion.id],
+      name: "fk_chat_lecturas_curso_seccion",
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [table.usuarioId],
+      foreignColumns: [usuarios.id],
+      name: "fk_chat_lecturas_usuario",
+    }).onDelete("cascade"),
   ],
 );
 
@@ -2232,7 +2295,7 @@ export const actividadAula = pgTable(
     }),
     check(
       "ck_actividad_aula_accion",
-      sql`(accion)::text = ANY ((ARRAY['visualizo'::character varying, 'descargo'::character varying, 'completo'::character varying])::text[])`,
+      sql`(accion)::text = ANY ((ARRAY['visualizo'::character varying, 'descargo'::character varying, 'abrio'::character varying, 'completo'::character varying])::text[])`,
     ),
     check("ck_actividad_aula_recurso", sql`num_nonnulls(material_id, tarea_id) = 1`),
   ],

@@ -1,10 +1,12 @@
 import type {
+  AccionActividadAula,
   CalculoNotaIntentos,
   EstadoEntrega,
   EstadoSolicitudFecha,
   EstadoTarea,
   RevelarRespuestas,
   TipoMaterial,
+  TipoModeracion,
   TipoPregunta,
   TipoTarea,
 } from "../constants";
@@ -304,6 +306,84 @@ export interface IAulaVirtualRepository {
     Array<{ matriculaId: string; estudianteId: string; codigo: string; nombreCompleto: string }>
   >;
   obtenerPesosVariables(): Promise<Record<TipoTarea, number>>;
+
+  // RF-017: Interacción y Actividad del Curso
+  obtenerAnioPorCursoSeccion(
+    cursoSeccionId: string,
+  ): Promise<{ id: string; anio: number; estado: string } | null>;
+  obtenerDocenteUsuarioId(cursoSeccionId: string): Promise<string | null>;
+  obtenerMatriculaActivaEstudiante(
+    personaId: string,
+    seccionId: string,
+  ): Promise<{ id: string; estudianteId: string } | null>;
+  listarPublicacionesMuro(
+    cursoSeccionId: string,
+    verOcultos: boolean,
+  ): Promise<PublicacionMuroFila[]>;
+  obtenerPublicacion(id: string): Promise<PublicacionMuroFila | null>;
+  crearPublicacion(datos: {
+    cursoSeccionId: string;
+    autorId: string;
+    contenido?: string | null;
+    adjuntoUrl?: string | null;
+    fijada?: boolean;
+  }): Promise<PublicacionMuroFila>;
+  actualizarPublicacion(
+    id: string,
+    datos: {
+      contenido?: string | null;
+      adjuntoUrl?: string | null;
+    },
+  ): Promise<PublicacionMuroFila>;
+  fijarPublicacion(id: string, fijada: boolean): Promise<PublicacionMuroFila>;
+  listarComentarios(publicacionId: string, verOcultos: boolean): Promise<ComentarioMuroFila[]>;
+  obtenerComentario(id: string): Promise<ComentarioMuroFila | null>;
+  crearComentario(datos: {
+    publicacionId: string;
+    autorId: string;
+    contenido: string;
+  }): Promise<ComentarioMuroFila>;
+  actualizarComentario(id: string, datos: { contenido: string }): Promise<ComentarioMuroFila>;
+  listarMensajesChat(
+    cursoSeccionId: string,
+    verOcultos: boolean,
+    limite?: number,
+  ): Promise<MensajeChatFila[]>;
+  obtenerMensajeChat(id: string): Promise<MensajeChatFila | null>;
+  enviarMensajeChat(datos: {
+    cursoSeccionId: string;
+    emisorId: string;
+    contenido: string;
+    adjuntoUrl?: string | null;
+  }): Promise<MensajeChatFila>;
+  actualizarUltimaLecturaChat(
+    cursoSeccionId: string,
+    usuarioId: string,
+    fecha?: Date,
+  ): Promise<void>;
+  contarMensajesNoLeidosChat(cursoSeccionId: string, usuarioId: string): Promise<number>;
+  ocultarContenido(
+    tipo: TipoModeracion,
+    id: string,
+    ocultadoPorId: string,
+    motivo: string,
+  ): Promise<void>;
+  restaurarContenido(tipo: TipoModeracion, id: string): Promise<void>;
+  listarHistorialModeracion(cursoSeccionId: string): Promise<HistorialModeracionFila[]>;
+  registrarActividad(datos: {
+    matriculaId: string;
+    materialId?: string | null;
+    tareaId?: string | null;
+    accion: AccionActividadAula;
+  }): Promise<void>;
+  obtenerActividadMaterial(
+    materialId: string,
+    cursoSeccionId: string,
+  ): Promise<ActividadEstudianteMaterial[]>;
+  obtenerActividadTarea(
+    tareaId: string,
+    cursoSeccionId: string,
+  ): Promise<ActividadEstudianteTarea[]>;
 }
 
 export interface TareaFila {
@@ -382,4 +462,87 @@ export interface NuevaTarea {
   revelarRespuestas?: RevelarRespuestas;
   tiposArchivo?: string | null;
   estado?: EstadoTarea;
+}
+
+export interface PublicacionMuroFila {
+  id: string;
+  cursoSeccionId: string;
+  autorId: string;
+  autorNombre: string;
+  autorRol?: string;
+  contenido: string;
+  adjuntoUrl: string | null;
+  fijada: boolean;
+  vigente: boolean;
+  creadoEn: string;
+  actualizadoEn: string;
+  ocultadoPorId: string | null;
+  ocultadoEn: string | null;
+  motivoOcultamiento: string | null;
+  comentariosCount?: number;
+}
+
+export interface ComentarioMuroFila {
+  id: string;
+  publicacionId: string;
+  autorId: string;
+  autorNombre: string;
+  autorRol?: string;
+  contenido: string;
+  vigente: boolean;
+  creadoEn: string;
+  actualizadoEn: string;
+  ocultadoPorId: string | null;
+  ocultadoEn: string | null;
+  motivoOcultamiento: string | null;
+}
+
+export interface MensajeChatFila {
+  id: string;
+  cursoSeccionId: string;
+  emisorId: string;
+  emisorNombre: string;
+  emisorRol?: string;
+  contenido: string;
+  adjuntoUrl: string | null;
+  vigente: boolean;
+  enviadoEn: string;
+  actualizadoEn?: string | null;
+  ocultadoPorId: string | null;
+  ocultadoEn: string | null;
+  motivoOcultamiento: string | null;
+}
+
+export interface HistorialModeracionFila {
+  id: string;
+  tipo: TipoModeracion;
+  cursoSeccionId: string;
+  contenido: string | null;
+  adjuntoUrl: string | null;
+  autorNombre: string;
+  ocultadoPorNombre: string;
+  ocultadoEn: string;
+  motivoOcultamiento: string;
+}
+
+export interface ActividadEstudianteMaterial {
+  matriculaId: string;
+  estudianteId: string;
+  codigo: string;
+  nombreCompleto: string;
+  visualizo: boolean;
+  visualizoEn: string | null;
+  descargo: boolean;
+  descargoEn: string | null;
+}
+
+export interface ActividadEstudianteTarea {
+  matriculaId: string;
+  estudianteId: string;
+  codigo: string;
+  nombreCompleto: string;
+  abrio: boolean;
+  abrioEn: string | null;
+  completo: boolean;
+  completoEn: string | null;
 }
