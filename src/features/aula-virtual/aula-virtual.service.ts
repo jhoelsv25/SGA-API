@@ -14,9 +14,12 @@ import { AniosAcademicosService } from "../anio-escolar/anios.service";
 import { ahoraEnColegio } from "../marcaciones/utils";
 import { NotificacionesService } from "../notificaciones/notificaciones.service";
 import {
+  CARPETA_INTERACCION,
   CARPETA_MATERIALES,
   DIAS_PLANIFICACION_POR_DEFECTO,
   MENSAJES_AULA_VIRTUAL,
+  MENSAJES_INTERACCION,
+  MENSAJES_TAREA,
   ROLES_NOTIFICADOS_SOLICITUD,
   ROLES_SEGUIMIENTO_MATERIALES,
   TAMANO_MAXIMO_MB_POR_DEFECTO,
@@ -25,43 +28,82 @@ import {
   mensajePlanificado,
   type EstadoSolicitudFecha,
   type TipoMaterial,
+  type TipoModeracion,
+  type TipoTarea,
 } from "./constants";
 import type {
   ActualizarMaterialDto,
+  ActualizarTareaDto,
   ActualizarUnidadDto,
   AulaVirtualResponse,
+  CalificarEntregaDto,
   ContenidoMaterialDto,
+  CrearComentarioDto,
+  CrearEntregaDto,
+  CrearPublicacionDto,
+  CrearTareaDto,
   CrearUnidadDto,
   CursoAulaResponse,
+  EditarComentarioDto,
+  EditarPublicacionDto,
+  EntregaResponse,
+  EnviarMensajeChatDto,
+  FijarPublicacionDto,
+  FilaEstudianteLibroNotas,
+  LibroNotasResponse,
   MaterialResponse,
   MutacionMaterialResponse,
+  OcultarContenidoDto,
   PlanificarMaterialDto,
   PublicarMaterialExtraDto,
+  RegistrarActividadDto,
   ResolverSolicitudDto,
   SeguimientoFilaResponse,
   SeguimientoResponse,
   SolicitarCambioFechaDto,
   SolicitudCambioResponse,
+  TareaResponse,
   UnidadResponse,
 } from "./dto";
 import type {
-  CursoAula,
+  ActividadEstudianteMaterial,
+  ActividadEstudianteTarea,
+  ComentarioMuroFila,
   ContenidoMaterial,
+  CursoAula,
+  HistorialModeracionFila,
   MaterialFila,
+  MensajeChatFila,
   PeriodoAula,
+  PreguntaConOpciones,
+  PublicacionMuroFila,
   SolicitudFila,
+  TareaFila,
   UnidadFila,
 } from "./interfaces";
 import { AulaVirtualRepository } from "./repositories";
 import {
+  calcularNotaDeIntentos,
+  calcularNotaFinalPonderada,
+  convertirNotaALiteral,
   diaIsoDe,
   esEnlaceValido,
+  estaDentroDePlazoEdicion,
   estaEnVentana,
   estadoPlazo,
+  evaluarIntentoPreguntas,
   fechaMinimaFueraDeVentana,
   formatearFecha,
   formatoPermitido,
+  generarExcelLibroNotas,
   porcentajeATiempo,
+  puedenRevelarseRespuestas,
+  validarAnioParaInteraccion,
+  validarExtensionArchivo,
+  validarMotivoOcultamiento,
+  validarPublicacionTarea,
+  validarTamanoAdjunto,
+  validarTextoOAdjunto,
 } from "./utils";
 
 @Injectable()
@@ -913,8 +955,883 @@ export class AulaVirtualService {
     };
   }
 
+  /* =======================================================================
+   * RF-016: Tareas, Entregas y Calificación
+   * ======================================================================= */
+
+  async crearTarea(
+    usuario: AuthenticatedUser,
+    cursoSeccionId: string,
+    dto: CrearTareaDto,
+  ): Promise<{ mensaje: string; tarea: TareaResponse }> {
+    const curso = await this.requerirCurso(cursoSeccionId);
+    await this.exigirDocenteDelCurso(curso, usuario);
+
+    let intentosMaximos = dto.intentosMaximos ?? 1;
+    if (dto.tipo === "trabajo" || dto.tipo === "proyecto") {
+      intentosMaximos = 1;
+    }
+
+    if (dto.publicar) {
+      const val = validarPublicacionTarea(
+        {
+          tipo: dto.tipo,
+          fechaLimite: dto.fechaLimite,
+          preguntas: dto.preguntas?.map((p, idx) => ({
+            id: p.id ?? `temp-${idx}`,
+            tipo: p.tipo,
+            puntaje: p.puntaje,
+            enunciado: p.enunciado,
+            orden: p.orden,
+            opciones: p.opciones,
+          })),
+        },
+        new Date().toISOString(),
+      );
+      if (!val.valida) throw new BadRequestException(val.error);
+    }
+
+    let periodoId = dto.periodoId;
+    if (!periodoId && dto.unidadId) {
+      const unidad = await this.requerirUnidad(dto.unidadId);
+      periodoId = unidad.periodoId ?? undefined;
+    }
+    if (!periodoId) {
+      const per = await this.periodoEnCursoDelAnio();
+      periodoId = per.id;
+    }
+
+    const tarea = await this.repository.crearTarea({
+      cursoSeccionId,
+      periodoId,
+      unidadId: dto.unidadId,
+      sesionClaseId: dto.sesionClaseId,
+      titulo: dto.titulo.trim(),
+      instrucciones: dto.instrucciones?.trim() || null,
+      tipo: dto.tipo,
+      fechaLimite: dto.fechaLimite,
+      permiteEntregaTardia: dto.permiteEntregaTardia ?? false,
+      intentosMaximos,
+      limiteTiempoMinutos: dto.limiteTiempoMinutos ?? null,
+      calculoNotaIntentos: dto.calculoNotaIntentos ?? "mas_alta",
+      revelarRespuestas: dto.revelarRespuestas ?? "al_terminar_intentos",
+      tiposArchivo: dto.tiposArchivo ?? null,
+      estado: dto.publicar ? "publicada" : "borrador",
+    });
+
+    if (dto.preguntas && dto.preguntas.length > 0) {
+      await this.repository.guardarPreguntasTarea(
+        tarea.id,
+        dto.preguntas.map((p, idx) => ({
+          enunciado: p.enunciado.trim(),
+          tipo: p.tipo,
+          puntaje: p.puntaje,
+          orden: p.orden ?? idx + 1,
+          opciones: p.opciones?.map((o, oIdx) => ({
+            texto: o.texto.trim(),
+            esCorrecta: o.esCorrecta,
+            orden: o.orden ?? oIdx + 1,
+          })),
+        })),
+      );
+    }
+
+    if (dto.publicar) {
+      const publicada = await this.repository.publicarTarea(tarea.id, new Date().toISOString());
+      await this.avisarAEstudiantesTarea(curso, publicada);
+      await this.auditar("actualizar", "tareas", tarea.id, usuario.id, null, {
+        estado: "publicada",
+      });
+      const response = await this.armarTarea(publicada, usuario);
+      return { mensaje: MENSAJES_TAREA.PUBLICADA, tarea: response };
+    }
+
+    await this.auditar("crear", "tareas", tarea.id, usuario.id, null, { titulo: tarea.titulo });
+    const response = await this.armarTarea(tarea, usuario);
+    return { mensaje: "Tarea guardada como borrador.", tarea: response };
+  }
+
+  async publicarTarea(
+    usuario: AuthenticatedUser,
+    tareaId: string,
+  ): Promise<{ mensaje: string; tarea: TareaResponse }> {
+    const tareaConP = await this.repository.findTarea(tareaId);
+    if (!tareaConP) throw new NotFoundException(MENSAJES_TAREA.TAREA_NO_ENCONTRADA);
+
+    const curso = await this.requerirCurso(tareaConP.cursoSeccionId);
+    await this.exigirDocenteDelCurso(curso, usuario);
+
+    const val = validarPublicacionTarea(
+      {
+        tipo: tareaConP.tipo,
+        fechaLimite: tareaConP.fechaLimite,
+        preguntas: tareaConP.preguntas,
+      },
+      new Date().toISOString(),
+    );
+    if (!val.valida) throw new BadRequestException(val.error);
+
+    const publicada = await this.repository.publicarTarea(tareaId, new Date().toISOString());
+    await this.avisarAEstudiantesTarea(curso, publicada);
+    await this.auditar(
+      "actualizar",
+      "tareas",
+      tareaId,
+      usuario.id,
+      { estado: tareaConP.estado },
+      { estado: "publicada" },
+    );
+
+    const response = await this.armarTarea(publicada, usuario);
+    return { mensaje: MENSAJES_TAREA.PUBLICADA, tarea: response };
+  }
+
+  async actualizarTarea(
+    usuario: AuthenticatedUser,
+    tareaId: string,
+    dto: ActualizarTareaDto,
+  ): Promise<{ mensaje: string; tarea: TareaResponse }> {
+    const tarea = await this.repository.findTarea(tareaId);
+    if (!tarea) throw new NotFoundException(MENSAJES_TAREA.TAREA_NO_ENCONTRADA);
+
+    const curso = await this.requerirCurso(tarea.cursoSeccionId);
+    await this.exigirDocenteDelCurso(curso, usuario);
+
+    if (tarea.estado === "cerrada") {
+      throw new BadRequestException("La tarea está cerrada y no se puede modificar.");
+    }
+
+    const actualizada = await this.repository.actualizarTarea(tareaId, {
+      titulo: dto.titulo?.trim(),
+      instrucciones: dto.instrucciones?.trim(),
+      fechaLimite: dto.fechaLimite,
+      permiteEntregaTardia: dto.permiteEntregaTardia,
+      intentosMaximos: dto.intentosMaximos,
+      limiteTiempoMinutos: dto.limiteTiempoMinutos,
+      calculoNotaIntentos: dto.calculoNotaIntentos,
+      revelarRespuestas: dto.revelarRespuestas,
+      tiposArchivo: dto.tiposArchivo,
+    });
+
+    if (dto.preguntas) {
+      await this.repository.guardarPreguntasTarea(
+        tareaId,
+        dto.preguntas.map((p, idx) => ({
+          enunciado: p.enunciado.trim(),
+          tipo: p.tipo,
+          puntaje: p.puntaje,
+          orden: p.orden ?? idx + 1,
+          opciones: p.opciones?.map((o, oIdx) => ({
+            texto: o.texto.trim(),
+            esCorrecta: o.esCorrecta,
+            orden: o.orden ?? oIdx + 1,
+          })),
+        })),
+      );
+    }
+
+    await this.auditar("actualizar", "tareas", tareaId, usuario.id, null, {
+      titulo: actualizada.titulo,
+    });
+    const response = await this.armarTarea(actualizada, usuario);
+    return { mensaje: "Tarea actualizada.", tarea: response };
+  }
+
+  async cerrarTarea(
+    usuario: AuthenticatedUser,
+    tareaId: string,
+  ): Promise<{ mensaje: string; tarea: TareaResponse }> {
+    const tarea = await this.repository.findTarea(tareaId);
+    if (!tarea) throw new NotFoundException(MENSAJES_TAREA.TAREA_NO_ENCONTRADA);
+
+    const curso = await this.requerirCurso(tarea.cursoSeccionId);
+    await this.exigirDocenteDelCurso(curso, usuario);
+
+    const cerrada = await this.repository.cerrarTarea(tareaId, new Date().toISOString());
+    const response = await this.armarTarea(cerrada, usuario);
+    return { mensaje: "Tarea cerrada.", tarea: response };
+  }
+
+  async eliminarTarea(usuario: AuthenticatedUser, tareaId: string): Promise<{ mensaje: string }> {
+    const tarea = await this.repository.findTarea(tareaId);
+    if (!tarea) throw new NotFoundException(MENSAJES_TAREA.TAREA_NO_ENCONTRADA);
+
+    const curso = await this.requerirCurso(tarea.cursoSeccionId);
+    await this.exigirDocenteDelCurso(curso, usuario);
+
+    await this.repository.eliminarTarea(tareaId);
+    return { mensaje: "Tarea eliminada." };
+  }
+
+  async listarTareas(
+    usuario: AuthenticatedUser,
+    cursoSeccionId: string,
+    filtro: { unidadId?: string; periodoId?: string },
+  ): Promise<TareaResponse[]> {
+    const curso = await this.requerirCurso(cursoSeccionId);
+    const esDocente = await this.esDocenteDelCurso(curso, usuario);
+    const esAdmin = ["Administrador", "Director", "Subdirector"].includes(usuario.role);
+    const soloPublicadas = !(esDocente || esAdmin);
+
+    const tareas = await this.repository.listarTareas(cursoSeccionId, {
+      soloPublicadas,
+      ...filtro,
+    });
+
+    let matriculaId: string | undefined;
+    if (usuario.role === "Estudiante") {
+      const mat = await this.repository.findMatriculaDeEstudiante(
+        curso.seccionId,
+        usuario.personaId,
+      );
+      matriculaId = mat?.id;
+    }
+
+    return Promise.all(tareas.map((t) => this.armarTarea(t, usuario, matriculaId)));
+  }
+
+  async obtenerDetalleTarea(
+    usuario: AuthenticatedUser,
+    tareaId: string,
+    estudiantePersonaId?: string,
+  ): Promise<TareaResponse> {
+    const tarea = await this.repository.findTarea(tareaId);
+    if (!tarea) throw new NotFoundException(MENSAJES_TAREA.TAREA_NO_ENCONTRADA);
+
+    const curso = await this.requerirCurso(tarea.cursoSeccionId);
+    const esDocente = await this.esDocenteDelCurso(curso, usuario);
+    const esAdmin = ["Administrador", "Director", "Subdirector"].includes(usuario.role);
+
+    if (!esDocente && !esAdmin && tarea.estado !== "publicada") {
+      throw new NotFoundException(MENSAJES_TAREA.TAREA_NO_ENCONTRADA);
+    }
+
+    const personaIdConsultada = estudiantePersonaId || usuario.personaId;
+    const mat = await this.repository.findMatriculaDeEstudiante(
+      curso.seccionId,
+      personaIdConsultada,
+    );
+
+    return this.armarTarea(tarea, usuario, mat?.id);
+  }
+
+  async iniciarIntentoExamen(
+    usuario: AuthenticatedUser,
+    tareaId: string,
+  ): Promise<{ mensaje: string; intento: EntregaResponse }> {
+    const tarea = await this.repository.findTarea(tareaId);
+    if (!tarea) throw new NotFoundException(MENSAJES_TAREA.TAREA_NO_ENCONTRADA);
+    if (tarea.estado !== "publicada") {
+      throw new BadRequestException("La tarea no está disponible para resolver.");
+    }
+
+    const curso = await this.requerirCurso(tarea.cursoSeccionId);
+    const matricula = await this.repository.findMatriculaDeEstudiante(
+      curso.seccionId,
+      usuario.personaId,
+    );
+    if (!matricula) throw new ForbiddenException("No está matriculado en este curso.");
+
+    const entregas = await this.repository.findEntregasDeEstudiante(tareaId, matricula.id);
+    const enProgreso = entregas.find((e) => e.estado === "en_progreso");
+    if (enProgreso) {
+      return { mensaje: "Continuando intento en progreso.", intento: enProgreso };
+    }
+
+    if (entregas.length >= tarea.intentosMaximos) {
+      throw new BadRequestException(MENSAJES_TAREA.SIN_INTENTOS);
+    }
+
+    const ahora = new Date().toISOString();
+    const nuevoIntento = await this.repository.guardarEntrega({
+      tareaId,
+      matriculaId: matricula.id,
+      intento: entregas.length + 1,
+      estado: "en_progreso",
+      iniciadoEn: ahora,
+    });
+
+    return { mensaje: "Intento iniciado.", intento: nuevoIntento };
+  }
+
+  async guardarProgresoIntento(
+    usuario: AuthenticatedUser,
+    tareaId: string,
+    respuestas: Record<string, unknown>,
+  ): Promise<{ mensaje: string; entrega: EntregaResponse }> {
+    const tarea = await this.repository.findTarea(tareaId);
+    if (!tarea) throw new NotFoundException(MENSAJES_TAREA.TAREA_NO_ENCONTRADA);
+
+    const curso = await this.requerirCurso(tarea.cursoSeccionId);
+    const matricula = await this.repository.findMatriculaDeEstudiante(
+      curso.seccionId,
+      usuario.personaId,
+    );
+    if (!matricula) throw new ForbiddenException("No está matriculado.");
+
+    const activa = await this.repository.findEntregaActiva(tareaId, matricula.id);
+    if (!activa || activa.estado !== "en_progreso") {
+      throw new BadRequestException("No tiene un intento en progreso.");
+    }
+
+    const guardada = await this.repository.guardarEntrega({
+      tareaId,
+      matriculaId: matricula.id,
+      intento: activa.intento,
+      respuestas,
+      estado: "en_progreso",
+    });
+
+    return { mensaje: "Progreso guardado.", entrega: guardada };
+  }
+
+  async entregarTarea(
+    usuario: AuthenticatedUser,
+    tareaId: string,
+    dto: CrearEntregaDto,
+    archivo?: Express.Multer.File,
+  ): Promise<{
+    mensaje: string;
+    entrega: EntregaResponse;
+    nota?: number;
+    intentosRestantes?: number;
+  }> {
+    const tarea = await this.repository.findTarea(tareaId);
+    if (!tarea) throw new NotFoundException(MENSAJES_TAREA.TAREA_NO_ENCONTRADA);
+    if (tarea.estado !== "publicada") {
+      throw new BadRequestException("La tarea no está disponible para entregas.");
+    }
+
+    const curso = await this.requerirCurso(tarea.cursoSeccionId);
+    const matricula = await this.repository.findMatriculaDeEstudiante(
+      curso.seccionId,
+      usuario.personaId,
+    );
+    if (!matricula) throw new ForbiddenException("No está matriculado en este curso.");
+
+    const ahora = new Date().toISOString();
+    const pasadaLimite = ahora > tarea.fechaLimite;
+
+    if (pasadaLimite && !tarea.permiteEntregaTardia) {
+      throw new BadRequestException(MENSAJES_TAREA.FUERA_DE_PLAZO);
+    }
+    const esTardia = pasadaLimite;
+
+    let archivoUrl: string | null = null;
+    let archivoNombre: string | null = null;
+    let archivoTamanoBytes: number | null = null;
+
+    if (archivo) {
+      if (!validarExtensionArchivo(archivo.originalname, tarea.tiposArchivo)) {
+        throw new BadRequestException(MENSAJES_TAREA.FORMATO_NO_PERMITIDO);
+      }
+      const carpeta = path.join(process.cwd(), "uploads", CARPETA_MATERIALES);
+      await fs.promises.mkdir(carpeta, { recursive: true });
+      const ext = path.extname(archivo.originalname).toLowerCase();
+      const nombreGuardado = `${randomUUID()}${ext}`;
+      await fs.promises.writeFile(path.join(carpeta, nombreGuardado), archivo.buffer);
+      archivoUrl = `/uploads/${CARPETA_MATERIALES}/${nombreGuardado}`;
+      archivoNombre = archivo.originalname.slice(0, 255);
+      archivoTamanoBytes = archivo.size;
+    } else if (dto.archivoUrl) {
+      archivoUrl = dto.archivoUrl;
+      archivoNombre = dto.archivoNombre ?? null;
+      archivoTamanoBytes = dto.archivoTamanoBytes ?? null;
+    }
+
+    if (tarea.tipo === "trabajo" || tarea.tipo === "proyecto") {
+      const entregaExistente = await this.repository.findEntregaActiva(tareaId, matricula.id);
+      if (entregaExistente && entregaExistente.estado === "calificada") {
+        throw new BadRequestException(MENSAJES_TAREA.ENTREGA_YA_CALIFICADA);
+      }
+
+      const entrega = await this.repository.guardarEntrega({
+        tareaId,
+        matriculaId: matricula.id,
+        intento: 1,
+        entregadaEn: ahora,
+        texto: dto.texto ?? null,
+        enlaceUrl: dto.enlaceUrl ?? null,
+        archivoUrl,
+        archivoNombre,
+        archivoTamanoBytes,
+        esTardia,
+        estado: "entregada",
+      });
+
+      const mensaje = esTardia ? MENSAJES_TAREA.ENTREGA_TARDIA : MENSAJES_TAREA.ENTREGA_ENVIADA;
+      return { mensaje, entrega: entrega };
+    }
+
+    // Cuestionario o Examen
+    const entregasPrevias = await this.repository.findEntregasDeEstudiante(tareaId, matricula.id);
+    const intentoEnProgreso = entregasPrevias.find((e) => e.estado === "en_progreso");
+    const intentoNumero = intentoEnProgreso
+      ? intentoEnProgreso.intento
+      : entregasPrevias.length + 1;
+
+    if (intentoNumero > tarea.intentosMaximos) {
+      throw new BadRequestException(MENSAJES_TAREA.SIN_INTENTOS);
+    }
+
+    let tiempoAgotado = false;
+    if (tarea.limiteTiempoMinutos && intentoEnProgreso) {
+      const ms = new Date(ahora).getTime() - new Date(intentoEnProgreso.iniciadoEn).getTime();
+      if (ms > tarea.limiteTiempoMinutos * 60 * 1000) {
+        tiempoAgotado = true;
+      }
+    }
+
+    const evaluacion = evaluarIntentoPreguntas(tarea.preguntas, dto.respuestas || {});
+    const restantes = Math.max(0, tarea.intentosMaximos - intentoNumero);
+
+    if (evaluacion.todasCerradas) {
+      const entrega = await this.repository.guardarEntrega({
+        tareaId,
+        matriculaId: matricula.id,
+        intento: intentoNumero,
+        entregadaEn: ahora,
+        respuestas: evaluacion.respuestasDetalle,
+        esTardia,
+        estado: "calificada",
+        nota: evaluacion.notaVigesimal,
+        calificadaEn: ahora,
+      });
+
+      const mensaje = tiempoAgotado
+        ? MENSAJES_TAREA.TIEMPO_AGOTADO
+        : MENSAJES_TAREA.INTENTO_CALIFICADO(evaluacion.notaVigesimal.toFixed(2), restantes);
+
+      return {
+        mensaje,
+        entrega: entrega,
+        nota: evaluacion.notaVigesimal,
+        intentosRestantes: restantes,
+      };
+    }
+
+    const entrega = await this.repository.guardarEntrega({
+      tareaId,
+      matriculaId: matricula.id,
+      intento: intentoNumero,
+      entregadaEn: ahora,
+      respuestas: evaluacion.respuestasDetalle,
+      esTardia,
+      estado: "entregada",
+    });
+
+    const mensaje = tiempoAgotado
+      ? MENSAJES_TAREA.TIEMPO_AGOTADO
+      : "Tu entrega fue enviada. Pendiente de calificación de preguntas abiertas.";
+
+    return {
+      mensaje,
+      entrega: entrega,
+      intentosRestantes: restantes,
+    };
+  }
+
+  async listarEntregasDeTarea(
+    usuario: AuthenticatedUser,
+    tareaId: string,
+  ): Promise<EntregaResponse[]> {
+    const tarea = await this.repository.findTarea(tareaId);
+    if (!tarea) throw new NotFoundException(MENSAJES_TAREA.TAREA_NO_ENCONTRADA);
+
+    const curso = await this.requerirCurso(tarea.cursoSeccionId);
+    await this.exigirDocenteDelCurso(curso, usuario);
+
+    const entregas = await this.repository.findEntregasDeTarea(tareaId);
+    return entregas;
+  }
+
+  async calificarEntrega(
+    usuario: AuthenticatedUser,
+    entregaId: string,
+    dto: CalificarEntregaDto,
+  ): Promise<{ mensaje: string; entrega: EntregaResponse }> {
+    const entrega = await this.repository.findEntrega(entregaId);
+    if (!entrega) throw new NotFoundException(MENSAJES_TAREA.ENTREGA_NO_ENCONTRADA);
+
+    const tarea = await this.repository.findTarea(entrega.tareaId);
+    if (!tarea) throw new NotFoundException(MENSAJES_TAREA.TAREA_NO_ENCONTRADA);
+
+    const curso = await this.requerirCurso(tarea.cursoSeccionId);
+    await this.exigirDocenteDelCurso(curso, usuario);
+
+    if (tarea.periodoId) {
+      const periodo = await this.requerirPeriodo(tarea.periodoId);
+      if (periodo && periodo.estado === "cerrado") {
+        throw new BadRequestException(MENSAJES_TAREA.BIMESTRE_CERRADO);
+      }
+    }
+
+    if (dto.devolver) {
+      if (!dto.retroalimentacion || !dto.retroalimentacion.trim()) {
+        throw new BadRequestException(MENSAJES_TAREA.MOTIVO_DEVOLUCION_REQUERIDO);
+      }
+      const devuelta = await this.repository.devolverEntrega(
+        entregaId,
+        dto.retroalimentacion.trim(),
+        usuario.id,
+      );
+      if (entrega.estudianteId) {
+        await this.notificaciones.enviar({
+          usuarioId: entrega.estudianteId,
+          titulo: `Entrega devuelta en ${curso.cursoNombre}`,
+          mensaje: `El docente devolvió tu entrega de «${tarea.titulo}»: ${dto.retroalimentacion.trim()}`,
+          tipo: "alerta",
+          enlaceUrl: `/admin/aula-virtual/${curso.id}`,
+        });
+      }
+      return { mensaje: "Entrega devuelta para corrección.", entrega: devuelta };
+    }
+
+    let notaFinal = dto.nota;
+    let respuestasActualizadas: Record<string, unknown> | null = entrega.respuestas;
+
+    if (dto.calificacionesPreguntas && Object.keys(dto.calificacionesPreguntas).length > 0) {
+      let sumaPtsObtenidos = 0;
+      let sumaPtsPosibles = 0;
+      const dictRespuestas: Record<string, unknown> = { ...(entrega.respuestas || {}) };
+
+      for (const p of tarea.preguntas) {
+        const ptsPregunta = p.puntaje || 1;
+        sumaPtsPosibles += ptsPregunta;
+
+        if (p.tipo === "respuesta_corta") {
+          const califAbierta = dto.calificacionesPreguntas[p.id];
+          const pts = califAbierta ? califAbierta.puntajeObtenido : 0;
+          sumaPtsObtenidos += pts;
+          const prev = (dictRespuestas[p.id] as Record<string, unknown> | undefined) || {};
+          dictRespuestas[p.id] = {
+            ...prev,
+            puntajeObtenido: pts,
+            calificada: true,
+            comentario: califAbierta?.comentario,
+          };
+        } else {
+          const cerrada = dictRespuestas[p.id] as { puntajeObtenido?: number } | undefined;
+          sumaPtsObtenidos += cerrada?.puntajeObtenido || 0;
+        }
+      }
+
+      respuestasActualizadas = dictRespuestas;
+      notaFinal =
+        sumaPtsPosibles > 0 ? Number(((sumaPtsObtenidos / sumaPtsPosibles) * 20).toFixed(2)) : 0;
+    }
+
+    if (notaFinal === undefined || notaFinal === null || notaFinal < 0 || notaFinal > 20) {
+      throw new BadRequestException(MENSAJES_TAREA.NOTA_FUERA_DE_RANGO);
+    }
+
+    const calificada = await this.repository.calificarEntrega(entregaId, {
+      nota: notaFinal,
+      retroalimentacion: dto.retroalimentacion?.trim() ?? null,
+      calificadaPorId: usuario.id,
+      calificadaEn: new Date().toISOString(),
+      respuestas: respuestasActualizadas,
+    });
+
+    if (entrega.estudianteId) {
+      await this.notificaciones.enviar({
+        usuarioId: entrega.estudianteId,
+        titulo: `Tarea calificada en ${curso.cursoNombre}`,
+        mensaje: `Tu entrega de «${tarea.titulo}» fue calificada con ${notaFinal.toFixed(2)}.`,
+        tipo: "informacion",
+        enlaceUrl: `/admin/aula-virtual/${curso.id}`,
+      });
+    }
+
+    return { mensaje: "Entrega calificada exitosamente.", entrega: calificada };
+  }
+
+  async obtenerLibroNotas(
+    usuario: AuthenticatedUser,
+    cursoSeccionId: string,
+    periodoId?: string,
+  ): Promise<LibroNotasResponse> {
+    const curso = await this.requerirCurso(cursoSeccionId);
+    const periodo = periodoId
+      ? await this.requerirPeriodo(periodoId)
+      : await this.periodoEnCursoDelAnio();
+
+    const tareas = await this.repository.listarTareas(cursoSeccionId, {
+      periodoId: periodo.id,
+      soloPublicadas: true,
+    });
+    const estudiantes = await this.repository.listarEstudiantesDeSeccion(curso.seccionId);
+    const pesosConfig = await this.repository.obtenerPesosVariables();
+
+    const filasEstudiantes: FilaEstudianteLibroNotas[] = [];
+
+    for (const est of estudiantes) {
+      const notasPorTarea: Record<
+        string,
+        {
+          nota: number | null;
+          estado: string;
+          esTardia: boolean;
+        }
+      > = {};
+      const notasAgrupadasPorTipo: Partial<Record<TipoTarea, number[]>> = {
+        examen: [],
+        cuestionario: [],
+        trabajo: [],
+        proyecto: [],
+      };
+
+      for (const t of tareas) {
+        const entregas = await this.repository.findEntregasDeEstudiante(t.id, est.matriculaId);
+        const entregasCalificadas = entregas.filter((e) => e.nota !== null && e.nota !== undefined);
+
+        if (entregasCalificadas.length > 0) {
+          const notasNums = entregasCalificadas.map((e) => e.nota as number);
+          const notaTarea = calcularNotaDeIntentos(notasNums, t.calculoNotaIntentos);
+          const ultimaEntrega = entregas[entregas.length - 1];
+          notasPorTarea[t.id] = {
+            nota: notaTarea,
+            estado: ultimaEntrega.estado,
+            esTardia: ultimaEntrega.esTardia,
+          };
+          if (!notasAgrupadasPorTipo[t.tipo]) {
+            notasAgrupadasPorTipo[t.tipo] = [];
+          }
+          notasAgrupadasPorTipo[t.tipo]!.push(notaTarea);
+        } else if (entregas.length > 0) {
+          const ultimaEntrega = entregas[entregas.length - 1];
+          notasPorTarea[t.id] = {
+            nota: null,
+            estado: ultimaEntrega.estado,
+            esTardia: ultimaEntrega.esTardia,
+          };
+        } else {
+          notasPorTarea[t.id] = {
+            nota: null,
+            estado: "sin_entregar",
+            esTardia: false,
+          };
+        }
+      }
+
+      const ponderacion = calcularNotaFinalPonderada(notasAgrupadasPorTipo, pesosConfig);
+      const notaLiteral = convertirNotaALiteral(ponderacion.notaFinal);
+
+      filasEstudiantes.push({
+        matriculaId: est.matriculaId,
+        estudianteId: est.estudianteId,
+        codigo: est.codigo,
+        estudianteNombre: est.nombreCompleto,
+        notasPorTarea,
+        promediosPorTipo: ponderacion.promediosPorTipo,
+        notaFinal: ponderacion.notaFinal,
+        notaLiteral,
+      });
+    }
+
+    const tiposPresentes: Partial<Record<TipoTarea, number[]>> = {};
+    for (const t of tareas) {
+      tiposPresentes[t.tipo] = [1];
+    }
+    const { pesosEfectivos } = calcularNotaFinalPonderada(tiposPresentes, pesosConfig);
+
+    return {
+      cursoSeccionId,
+      cursoNombre: curso.cursoNombre,
+      seccionNombre: curso.seccionNombre,
+      periodoId: periodo.id,
+      periodoNombre: periodo.nombre,
+      pesosConfig,
+      pesosEfectivos: pesosEfectivos,
+      tareas: tareas.map((t) => ({
+        id: t.id,
+        titulo: t.titulo,
+        tipo: t.tipo,
+        fechaLimite: t.fechaLimite,
+      })),
+      estudiantes: filasEstudiantes,
+    };
+  }
+
+  async exportarExcelLibroNotas(
+    usuario: AuthenticatedUser,
+    cursoSeccionId: string,
+    periodoId?: string,
+  ): Promise<Buffer> {
+    const libro = await this.obtenerLibroNotas(usuario, cursoSeccionId, periodoId);
+    return generarExcelLibroNotas({
+      cursoNombre: libro.cursoNombre,
+      seccionNombre: libro.seccionNombre,
+      periodoNombre: libro.periodoNombre,
+      tareas: libro.tareas,
+      estudiantes: libro.estudiantes.map((e) => ({
+        codigo: e.codigo,
+        nombreCompleto: e.estudianteNombre,
+        notasPorTarea: Object.fromEntries(
+          Object.entries(e.notasPorTarea).map(([tId, info]) => [tId, info.nota]),
+        ),
+        promediosPorTipo: e.promediosPorTipo,
+        notaFinal: e.notaFinal,
+        notaLiteral: e.notaLiteral,
+      })),
+    });
+  }
+
+  async obtenerNotasEstudiante(
+    usuario: AuthenticatedUser,
+    estudianteId: string,
+    periodoId?: string,
+  ): Promise<Record<string, unknown>[]> {
+    const anioId = await this.anioDeTrabajo();
+    const periodoTarget = periodoId
+      ? await this.requerirPeriodo(periodoId)
+      : await this.periodoEnCursoDelAnio();
+
+    const cursosEstudiante = await this.repository.cursosDelEstudiante(estudianteId, anioId);
+    const resultado: Record<string, unknown>[] = [];
+
+    for (const c of cursosEstudiante) {
+      const curso = await this.requerirCurso(c.cursoSeccionId);
+      const tareas = await this.repository.listarTareas(c.cursoSeccionId, {
+        periodoId: periodoTarget.id,
+        soloPublicadas: true,
+      });
+      const matricula = await this.repository.findMatriculaDeEstudiante(
+        curso.seccionId,
+        estudianteId,
+      );
+      if (!matricula) continue;
+
+      const tareasConNota: Record<string, unknown>[] = [];
+      const notasAgrupadas: Partial<Record<TipoTarea, number[]>> = {};
+
+      for (const t of tareas) {
+        const entregas = await this.repository.findEntregasDeEstudiante(t.id, matricula.id);
+        const calificadas = entregas.filter((e) => e.nota !== null && e.nota !== undefined);
+        let nota: number | null = null;
+        if (calificadas.length > 0) {
+          nota = calcularNotaDeIntentos(
+            calificadas.map((e) => e.nota as number),
+            t.calculoNotaIntentos,
+          );
+          if (!notasAgrupadas[t.tipo]) notasAgrupadas[t.tipo] = [];
+          notasAgrupadas[t.tipo]!.push(nota);
+        }
+        tareasConNota.push({
+          tareaId: t.id,
+          titulo: t.titulo,
+          tipo: t.tipo,
+          fechaLimite: t.fechaLimite,
+          nota,
+          estadoEntrega: entregas[entregas.length - 1]?.estado || "sin_entregar",
+        });
+      }
+
+      const pesosConfig = await this.repository.obtenerPesosVariables();
+      const ponderacion = calcularNotaFinalPonderada(notasAgrupadas, pesosConfig);
+      const literal = convertirNotaALiteral(ponderacion.notaFinal);
+
+      resultado.push({
+        cursoSeccionId: c.cursoSeccionId,
+        cursoNombre: c.cursoNombre,
+        seccionNombre: c.seccionNombre,
+        docenteNombre: c.docenteNombre,
+        tareas: tareasConNota,
+        promediosPorTipo: ponderacion.promediosPorTipo,
+        notaFinal: ponderacion.notaFinal,
+        notaLiteral: literal,
+      });
+    }
+
+    return resultado;
+  }
+
+  private async armarTarea(
+    tarea: TareaFila,
+    usuario?: AuthenticatedUser,
+    matriculaId?: string,
+  ): Promise<TareaResponse> {
+    const tareaConP = await this.repository.findTarea(tarea.id);
+    let miEntrega: EntregaResponse | null = null;
+    let intentosRestantes = tarea.intentosMaximos;
+
+    if (matriculaId) {
+      const entregas = await this.repository.findEntregasDeEstudiante(tarea.id, matriculaId);
+      intentosRestantes = Math.max(0, tarea.intentosMaximos - entregas.length);
+      const activa = entregas[entregas.length - 1];
+      if (activa) {
+        miEntrega = activa;
+      }
+    }
+
+    let preguntas: PreguntaConOpciones[] | undefined = tareaConP?.preguntas;
+    if (preguntas && usuario?.role === "Estudiante") {
+      const intentoNum = miEntrega ? miEntrega.intento : 0;
+      const revelar = puedenRevelarseRespuestas(
+        tarea.revelarRespuestas,
+        intentoNum,
+        tarea.intentosMaximos,
+        tarea.fechaLimite,
+        new Date().toISOString(),
+      );
+      if (!revelar) {
+        preguntas = preguntas.map((p) => ({
+          ...p,
+          opciones: p.opciones.map((o) => ({
+            id: o.id,
+            texto: o.texto,
+            orden: o.orden,
+            esCorrecta: false,
+          })),
+        }));
+      }
+    }
+
+    return {
+      id: tarea.id,
+      cursoSeccionId: tarea.cursoSeccionId,
+      periodoId: tarea.periodoId,
+      unidadId: tarea.unidadId,
+      sesionClaseId: tarea.sesionClaseId,
+      titulo: tarea.titulo,
+      instrucciones: tarea.instrucciones,
+      tipo: tarea.tipo,
+      puntajeMaximo: tarea.puntajeMaximo,
+      publicadaEn: tarea.publicadaEn,
+      fechaLimite: tarea.fechaLimite,
+      permiteEntregaTardia: tarea.permiteEntregaTardia,
+      intentosMaximos: tarea.intentosMaximos,
+      limiteTiempoMinutos: tarea.limiteTiempoMinutos,
+      calculoNotaIntentos: tarea.calculoNotaIntentos,
+      revelarRespuestas: tarea.revelarRespuestas,
+      tiposArchivo: tarea.tiposArchivo,
+      estado: tarea.estado,
+      preguntas,
+      miEntrega,
+      intentosRestantes,
+    };
+  }
+
+  private async avisarAEstudiantesTarea(curso: CursoAula, tarea: TareaFila): Promise<void> {
+    const destinatarios = await this.repository.usuariosEstudiantesDeSeccion(
+      curso.seccionId,
+      curso.anioAcademicoId,
+    );
+    await Promise.all(
+      destinatarios.map((usuarioId) =>
+        this.notificaciones.enviar({
+          usuarioId,
+          titulo: `Nueva tarea en ${curso.cursoNombre}`,
+          mensaje: `Se publicó la tarea «${tarea.titulo}». Fecha límite: ${formatearFecha(tarea.fechaLimite.slice(0, 10))}.`,
+          tipo: "informacion",
+          enlaceUrl: `/admin/aula-virtual/${curso.id}`,
+        }),
+      ),
+    );
+  }
+
   private async auditar(
-    accion: "crear" | "actualizar",
+    accion: "crear" | "actualizar" | "eliminar",
     tabla: string,
     registroId: string,
     usuarioId: string,
@@ -931,5 +1848,582 @@ export class AulaVirtualService {
       valorNuevo,
       direccionIp: ip,
     });
+  }
+
+  // ───────────────────────── RF-017: Interacción y Actividad ─────────────────────────
+
+  private async verificarParticipante(
+    curso: CursoAula,
+    usuario: AuthenticatedUser,
+    permitirDirectivo: boolean = false,
+  ): Promise<{ esDocente: boolean; esEstudiante: boolean; matriculaId?: string }> {
+    const esDocente = await this.esDocenteDelCurso(curso, usuario);
+    if (esDocente) return { esDocente: true, esEstudiante: false };
+
+    const matricula = await this.repository.obtenerMatriculaActivaEstudiante(
+      usuario.personaId,
+      curso.seccionId,
+    );
+    if (matricula) {
+      return { esDocente: false, esEstudiante: true, matriculaId: matricula.id };
+    }
+
+    if (permitirDirectivo && this.esRolDeSeguimiento(usuario)) {
+      return { esDocente: false, esEstudiante: false };
+    }
+
+    throw new ForbiddenException(MENSAJES_INTERACCION.SIN_ACCESO);
+  }
+
+  private async verificarAnioAbierto(cursoSeccionId: string): Promise<void> {
+    const anio = await this.repository.obtenerAnioPorCursoSeccion(cursoSeccionId);
+    const validacion = validarAnioParaInteraccion(anio?.estado);
+    if (!validacion.valido) {
+      throw new BadRequestException(validacion.mensaje);
+    }
+  }
+
+  private async guardarAdjuntoInteraccion(
+    archivo?: Express.Multer.File,
+    enlace?: string,
+  ): Promise<string | null> {
+    if (archivo) {
+      const validacion = validarTamanoAdjunto(archivo.size);
+      if (!validacion.valido) {
+        throw new BadRequestException(validacion.mensaje);
+      }
+      const extension = path.extname(archivo.originalname).toLowerCase();
+      const nombreGuardado = `${Date.now()}-${randomUUID().slice(0, 8)}${extension}`;
+      const carpeta = path.join(process.cwd(), "uploads", CARPETA_INTERACCION);
+      await fs.promises.mkdir(carpeta, { recursive: true });
+      await fs.promises.writeFile(path.join(carpeta, nombreGuardado), archivo.buffer);
+      return `/uploads/${CARPETA_INTERACCION}/${nombreGuardado}`;
+    }
+    if (enlace && enlace.trim().length > 0) {
+      return enlace.trim();
+    }
+    return null;
+  }
+
+  private async avisarPublicacionMuro(
+    curso: CursoAula,
+    autorUsuarioId: string,
+    publicacion: PublicacionMuroFila,
+  ): Promise<void> {
+    const estudianteUsuarioIds = await this.repository.usuariosEstudiantesDeSeccion(
+      curso.seccionId,
+      curso.anioAcademicoId,
+    );
+    const docenteUsuarioId = await this.repository.obtenerDocenteUsuarioId(curso.id);
+
+    const todosDestinatarios = new Set<string>();
+    for (const id of estudianteUsuarioIds) {
+      if (id && id !== autorUsuarioId) todosDestinatarios.add(id);
+    }
+    if (docenteUsuarioId && docenteUsuarioId !== autorUsuarioId) {
+      todosDestinatarios.add(docenteUsuarioId);
+    }
+
+    const preview = publicacion.contenido
+      ? publicacion.contenido.slice(0, 80)
+      : "Nuevo archivo adjunto";
+    await Promise.all(
+      Array.from(todosDestinatarios).map((usuarioId) =>
+        this.notificaciones.enviar({
+          usuarioId,
+          titulo: `Nueva publicación en ${curso.cursoNombre}`,
+          mensaje: preview,
+          tipo: "informacion",
+          enlaceUrl: `/admin/aula-virtual/${curso.id}?tab=muro`,
+        }),
+      ),
+    );
+  }
+
+  // ── Muro ──
+
+  async listarPublicacionesMuro(
+    cursoSeccionId: string,
+    usuario: AuthenticatedUser,
+  ): Promise<PublicacionMuroFila[]> {
+    const curso = await this.requerirCurso(cursoSeccionId);
+    const { esDocente } = await this.verificarParticipante(curso, usuario, true);
+    const verOcultos = esDocente || this.esRolDeSeguimiento(usuario);
+    return this.repository.listarPublicacionesMuro(cursoSeccionId, verOcultos);
+  }
+
+  async crearPublicacion(
+    cursoSeccionId: string,
+    dto: CrearPublicacionDto,
+    usuario: AuthenticatedUser,
+    archivo?: Express.Multer.File,
+    ip?: string,
+  ): Promise<PublicacionMuroFila> {
+    const curso = await this.requerirCurso(cursoSeccionId);
+    await this.verificarParticipante(curso, usuario);
+    await this.verificarAnioAbierto(cursoSeccionId);
+
+    const adjuntoUrl = await this.guardarAdjuntoInteraccion(archivo, dto.enlaceAdjunto);
+    const validacionTexto = validarTextoOAdjunto(dto.contenido, Boolean(adjuntoUrl));
+    if (!validacionTexto.valido) {
+      throw new BadRequestException(validacionTexto.mensaje);
+    }
+
+    const pub = await this.repository.crearPublicacion({
+      cursoSeccionId,
+      autorId: usuario.id,
+      contenido: dto.contenido?.trim() || "",
+      adjuntoUrl,
+      fijada: false,
+    });
+
+    await this.avisarPublicacionMuro(curso, usuario.id, pub);
+    await this.auditar(
+      "crear",
+      "publicaciones_aula",
+      pub.id,
+      usuario.id,
+      null,
+      {
+        contenido: pub.contenido,
+        adjuntoUrl,
+      },
+      ip,
+    );
+
+    return pub;
+  }
+
+  async editarPublicacion(
+    id: string,
+    dto: EditarPublicacionDto,
+    usuario: AuthenticatedUser,
+    archivo?: Express.Multer.File,
+    ip?: string,
+  ): Promise<PublicacionMuroFila> {
+    const pub = await this.repository.obtenerPublicacion(id);
+    if (!pub) throw new NotFoundException(MENSAJES_INTERACCION.PUBLICACION_NO_ENCONTRADA);
+
+    await this.verificarAnioAbierto(pub.cursoSeccionId);
+
+    if (pub.autorId !== usuario.id) {
+      throw new ForbiddenException(MENSAJES_INTERACCION.SOLO_AUTOR_EDITA);
+    }
+
+    if (!estaDentroDePlazoEdicion(pub.creadoEn)) {
+      throw new BadRequestException(MENSAJES_INTERACCION.EDICION_FUERA_DE_PLAZO);
+    }
+
+    let adjuntoUrl = pub.adjuntoUrl;
+    if (archivo || dto.enlaceAdjunto !== undefined) {
+      adjuntoUrl = await this.guardarAdjuntoInteraccion(archivo, dto.enlaceAdjunto);
+    }
+
+    const nuevoContenido = dto.contenido !== undefined ? dto.contenido.trim() : pub.contenido;
+    const validacionTexto = validarTextoOAdjunto(nuevoContenido, Boolean(adjuntoUrl));
+    if (!validacionTexto.valido) {
+      throw new BadRequestException(validacionTexto.mensaje);
+    }
+
+    const pubEditada = await this.repository.actualizarPublicacion(id, {
+      contenido: nuevoContenido,
+      adjuntoUrl,
+    });
+
+    await this.auditar(
+      "actualizar",
+      "publicaciones_aula",
+      id,
+      usuario.id,
+      { contenido: pub.contenido, adjuntoUrl: pub.adjuntoUrl },
+      { contenido: pubEditada.contenido, adjuntoUrl: pubEditada.adjuntoUrl },
+      ip,
+    );
+
+    return pubEditada;
+  }
+
+  async fijarPublicacion(
+    id: string,
+    dto: FijarPublicacionDto,
+    usuario: AuthenticatedUser,
+    ip?: string,
+  ): Promise<PublicacionMuroFila> {
+    const pub = await this.repository.obtenerPublicacion(id);
+    if (!pub) throw new NotFoundException(MENSAJES_INTERACCION.PUBLICACION_NO_ENCONTRADA);
+
+    const curso = await this.requerirCurso(pub.cursoSeccionId);
+    const esDocente = await this.esDocenteDelCurso(curso, usuario);
+    if (!esDocente) {
+      throw new ForbiddenException(MENSAJES_INTERACCION.SOLO_DOCENTE_FIJA);
+    }
+
+    const pubActualizada = await this.repository.fijarPublicacion(id, dto.fijada);
+    await this.auditar(
+      "actualizar",
+      "publicaciones_aula",
+      id,
+      usuario.id,
+      { fijada: pub.fijada },
+      { fijada: dto.fijada },
+      ip,
+    );
+
+    return pubActualizada;
+  }
+
+  // ── Comentarios ──
+
+  async listarComentarios(
+    publicacionId: string,
+    usuario: AuthenticatedUser,
+  ): Promise<ComentarioMuroFila[]> {
+    const pub = await this.repository.obtenerPublicacion(publicacionId);
+    if (!pub) throw new NotFoundException(MENSAJES_INTERACCION.PUBLICACION_NO_ENCONTRADA);
+
+    const curso = await this.requerirCurso(pub.cursoSeccionId);
+    const { esDocente } = await this.verificarParticipante(curso, usuario, true);
+    const verOcultos = esDocente || this.esRolDeSeguimiento(usuario);
+
+    return this.repository.listarComentarios(publicacionId, verOcultos);
+  }
+
+  async crearComentario(
+    publicacionId: string,
+    dto: CrearComentarioDto,
+    usuario: AuthenticatedUser,
+    ip?: string,
+  ): Promise<ComentarioMuroFila> {
+    const pub = await this.repository.obtenerPublicacion(publicacionId);
+    if (!pub) throw new NotFoundException(MENSAJES_INTERACCION.PUBLICACION_NO_ENCONTRADA);
+
+    const curso = await this.requerirCurso(pub.cursoSeccionId);
+    await this.verificarParticipante(curso, usuario);
+    await this.verificarAnioAbierto(pub.cursoSeccionId);
+
+    const validacionTexto = validarTextoOAdjunto(dto.contenido, false);
+    if (!validacionTexto.valido) {
+      throw new BadRequestException(validacionTexto.mensaje);
+    }
+
+    const comentario = await this.repository.crearComentario({
+      publicacionId,
+      autorId: usuario.id,
+      contenido: dto.contenido.trim(),
+    });
+
+    await this.auditar(
+      "crear",
+      "comentarios_publicacion",
+      comentario.id,
+      usuario.id,
+      null,
+      { contenido: comentario.contenido },
+      ip,
+    );
+
+    return comentario;
+  }
+
+  async editarComentario(
+    id: string,
+    dto: EditarComentarioDto,
+    usuario: AuthenticatedUser,
+    ip?: string,
+  ): Promise<ComentarioMuroFila> {
+    const com = await this.repository.obtenerComentario(id);
+    if (!com) throw new NotFoundException(MENSAJES_INTERACCION.COMENTARIO_NO_ENCONTRADO);
+
+    const pub = await this.repository.obtenerPublicacion(com.publicacionId);
+    if (pub) await this.verificarAnioAbierto(pub.cursoSeccionId);
+
+    if (com.autorId !== usuario.id) {
+      throw new ForbiddenException(MENSAJES_INTERACCION.SOLO_AUTOR_EDITA);
+    }
+
+    if (!estaDentroDePlazoEdicion(com.creadoEn)) {
+      throw new BadRequestException(MENSAJES_INTERACCION.EDICION_FUERA_DE_PLAZO);
+    }
+
+    const validacionTexto = validarTextoOAdjunto(dto.contenido, false);
+    if (!validacionTexto.valido) {
+      throw new BadRequestException(validacionTexto.mensaje);
+    }
+
+    const comEditado = await this.repository.actualizarComentario(id, {
+      contenido: dto.contenido.trim(),
+    });
+
+    await this.auditar(
+      "actualizar",
+      "comentarios_publicacion",
+      id,
+      usuario.id,
+      { contenido: com.contenido },
+      { contenido: comEditado.contenido },
+      ip,
+    );
+
+    return comEditado;
+  }
+
+  // ── Chat Grupal ──
+
+  async listarMensajesChat(
+    cursoSeccionId: string,
+    usuario: AuthenticatedUser,
+  ): Promise<MensajeChatFila[]> {
+    const curso = await this.requerirCurso(cursoSeccionId);
+    const { esDocente } = await this.verificarParticipante(curso, usuario, true);
+    const verOcultos = esDocente || this.esRolDeSeguimiento(usuario);
+
+    const mensajes = await this.repository.listarMensajesChat(cursoSeccionId, verOcultos);
+    await this.repository.actualizarUltimaLecturaChat(cursoSeccionId, usuario.id);
+    return mensajes;
+  }
+
+  async enviarMensajeChat(
+    cursoSeccionId: string,
+    dto: EnviarMensajeChatDto,
+    usuario: AuthenticatedUser,
+    archivo?: Express.Multer.File,
+  ): Promise<MensajeChatFila> {
+    const curso = await this.requerirCurso(cursoSeccionId);
+    await this.verificarParticipante(curso, usuario);
+    await this.verificarAnioAbierto(cursoSeccionId);
+
+    const adjuntoUrl = await this.guardarAdjuntoInteraccion(archivo, dto.enlaceAdjunto);
+    const validacionTexto = validarTextoOAdjunto(dto.mensaje, Boolean(adjuntoUrl));
+    if (!validacionTexto.valido) {
+      throw new BadRequestException(validacionTexto.mensaje);
+    }
+
+    const msg = await this.repository.enviarMensajeChat({
+      cursoSeccionId,
+      emisorId: usuario.id,
+      contenido: dto.mensaje?.trim() || "",
+      adjuntoUrl,
+    });
+
+    await this.repository.actualizarUltimaLecturaChat(cursoSeccionId, usuario.id);
+    return msg;
+  }
+
+  async obtenerMensajesNoLeidosChat(
+    cursoSeccionId: string,
+    usuario: AuthenticatedUser,
+  ): Promise<{ noLeidos: number }> {
+    const curso = await this.requerirCurso(cursoSeccionId);
+    await this.verificarParticipante(curso, usuario, true);
+    const noLeidos = await this.repository.contarMensajesNoLeidosChat(cursoSeccionId, usuario.id);
+    return { noLeidos };
+  }
+
+  async marcarChatLeido(
+    cursoSeccionId: string,
+    usuario: AuthenticatedUser,
+  ): Promise<{ ok: boolean }> {
+    const curso = await this.requerirCurso(cursoSeccionId);
+    await this.verificarParticipante(curso, usuario, true);
+    await this.repository.actualizarUltimaLecturaChat(cursoSeccionId, usuario.id);
+    return { ok: true };
+  }
+
+  // ── Moderación ──
+
+  async ocultarContenido(
+    tipo: TipoModeracion,
+    id: string,
+    dto: OcultarContenidoDto,
+    usuario: AuthenticatedUser,
+    ip?: string,
+  ): Promise<{ mensaje: string }> {
+    const validacionMotivo = validarMotivoOcultamiento(dto.motivo);
+    if (!validacionMotivo.valido) {
+      throw new BadRequestException(validacionMotivo.mensaje);
+    }
+
+    let cursoSeccionId: string;
+    if (tipo === "publicacion") {
+      const p = await this.repository.obtenerPublicacion(id);
+      if (!p) throw new NotFoundException(MENSAJES_INTERACCION.PUBLICACION_NO_ENCONTRADA);
+      cursoSeccionId = p.cursoSeccionId;
+    } else if (tipo === "comentario") {
+      const c = await this.repository.obtenerComentario(id);
+      if (!c) throw new NotFoundException(MENSAJES_INTERACCION.COMENTARIO_NO_ENCONTRADO);
+      const p = await this.repository.obtenerPublicacion(c.publicacionId);
+      if (!p) throw new NotFoundException(MENSAJES_INTERACCION.PUBLICACION_NO_ENCONTRADA);
+      cursoSeccionId = p.cursoSeccionId;
+    } else {
+      const m = await this.repository.obtenerMensajeChat(id);
+      if (!m) throw new NotFoundException(MENSAJES_INTERACCION.MENSAJE_NO_ENCONTRADO);
+      cursoSeccionId = m.cursoSeccionId;
+    }
+
+    const curso = await this.requerirCurso(cursoSeccionId);
+    const esDocente = await this.esDocenteDelCurso(curso, usuario);
+    if (!esDocente) {
+      throw new ForbiddenException(MENSAJES_INTERACCION.SOLO_DOCENTE_MODERA);
+    }
+
+    await this.repository.ocultarContenido(tipo, id, usuario.id, dto.motivo.trim());
+
+    const tabla =
+      tipo === "publicacion"
+        ? "publicaciones_aula"
+        : tipo === "comentario"
+          ? "comentarios_publicacion"
+          : "mensajes_chat";
+
+    await this.auditar(
+      "eliminar",
+      tabla,
+      id,
+      usuario.id,
+      { vigente: true },
+      { vigente: false, motivo: dto.motivo.trim() },
+      ip,
+    );
+
+    return { mensaje: MENSAJES_INTERACCION.CONTENIDO_OCULTADO };
+  }
+
+  async restaurarContenido(
+    tipo: TipoModeracion,
+    id: string,
+    usuario: AuthenticatedUser,
+    ip?: string,
+  ): Promise<{ mensaje: string }> {
+    let cursoSeccionId: string;
+    if (tipo === "publicacion") {
+      const p = await this.repository.obtenerPublicacion(id);
+      if (!p) throw new NotFoundException(MENSAJES_INTERACCION.PUBLICACION_NO_ENCONTRADA);
+      cursoSeccionId = p.cursoSeccionId;
+    } else if (tipo === "comentario") {
+      const c = await this.repository.obtenerComentario(id);
+      if (!c) throw new NotFoundException(MENSAJES_INTERACCION.COMENTARIO_NO_ENCONTRADO);
+      const p = await this.repository.obtenerPublicacion(c.publicacionId);
+      if (!p) throw new NotFoundException(MENSAJES_INTERACCION.PUBLICACION_NO_ENCONTRADA);
+      cursoSeccionId = p.cursoSeccionId;
+    } else {
+      const m = await this.repository.obtenerMensajeChat(id);
+      if (!m) throw new NotFoundException(MENSAJES_INTERACCION.MENSAJE_NO_ENCONTRADO);
+      cursoSeccionId = m.cursoSeccionId;
+    }
+
+    const curso = await this.requerirCurso(cursoSeccionId);
+    const esDocente = await this.esDocenteDelCurso(curso, usuario);
+    if (!esDocente) {
+      throw new ForbiddenException(MENSAJES_INTERACCION.SOLO_DOCENTE_MODERA);
+    }
+
+    await this.repository.restaurarContenido(tipo, id);
+
+    const tabla =
+      tipo === "publicacion"
+        ? "publicaciones_aula"
+        : tipo === "comentario"
+          ? "comentarios_publicacion"
+          : "mensajes_chat";
+
+    await this.auditar(
+      "actualizar",
+      tabla,
+      id,
+      usuario.id,
+      { vigente: false },
+      { vigente: true },
+      ip,
+    );
+
+    return { mensaje: MENSAJES_INTERACCION.CONTENIDO_RESTAURADO };
+  }
+
+  async listarHistorialModeracion(
+    cursoSeccionId: string,
+    usuario: AuthenticatedUser,
+  ): Promise<HistorialModeracionFila[]> {
+    const curso = await this.requerirCurso(cursoSeccionId);
+    const esDocente = await this.esDocenteDelCurso(curso, usuario);
+    const esDirectivo = this.esRolDeSeguimiento(usuario);
+
+    if (!esDocente && !esDirectivo) {
+      throw new ForbiddenException(MENSAJES_INTERACCION.SIN_ACCESO);
+    }
+
+    return this.repository.listarHistorialModeracion(cursoSeccionId);
+  }
+
+  // ── Actividad de Aula ──
+
+  async registrarActividad(
+    dto: RegistrarActividadDto,
+    usuario: AuthenticatedUser,
+  ): Promise<{ ok: boolean }> {
+    let seccionId: string;
+    if (dto.materialId) {
+      const m = await this.repository.findMaterial(dto.materialId);
+      if (!m) throw new NotFoundException(MENSAJES_AULA_VIRTUAL.MATERIAL_NO_ENCONTRADO);
+      const c = await this.requerirCurso(m.cursoSeccionId);
+      seccionId = c.seccionId;
+    } else if (dto.tareaId) {
+      const t = await this.repository.findTarea(dto.tareaId);
+      if (!t) throw new NotFoundException(MENSAJES_TAREA.TAREA_NO_ENCONTRADA);
+      const c = await this.requerirCurso(t.cursoSeccionId);
+      seccionId = c.seccionId;
+    } else {
+      throw new BadRequestException("Debe indicar materialId o tareaId.");
+    }
+
+    const matricula = await this.repository.obtenerMatriculaActivaEstudiante(
+      usuario.personaId,
+      seccionId,
+    );
+    if (!matricula) {
+      return { ok: true }; // Docente o directivo revisando, no se registra como actividad de estudiante
+    }
+
+    await this.repository.registrarActividad({
+      matriculaId: matricula.id,
+      materialId: dto.materialId ?? null,
+      tareaId: dto.tareaId ?? null,
+      accion: dto.accion,
+    });
+
+    return { ok: true };
+  }
+
+  async obtenerActividadMaterial(
+    materialId: string,
+    usuario: AuthenticatedUser,
+  ): Promise<ActividadEstudianteMaterial[]> {
+    const material = await this.repository.findMaterial(materialId);
+    if (!material) throw new NotFoundException(MENSAJES_AULA_VIRTUAL.MATERIAL_NO_ENCONTRADO);
+
+    const curso = await this.requerirCurso(material.cursoSeccionId);
+    const esDocente = await this.esDocenteDelCurso(curso, usuario);
+    const esDirectivo = this.esRolDeSeguimiento(usuario);
+    if (!esDocente && !esDirectivo) {
+      throw new ForbiddenException(MENSAJES_AULA_VIRTUAL.SIN_ACCESO_AULA);
+    }
+
+    return this.repository.obtenerActividadMaterial(materialId, material.cursoSeccionId);
+  }
+
+  async obtenerActividadTarea(
+    tareaId: string,
+    usuario: AuthenticatedUser,
+  ): Promise<ActividadEstudianteTarea[]> {
+    const tarea = await this.repository.findTarea(tareaId);
+    if (!tarea) throw new NotFoundException(MENSAJES_TAREA.TAREA_NO_ENCONTRADA);
+
+    const curso = await this.requerirCurso(tarea.cursoSeccionId);
+    const esDocente = await this.esDocenteDelCurso(curso, usuario);
+    const esDirectivo = this.esRolDeSeguimiento(usuario);
+    if (!esDocente && !esDirectivo) {
+      throw new ForbiddenException(MENSAJES_AULA_VIRTUAL.SIN_ACCESO_AULA);
+    }
+
+    return this.repository.obtenerActividadTarea(tareaId, tarea.cursoSeccionId);
   }
 }

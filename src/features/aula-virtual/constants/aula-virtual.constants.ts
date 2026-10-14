@@ -86,3 +86,97 @@ export const mensajePlanificado = (fechaDdMmAaaa: string): string =>
 
 export const mensajeFueraDePlazo = (fechaDdMmAaaa: string): string =>
   `Material publicado fuera de plazo (fecha programada: ${fechaDdMmAaaa}).`;
+
+/**
+ * Constantes y mensajes de tareas, entregas y calificación (RF-016).
+ */
+export const TIPOS_TAREA = ["trabajo", "proyecto", "cuestionario", "examen"] as const;
+export type TipoTarea = (typeof TIPOS_TAREA)[number];
+
+export const TIPOS_PREGUNTA = ["opcion_unica", "opcion_multiple", "respuesta_corta"] as const;
+export type TipoPregunta = (typeof TIPOS_PREGUNTA)[number];
+
+export const CALCULOS_NOTA_INTENTOS = ["mas_alta", "ultima", "promedio"] as const;
+export type CalculoNotaIntentos = (typeof CALCULOS_NOTA_INTENTOS)[number];
+
+export const REVELAR_RESPUESTAS = [
+  "al_terminar_intentos",
+  "despues_fecha_limite",
+  "inmediato",
+  "nunca",
+] as const;
+export type RevelarRespuestas = (typeof REVELAR_RESPUESTAS)[number];
+
+export const ESTADOS_TAREA = ["borrador", "publicada", "cerrada"] as const;
+export type EstadoTarea = (typeof ESTADOS_TAREA)[number];
+
+export const ESTADOS_ENTREGA = [
+  "en_progreso",
+  "borrador",
+  "entregada",
+  "calificada",
+  "devuelta",
+] as const;
+export type EstadoEntrega = (typeof ESTADOS_ENTREGA)[number];
+
+export const VARIABLES_NOTA_PESO = {
+  EXAMEN: "nota.peso_examen",
+  CUESTIONARIO: "nota.peso_cuestionario",
+  TRABAJO: "nota.peso_trabajo",
+  PROYECTO: "nota.peso_proyecto",
+} as const;
+
+export const MENSAJES_TAREA = {
+  PUBLICADA: "Tarea publicada. Se notificó a los estudiantes.",
+  FECHA_LIMITE_INVALIDA: "La fecha límite debe ser posterior a la fecha de publicación.",
+  CUESTIONARIO_SIN_PREGUNTAS: "Agregue al menos una pregunta antes de publicar.",
+  PREGUNTA_SIN_CORRECTA: "Marque al menos una opción correcta en cada pregunta cerrada.",
+  ENTREGA_ENVIADA: "Tu entrega fue enviada.",
+  INTENTO_CALIFICADO: (nota: string, restantes: number) =>
+    `Obtuviste ${nota} de 20. Te quedan ${restantes} intentos.`,
+  SIN_INTENTOS: "Ya usaste todos tus intentos.",
+  FUERA_DE_PLAZO: "La fecha límite ya pasó. Esta tarea no acepta entregas tardías.",
+  ENTREGA_TARDIA: "Tu entrega fue enviada fuera de plazo.",
+  FORMATO_NO_PERMITIDO: "Formato de archivo no permitido para esta tarea.",
+  NOTA_FUERA_DE_RANGO: "La nota debe estar entre 0 y 20.",
+  ENTREGA_YA_CALIFICADA:
+    "La entrega ya fue calificada. Pide al docente que te la devuelva para corregir.",
+  TIEMPO_AGOTADO: "Se agotó el tiempo. Tu intento se envió con las respuestas marcadas.",
+  BIMESTRE_CERRADO: "El bimestre está cerrado. Las notas ya no se pueden modificar.",
+  TAREA_NO_ENCONTRADA: "La tarea no existe.",
+  ENTREGA_NO_ENCONTRADA: "La entrega no existe.",
+  MOTIVO_DEVOLUCION_REQUERIDO: "Indique la retroalimentación para devolver la entrega.",
+  TRABAJO_SIN_INTENTOS:
+    "El sistema no ofrece varios intentos para trabajos o proyectos porque tienen una sola entrega editable.",
+} as const;
+
+/**
+ * Constantes y mensajes de interacción y actividad del curso (RF-017).
+ */
+export const TAMANO_MAXIMO_ADJUNTO_INTERACCION_BYTES = 10 * 1024 * 1024; // 10 MB
+export const MINUTOS_MAXIMO_EDICION_INTERACCION = 15;
+
+export const CARPETA_INTERACCION = "interaccion";
+
+export const TIPOS_MODERACION = ["publicacion", "comentario", "chat"] as const;
+export type TipoModeracion = (typeof TIPOS_MODERACION)[number];
+
+export const ACCIONES_ACTIVIDAD_AULA = ["visualizo", "descargo", "abrio", "completo"] as const;
+export type AccionActividadAula = (typeof ACCIONES_ACTIVIDAD_AULA)[number];
+
+export const MENSAJES_INTERACCION = {
+  PUBLICACION_VACIA: "Escriba un texto o agregue un adjunto.",
+  ADJUNTO_MUY_PESADO: "El adjunto supera el máximo de 10 MB.",
+  EDICION_FUERA_DE_PLAZO: "Solo puede editar dentro de los 15 minutos de publicado.",
+  MOTIVO_REQUERIDO: "Indique el motivo para ocultar el contenido.",
+  CONTENIDO_OCULTADO: "El contenido se ocultó para los estudiantes.",
+  CONTENIDO_RESTAURADO: "El contenido volvió a estar visible.",
+  SIN_ACCESO: "No participa en esta aula virtual.",
+  ANIO_CERRADO: "El año escolar está cerrado. El muro y el chat son de solo lectura.",
+  PUBLICACION_NO_ENCONTRADA: "La publicación no existe.",
+  COMENTARIO_NO_ENCONTRADO: "El comentario no existe.",
+  MENSAJE_NO_ENCONTRADO: "El mensaje no existe.",
+  SOLO_DOCENTE_FIJA: "Solo el docente asignado puede fijar publicaciones.",
+  SOLO_DOCENTE_MODERA: "Solo el docente puede moderar el contenido del curso.",
+  SOLO_AUTOR_EDITA: "Solo el autor puede editar su contenido dentro del plazo permitido.",
+} as const;

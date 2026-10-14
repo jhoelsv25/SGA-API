@@ -1892,6 +1892,7 @@ export const tareas = pgTable(
   {
     id: uuid().defaultRandom().primaryKey().notNull(),
     cursoSeccionId: uuid("curso_seccion_id").notNull(),
+    periodoId: uuid("periodo_id"),
     unidadId: uuid("unidad_id"),
     sesionClaseId: uuid("sesion_clase_id"),
     titulo: varchar({ length: 150 }).notNull(),
@@ -1902,6 +1903,13 @@ export const tareas = pgTable(
     fechaLimite: timestamp("fecha_limite", { precision: 0, mode: "string" }).notNull(),
     permiteEntregaTardia: boolean("permite_entrega_tardia").default(false).notNull(),
     intentosMaximos: smallint("intentos_maximos").default(1).notNull(),
+    limiteTiempoMinutos: integer("limite_tiempo_minutos"),
+    calculoNotaIntentos: varchar("calculo_nota_intentos", { length: 20 })
+      .default("mas_alta")
+      .notNull(),
+    revelarRespuestas: varchar("revelar_respuestas", { length: 30 })
+      .default("al_terminar_intentos")
+      .notNull(),
     tiposArchivo: varchar("tipos_archivo", { length: 100 }),
     estado: varchar({ length: 20 }).default("borrador").notNull(),
     creadoEn: timestamp("creado_en", { precision: 0, mode: "string" })
@@ -1921,6 +1929,11 @@ export const tareas = pgTable(
       columns: [table.cursoSeccionId],
       foreignColumns: [cursosSeccion.id],
       name: "fk_tareas_curso_seccion",
+    }),
+    foreignKey({
+      columns: [table.periodoId],
+      foreignColumns: [periodosAcademicos.id],
+      name: "fk_tareas_periodo",
     }),
     foreignKey({
       columns: [table.sesionClaseId],
@@ -1948,7 +1961,15 @@ export const tareas = pgTable(
     ),
     check(
       "ck_tareas_tipo",
-      sql`(tipo)::text = ANY ((ARRAY['entregable'::character varying, 'cuestionario'::character varying, 'proyecto'::character varying])::text[])`,
+      sql`(tipo)::text = ANY ((ARRAY['trabajo'::character varying, 'entregable'::character varying, 'cuestionario'::character varying, 'proyecto'::character varying, 'examen'::character varying])::text[])`,
+    ),
+    check(
+      "ck_tareas_calculo_intentos",
+      sql`(calculo_nota_intentos)::text = ANY ((ARRAY['mas_alta'::character varying, 'ultima'::character varying, 'promedio'::character varying])::text[])`,
+    ),
+    check(
+      "ck_tareas_revelar_respuestas",
+      sql`(revelar_respuestas)::text = ANY ((ARRAY['al_terminar_intentos'::character varying, 'despues_fecha_limite'::character varying, 'inmediato'::character varying, 'nunca'::character varying])::text[])`,
     ),
   ],
 );
@@ -2004,11 +2025,14 @@ export const entregasTarea = pgTable(
     tareaId: uuid("tarea_id").notNull(),
     matriculaId: uuid("matricula_id").notNull(),
     intento: smallint().default(1).notNull(),
-    entregadaEn: timestamp("entregada_en", { precision: 0, mode: "string" })
+    iniciadoEn: timestamp("iniciado_en", { precision: 0, mode: "string" })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
+    entregadaEn: timestamp("entregada_en", { precision: 0, mode: "string" }),
     texto: text(),
     archivoUrl: varchar("archivo_url", { length: 500 }),
+    archivoNombre: varchar("archivo_nombre", { length: 255 }),
+    archivoTamanoBytes: integer("archivo_tamano_bytes"),
     enlaceUrl: varchar("enlace_url", { length: 500 }),
     respuestas: jsonb(),
     esTardia: boolean("es_tardia").default(false).notNull(),
@@ -2045,11 +2069,11 @@ export const entregasTarea = pgTable(
     ),
     check(
       "ck_entregas_tarea_contenido",
-      sql`(texto IS NOT NULL) OR (archivo_url IS NOT NULL) OR (enlace_url IS NOT NULL) OR (respuestas IS NOT NULL)`,
+      sql`((estado)::text = 'en_progreso'::text) OR ((estado)::text = 'borrador'::text) OR (texto IS NOT NULL) OR (archivo_url IS NOT NULL) OR (enlace_url IS NOT NULL) OR (respuestas IS NOT NULL)`,
     ),
     check(
       "ck_entregas_tarea_estado",
-      sql`(estado)::text = ANY ((ARRAY['entregada'::character varying, 'calificada'::character varying, 'devuelta'::character varying])::text[])`,
+      sql`(estado)::text = ANY ((ARRAY['en_progreso'::character varying, 'borrador'::character varying, 'entregada'::character varying, 'calificada'::character varying, 'devuelta'::character varying])::text[])`,
     ),
     check(
       "ck_entregas_tarea_nota",
@@ -2067,6 +2091,10 @@ export const publicacionesAula = pgTable(
     contenido: text().notNull(),
     adjuntoUrl: varchar("adjunto_url", { length: 500 }),
     fijada: boolean().default(false).notNull(),
+    vigente: boolean().default(true).notNull(),
+    ocultadoPorId: uuid("ocultado_por_id"),
+    ocultadoEn: timestamp("ocultado_en", { precision: 0, mode: "string" }),
+    motivoOcultamiento: varchar("motivo_ocultamiento", { length: 255 }),
     creadoEn: timestamp("creado_en", { precision: 0, mode: "string" })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
@@ -2091,6 +2119,11 @@ export const publicacionesAula = pgTable(
       foreignColumns: [cursosSeccion.id],
       name: "fk_publicaciones_aula_curso_seccion",
     }),
+    foreignKey({
+      columns: [table.ocultadoPorId],
+      foreignColumns: [usuarios.id],
+      name: "fk_publicaciones_aula_ocultado_por",
+    }),
   ],
 );
 
@@ -2101,7 +2134,14 @@ export const comentariosPublicacion = pgTable(
     publicacionId: uuid("publicacion_id").notNull(),
     autorId: uuid("autor_id").notNull(),
     contenido: varchar({ length: 1000 }).notNull(),
+    vigente: boolean().default(true).notNull(),
+    ocultadoPorId: uuid("ocultado_por_id"),
+    ocultadoEn: timestamp("ocultado_en", { precision: 0, mode: "string" }),
+    motivoOcultamiento: varchar("motivo_ocultamiento", { length: 255 }),
     creadoEn: timestamp("creado_en", { precision: 0, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    actualizadoEn: timestamp("actualizado_en", { precision: 0, mode: "string" })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
     eliminadoEn: timestamp("eliminado_en", { precision: 0, mode: "string" }),
@@ -2122,6 +2162,11 @@ export const comentariosPublicacion = pgTable(
       foreignColumns: [publicacionesAula.id],
       name: "fk_comentarios_publicacion_publicacion",
     }).onDelete("cascade"),
+    foreignKey({
+      columns: [table.ocultadoPorId],
+      foreignColumns: [usuarios.id],
+      name: "fk_comentarios_publicacion_ocultado_por",
+    }),
   ],
 );
 
@@ -2134,7 +2179,14 @@ export const mensajesChat = pgTable(
     receptorId: uuid("receptor_id"),
     contenido: varchar({ length: 2000 }).notNull(),
     adjuntoUrl: varchar("adjunto_url", { length: 500 }),
+    vigente: boolean().default(true).notNull(),
+    ocultadoPorId: uuid("ocultado_por_id"),
+    ocultadoEn: timestamp("ocultado_en", { precision: 0, mode: "string" }),
+    motivoOcultamiento: varchar("motivo_ocultamiento", { length: 255 }),
     enviadoEn: timestamp("enviado_en", { precision: 0, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    actualizadoEn: timestamp("actualizado_en", { precision: 0, mode: "string" })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
     leidoEn: timestamp("leido_en", { precision: 0, mode: "string" }),
@@ -2161,7 +2213,42 @@ export const mensajesChat = pgTable(
       foreignColumns: [usuarios.id],
       name: "fk_mensajes_chat_receptor",
     }),
+    foreignKey({
+      columns: [table.ocultadoPorId],
+      foreignColumns: [usuarios.id],
+      name: "fk_mensajes_chat_ocultado_por",
+    }),
     check("ck_mensajes_chat_receptor", sql`(receptor_id IS NULL) OR (receptor_id <> emisor_id)`),
+  ],
+);
+
+export const chatLecturas = pgTable(
+  "chat_lecturas",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    cursoSeccionId: uuid("curso_seccion_id").notNull(),
+    usuarioId: uuid("usuario_id").notNull(),
+    ultimoLeidoEn: timestamp("ultimo_leido_en", { precision: 0, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    unique("uq_chat_lecturas_curso_usuario").on(table.cursoSeccionId, table.usuarioId),
+    index("ix_chat_lecturas_curso_usuario").using(
+      "btree",
+      table.cursoSeccionId.asc().nullsLast().op("timestamp_ops"),
+      table.usuarioId.asc().nullsLast().op("timestamp_ops"),
+    ),
+    foreignKey({
+      columns: [table.cursoSeccionId],
+      foreignColumns: [cursosSeccion.id],
+      name: "fk_chat_lecturas_curso_seccion",
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [table.usuarioId],
+      foreignColumns: [usuarios.id],
+      name: "fk_chat_lecturas_usuario",
+    }).onDelete("cascade"),
   ],
 );
 
@@ -2208,7 +2295,7 @@ export const actividadAula = pgTable(
     }),
     check(
       "ck_actividad_aula_accion",
-      sql`(accion)::text = ANY ((ARRAY['visualizo'::character varying, 'descargo'::character varying, 'completo'::character varying])::text[])`,
+      sql`(accion)::text = ANY ((ARRAY['visualizo'::character varying, 'descargo'::character varying, 'abrio'::character varying, 'completo'::character varying])::text[])`,
     ),
     check("ck_actividad_aula_recurso", sql`num_nonnulls(material_id, tarea_id) = 1`),
   ],
