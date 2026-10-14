@@ -28,34 +28,11 @@ export const MENSAJE_DESCARGO_AUSENCIA_NO_VIGENTE =
 
 @Injectable()
 export class AusenciasConsultaService {
-  private readonly auditService: AuditService;
-  private readonly anioLectivoCls: AnioLectivoCls;
-
-  constructor(
-    repository: AusenciasDocenteRepository,
-    auditService: AuditService,
-    anioLectivoCls: AnioLectivoCls,
-  );
-  constructor(
-    repository: AusenciasDocenteRepository,
-    _inyeccionObsoleta: unknown,
-    auditService: AuditService,
-    anioLectivoCls: AnioLectivoCls,
-  );
   constructor(
     private readonly repository: AusenciasDocenteRepository,
-    primerParametro: unknown,
-    segundoParametro?: AnioLectivoCls | AuditService,
-    tercerParametro?: AnioLectivoCls,
-  ) {
-    if (primerParametro instanceof AuditService) {
-      this.auditService = primerParametro;
-      this.anioLectivoCls = segundoParametro as AnioLectivoCls;
-    } else {
-      this.auditService = segundoParametro as AuditService;
-      this.anioLectivoCls = tercerParametro as AnioLectivoCls;
-    }
-  }
+    private readonly auditService: AuditService,
+    private readonly anioLectivoCls: AnioLectivoCls,
+  ) {}
 
   /**
    * Obtiene los plazos configurables de descargo y corrección desde variables de sistema.

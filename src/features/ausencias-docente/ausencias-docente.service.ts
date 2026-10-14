@@ -37,16 +37,9 @@ export class AusenciasDocenteService {
       registroService ??
       new AusenciasRegistroService(repository, notificacionesService, auditService, anioLectivoCls);
     this.servicioCorreccion =
-      correccionService ??
-      new AusenciasCorreccionService(
-        repository,
-        notificacionesService,
-        auditService,
-        anioLectivoCls,
-      );
+      correccionService ?? new AusenciasCorreccionService(repository, auditService);
     this.servicioConsulta =
-      consultaService ??
-      new AusenciasConsultaService(repository, notificacionesService, auditService, anioLectivoCls);
+      consultaService ?? new AusenciasConsultaService(repository, auditService, anioLectivoCls);
   }
 
   /**

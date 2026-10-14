@@ -6,8 +6,6 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { AuditService } from "../../common/services/audit.service";
-import type { NotificacionesService } from "../notificaciones/notificaciones.service";
-import type { AnioLectivoCls } from "../../common/anio-lectivo";
 import {
   MENSAJES_AUSENCIA,
   VALORES_DEFECTO_AUSENCIA,
@@ -30,29 +28,10 @@ import {
 
 @Injectable()
 export class AusenciasCorreccionService {
-  private readonly repository: AusenciasDocenteRepository;
-  private readonly auditService: AuditService;
-
-  constructor(repository: AusenciasDocenteRepository, auditService: AuditService);
   constructor(
-    repository: AusenciasDocenteRepository,
-    notificacionesOAudit: NotificacionesService | AuditService,
-    auditService?: AuditService,
-    _anioLectivoCls?: AnioLectivoCls,
-  );
-  constructor(
-    repository: AusenciasDocenteRepository,
-    notificacionesOAudit: NotificacionesService | AuditService,
-    auditService?: AuditService,
-    _anioLectivoCls?: AnioLectivoCls,
-  ) {
-    this.repository = repository;
-    if (auditService) {
-      this.auditService = auditService;
-    } else {
-      this.auditService = notificacionesOAudit as AuditService;
-    }
-  }
+    private readonly repository: AusenciasDocenteRepository,
+    private readonly auditService: AuditService,
+  ) {}
 
   /**
    * HU2: Corregir una ausencia dentro de las 24 horas y antes del descargo.
