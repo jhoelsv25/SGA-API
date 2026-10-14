@@ -1536,8 +1536,17 @@ export const consolidadosDocente = pgTable(
     id: uuid().defaultRandom().primaryKey().notNull(),
     docenteId: uuid("docente_id").notNull(),
     periodoId: uuid("periodo_id").notNull(),
+    consolidadoRaizId: uuid("consolidado_raiz_id"),
+    estado: varchar({ length: 20 }).default("cerrado").notNull(),
+    version: smallint().default(1).notNull(),
+    vigente: boolean().default(true).notNull(),
+    motivoCambio: varchar("motivo_cambio", { length: 500 }),
     sesionesProgramadas: smallint("sesiones_programadas").notNull(),
     sesionesCumplidas: smallint("sesiones_cumplidas").notNull(),
+    sesionesParciales: smallint("sesiones_parciales").default(0).notNull(),
+    sesionesNoCumplidas: smallint("sesiones_no_cumplidas").default(0).notNull(),
+    sesionesJustificadas: smallint("sesiones_justificadas").default(0).notNull(),
+    minutosPerdidosFirma: integer("minutos_perdidos_firma").default(0).notNull(),
     totalAusencias: smallint("total_ausencias").default(0).notNull(),
     minutosFueraAula: integer("minutos_fuera_aula").default(0).notNull(),
     decision: varchar({ length: 20 }).default("ninguna").notNull(),
@@ -1547,8 +1556,17 @@ export const consolidadosDocente = pgTable(
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
     enviadoEn: timestamp("enviado_en", { precision: 0, mode: "string" }),
+    reabiertoPorId: uuid("reabierto_por_id"),
+    reabiertoEn: timestamp("reabierto_en", { precision: 0, mode: "string" }),
   },
   (table) => [
+    index("ix_consolidados_docente_raiz").on(table.consolidadoRaizId),
+    index("ix_consolidados_docente_docente_vigente").on(table.docenteId, table.vigente),
+    foreignKey({
+      columns: [table.consolidadoRaizId],
+      foreignColumns: [table.id],
+      name: "fk_consolidados_docente_raiz",
+    }).onDelete("set null"),
     foreignKey({
       columns: [table.docenteId],
       foreignColumns: [docentes.id],
@@ -1564,18 +1582,80 @@ export const consolidadosDocente = pgTable(
       foreignColumns: [periodosAcademicos.id],
       name: "fk_consolidados_docente_periodo",
     }),
-    unique("uq_consolidados_docente").on(table.docenteId, table.periodoId),
+    foreignKey({
+      columns: [table.reabiertoPorId],
+      foreignColumns: [usuarios.id],
+      name: "fk_consolidados_docente_reabierto_por",
+    }),
+    uniqueIndex("uq_consolidados_docente_vigente")
+      .on(table.docenteId, table.periodoId)
+      .where(sql`vigente = true`),
+    check(
+      "ck_consolidados_docente_estado",
+      sql`(estado)::text = ANY ((ARRAY['cerrado'::character varying, 'reabierto'::character varying])::text[])`,
+    ),
+    check("ck_consolidados_docente_version", sql`version >= 1`),
+    check("ck_consolidados_docente_cambio", sql`version = 1 OR motivo_cambio IS NOT NULL`),
     check(
       "ck_consolidados_docente_ausencias",
       sql`(total_ausencias >= 0) AND (minutos_fuera_aula >= 0)`,
     ),
     check(
       "ck_consolidados_docente_decision",
-      sql`(decision)::text = ANY ((ARRAY['ninguna'::character varying, 'llamada_atencion'::character varying, 'descuento'::character varying, 'derivado'::character varying])::text[])`,
+      sql`(decision)::text = ANY ((ARRAY['ninguna'::character varying, 'llamada_atencion'::character varying, 'compromiso_mejora'::character varying, 'derivado'::character varying])::text[])`,
     ),
     check(
       "ck_consolidados_docente_sesiones",
       sql`(sesiones_programadas >= 0) AND ((sesiones_cumplidas >= 0) AND (sesiones_cumplidas <= sesiones_programadas))`,
+    ),
+  ],
+);
+
+export const solicitudesRevisionConsolidado = pgTable(
+  "solicitudes_revision_consolidado",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    consolidadoId: uuid("consolidado_id").notNull(),
+    docenteId: uuid("docente_id").notNull(),
+    motivo: varchar({ length: 1000 }).notNull(),
+    adjuntoRuta: varchar("adjunto_ruta", { length: 500 }),
+    adjuntoNombre: varchar("adjunto_nombre", { length: 255 }),
+    estado: varchar({ length: 20 }).default("solicitada").notNull(),
+    respuesta: varchar({ length: 1000 }),
+    resueltaPorId: uuid("resuelta_por_id"),
+    creadoEn: timestamp("creado_en", { precision: 0, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    resueltaEn: timestamp("resuelta_en", { precision: 0, mode: "string" }),
+  },
+  (table) => [
+    index("ix_solicitudes_revision_consolidado_consolidado").on(table.consolidadoId),
+    index("ix_solicitudes_revision_consolidado_docente").on(table.docenteId),
+    foreignKey({
+      columns: [table.consolidadoId],
+      foreignColumns: [consolidadosDocente.id],
+      name: "fk_solicitudes_revision_consolidado_consolidado",
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [table.docenteId],
+      foreignColumns: [docentes.id],
+      name: "fk_solicitudes_revision_consolidado_docente",
+    }),
+    foreignKey({
+      columns: [table.resueltaPorId],
+      foreignColumns: [usuarios.id],
+      name: "fk_solicitudes_revision_consolidado_resuelta_por",
+    }),
+    uniqueIndex("uq_solicitudes_revision_consolidado_abierta")
+      .on(table.consolidadoId)
+      .where(sql`estado = 'solicitada'`),
+    check(
+      "ck_solicitudes_revision_consolidado_estado",
+      sql`(estado)::text = ANY ((ARRAY['solicitada'::character varying, 'aceptada'::character varying, 'rechazada'::character varying])::text[])`,
+    ),
+    check(
+      "ck_solicitudes_revision_consolidado_resolucion",
+      sql`((estado)::text = 'solicitada'::text) OR (resuelta_por_id IS NOT NULL AND resuelta_en IS NOT NULL AND ((estado)::text <> 'rechazada'::text OR respuesta IS NOT NULL))`,
     ),
   ],
 );
