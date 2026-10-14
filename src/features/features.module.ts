@@ -31,6 +31,7 @@ import { VariablesSistemaModule } from "./variables-sistema";
 import { MarcacionesModule } from "./marcaciones";
 import { AsistenciaClaseModule } from "./asistencia-clase";
 import { SesionesClaseModule } from "./sesiones-clase";
+import { AusenciasDocenteModule } from "./ausencias-docente";
 import { AulaVirtualModule } from "./aula-virtual";
 
 @Module({
@@ -65,6 +66,7 @@ import { AulaVirtualModule } from "./aula-virtual";
     MarcacionesModule,
     AsistenciaClaseModule,
     SesionesClaseModule,
+    AusenciasDocenteModule,
     AulaVirtualModule,
     ConductaModule,
   ],
@@ -99,6 +101,7 @@ import { AulaVirtualModule } from "./aula-virtual";
     MarcacionesModule,
     AsistenciaClaseModule,
     SesionesClaseModule,
+    AusenciasDocenteModule,
     AulaVirtualModule,
     ConductaModule,
   ],
