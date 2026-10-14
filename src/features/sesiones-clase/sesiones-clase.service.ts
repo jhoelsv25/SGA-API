@@ -18,7 +18,8 @@ import { AniosAcademicosService } from "../anio-escolar/anios.service";
 import { CalendarioService } from "../calendario/calendario.service";
 import { EquiposService } from "../equipos/equipos.service";
 import { MarcacionesService } from "../marcaciones/marcaciones.service";
-import { ahoraEnColegio, diaIsoDeFecha, horaCorta } from "../marcaciones/utils";
+import { diaIsoDeFecha, horaCorta } from "../marcaciones/utils";
+import { ahoraEnLima } from "../../common/utils/fecha-lima.util";
 import {
   CRON_CERRAR_SESIONES,
   CRON_GENERAR_SESIONES,
@@ -110,7 +111,7 @@ export class SesionesClaseService implements OnModuleInit {
   // --- HU1: generación y cierre ------------------------------------------------
 
   /** Crea las sesiones `pendiente` del día. Idempotente: no duplica las existentes. */
-  async generarDelDia(fecha = ahoraEnColegio().fecha): Promise<number> {
+  async generarDelDia(fecha = ahoraEnLima().fecha): Promise<number> {
     const anio = await this.aniosService.anioVigente();
     if (!anio || anio.estado !== "en_curso") return 0;
     const enBimestre = anio.bimestres.some(
@@ -133,7 +134,7 @@ export class SesionesClaseService implements OnModuleInit {
   }
 
   /** Cierre del día: pendiente → no_cumplida; en_curso → parcial "Sin firma de salida". */
-  async cerrarDelDia(fecha = ahoraEnColegio().fecha): Promise<void> {
+  async cerrarDelDia(fecha = ahoraEnLima().fecha): Promise<void> {
     const { salidaAutomatica } = await this.configuracion();
     const resultado = await this.repository.cerrarDia(
       fecha,
@@ -157,7 +158,7 @@ export class SesionesClaseService implements OnModuleInit {
     ip?: string,
   ): Promise<SesionesKioskoResponseDto> {
     const docente = await this.identificarEnKiosko(token, dto, ip);
-    const { fecha, hora } = ahoraEnColegio();
+    const { fecha, hora } = ahoraEnLima();
     await this.asegurarGeneracion(fecha);
     const sesiones = await this.repository.sesionesDeDocente(docente.docenteId, fecha, fecha);
     const { minutosAntes } = await this.configuracion();
@@ -177,7 +178,7 @@ export class SesionesClaseService implements OnModuleInit {
   ): Promise<FirmaSesionResponseDto> {
     const docente = await this.identificarEnKiosko(token, dto, ip);
     const sesion = await this.sesionDelDocente(sesionId, docente.docenteId);
-    const { fecha, hora } = ahoraEnColegio();
+    const { fecha, hora } = ahoraEnLima();
     if (sesion.estado !== "pendiente") {
       throw new ConflictException(MENSAJES_SESION.INGRESO_YA_FIRMADO);
     }
@@ -254,7 +255,7 @@ export class SesionesClaseService implements OnModuleInit {
       throw new ConflictException(MENSAJES_SESION.SALIDA_YA_FIRMADA);
     }
 
-    const { hora } = ahoraEnColegio();
+    const { hora } = ahoraEnLima();
     const { toleranciaSalida } = await this.configuracion();
     const salidaAntes = minutosSalidaAnticipada(sesion.horaFin, hora, toleranciaSalida);
     const minutosPerdidos = sesion.minutosRetraso + salidaAntes;
@@ -291,7 +292,7 @@ export class SesionesClaseService implements OnModuleInit {
   // --- HU3: seguimiento del subdirector -------------------------------------------
 
   async panelDeHoy(): Promise<PanelSesionesResponseDto> {
-    const { fecha, hora } = ahoraEnColegio();
+    const { fecha, hora } = ahoraEnLima();
     await this.asegurarGeneracion(fecha);
     const { toleranciaIngreso } = await this.configuracion();
     const minutoActual = minutosDelDia(hora);

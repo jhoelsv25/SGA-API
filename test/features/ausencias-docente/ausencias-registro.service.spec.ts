@@ -1,4 +1,9 @@
-import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from "@nestjs/common";
 import { AnioLectivoCls } from "@/common/anio-lectivo";
 import { AuditService } from "@/common/services/audit.service";
 import { NotificacionesService } from "@/features/notificaciones/notificaciones.service";
@@ -12,6 +17,7 @@ import {
   type RegistrarAusenciaDto,
   type SesionParaAusencia,
 } from "@/features/ausencias-docente";
+import { AusenciasRegistroService } from "@/features/ausencias-docente/ausencias-registro.service";
 
 type Mocks<T> = { [K in keyof T]?: jest.Mock };
 
@@ -81,7 +87,11 @@ describe("RF-012: Registro de ausencias docentes (HU1)", () => {
     registradoPorNombre: "Director Escolar",
   };
 
-  function crearArchivoFoto(nombre: string, bytes: number, mimetype = "image/png"): Express.Multer.File {
+  function crearArchivoFoto(
+    nombre: string,
+    bytes: number,
+    mimetype = "image/png",
+  ): Express.Multer.File {
     return {
       fieldname: "fotos",
       originalname: nombre,
@@ -148,7 +158,10 @@ describe("RF-012: Registro de ausencias docentes (HU1)", () => {
         motivo: "desayunando",
         observacion: "En la cafetería",
       };
-      const fotos = [crearArchivoFoto("foto1.png", 1024), crearArchivoFoto("foto2.jpg", 2048, "image/jpeg")];
+      const fotos = [
+        crearArchivoFoto("foto1.png", 1024),
+        crearArchivoFoto("foto2.jpg", 2048, "image/jpeg"),
+      ];
 
       // Cuando registro una ausencia de 08:50 a 09:10 con motivo y 2 fotos
       const resultado = await service.registrar(dto, fotos, "user-director-uuid", "192.168.1.50");
@@ -288,9 +301,9 @@ describe("RF-012: Registro de ausencias docentes (HU1)", () => {
       };
 
       // Entonces el sistema impide guardar y muestra el mensaje exacto
-      await expect(service.registrar(dtoSuperpuesto, undefined, "user-director-uuid")).rejects.toThrow(
-        new ConflictException(MENSAJES_AUSENCIA.TRAMOS_SUPERPUESTOS),
-      );
+      await expect(
+        service.registrar(dtoSuperpuesto, undefined, "user-director-uuid"),
+      ).rejects.toThrow(new ConflictException(MENSAJES_AUSENCIA.TRAMOS_SUPERPUESTOS));
     });
   });
 
@@ -306,7 +319,9 @@ describe("RF-012: Registro de ausencias docentes (HU1)", () => {
 
       // Cuando registro un tramo de 10:05 a 10:15
       // Entonces el sistema impide guardar y muestra el mensaje formateado con las horas de la sesión
-      await expect(service.registrar(dtoFueraDeHorario, undefined, "user-director-uuid")).rejects.toThrow(
+      await expect(
+        service.registrar(dtoFueraDeHorario, undefined, "user-director-uuid"),
+      ).rejects.toThrow(
         new BadRequestException(MENSAJES_AUSENCIA.FUERA_HORARIO_SESION("08:30 a 10:00")),
       );
     });
@@ -324,9 +339,9 @@ describe("RF-012: Registro de ausencias docentes (HU1)", () => {
 
       // Cuando la hora final es anterior a la inicial
       // Entonces el sistema impide guardar y muestra el mensaje exacto
-      await expect(service.registrar(dtoHorasInvertidas, undefined, "user-director-uuid")).rejects.toThrow(
-        new BadRequestException(MENSAJES_AUSENCIA.HORAS_INVERTIDAS),
-      );
+      await expect(
+        service.registrar(dtoHorasInvertidas, undefined, "user-director-uuid"),
+      ).rejects.toThrow(new BadRequestException(MENSAJES_AUSENCIA.HORAS_INVERTIDAS));
 
       // Y también si son exactamente iguales
       const dtoHorasIguales: RegistrarAusenciaDto = {
@@ -335,9 +350,9 @@ describe("RF-012: Registro de ausencias docentes (HU1)", () => {
         horaHasta: "09:00",
         motivo: "fuera_del_aula",
       };
-      await expect(service.registrar(dtoHorasIguales, undefined, "user-director-uuid")).rejects.toThrow(
-        new BadRequestException(MENSAJES_AUSENCIA.HORAS_INVERTIDAS),
-      );
+      await expect(
+        service.registrar(dtoHorasIguales, undefined, "user-director-uuid"),
+      ).rejects.toThrow(new BadRequestException(MENSAJES_AUSENCIA.HORAS_INVERTIDAS));
     });
   });
 
@@ -353,9 +368,9 @@ describe("RF-012: Registro de ausencias docentes (HU1)", () => {
 
       // Cuando intento guardar sin observación
       // Entonces el sistema impide guardar y muestra el mensaje exacto
-      await expect(service.registrar(dtoOtroSinObs, undefined, "user-director-uuid")).rejects.toThrow(
-        new BadRequestException(MENSAJES_AUSENCIA.FALTA_OBSERVACION),
-      );
+      await expect(
+        service.registrar(dtoOtroSinObs, undefined, "user-director-uuid"),
+      ).rejects.toThrow(new BadRequestException(MENSAJES_AUSENCIA.FALTA_OBSERVACION));
 
       // Y también si la observación son solo espacios en blanco
       const dtoOtroEspacios: RegistrarAusenciaDto = {
@@ -365,9 +380,9 @@ describe("RF-012: Registro de ausencias docentes (HU1)", () => {
         motivo: "otro",
         observacion: "   ",
       };
-      await expect(service.registrar(dtoOtroEspacios, undefined, "user-director-uuid")).rejects.toThrow(
-        new BadRequestException(MENSAJES_AUSENCIA.FALTA_OBSERVACION),
-      );
+      await expect(
+        service.registrar(dtoOtroEspacios, undefined, "user-director-uuid"),
+      ).rejects.toThrow(new BadRequestException(MENSAJES_AUSENCIA.FALTA_OBSERVACION));
     });
   });
 
@@ -470,7 +485,12 @@ describe("RF-012: Registro de ausencias docentes (HU1)", () => {
       const actorCoordinadorId = "user-coordinador-uuid";
 
       // Cuando el Coordinador registra una ausencia
-      const resultado = await service.registrar(dto, undefined, actorCoordinadorId, "192.168.1.120");
+      const resultado = await service.registrar(
+        dto,
+        undefined,
+        actorCoordinadorId,
+        "192.168.1.120",
+      );
 
       // Entonces el sistema la guarda igual que si la registrara el Director
       expect(resultado.mensaje).toBe(MENSAJES_AUSENCIA.AUSENCIA_REGISTRADA(20));
@@ -487,6 +507,24 @@ describe("RF-012: Registro de ausencias docentes (HU1)", () => {
           tabla: "ausencias_sesion",
         }),
       );
+    });
+  });
+
+  describe("obtenerFechaHoy() en hora de Lima (Propuesta 2)", () => {
+    it("a las 2026-10-15T02:00Z devuelve 2026-10-14 correspondiente al día actual en Lima", () => {
+      const anioSinId = { id: jest.fn().mockReturnValue(undefined) } as unknown as AnioLectivoCls;
+      const registroService = new AusenciasRegistroService(
+        repo as unknown as AusenciasDocenteRepository,
+        notificaciones as unknown as NotificacionesService,
+        audit as unknown as AuditService,
+        anioSinId,
+      );
+
+      const fecha2amUtc = new Date("2026-10-15T02:00:00Z");
+      expect(registroService.obtenerFechaHoy(fecha2amUtc)).toBe("2026-10-14");
+
+      const fecha5amUtc = new Date("2026-10-15T05:00:00Z");
+      expect(registroService.obtenerFechaHoy(fecha5amUtc)).toBe("2026-10-15");
     });
   });
 });
