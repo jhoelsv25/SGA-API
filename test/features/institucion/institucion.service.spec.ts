@@ -21,7 +21,7 @@ describe("InstitucionService (RF-004 HU1)", () => {
 
   const mockInst = {
     id: "inst-123",
-    nombre: "I.E. Carmelinas de Lircay",
+    nombre: "I.E. De Mujeres Nuestra Señora del Carmen",
     codigoModular: "0543210",
     codigoLocal: null,
     tipoGestion: "publica" as const,

@@ -16,6 +16,8 @@ import {
   MENU_AULA_VIRTUAL,
   MENU_SOLICITUDES_CAMBIO_FECHA,
   MENU_MATERIALES_BIMESTRE,
+  MENU_LIBRETAS,
+  MENU_MIS_LIBRETAS,
 } from "../../common/constants";
 
 const pool = new Pool({
@@ -56,7 +58,7 @@ async function seed() {
     INSERT INTO institucion (
       nombre, codigo_modular, tipo_gestion, ugel, dre, director, direccion, distrito, provincia, departamento, correo
     ) VALUES (
-      'I.E. Carmelinas de Lircay',
+      'I.E. De Mujeres Nuestra Señora del Carmen',
       '0543210',
       'publica',
       'UGEL Angaraes',
@@ -1021,6 +1023,50 @@ async function seed() {
     );
   }
   console.log("✔ Opciones del Aula virtual registradas (RF-015).");
+
+  await pool.query(
+    `INSERT INTO menus (modulo_id, nombre, orden, es_contenedor)
+     SELECT m.id, 'Libretas', 1, true FROM modulos m
+     WHERE m.codigo = 'libretas'
+       AND NOT EXISTS (
+         SELECT 1 FROM menus x
+         WHERE x.modulo_id = m.id AND x.es_contenedor AND x.nombre = 'Libretas'
+       );`,
+  );
+  const MENUS_LIBRETAS_SEED = [
+    {
+      nombre: "Libretas",
+      ruta: MENU_LIBRETAS,
+      icono: "Notebook01Icon",
+      orden: 1,
+      roles: ["Administrador", "Director", "Subdirector", "Secretaria", "Docente"],
+    },
+    {
+      nombre: "Mis libretas",
+      ruta: MENU_MIS_LIBRETAS,
+      icono: "Notebook01Icon",
+      orden: 2,
+      roles: ["Estudiante", "Apoderado"],
+    },
+  ];
+  for (const menu of MENUS_LIBRETAS_SEED) {
+    await pool.query(
+      `INSERT INTO menus (modulo_id, menu_padre_id, nombre, ruta, icono, orden, es_contenedor)
+       SELECT c.modulo_id, c.id, $2::varchar, $1::varchar, $3::varchar, $4::int, false
+       FROM menus c JOIN modulos m ON m.id = c.modulo_id
+       WHERE m.codigo = 'libretas' AND c.es_contenedor AND c.nombre = 'Libretas'
+         AND NOT EXISTS (SELECT 1 FROM menus x WHERE x.ruta = $1::varchar);`,
+      [menu.ruta, menu.nombre, menu.icono, menu.orden],
+    );
+    await pool.query(
+      `INSERT INTO rol_menus (rol_id, menu_id)
+       SELECT r.id, m.id FROM roles r, menus m
+       WHERE r.nombre = ANY($2::varchar[]) AND m.ruta = $1
+       ON CONFLICT DO NOTHING;`,
+      [menu.ruta, menu.roles],
+    );
+  }
+  console.log("✔ Opciones de Libretas registradas (RF-014).");
 
   await pool.end();
   console.log("==========================================");

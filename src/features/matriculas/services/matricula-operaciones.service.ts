@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException, Optional } from "@nestjs/common";
 import { AuditService } from "../../../common/services/audit.service";
 import { NotificacionesService } from "../../notificaciones/notificaciones.service";
+import { LibretasService } from "../../libretas/libretas.service";
 import { MATRICULA_MESSAGES } from "../constants";
 import {
   CambiarSeccionDto,
@@ -16,6 +17,7 @@ export class MatriculaOperacionesService {
     private readonly matriculasRepository: MatriculasRepository,
     private readonly auditService: AuditService,
     @Optional() private readonly notificacionesService?: NotificacionesService,
+    @Optional() private readonly libretasService?: LibretasService,
   ) {}
 
   /**
@@ -56,6 +58,10 @@ export class MatriculaOperacionesService {
       matricula.estudiante.id,
       "retirado",
     );
+
+    if (this.libretasService) {
+      await this.libretasService.eliminarPendientesPorRetiro(id, dto.fechaRetiro);
+    }
 
     const updated = (await this.matriculasRepository.findMatriculaById(id))!;
 
@@ -130,6 +136,10 @@ export class MatriculaOperacionesService {
       matricula.estudiante.id,
       "trasladado",
     );
+
+    if (this.libretasService) {
+      await this.libretasService.eliminarPendientesPorRetiro(id, dto.fechaRetiro);
+    }
 
     const updated = (await this.matriculasRepository.findMatriculaById(id))!;
 

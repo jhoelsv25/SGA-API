@@ -8,7 +8,9 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Res,
 } from "@nestjs/common";
+import type { Response } from "express";
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { ClientInfo, type ClientInfoData, CurrentUser, Roles } from "../../common/decorators";
 import type { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface";
@@ -75,6 +77,22 @@ export class CredencialesController {
   @ApiResponse({ status: 200, type: CarneDatosDto })
   async obtenerCarne(@Param("personaId", ParseUUIDPipe) personaId: string): Promise<CarneDatosDto> {
     return this.credencialesService.obtenerCarne(personaId);
+  }
+
+  @Get("personas/:personaId/carne/pdf")
+  @ApiOperation({
+    summary: "Descargar o previsualizar el Carné Oficial con QR en PDF estándar PVC (RF-007 HU5)",
+  })
+  @ApiResponse({ status: 200, description: "Buffer del archivo PDF del carné PVC" })
+  async descargarCarnePdf(
+    @Param("personaId", ParseUUIDPipe) personaId: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    const buffer = await this.credencialesService.generarCarnePdf(personaId);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename="carnet-${personaId}.pdf"`);
+    res.setHeader("Content-Length", buffer.length.toString());
+    res.end(buffer);
   }
 
   @Get("personas/:personaId")

@@ -23,6 +23,8 @@ import {
   horarios,
   matriculas,
   libretas,
+  libretaArchivos,
+  libretaAlcances,
   asistenciasEstudiante,
   marcaciones,
   turnos,
@@ -318,7 +320,7 @@ export const matriculasRelations = relations(matriculas, ({ one, many }) => ({
   actividadAulas: many(actividadAula),
 }));
 
-export const libretasRelations = relations(libretas, ({ one }) => ({
+export const libretasRelations = relations(libretas, ({ one, many }) => ({
   matricula: one(matriculas, {
     fields: [libretas.matriculaId],
     references: [matriculas.id],
@@ -330,6 +332,25 @@ export const libretasRelations = relations(libretas, ({ one }) => ({
   usuario: one(usuarios, {
     fields: [libretas.subidoPorId],
     references: [usuarios.id],
+  }),
+  archivos: many(libretaArchivos),
+}));
+
+export const libretaArchivosRelations = relations(libretaArchivos, ({ one }) => ({
+  libreta: one(libretas, {
+    fields: [libretaArchivos.libretaId],
+    references: [libretas.id],
+  }),
+  subidoPor: one(usuarios, {
+    fields: [libretaArchivos.subidoPorId],
+    references: [usuarios.id],
+  }),
+}));
+
+export const libretaAlcancesRelations = relations(libretaAlcances, ({ one }) => ({
+  rol: one(roles, {
+    fields: [libretaAlcances.rolId],
+    references: [roles.id],
   }),
 }));
 

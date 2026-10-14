@@ -1,5 +1,6 @@
-import { BadRequestException, Injectable } from "@nestjs/common";
+import { BadRequestException, Injectable, Optional } from "@nestjs/common";
 import { AuditService } from "../../../common/services/audit.service";
+import { LibretasService } from "../../libretas/libretas.service";
 import { MATRICULA_MESSAGES } from "../constants";
 import {
   MatriculaMasivaDto,
@@ -16,6 +17,7 @@ export class MatriculaMasivaService {
   constructor(
     private readonly matriculasRepository: MatriculasRepository,
     private readonly auditService: AuditService,
+    @Optional() private readonly libretasService?: LibretasService,
   ) {}
 
   /**
@@ -130,6 +132,9 @@ export class MatriculaMasivaService {
       });
 
       const nuevaMatricula = (await this.matriculasRepository.findMatriculaById(id))!;
+      if (this.libretasService) {
+        await this.libretasService.crearPendientesDeMatricula(id);
+      }
       matriculados.push(nuevaMatricula);
     }
 

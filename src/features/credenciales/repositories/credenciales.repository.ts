@@ -1,7 +1,13 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { and, eq } from "drizzle-orm";
 import { Database, DRIZZLE } from "../../../core/database";
-import { credenciales, docentes, estudiantes, personas } from "../../../core/database/schema";
+import {
+  credenciales,
+  docentes,
+  estudiantes,
+  institucion,
+  personas,
+} from "../../../core/database/schema";
 import type { CarneDatosDto } from "../dto";
 
 export interface ReemitirParams {
@@ -98,6 +104,21 @@ export class CredencialesRepository {
       .filter(Boolean)
       .join(" ");
 
+    // Obtener datos institucionales oficiales
+    const [inst] = await this.db
+      .select({
+        nombre: institucion.nombre,
+        codigoModular: institucion.codigoModular,
+        distrito: institucion.distrito,
+        provincia: institucion.provincia,
+        departamento: institucion.departamento,
+        ugel: institucion.ugel,
+        dre: institucion.dre,
+        logoUrl: institucion.logoUrl,
+      })
+      .from(institucion)
+      .limit(1);
+
     return {
       personaId: p.id,
       nombreCompleto,
@@ -108,6 +129,16 @@ export class CredencialesRepository {
       codigoCredencial: cred.codigo,
       codigoInstitucional,
       emitidaEn: cred.emitidaEn,
+      institucion: {
+        nombre: inst?.nombre || "I.E. De Mujeres Nuestra Señora del Carmen",
+        codigoModular: inst?.codigoModular || null,
+        distrito: inst?.distrito || "Lircay",
+        provincia: inst?.provincia || "Angaraes",
+        departamento: inst?.departamento || "Huancavelica",
+        ugel: inst?.ugel || null,
+        dre: inst?.dre || null,
+        logoUrl: inst?.logoUrl || null,
+      },
     };
   }
 

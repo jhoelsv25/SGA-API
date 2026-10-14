@@ -10,7 +10,7 @@ import type {
   ReemitirCredencialDto,
 } from "./dto";
 import { CredencialesRepository } from "./repositories/credenciales.repository";
-import { generarCodigoCredencial, generarPinConHash } from "./utils";
+import { generarCarnePdf, generarCodigoCredencial, generarPinConHash } from "./utils";
 
 @Injectable()
 export class CredencialesService {
@@ -119,5 +119,23 @@ export class CredencialesService {
       emitidaEn: cred.emitidaEn,
       venceEn: cred.venceEn,
     };
+  }
+
+  async generarCarnePdf(personaId: string): Promise<Buffer> {
+    const carne = await this.obtenerCarne(personaId);
+    return generarCarnePdf({
+      nombreCompleto: carne.nombreCompleto,
+      tipoDocumento: carne.tipoDocumento,
+      numeroDocumento: carne.numeroDocumento,
+      fotoUrl: carne.fotoUrl,
+      tipoRol: carne.tipoRol,
+      codigoCredencial: carne.codigoCredencial,
+      codigoInstitucional: carne.codigoInstitucional,
+      emitidaEn: carne.emitidaEn,
+      institucion: carne.institucion || {
+        nombre: "I.E. De Mujeres Nuestra Señora del Carmen",
+        distrito: "Lircay",
+      },
+    });
   }
 }

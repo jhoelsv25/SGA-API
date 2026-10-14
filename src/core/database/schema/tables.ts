@@ -994,6 +994,7 @@ export const libretas = pgTable(
     subidoEn: timestamp("subido_en", { precision: 0, mode: "string" }),
     estado: varchar({ length: 20 }).default("pendiente").notNull(),
     vistoEn: timestamp("visto_en", { precision: 0, mode: "string" }),
+    vistoPorId: uuid("visto_por_id"),
     creadoEn: timestamp("creado_en", { precision: 0, mode: "string" })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
@@ -1022,6 +1023,11 @@ export const libretas = pgTable(
       foreignColumns: [usuarios.id],
       name: "fk_libretas_subido_por",
     }),
+    foreignKey({
+      columns: [table.vistoPorId],
+      foreignColumns: [usuarios.id],
+      name: "fk_libretas_visto_por",
+    }),
     unique("uq_libretas_matricula_periodo").on(table.matriculaId, table.periodoId),
     check(
       "ck_libretas_estado",
@@ -1032,6 +1038,78 @@ export const libretas = pgTable(
       sql`(((estado)::text = 'pendiente'::text) AND (archivo_url IS NULL) AND (subido_en IS NULL)) OR (((estado)::text <> 'pendiente'::text) AND (archivo_url IS NOT NULL) AND (subido_en IS NOT NULL) AND (subido_por_id IS NOT NULL))`,
     ),
     check("ck_libretas_visto", sql`(visto_en IS NULL) OR (subido_en IS NOT NULL)`),
+  ],
+);
+
+/** RF-014: cada PDF subido. El reemplazado queda con vigente = false (vigencia 0). */
+export const libretaArchivos = pgTable(
+  "libreta_archivos",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    libretaId: uuid("libreta_id").notNull(),
+    nombreOriginal: varchar("nombre_original", { length: 255 }).notNull(),
+    archivoUrl: varchar("archivo_url", { length: 500 }).notNull(),
+    tamanoBytes: integer("tamano_bytes").notNull(),
+    asignacion: varchar({ length: 20 }).notNull(),
+    vigente: boolean().default(true).notNull(),
+    motivo: varchar({ length: 500 }),
+    subidoPorId: uuid("subido_por_id").notNull(),
+    subidoEn: timestamp("subido_en", { precision: 0, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    index("ix_libreta_archivos_libreta").using(
+      "btree",
+      table.libretaId.asc().nullsLast().op("uuid_ops"),
+    ),
+    uniqueIndex("ux_libreta_archivos_vigente")
+      .on(table.libretaId)
+      .where(sql`vigente`),
+    foreignKey({
+      columns: [table.libretaId],
+      foreignColumns: [libretas.id],
+      name: "fk_libreta_archivos_libreta",
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [table.subidoPorId],
+      foreignColumns: [usuarios.id],
+      name: "fk_libreta_archivos_subido_por",
+    }),
+    check(
+      "ck_libreta_archivos_asignacion",
+      sql`(asignacion)::text = ANY ((ARRAY['automatica'::character varying, 'manual'::character varying])::text[])`,
+    ),
+    check("ck_libreta_archivos_tamano", sql`tamano_bytes > 0`),
+  ],
+);
+
+/** RF-014: alcance de libretas.subir por rol (RF-002 V3 ya no guarda alcances). */
+export const libretaAlcances = pgTable(
+  "libreta_alcances",
+  {
+    rolId: uuid("rol_id").primaryKey().notNull(),
+    alcance: varchar({ length: 20 }).notNull(),
+    actualizadoPorId: uuid("actualizado_por_id"),
+    actualizadoEn: timestamp("actualizado_en", { precision: 0, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.rolId],
+      foreignColumns: [roles.id],
+      name: "fk_libreta_alcances_rol",
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [table.actualizadoPorId],
+      foreignColumns: [usuarios.id],
+      name: "fk_libreta_alcances_actualizado_por",
+    }),
+    check(
+      "ck_libreta_alcances_alcance",
+      sql`(alcance)::text = ANY ((ARRAY['tutoria'::character varying, 'mis_secciones'::character varying, 'colegio'::character varying])::text[])`,
+    ),
   ],
 );
 

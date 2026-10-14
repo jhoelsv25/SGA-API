@@ -412,6 +412,14 @@ export class MatriculasRepository {
         codigoModular: institucion.codigoModular,
         direccion: institucion.direccion,
         telefono: institucion.telefono,
+        correo: institucion.correo,
+        ugel: institucion.ugel,
+        dre: institucion.dre,
+        director: institucion.director,
+        logoUrl: institucion.logoUrl,
+        distrito: institucion.distrito,
+        provincia: institucion.provincia,
+        departamento: institucion.departamento,
       })
       .from(institucion)
       .limit(1);
@@ -433,10 +441,18 @@ export class MatriculasRepository {
         fechaNacimiento: row.estudianteFechaNacimiento,
       },
       institucion: {
-        nombre: inst?.nombre || "Colegio Nacional San Juan",
+        nombre: inst?.nombre || "I.E. De Mujeres Nuestra Señora del Carmen",
         codigoModular: inst?.codigoModular || null,
         direccion: inst?.direccion || null,
         telefono: inst?.telefono || null,
+        correo: inst?.correo || null,
+        ugel: inst?.ugel || null,
+        dre: inst?.dre || null,
+        director: inst?.director || null,
+        logoUrl: inst?.logoUrl || null,
+        distrito: inst?.distrito || null,
+        provincia: inst?.provincia || null,
+        departamento: inst?.departamento || null,
       },
     };
   }

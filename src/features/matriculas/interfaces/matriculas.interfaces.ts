@@ -66,6 +66,14 @@ export interface DatosConstanciaMatricula {
     codigoModular?: string | null;
     direccion?: string | null;
     telefono?: string | null;
+    correo?: string | null;
+    ugel?: string | null;
+    dre?: string | null;
+    director?: string | null;
+    logoUrl?: string | null;
+    distrito?: string | null;
+    provincia?: string | null;
+    departamento?: string | null;
   };
 }
 

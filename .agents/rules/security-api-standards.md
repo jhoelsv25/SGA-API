@@ -35,3 +35,16 @@ trigger: always_on
   - Aplica `JwtAuthGuard` a nivel de módulo o controlador para proteger rutas privadas.
   - Usa decoradores personalizados como `@Public()` para exceptuar rutas abiertas explícitamente.
   - Utiliza `@CurrentUser()` para extraer de manera tipada la información del usuario autenticado desde `req.user`.
+
+## 4. Generación y Descarga Centralizada de Archivos y Documentos Oficiales
+
+- **Generación Exclusiva en Backend**:
+  - Todo archivo descargable (PDF, Excel, Constancias, Carnés/Credenciales, Reportes, Boletas de notas), **sin importar su tamaño**, debe ser generado y servido exclusivamente desde el backend (`sga-api`).
+  - **Motivos de Seguridad**:
+    - Garantiza control de acceso mediante `JwtAuthGuard` y `RolesGuard` antes de entregar cualquier documento.
+    - Evita la filtración de datos sensibles no autorizados al cliente.
+    - Permite registrar bitácora de auditoría (`AuditService`) sobre quién, cuándo y qué documento oficial emitió o descargó.
+  - **Rendimiento y Ligereza del Cliente**:
+    - Evita sobrecargar el navegador del cliente con motores de renderizado pesado, sintetizadores de PDF o cálculos complejos.
+    - Los endpoints de descarga deben responder con el tipo MIME correspondiente (ej. `application/pdf`, `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`) y el header `Content-Disposition` adecuado.
+

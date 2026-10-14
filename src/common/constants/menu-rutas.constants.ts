@@ -33,3 +33,9 @@ export const MENU_MIS_SESIONES = "/admin/mis-sesiones";
 export const MENU_AULA_VIRTUAL = "/admin/aula-virtual";
 export const MENU_SOLICITUDES_CAMBIO_FECHA = "/admin/solicitudes-cambio-fecha";
 export const MENU_MATERIALES_BIMESTRE = "/admin/materiales-bimestre";
+
+/**
+ * RF-014: libretas del SIAGIE.
+ */
+export const MENU_LIBRETAS = "/admin/libretas";
+export const MENU_MIS_LIBRETAS = "/admin/mis-libretas";

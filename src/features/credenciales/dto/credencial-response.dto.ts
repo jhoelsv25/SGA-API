@@ -35,6 +35,32 @@ export class CredencialResponseDto {
   mensaje?: string;
 }
 
+export class CarneInstitucionDto {
+  @ApiProperty({ example: "I.E. De Mujeres Nuestra Señora del Carmen" })
+  nombre: string;
+
+  @ApiPropertyOptional({ example: "0543210" })
+  codigoModular?: string | null;
+
+  @ApiPropertyOptional({ example: "Lircay" })
+  distrito?: string | null;
+
+  @ApiPropertyOptional({ example: "Angaraes" })
+  provincia?: string | null;
+
+  @ApiPropertyOptional({ example: "Huancavelica" })
+  departamento?: string | null;
+
+  @ApiPropertyOptional({ example: "UGEL Angaraes" })
+  ugel?: string | null;
+
+  @ApiPropertyOptional({ example: "DRE Huancavelica" })
+  dre?: string | null;
+
+  @ApiPropertyOptional({ example: "/uploads/logos/logo.png" })
+  logoUrl?: string | null;
+}
+
 export class CarneDatosDto {
   @ApiProperty({ description: "ID de la persona" })
   personaId: string;
@@ -65,4 +91,10 @@ export class CarneDatosDto {
 
   @ApiProperty({ description: "Fecha de emisión", example: "2026-10-09" })
   emitidaEn: string;
+
+  @ApiPropertyOptional({
+    description: "Datos institucionales de la institución emisora",
+    type: CarneInstitucionDto,
+  })
+  institucion?: CarneInstitucionDto;
 }
