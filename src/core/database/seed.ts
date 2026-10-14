@@ -18,6 +18,8 @@ import {
   MENU_MATERIALES_BIMESTRE,
   MENU_LIBRETAS,
   MENU_MIS_LIBRETAS,
+  MENU_AUSENCIAS_DOCENTES,
+  MENU_MIS_AUSENCIAS,
 } from "../../common/constants";
 
 const pool = new Pool({
@@ -965,6 +967,41 @@ async function seed() {
     );
   }
   console.log("✔ Opciones de Seguimiento docente registradas (RF-011).");
+
+  // RF-012: menús de Ausencias docentes bajo el contenedor "Seguimiento docente"
+  const MENUS_AUSENCIAS = [
+    {
+      nombre: "Ausencias docentes",
+      ruta: MENU_AUSENCIAS_DOCENTES,
+      icono: "UserGroupIcon",
+      orden: 4,
+      roles: ["Director", "Subdirector", "Administrador"],
+    },
+    {
+      nombre: "Mis ausencias",
+      ruta: MENU_MIS_AUSENCIAS,
+      icono: "Task01Icon",
+      orden: 5,
+      roles: ["Docente"],
+    },
+  ];
+  for (const menu of MENUS_AUSENCIAS) {
+    await pool.query(
+      `INSERT INTO menus (modulo_id, menu_padre_id, nombre, ruta, icono, orden, es_contenedor)
+       SELECT c.modulo_id, c.id, $2::varchar, $1::varchar, $3::varchar, $4::int, false
+       FROM menus c JOIN modulos m ON m.id = c.modulo_id
+       WHERE m.codigo = 'academico' AND c.es_contenedor AND c.nombre = 'Seguimiento docente'
+         AND NOT EXISTS (SELECT 1 FROM menus x WHERE x.ruta = $1::varchar);`,
+      [menu.ruta, menu.nombre, menu.icono, menu.orden],
+    );
+    await pool.query(
+      `INSERT INTO rol_menus (rol_id, menu_id)
+       SELECT r.id, m.id FROM roles r, menus m
+       WHERE r.nombre = ANY($2::varchar[]) AND m.ruta = $1
+       ON CONFLICT DO NOTHING;`,
+      [menu.ruta, menu.roles],
+    );
+  }
 
   // RF-015: menús del Aula virtual bajo el contenedor "Aula virtual"
   await pool.query(

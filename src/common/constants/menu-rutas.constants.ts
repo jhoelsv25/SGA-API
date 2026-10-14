@@ -39,3 +39,9 @@ export const MENU_MATERIALES_BIMESTRE = "/admin/materiales-bimestre";
  */
 export const MENU_LIBRETAS = "/admin/libretas";
 export const MENU_MIS_LIBRETAS = "/admin/mis-libretas";
+
+/**
+ * RF-012: supervisión y ausencias del docente.
+ */
+export const MENU_AUSENCIAS_DOCENTES = "/admin/ausencias-docentes";
+export const MENU_MIS_AUSENCIAS = "/admin/mis-ausencias";
