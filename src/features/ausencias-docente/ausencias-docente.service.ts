@@ -2,6 +2,7 @@ import { Injectable, Optional } from "@nestjs/common";
 import { AnioLectivoCls } from "../../common/anio-lectivo";
 import { AuditService } from "../../common/services/audit.service";
 import { NotificacionesService } from "../notificaciones/notificaciones.service";
+import { ConsolidadoBloqueoService } from "../seguimiento-docente";
 import { AusenciasConsultaService } from "./ausencias-consulta.service";
 import { AusenciasCorreccionService } from "./ausencias-correccion.service";
 import { AusenciasRegistroService } from "./ausencias-registro.service";
@@ -29,17 +30,25 @@ export class AusenciasDocenteService {
     private readonly notificacionesService: NotificacionesService,
     private readonly auditService: AuditService,
     private readonly anioLectivoCls: AnioLectivoCls,
+    private readonly bloqueoService: ConsolidadoBloqueoService,
     @Optional() registroService?: AusenciasRegistroService,
     @Optional() correccionService?: AusenciasCorreccionService,
     @Optional() consultaService?: AusenciasConsultaService,
   ) {
     this.servicioRegistro =
       registroService ??
-      new AusenciasRegistroService(repository, notificacionesService, auditService, anioLectivoCls);
+      new AusenciasRegistroService(
+        repository,
+        notificacionesService,
+        auditService,
+        anioLectivoCls,
+        bloqueoService,
+      );
     this.servicioCorreccion =
-      correccionService ?? new AusenciasCorreccionService(repository, auditService);
+      correccionService ?? new AusenciasCorreccionService(repository, auditService, bloqueoService);
     this.servicioConsulta =
-      consultaService ?? new AusenciasConsultaService(repository, auditService, anioLectivoCls);
+      consultaService ??
+      new AusenciasConsultaService(repository, auditService, anioLectivoCls, bloqueoService);
   }
 
   /**

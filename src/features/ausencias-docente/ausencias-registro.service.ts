@@ -9,6 +9,7 @@ import { AnioLectivoCls } from "../../common/anio-lectivo";
 import { AuditService } from "../../common/services/audit.service";
 import { fechaHoyLima } from "../../common/utils/fecha-lima.util";
 import { NotificacionesService } from "../notificaciones/notificaciones.service";
+import { ConsolidadoBloqueoService } from "../seguimiento-docente";
 import { MENSAJES_AUSENCIA, VALORES_DEFECTO_AUSENCIA, VARIABLES_AUSENCIA } from "./constants";
 import type { AusenciaResponseDto, MensajeAusenciaResponseDto, RegistrarAusenciaDto } from "./dto";
 import { AusenciasDocenteRepository } from "./repositories";
@@ -25,6 +26,7 @@ export class AusenciasRegistroService {
     private readonly notificacionesService: NotificacionesService,
     private readonly auditService: AuditService,
     private readonly anioLectivoCls: AnioLectivoCls,
+    private readonly bloqueoService: ConsolidadoBloqueoService,
   ) {}
 
   /**
@@ -78,6 +80,12 @@ export class AusenciasRegistroService {
     );
     if (estaBloqueado) {
       throw new ForbiddenException(MENSAJES_AUSENCIA.BIMESTRE_CERRADO);
+    }
+
+    // 3.1. Verificar si el consolidado del bimestre está cerrado (CP-RF013-06)
+    const periodoId = await this.repository.buscarPeriodoIdPorFecha(sesion.fecha);
+    if (periodoId) {
+      await this.bloqueoService.asegurarNoCerrado(sesion.docenteId, periodoId);
     }
 
     // 4. Validar horas invertidas (CP-RF012-05)

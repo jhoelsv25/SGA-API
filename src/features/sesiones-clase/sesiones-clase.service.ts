@@ -18,6 +18,7 @@ import { AniosAcademicosService } from "../anio-escolar/anios.service";
 import { CalendarioService } from "../calendario/calendario.service";
 import { EquiposService } from "../equipos/equipos.service";
 import { MarcacionesService } from "../marcaciones/marcaciones.service";
+import { ConsolidadoBloqueoService } from "../seguimiento-docente";
 import { diaIsoDeFecha, horaCorta } from "../marcaciones/utils";
 import { ahoraEnLima } from "../../common/utils/fecha-lima.util";
 import {
@@ -85,6 +86,7 @@ export class SesionesClaseService implements OnModuleInit {
     private readonly aniosService: AniosAcademicosService,
     private readonly calendarioService: CalendarioService,
     private readonly auditService: AuditService,
+    private readonly bloqueoService: ConsolidadoBloqueoService,
     @Optional()
     @InjectQueue(QUEUES.SESIONES_CLASE)
     private readonly cola?: Queue,
@@ -318,6 +320,8 @@ export class SesionesClaseService implements OnModuleInit {
       throw new BadRequestException(MENSAJES_SESION.REEMPLAZO_MISMO_DOCENTE);
     }
     await this.exigirBimestreAbierto(sesion.fecha);
+    await this.exigirConsolidadoNoCerrado(sesion.docenteId, sesion.fecha);
+    await this.exigirConsolidadoNoCerrado(dto.docenteId, sesion.fecha);
     if (!(await this.repository.docenteActivo(dto.docenteId))) {
       throw new BadRequestException(MENSAJES_SESION.DOCENTE_NO_DISPONIBLE);
     }
@@ -347,6 +351,7 @@ export class SesionesClaseService implements OnModuleInit {
   ): Promise<MensajeSesionResponseDto> {
     const sesion = await this.requireJustificacionSolicitada(sesionId);
     await this.exigirBimestreAbierto(sesion.fecha);
+    await this.exigirConsolidadoNoCerrado(sesion.docenteId, sesion.fecha);
     await this.repository.resolverJustificacion(sesionId, "aprobada", actorId, null);
     await this.auditService.log({
       usuarioId: actorId,
@@ -375,6 +380,7 @@ export class SesionesClaseService implements OnModuleInit {
     }
     const sesion = await this.requireJustificacionSolicitada(sesionId);
     await this.exigirBimestreAbierto(sesion.fecha);
+    await this.exigirConsolidadoNoCerrado(sesion.docenteId, sesion.fecha);
     await this.repository.resolverJustificacion(sesionId, "rechazada", actorId, comentario);
     await this.auditService.log({
       usuarioId: actorId,
@@ -431,6 +437,7 @@ export class SesionesClaseService implements OnModuleInit {
       throw new ForbiddenException(MENSAJES_SESION.SESION_NO_ES_SUYA);
     }
     await this.exigirBimestreAbierto(sesion.fecha);
+    await this.exigirConsolidadoNoCerrado(sesion.docenteId, sesion.fecha);
     if (sesion.estado !== "pendiente" && sesion.estado !== "en_curso") {
       throw new BadRequestException(MENSAJES_SESION.TEMA_CERRADO);
     }
@@ -463,6 +470,7 @@ export class SesionesClaseService implements OnModuleInit {
       throw new ForbiddenException(MENSAJES_SESION.SESION_NO_ES_SUYA);
     }
     await this.exigirBimestreAbierto(sesion.fecha);
+    await this.exigirConsolidadoNoCerrado(sesion.docenteId, sesion.fecha);
     if (sesion.estado !== "no_cumplida") {
       throw new BadRequestException(MENSAJES_SESION.SOLO_NO_CUMPLIDA);
     }
@@ -513,6 +521,7 @@ export class SesionesClaseService implements OnModuleInit {
       throw new ForbiddenException(MENSAJES_SESION.SESION_AJENA);
     }
     await this.exigirBimestreAbierto(sesion.fecha);
+    await this.exigirConsolidadoNoCerrado(sesion.docenteId, sesion.fecha);
     return sesion;
   }
 
@@ -536,6 +545,14 @@ export class SesionesClaseService implements OnModuleInit {
     if (await this.aniosService.sesionesBloqueadasEn(fecha)) {
       throw new ForbiddenException(MENSAJES_SESION.BIMESTRE_CERRADO);
     }
+  }
+
+  private async exigirConsolidadoNoCerrado(docenteId: string, fecha: string): Promise<void> {
+    const periodoId = await this.repository.buscarPeriodoIdPorFecha(fecha);
+    if (!periodoId) {
+      return;
+    }
+    await this.bloqueoService.asegurarNoCerrado(docenteId, periodoId);
   }
 
   private async docenteDelUsuario(usuario: AuthenticatedUser): Promise<string> {

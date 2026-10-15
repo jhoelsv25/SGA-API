@@ -228,7 +228,12 @@ describe("AusenciasDocenteController (RF-012: Controlador y control de acceso @M
       };
 
       // Cuando invoca el endpoint registrar
-      const resultado = await controller.registrar(dto, undefined, mockUsuarioCoordinador, mockClientInfo);
+      const resultado = await controller.registrar(
+        dto,
+        undefined,
+        mockUsuarioCoordinador,
+        mockClientInfo,
+      );
 
       // Entonces el controlador procesa y delega la llamada pasando el ID del Coordinador y la IP
       expect(resultado).toBe(mockMensajeRegistro);
@@ -251,7 +256,12 @@ describe("AusenciasDocenteController (RF-012: Controlador y control de acceso @M
       };
       const fotosSimuladas: Express.Multer.File[] = [];
 
-      const resultado = await controller.registrar(dto, fotosSimuladas, mockUsuarioDirector, mockClientInfo);
+      const resultado = await controller.registrar(
+        dto,
+        fotosSimuladas,
+        mockUsuarioDirector,
+        mockClientInfo,
+      );
 
       expect(resultado).toBe(mockMensajeRegistro);
       expect(service.registrar).toHaveBeenCalledWith(
@@ -268,7 +278,13 @@ describe("AusenciasDocenteController (RF-012: Controlador y control de acceso @M
         motivoCambio: "Ajuste de hora",
       };
 
-      const resultado = await controller.corregir("aus-1-uuid", dto, undefined, mockUsuarioDirector, mockClientInfo);
+      const resultado = await controller.corregir(
+        "aus-1-uuid",
+        dto,
+        undefined,
+        mockUsuarioDirector,
+        mockClientInfo,
+      );
 
       expect(resultado).toBe(mockAusenciaResponse);
       expect(service.corregir).toHaveBeenCalledWith(
@@ -285,7 +301,12 @@ describe("AusenciasDocenteController (RF-012: Controlador y control de acceso @M
         motivoAnulacion: "Error al registrar",
       };
 
-      const resultado = await controller.anular("aus-1-uuid", dto, mockUsuarioDirector, mockClientInfo);
+      const resultado = await controller.anular(
+        "aus-1-uuid",
+        dto,
+        mockUsuarioDirector,
+        mockClientInfo,
+      );
 
       expect(resultado).toBe(mockAusenciaResponse);
       expect(service.anular).toHaveBeenCalledWith(
@@ -327,7 +348,10 @@ describe("AusenciasDocenteController (RF-012: Controlador y control de acceso @M
       const resultado = await controller.obtenerDetalleDocente("aus-1-uuid", mockUsuarioDocente);
 
       expect(resultado).toBe(mockAusenciaResponse);
-      expect(service.obtenerDetalleDocente).toHaveBeenCalledWith("aus-1-uuid", mockUsuarioDocente.personaId);
+      expect(service.obtenerDetalleDocente).toHaveBeenCalledWith(
+        "aus-1-uuid",
+        mockUsuarioDocente.personaId,
+      );
     });
 
     it("presentarDescargo() delega al servicio con id, dto, usuario.personaId, usuario.id e ip", async () => {

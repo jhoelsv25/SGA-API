@@ -47,4 +47,5 @@ export interface ISesionesClaseRepository {
   docenteDePersona(personaId: string): Promise<{ id: string; activo: boolean } | null>;
   docenteActivo(docenteId: string): Promise<boolean>;
   valoresVariables(codigos: readonly string[]): Promise<Map<string, string>>;
+  buscarPeriodoIdPorFecha(fecha: string): Promise<string | null>;
 }

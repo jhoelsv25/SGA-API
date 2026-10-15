@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { AuditService } from "../../common/services/audit.service";
+import { ConsolidadoBloqueoService } from "../seguimiento-docente";
 import {
   MENSAJES_AUSENCIA,
   VALORES_DEFECTO_AUSENCIA,
@@ -31,6 +32,7 @@ export class AusenciasCorreccionService {
   constructor(
     private readonly repository: AusenciasDocenteRepository,
     private readonly auditService: AuditService,
+    private readonly bloqueoService: ConsolidadoBloqueoService,
   ) {}
 
   /**
@@ -103,6 +105,11 @@ export class AusenciasCorreccionService {
     );
     if (estaBloqueado) {
       throw new ForbiddenException(MENSAJES_AUSENCIA.BIMESTRE_CERRADO);
+    }
+
+    const periodoId = await this.repository.buscarPeriodoIdPorFecha(ausencia.sesion.fecha);
+    if (periodoId) {
+      await this.bloqueoService.asegurarNoCerrado(ausencia.sesion.docenteId, periodoId);
     }
 
     const ausenciaAnulada = await this.repository.anularAusencia(
@@ -214,6 +221,11 @@ export class AusenciasCorreccionService {
     );
     if (estaBloqueado) {
       throw new ForbiddenException(MENSAJES_AUSENCIA.BIMESTRE_CERRADO);
+    }
+
+    const periodoId = await this.repository.buscarPeriodoIdPorFecha(ausencia.sesion.fecha);
+    if (periodoId) {
+      await this.bloqueoService.asegurarNoCerrado(ausencia.sesion.docenteId, periodoId);
     }
 
     if (ausencia.registradoPorId !== actorId) {

@@ -18,6 +18,7 @@ import {
   type SesionParaAusencia,
 } from "@/features/ausencias-docente";
 import { AusenciasRegistroService } from "@/features/ausencias-docente/ausencias-registro.service";
+import { ConsolidadoBloqueoService } from "@/features/seguimiento-docente";
 
 type Mocks<T> = { [K in keyof T]?: jest.Mock };
 
@@ -27,6 +28,7 @@ describe("RF-012: Registro de ausencias docentes (HU1)", () => {
   let notificaciones: Mocks<NotificacionesService>;
   let audit: Mocks<AuditService>;
   let anioCls: Mocks<AnioLectivoCls>;
+  let bloqueo: Mocks<ConsolidadoBloqueoService>;
 
   const sesionEjemplo: SesionParaAusencia = {
     id: "ses-mate-5a",
@@ -122,6 +124,7 @@ describe("RF-012: Registro de ausencias docentes (HU1)", () => {
       usuarioPorPersonaId: jest.fn().mockResolvedValue({ id: "user-quispe-uuid" }),
       bimestreEstaBloqueado: jest.fn().mockResolvedValue(false),
       obtenerVariableSistema: jest.fn().mockResolvedValue(null),
+      buscarPeriodoIdPorFecha: jest.fn().mockResolvedValue("periodo-2027-uuid"),
     };
 
     notificaciones = {
@@ -136,11 +139,17 @@ describe("RF-012: Registro de ausencias docentes (HU1)", () => {
       id: jest.fn().mockReturnValue("anio-2027-uuid"),
     };
 
+    bloqueo = {
+      asegurarNoCerrado: jest.fn().mockResolvedValue(undefined),
+      asegurarNoCerradoPorFecha: jest.fn().mockResolvedValue(undefined),
+    };
+
     service = new AusenciasDocenteService(
       repo as unknown as AusenciasDocenteRepository,
       notificaciones as unknown as NotificacionesService,
       audit as unknown as AuditService,
       anioCls as unknown as AnioLectivoCls,
+      bloqueo as unknown as ConsolidadoBloqueoService,
     );
   });
 
@@ -518,6 +527,7 @@ describe("RF-012: Registro de ausencias docentes (HU1)", () => {
         notificaciones as unknown as NotificacionesService,
         audit as unknown as AuditService,
         anioSinId,
+        bloqueo as unknown as ConsolidadoBloqueoService,
       );
 
       const fecha2amUtc = new Date("2026-10-15T02:00:00Z");

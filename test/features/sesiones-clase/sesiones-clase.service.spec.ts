@@ -11,6 +11,7 @@ import {
   VARIABLES_SESION,
   type SesionResponseDto,
 } from "@/features/sesiones-clase";
+import { ConsolidadoBloqueoService } from "@/features/seguimiento-docente";
 
 type Mocks<T> = { [K in keyof T]?: jest.Mock };
 
@@ -54,6 +55,7 @@ describe("RF-011: Registro de sesión de clase", () => {
   let anios: Mocks<AniosAcademicosService>;
   let calendario: Mocks<CalendarioService>;
   let audit: Mocks<AuditService>;
+  let bloqueo: Mocks<ConsolidadoBloqueoService>;
 
   const argumento = (m: jest.Mock | undefined, i: number): unknown =>
     (m!.mock.calls[0] as unknown[])[i];
@@ -85,6 +87,7 @@ describe("RF-011: Registro de sesión de clase", () => {
       docenteActivo: jest.fn().mockResolvedValue(true),
       solicitarJustificacion: jest.fn(),
       resolverJustificacion: jest.fn(),
+      buscarPeriodoIdPorFecha: jest.fn().mockResolvedValue("periodo-1"),
     };
     equipos = {
       validarKiosko: jest.fn().mockResolvedValue({
@@ -109,6 +112,10 @@ describe("RF-011: Registro de sesión de clase", () => {
     };
     calendario = { suspendeClasesEn: jest.fn().mockResolvedValue(false) };
     audit = { log: jest.fn().mockResolvedValue(undefined) };
+    bloqueo = {
+      asegurarNoCerrado: jest.fn().mockResolvedValue(undefined),
+      asegurarNoCerradoPorFecha: jest.fn().mockResolvedValue(undefined),
+    };
     service = new SesionesClaseService(
       repo as unknown as SesionesClaseRepository,
       equipos as unknown as EquiposService,
@@ -116,6 +123,7 @@ describe("RF-011: Registro de sesión de clase", () => {
       anios as unknown as AniosAcademicosService,
       calendario as unknown as CalendarioService,
       audit as unknown as AuditService,
+      bloqueo as unknown as ConsolidadoBloqueoService,
     );
   });
 

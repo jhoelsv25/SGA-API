@@ -14,6 +14,7 @@ import {
   type ResumenAusenciasSupervisorResponseDto,
   type SesionParaAusencia,
 } from "@/features/ausencias-docente";
+import { ConsolidadoBloqueoService } from "@/features/seguimiento-docente";
 
 type Mocks<T> = { [K in keyof T]?: jest.Mock };
 
@@ -23,6 +24,7 @@ describe("RF-012: Consultas, privacidad y descargo docente (HU3 y HU4)", () => {
   let notificaciones: Mocks<NotificacionesService>;
   let audit: Mocks<AuditService>;
   let anioCls: Mocks<AnioLectivoCls>;
+  let bloqueo: Mocks<ConsolidadoBloqueoService>;
 
   const sesionDocenteQuispe: SesionParaAusencia = {
     id: "ses-mate-5a",
@@ -134,7 +136,8 @@ describe("RF-012: Consultas, privacidad y descargo docente (HU3 y HU4)", () => {
       listarSupervisor: jest.fn().mockResolvedValue([ausenciaVigenteDocenteQuispe]),
       listarPorDocente: jest.fn().mockResolvedValue([ausenciaVigenteDocenteQuispe]),
       docentePorPersonaId: jest.fn().mockImplementation((personaId: string) => {
-        if (personaId === "per-docente-quispe-uuid") return Promise.resolve({ id: "doc-quispe-uuid" });
+        if (personaId === "per-docente-quispe-uuid")
+          return Promise.resolve({ id: "doc-quispe-uuid" });
         if (personaId === "per-docente-otro-uuid") return Promise.resolve({ id: "doc-otro-uuid" });
         return Promise.resolve(null);
       }),
@@ -145,6 +148,7 @@ describe("RF-012: Consultas, privacidad y descargo docente (HU3 y HU4)", () => {
         if (codigo === "ausencia.plazo_correccion_horas") return Promise.resolve("24");
         return Promise.resolve(null);
       }),
+      buscarPeriodoIdPorFecha: jest.fn().mockResolvedValue("periodo-2027-uuid"),
     };
 
     notificaciones = {
@@ -159,11 +163,17 @@ describe("RF-012: Consultas, privacidad y descargo docente (HU3 y HU4)", () => {
       id: jest.fn().mockReturnValue("anio-2027-uuid"),
     };
 
+    bloqueo = {
+      asegurarNoCerrado: jest.fn().mockResolvedValue(undefined),
+      asegurarNoCerradoPorFecha: jest.fn().mockResolvedValue(undefined),
+    };
+
     service = new AusenciasDocenteService(
       repo as unknown as AusenciasDocenteRepository,
       notificaciones as unknown as NotificacionesService,
       audit as unknown as AuditService,
       anioCls as unknown as AnioLectivoCls,
+      bloqueo as unknown as ConsolidadoBloqueoService,
     );
   });
 
@@ -185,7 +195,8 @@ describe("RF-012: Consultas, privacidad y descargo docente (HU3 y HU4)", () => {
       repo.listarPorDocente = jest.fn().mockResolvedValue([versionVigente]);
 
       // Cuando el docente consulta "Mis ausencias"
-      const resultado: AusenciaResponseDto[] = await service.misAusencias("per-docente-quispe-uuid");
+      const resultado: AusenciaResponseDto[] =
+        await service.misAusencias("per-docente-quispe-uuid");
 
       // Entonces el sistema muestra solo la versión vigente
       expect(resultado).toHaveLength(1);
@@ -268,8 +279,15 @@ describe("RF-012: Consultas, privacidad y descargo docente (HU3 y HU4)", () => {
       // Cuando intento presentar el descargo el 21/05/2027
       // Entonces el sistema bloquea el envío y muestra el mensaje con la fecha de vencimiento exacta
       await expect(
-        service.presentarDescargo("aus-quispe-v1", dto, "per-docente-quispe-uuid", "user-quispe-uuid"),
-      ).rejects.toThrow(new BadRequestException(MENSAJES_AUSENCIA.DESCARGO_FUERA_DE_PLAZO("20/05/2027")));
+        service.presentarDescargo(
+          "aus-quispe-v1",
+          dto,
+          "per-docente-quispe-uuid",
+          "user-quispe-uuid",
+        ),
+      ).rejects.toThrow(
+        new BadRequestException(MENSAJES_AUSENCIA.DESCARGO_FUERA_DE_PLAZO("20/05/2027")),
+      );
     });
   });
 
@@ -290,7 +308,12 @@ describe("RF-012: Consultas, privacidad y descargo docente (HU3 y HU4)", () => {
       // Cuando intento enviar otro
       // Entonces el sistema bloquea el envío con el mensaje exacto
       await expect(
-        service.presentarDescargo("aus-quispe-v1", dtoSegundoDescargo, "per-docente-quispe-uuid", "user-quispe-uuid"),
+        service.presentarDescargo(
+          "aus-quispe-v1",
+          dtoSegundoDescargo,
+          "per-docente-quispe-uuid",
+          "user-quispe-uuid",
+        ),
       ).rejects.toThrow(new BadRequestException(MENSAJES_AUSENCIA.DESCARGO_REPETIDO));
     });
   });
@@ -314,7 +337,12 @@ describe("RF-012: Consultas, privacidad y descargo docente (HU3 y HU4)", () => {
       // Cuando intento presentar descargo en la ausencia del Docente Alvarez
       // Entonces el sistema rechaza el acceso
       await expect(
-        service.presentarDescargo("aus-otro-v1", dto, "per-docente-quispe-uuid", "user-quispe-uuid"),
+        service.presentarDescargo(
+          "aus-otro-v1",
+          dto,
+          "per-docente-quispe-uuid",
+          "user-quispe-uuid",
+        ),
       ).rejects.toThrow(new ForbiddenException("No tiene acceso a las ausencias de otro docente."));
     });
   });
@@ -344,7 +372,9 @@ describe("RF-012: Consultas, privacidad y descargo docente (HU3 y HU4)", () => {
         motivoAnulacion: "Error de digitación",
       };
 
-      repo.listarSupervisor = jest.fn().mockResolvedValue([ausencia1Vigente, ausencia2Vigente, ausencia3Anulada]);
+      repo.listarSupervisor = jest
+        .fn()
+        .mockResolvedValue([ausencia1Vigente, ausencia2Vigente, ausencia3Anulada]);
 
       const filtro: FiltroAusenciasQueryDto = {
         periodoId: "per-bimestre-2",
@@ -352,7 +382,8 @@ describe("RF-012: Consultas, privacidad y descargo docente (HU3 y HU4)", () => {
       };
 
       // Cuando filtro por el bimestre II y el docente Quispe
-      const resultado: ResumenAusenciasSupervisorResponseDto = await service.listarSupervisor(filtro);
+      const resultado: ResumenAusenciasSupervisorResponseDto =
+        await service.listarSupervisor(filtro);
 
       // Entonces el sistema lista cada ausencia con indicadores
       expect(resultado.data).toHaveLength(3);

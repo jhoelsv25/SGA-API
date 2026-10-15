@@ -114,4 +114,5 @@ export interface IAusenciasDocenteRepository {
   usuarioPorPersonaId(personaId: string): Promise<{ id: string } | null>;
   bimestreEstaBloqueado(fecha: string, docenteId: string): Promise<boolean>;
   obtenerVariableSistema(codigo: string): Promise<string | null>;
+  buscarPeriodoIdPorFecha(fecha: string): Promise<string | null>;
 }

@@ -12,6 +12,7 @@ import {
   type RegistrarAusenciaDto,
   type SesionParaAusencia,
 } from "@/features/ausencias-docente";
+import { ConsolidadoBloqueoService } from "@/features/seguimiento-docente";
 
 type Mocks<T> = { [K in keyof T]?: jest.Mock };
 
@@ -21,6 +22,7 @@ describe("AusenciasDocente - Pruebas defensivas del registro de ausencias", () =
   let notificaciones: Mocks<NotificacionesService>;
   let audit: Mocks<AuditService>;
   let anioCls: Mocks<AnioLectivoCls>;
+  let bloqueo: Mocks<ConsolidadoBloqueoService>;
 
   const sesionBase: SesionParaAusencia = {
     id: "ses-101",
@@ -91,6 +93,7 @@ describe("AusenciasDocente - Pruebas defensivas del registro de ausencias", () =
       crearAusenciaConFotos: jest.fn().mockResolvedValue(ausenciaMock),
       bimestreEstaBloqueado: jest.fn().mockResolvedValue(false),
       obtenerVariableSistema: jest.fn().mockResolvedValue(null),
+      buscarPeriodoIdPorFecha: jest.fn().mockResolvedValue("periodo-2027-uuid"),
     };
 
     notificaciones = {
@@ -105,11 +108,17 @@ describe("AusenciasDocente - Pruebas defensivas del registro de ausencias", () =
       id: jest.fn().mockReturnValue("anio-2027-uuid"),
     };
 
+    bloqueo = {
+      asegurarNoCerrado: jest.fn().mockResolvedValue(undefined),
+      asegurarNoCerradoPorFecha: jest.fn().mockResolvedValue(undefined),
+    };
+
     service = new AusenciasDocenteService(
       repo as unknown as AusenciasDocenteRepository,
       notificaciones as unknown as NotificacionesService,
       audit as unknown as AuditService,
       anioCls as unknown as AnioLectivoCls,
+      bloqueo as unknown as ConsolidadoBloqueoService,
     );
   });
 

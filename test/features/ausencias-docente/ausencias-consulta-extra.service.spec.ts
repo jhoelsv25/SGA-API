@@ -15,6 +15,7 @@ import {
   MENSAJE_DESCARGO_AUSENCIA_ANULADA,
   MENSAJE_DESCARGO_AUSENCIA_NO_VIGENTE,
 } from "../../../src/features/ausencias-docente/ausencias-consulta.service";
+import { ConsolidadoBloqueoService } from "@/features/seguimiento-docente";
 
 type Mocks<T> = { [K in keyof T]?: jest.Mock };
 
@@ -24,6 +25,7 @@ describe("RF-012: Pruebas adicionales de defensa para AusenciasConsultaService (
   let notificaciones: Mocks<NotificacionesService>;
   let audit: Mocks<AuditService>;
   let anioCls: Mocks<AnioLectivoCls>;
+  let bloqueo: Mocks<ConsolidadoBloqueoService>;
 
   const sesionDocente: SesionParaAusencia = {
     id: "ses-mate-5a",
@@ -83,6 +85,7 @@ describe("RF-012: Pruebas adicionales de defensa para AusenciasConsultaService (
       usuarioPorPersonaId: jest.fn().mockResolvedValue({ id: "user-quispe-uuid" }),
       bimestreEstaBloqueado: jest.fn().mockResolvedValue(false),
       obtenerVariableSistema: jest.fn().mockResolvedValue(null),
+      buscarPeriodoIdPorFecha: jest.fn().mockResolvedValue("periodo-2027-uuid"),
     };
 
     notificaciones = {
@@ -97,11 +100,17 @@ describe("RF-012: Pruebas adicionales de defensa para AusenciasConsultaService (
       id: jest.fn().mockReturnValue("anio-2027-uuid"),
     };
 
+    bloqueo = {
+      asegurarNoCerrado: jest.fn().mockResolvedValue(undefined),
+      asegurarNoCerradoPorFecha: jest.fn().mockResolvedValue(undefined),
+    };
+
     service = new AusenciasDocenteService(
       repo as unknown as AusenciasDocenteRepository,
       notificaciones as unknown as NotificacionesService,
       audit as unknown as AuditService,
       anioCls as unknown as AnioLectivoCls,
+      bloqueo as unknown as ConsolidadoBloqueoService,
     );
   });
 
