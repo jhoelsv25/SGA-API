@@ -48,3 +48,9 @@ export const MENSAJES_CONSOLIDADO = {
   CONSOLIDADO_NO_VIGENTE: "No se puede reabrir ni cerrar una versión histórica del consolidado.",
   SOLICITUD_NO_ENCONTRADA: "Solicitud de revisión no encontrada.",
 } as const;
+
+/**
+ * Nombre institucional oficial para membretes de documentos (Ficha PDF y Reporte Excel).
+ * Propuesta R3: Centralizar lectura en repositorio o InstitucionService cuando T08 integre módulos.
+ */
+export const NOMBRE_INSTITUCION_DEFECTO = "I.E. NUESTRA SEÑORA DEL CARMEN";
