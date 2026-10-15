@@ -5,4 +5,5 @@ export * from "./repositories";
 export * from "./services";
 export * from "./utils";
 export * from "./seguimiento-docente.service";
+export * from "./seguimiento-docente.controller";
 export * from "./seguimiento-docente.module";

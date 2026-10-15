@@ -23,6 +23,9 @@ export type EstadoSolicitudRevision = (typeof ESTADOS_SOLICITUD_REVISION)[number
 export const ADJUNTO_SOLICITUD_TAMANO_MAXIMO_BYTES = 5 * 1024 * 1024; // 5 MB
 export const ADJUNTO_SOLICITUD_MIME_TYPES = ["application/pdf", "image/png", "image/jpeg"] as const;
 export type AdjuntoSolicitudMimeType = (typeof ADJUNTO_SOLICITUD_MIME_TYPES)[number];
+export const OPCIONES_SUBIDA_ADJUNTO_SOLICITUD = {
+  limits: { fileSize: ADJUNTO_SOLICITUD_TAMANO_MAXIMO_BYTES },
+};
 
 /**
  * Mensajes oficiales del requerimiento RF-013.
