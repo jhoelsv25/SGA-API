@@ -10,6 +10,7 @@ import {
   type IAusenciasDocenteRepository,
   type SesionParaAusencia,
 } from "@/features/ausencias-docente";
+import { ConsolidadoBloqueoService } from "@/features/seguimiento-docente";
 
 type Mocks<T> = { [K in keyof T]?: jest.Mock };
 
@@ -17,6 +18,7 @@ describe("RF-012: AusenciasCorreccionService - Pruebas defensivas (HU2 - Extra)"
   let service: AusenciasCorreccionService;
   let repo: Mocks<IAusenciasDocenteRepository>;
   let audit: Mocks<AuditService>;
+  let bloqueo: Mocks<ConsolidadoBloqueoService>;
 
   const sesionEjemplo: SesionParaAusencia = {
     id: "ses-mate-5a",
@@ -69,16 +71,22 @@ describe("RF-012: AusenciasCorreccionService - Pruebas defensivas (HU2 - Extra)"
       obtenerVariableSistema: jest.fn().mockResolvedValue("24"),
       crearNuevaVersion: jest.fn().mockResolvedValue({ ...ausenciaBase, version: 2 }),
       anularAusencia: jest.fn().mockResolvedValue({ ...ausenciaBase, anulada: true }),
+      buscarPeriodoIdPorFecha: jest.fn().mockResolvedValue("periodo-2027-uuid"),
     };
 
     audit = {
       log: jest.fn().mockResolvedValue(undefined),
     };
 
-    // Verificación de inyección limpia: solo requiere repository y auditService
+    bloqueo = {
+      asegurarNoCerrado: jest.fn().mockResolvedValue(undefined),
+      asegurarNoCerradoPorFecha: jest.fn().mockResolvedValue(undefined),
+    };
+
     service = new AusenciasCorreccionService(
       repo as unknown as AusenciasDocenteRepository,
       audit as unknown as AuditService,
+      bloqueo as unknown as ConsolidadoBloqueoService,
     );
   });
 

@@ -45,3 +45,10 @@ export const MENU_MIS_LIBRETAS = "/admin/mis-libretas";
  */
 export const MENU_AUSENCIAS_DOCENTES = "/admin/ausencias-docentes";
 export const MENU_MIS_AUSENCIAS = "/admin/mis-ausencias";
+
+/**
+ * RF-013: consolidado y ficha de seguimiento docente.
+ */
+export const MENU_CONSOLIDADO_BIMESTRE = "/admin/consolidado-bimestre";
+export const MENU_SOLICITUDES_REVISION = "/admin/solicitudes-revision";
+export const MENU_MI_SEGUIMIENTO = "/admin/mi-seguimiento";

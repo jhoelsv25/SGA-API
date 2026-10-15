@@ -8,6 +8,7 @@ import {
   docentes,
   grados,
   horarios,
+  periodosAcademicos,
   personas,
   secciones,
   sesionesClase,
@@ -375,5 +376,19 @@ export class SesionesClaseRepository implements ISesionesClaseRepository {
         and(inArray(variablesSistema.codigo, [...codigos]), eq(variablesSistema.vigente, true)),
       );
     return new Map(filas.map((f) => [f.codigo, f.valor]));
+  }
+
+  async buscarPeriodoIdPorFecha(fecha: string): Promise<string | null> {
+    const [fila] = await this.db
+      .select({ id: periodosAcademicos.id })
+      .from(periodosAcademicos)
+      .where(
+        and(
+          sql`${periodosAcademicos.fechaInicio} <= ${fecha}::date`,
+          sql`${periodosAcademicos.fechaFin} >= ${fecha}::date`,
+        ),
+      )
+      .limit(1);
+    return fila?.id ?? null;
   }
 }

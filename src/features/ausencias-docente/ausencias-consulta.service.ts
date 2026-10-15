@@ -6,6 +6,7 @@ import {
 } from "@nestjs/common";
 import { AnioLectivoCls } from "../../common/anio-lectivo";
 import { AuditService } from "../../common/services/audit.service";
+import { ConsolidadoBloqueoService } from "../seguimiento-docente";
 import { MENSAJES_AUSENCIA, VALORES_DEFECTO_AUSENCIA, VARIABLES_AUSENCIA } from "./constants";
 import type {
   AusenciaResponseDto,
@@ -32,6 +33,7 @@ export class AusenciasConsultaService {
     private readonly repository: AusenciasDocenteRepository,
     private readonly auditService: AuditService,
     private readonly anioLectivoCls: AnioLectivoCls,
+    private readonly bloqueoService: ConsolidadoBloqueoService,
   ) {}
 
   /**
@@ -187,6 +189,12 @@ export class AusenciasConsultaService {
     );
     if (estaBloqueado) {
       throw new ForbiddenException(MENSAJES_AUSENCIA.BIMESTRE_CERRADO);
+    }
+
+    // 4.1. Bloqueo por consolidado cerrado (CP-RF013-06)
+    const periodoId = await this.repository.buscarPeriodoIdPorFecha(ausencia.sesion.fecha);
+    if (periodoId) {
+      await this.bloqueoService.asegurarNoCerrado(ausencia.sesion.docenteId, periodoId);
     }
 
     // 5. Descargo repetido (CP-RF012-22)

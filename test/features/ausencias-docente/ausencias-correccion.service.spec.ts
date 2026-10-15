@@ -13,6 +13,7 @@ import {
   type IAusenciasDocenteRepository,
   type SesionParaAusencia,
 } from "@/features/ausencias-docente";
+import { ConsolidadoBloqueoService } from "@/features/seguimiento-docente";
 
 type Mocks<T> = { [K in keyof T]?: jest.Mock };
 
@@ -22,6 +23,7 @@ describe("RF-012: Corrección, anulación e historial de ausencias (HU2)", () =>
   let notificaciones: Mocks<NotificacionesService>;
   let audit: Mocks<AuditService>;
   let anioCls: Mocks<AnioLectivoCls>;
+  let bloqueo: Mocks<ConsolidadoBloqueoService>;
 
   const sesionEjemplo: SesionParaAusencia = {
     id: "ses-mate-5a",
@@ -107,6 +109,7 @@ describe("RF-012: Corrección, anulación e historial de ausencias (HU2)", () =>
       usuarioPorPersonaId: jest.fn().mockResolvedValue({ id: "user-quispe-uuid" }),
       bimestreEstaBloqueado: jest.fn().mockResolvedValue(false),
       obtenerVariableSistema: jest.fn().mockResolvedValue("24"),
+      buscarPeriodoIdPorFecha: jest.fn().mockResolvedValue("periodo-2027-uuid"),
     };
 
     notificaciones = {
@@ -121,11 +124,17 @@ describe("RF-012: Corrección, anulación e historial de ausencias (HU2)", () =>
       id: jest.fn().mockReturnValue("anio-2027-uuid"),
     };
 
+    bloqueo = {
+      asegurarNoCerrado: jest.fn().mockResolvedValue(undefined),
+      asegurarNoCerradoPorFecha: jest.fn().mockResolvedValue(undefined),
+    };
+
     service = new AusenciasDocenteService(
       repo as unknown as AusenciasDocenteRepository,
       notificaciones as unknown as NotificacionesService,
       audit as unknown as AuditService,
       anioCls as unknown as AnioLectivoCls,
+      bloqueo as unknown as ConsolidadoBloqueoService,
     );
   });
 
@@ -143,7 +152,13 @@ describe("RF-012: Corrección, anulación e historial de ausencias (HU2)", () =>
       const actorId = "user-subdirector-uuid";
 
       // Cuando cambio la hora final de 09:10 a 09:05, indico el motivo y guardo
-      const resultado = await service.corregir("aus-v1-uuid", dto, undefined, actorId, "192.168.1.10");
+      const resultado = await service.corregir(
+        "aus-v1-uuid",
+        dto,
+        undefined,
+        actorId,
+        "192.168.1.10",
+      );
 
       // Entonces el sistema crea la versión 2 vigente con 15 minutos
       expect(resultado.version).toBe(2);
@@ -183,9 +198,9 @@ describe("RF-012: Corrección, anulación e historial de ausencias (HU2)", () =>
 
       // Cuando intento corregirla
       // Entonces debe lanzar NotFoundException
-      await expect(service.corregir("aus-inexistente", dto, undefined, "user-subdirector-uuid")).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.corregir("aus-inexistente", dto, undefined, "user-subdirector-uuid"),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -314,7 +329,9 @@ describe("RF-012: Corrección, anulación e historial de ausencias (HU2)", () =>
       // Entonces el sistema bloquea la acción con ForbiddenException
       await expect(
         service.corregir("aus-v1-uuid", dto, undefined, "user-director-uuid"),
-      ).rejects.toThrow(new ForbiddenException("Solo quien registró la ausencia puede corregirla."));
+      ).rejects.toThrow(
+        new ForbiddenException("Solo quien registró la ausencia puede corregirla."),
+      );
     });
   });
 
@@ -382,9 +399,9 @@ describe("RF-012: Corrección, anulación e historial de ausencias (HU2)", () =>
       const dtoEspacios: AnularAusenciaDto = {
         motivoAnulacion: "    ",
       };
-      await expect(service.anular("aus-v1-uuid", dtoEspacios, "user-director-uuid")).rejects.toThrow(
-        new BadRequestException(MENSAJES_AUSENCIA.ANULACION_SIN_MOTIVO),
-      );
+      await expect(
+        service.anular("aus-v1-uuid", dtoEspacios, "user-director-uuid"),
+      ).rejects.toThrow(new BadRequestException(MENSAJES_AUSENCIA.ANULACION_SIN_MOTIVO));
     });
   });
 

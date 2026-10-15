@@ -7,7 +7,9 @@ import {
 } from "@nestjs/common";
 import { AnioLectivoCls } from "../../common/anio-lectivo";
 import { AuditService } from "../../common/services/audit.service";
+import { fechaHoyLima } from "../../common/utils/fecha-lima.util";
 import { NotificacionesService } from "../notificaciones/notificaciones.service";
+import { ConsolidadoBloqueoService } from "../seguimiento-docente";
 import { MENSAJES_AUSENCIA, VALORES_DEFECTO_AUSENCIA, VARIABLES_AUSENCIA } from "./constants";
 import type { AusenciaResponseDto, MensajeAusenciaResponseDto, RegistrarAusenciaDto } from "./dto";
 import { AusenciasDocenteRepository } from "./repositories";
@@ -24,6 +26,7 @@ export class AusenciasRegistroService {
     private readonly notificacionesService: NotificacionesService,
     private readonly auditService: AuditService,
     private readonly anioLectivoCls: AnioLectivoCls,
+    private readonly bloqueoService: ConsolidadoBloqueoService,
   ) {}
 
   /**
@@ -32,15 +35,14 @@ export class AusenciasRegistroService {
    * cuando define un año simulado para suites de pruebas (ej. "anio-2027-uuid"),
    * recurriendo a la fecha actual de Date en tiempo real.
    */
-  obtenerFechaHoy(): string {
-    const ahora = new Date();
-    const fechaIso = ahora.toISOString().slice(0, 10);
+  obtenerFechaHoy(referencia: Date = new Date()): string {
+    const fechaIso = fechaHoyLima(referencia);
     const anioId = this.anioLectivoCls.id();
     if (anioId) {
       const match = anioId.match(/anio-(20\d\d)/);
       if (match) {
         const anioCls = match[1];
-        const anioActual = String(ahora.getUTCFullYear());
+        const anioActual = fechaIso.slice(0, 4);
         if (anioCls > anioActual) {
           return `${anioCls}-${fechaIso.slice(5)}`;
         }
@@ -78,6 +80,12 @@ export class AusenciasRegistroService {
     );
     if (estaBloqueado) {
       throw new ForbiddenException(MENSAJES_AUSENCIA.BIMESTRE_CERRADO);
+    }
+
+    // 3.1. Verificar si el consolidado del bimestre está cerrado (CP-RF013-06)
+    const periodoId = await this.repository.buscarPeriodoIdPorFecha(sesion.fecha);
+    if (periodoId) {
+      await this.bloqueoService.asegurarNoCerrado(sesion.docenteId, periodoId);
     }
 
     // 4. Validar horas invertidas (CP-RF012-05)

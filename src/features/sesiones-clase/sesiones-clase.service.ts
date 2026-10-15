@@ -18,7 +18,9 @@ import { AniosAcademicosService } from "../anio-escolar/anios.service";
 import { CalendarioService } from "../calendario/calendario.service";
 import { EquiposService } from "../equipos/equipos.service";
 import { MarcacionesService } from "../marcaciones/marcaciones.service";
-import { ahoraEnColegio, diaIsoDeFecha, horaCorta } from "../marcaciones/utils";
+import { ConsolidadoBloqueoService } from "../seguimiento-docente";
+import { diaIsoDeFecha, horaCorta } from "../marcaciones/utils";
+import { ahoraEnLima } from "../../common/utils/fecha-lima.util";
 import {
   CRON_CERRAR_SESIONES,
   CRON_GENERAR_SESIONES,
@@ -84,6 +86,7 @@ export class SesionesClaseService implements OnModuleInit {
     private readonly aniosService: AniosAcademicosService,
     private readonly calendarioService: CalendarioService,
     private readonly auditService: AuditService,
+    private readonly bloqueoService: ConsolidadoBloqueoService,
     @Optional()
     @InjectQueue(QUEUES.SESIONES_CLASE)
     private readonly cola?: Queue,
@@ -110,7 +113,7 @@ export class SesionesClaseService implements OnModuleInit {
   // --- HU1: generación y cierre ------------------------------------------------
 
   /** Crea las sesiones `pendiente` del día. Idempotente: no duplica las existentes. */
-  async generarDelDia(fecha = ahoraEnColegio().fecha): Promise<number> {
+  async generarDelDia(fecha = ahoraEnLima().fecha): Promise<number> {
     const anio = await this.aniosService.anioVigente();
     if (!anio || anio.estado !== "en_curso") return 0;
     const enBimestre = anio.bimestres.some(
@@ -133,7 +136,7 @@ export class SesionesClaseService implements OnModuleInit {
   }
 
   /** Cierre del día: pendiente → no_cumplida; en_curso → parcial "Sin firma de salida". */
-  async cerrarDelDia(fecha = ahoraEnColegio().fecha): Promise<void> {
+  async cerrarDelDia(fecha = ahoraEnLima().fecha): Promise<void> {
     const { salidaAutomatica } = await this.configuracion();
     const resultado = await this.repository.cerrarDia(
       fecha,
@@ -157,7 +160,7 @@ export class SesionesClaseService implements OnModuleInit {
     ip?: string,
   ): Promise<SesionesKioskoResponseDto> {
     const docente = await this.identificarEnKiosko(token, dto, ip);
-    const { fecha, hora } = ahoraEnColegio();
+    const { fecha, hora } = ahoraEnLima();
     await this.asegurarGeneracion(fecha);
     const sesiones = await this.repository.sesionesDeDocente(docente.docenteId, fecha, fecha);
     const { minutosAntes } = await this.configuracion();
@@ -177,7 +180,7 @@ export class SesionesClaseService implements OnModuleInit {
   ): Promise<FirmaSesionResponseDto> {
     const docente = await this.identificarEnKiosko(token, dto, ip);
     const sesion = await this.sesionDelDocente(sesionId, docente.docenteId);
-    const { fecha, hora } = ahoraEnColegio();
+    const { fecha, hora } = ahoraEnLima();
     if (sesion.estado !== "pendiente") {
       throw new ConflictException(MENSAJES_SESION.INGRESO_YA_FIRMADO);
     }
@@ -254,7 +257,7 @@ export class SesionesClaseService implements OnModuleInit {
       throw new ConflictException(MENSAJES_SESION.SALIDA_YA_FIRMADA);
     }
 
-    const { hora } = ahoraEnColegio();
+    const { hora } = ahoraEnLima();
     const { toleranciaSalida } = await this.configuracion();
     const salidaAntes = minutosSalidaAnticipada(sesion.horaFin, hora, toleranciaSalida);
     const minutosPerdidos = sesion.minutosRetraso + salidaAntes;
@@ -291,7 +294,7 @@ export class SesionesClaseService implements OnModuleInit {
   // --- HU3: seguimiento del subdirector -------------------------------------------
 
   async panelDeHoy(): Promise<PanelSesionesResponseDto> {
-    const { fecha, hora } = ahoraEnColegio();
+    const { fecha, hora } = ahoraEnLima();
     await this.asegurarGeneracion(fecha);
     const { toleranciaIngreso } = await this.configuracion();
     const minutoActual = minutosDelDia(hora);
@@ -317,6 +320,8 @@ export class SesionesClaseService implements OnModuleInit {
       throw new BadRequestException(MENSAJES_SESION.REEMPLAZO_MISMO_DOCENTE);
     }
     await this.exigirBimestreAbierto(sesion.fecha);
+    await this.exigirConsolidadoNoCerrado(sesion.docenteId, sesion.fecha);
+    await this.exigirConsolidadoNoCerrado(dto.docenteId, sesion.fecha);
     if (!(await this.repository.docenteActivo(dto.docenteId))) {
       throw new BadRequestException(MENSAJES_SESION.DOCENTE_NO_DISPONIBLE);
     }
@@ -346,6 +351,7 @@ export class SesionesClaseService implements OnModuleInit {
   ): Promise<MensajeSesionResponseDto> {
     const sesion = await this.requireJustificacionSolicitada(sesionId);
     await this.exigirBimestreAbierto(sesion.fecha);
+    await this.exigirConsolidadoNoCerrado(sesion.docenteId, sesion.fecha);
     await this.repository.resolverJustificacion(sesionId, "aprobada", actorId, null);
     await this.auditService.log({
       usuarioId: actorId,
@@ -374,6 +380,7 @@ export class SesionesClaseService implements OnModuleInit {
     }
     const sesion = await this.requireJustificacionSolicitada(sesionId);
     await this.exigirBimestreAbierto(sesion.fecha);
+    await this.exigirConsolidadoNoCerrado(sesion.docenteId, sesion.fecha);
     await this.repository.resolverJustificacion(sesionId, "rechazada", actorId, comentario);
     await this.auditService.log({
       usuarioId: actorId,
@@ -430,6 +437,7 @@ export class SesionesClaseService implements OnModuleInit {
       throw new ForbiddenException(MENSAJES_SESION.SESION_NO_ES_SUYA);
     }
     await this.exigirBimestreAbierto(sesion.fecha);
+    await this.exigirConsolidadoNoCerrado(sesion.docenteId, sesion.fecha);
     if (sesion.estado !== "pendiente" && sesion.estado !== "en_curso") {
       throw new BadRequestException(MENSAJES_SESION.TEMA_CERRADO);
     }
@@ -462,6 +470,7 @@ export class SesionesClaseService implements OnModuleInit {
       throw new ForbiddenException(MENSAJES_SESION.SESION_NO_ES_SUYA);
     }
     await this.exigirBimestreAbierto(sesion.fecha);
+    await this.exigirConsolidadoNoCerrado(sesion.docenteId, sesion.fecha);
     if (sesion.estado !== "no_cumplida") {
       throw new BadRequestException(MENSAJES_SESION.SOLO_NO_CUMPLIDA);
     }
@@ -512,6 +521,7 @@ export class SesionesClaseService implements OnModuleInit {
       throw new ForbiddenException(MENSAJES_SESION.SESION_AJENA);
     }
     await this.exigirBimestreAbierto(sesion.fecha);
+    await this.exigirConsolidadoNoCerrado(sesion.docenteId, sesion.fecha);
     return sesion;
   }
 
@@ -535,6 +545,14 @@ export class SesionesClaseService implements OnModuleInit {
     if (await this.aniosService.sesionesBloqueadasEn(fecha)) {
       throw new ForbiddenException(MENSAJES_SESION.BIMESTRE_CERRADO);
     }
+  }
+
+  private async exigirConsolidadoNoCerrado(docenteId: string, fecha: string): Promise<void> {
+    const periodoId = await this.repository.buscarPeriodoIdPorFecha(fecha);
+    if (!periodoId) {
+      return;
+    }
+    await this.bloqueoService.asegurarNoCerrado(docenteId, periodoId);
   }
 
   private async docenteDelUsuario(usuario: AuthenticatedUser): Promise<string> {

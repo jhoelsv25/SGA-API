@@ -4,7 +4,6 @@ import { and, asc, desc, eq, isNull, ne, or, sql } from "drizzle-orm";
 import { Database, DRIZZLE } from "../../../core/database";
 import {
   ausenciasSesion,
-  consolidadosDocente,
   cursos,
   cursosSeccion,
   docentes,
@@ -511,7 +510,7 @@ export class AusenciasDocenteRepository implements IAusenciasDocenteRepository {
     return u ?? null;
   }
 
-  async bimestreEstaBloqueado(fecha: string, docenteId: string): Promise<boolean> {
+  async bimestreEstaBloqueado(fecha: string, _docenteId: string): Promise<boolean> {
     const [periodo] = await this.db
       .select({
         id: periodosAcademicos.id,
@@ -530,22 +529,22 @@ export class AusenciasDocenteRepository implements IAusenciasDocenteRepository {
       return false;
     }
 
-    if (periodo.estado === "cerrado") {
-      return true;
-    }
+    return periodo.estado === "cerrado";
+  }
 
-    const [consolidado] = await this.db
-      .select({ id: consolidadosDocente.id })
-      .from(consolidadosDocente)
+  async buscarPeriodoIdPorFecha(fecha: string): Promise<string | null> {
+    const [periodo] = await this.db
+      .select({ id: periodosAcademicos.id })
+      .from(periodosAcademicos)
       .where(
         and(
-          eq(consolidadosDocente.periodoId, periodo.id),
-          eq(consolidadosDocente.docenteId, docenteId),
+          sql`${periodosAcademicos.fechaInicio} <= ${fecha}::date`,
+          sql`${periodosAcademicos.fechaFin} >= ${fecha}::date`,
         ),
       )
       .limit(1);
 
-    return Boolean(consolidado);
+    return periodo?.id ?? null;
   }
 
   async obtenerVariableSistema(codigo: string): Promise<string | null> {
