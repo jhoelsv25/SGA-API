@@ -16,12 +16,12 @@ export class MenuAccessGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const ruta = this.reflector.getAllAndOverride<string>(MENU_ACCESS_KEY, [
+    const metadata = this.reflector.getAllAndOverride<string | string[]>(MENU_ACCESS_KEY, [
       context.getHandler(),
       context.getClass(),
     ]);
 
-    if (!ruta) {
+    if (!metadata) {
       return true;
     }
 
@@ -34,7 +34,17 @@ export class MenuAccessGuard implements CanActivate {
       return true;
     }
 
-    if (!(await this.rolMenus.tieneMenu(user.roleId, ruta))) {
+    const rutas = Array.isArray(metadata) ? metadata : [metadata];
+    if (rutas.length === 0) {
+      return true;
+    }
+
+    const verificaciones = await Promise.all(
+      rutas.map((ruta) => this.rolMenus.tieneMenu(user.roleId as string, ruta)),
+    );
+
+    const tieneAcceso = verificaciones.some((acceso) => acceso === true);
+    if (!tieneAcceso) {
       throw new ForbiddenException("Su rol no tiene acceso a esta opción.");
     }
     return true;
