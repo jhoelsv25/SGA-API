@@ -1,0 +1,48 @@
+# Ejecución de pruebas — RF-017: Interacción y Actividad del Curso
+
+| Dato                       | Valor                                                                                                                                                                                                                               |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Fecha**                  | 2026-10-14, hora de Lima                                                                                                                                                                                                            |
+| **Tester**                 | Antigravity AI (Pair Programming)                                                                                                                                                                                                   |
+| **Ambiente**               | Desarrollo: API local (:3000) y WEB local (:3001) contra PostgreSQL Supabase; Drizzle ORM migración `0012_interaccion_y_actividad`; Jest en `sga-api` y Next.js Turbopack en `sga-web`                                              |
+| **Versión del RF**         | V1                                                                                                                                                                                                                                  |
+| **Versión del sistema**    | Commit backend: `9caca0e` (fusionado en `main`) · Commit frontend: `599b123` (fusionado en `main`)                                                                                                                                  |
+| **Datos de prueba usados** | Cuentas del seed y pruebas unitarias (`rf-017-interaccion.service.spec.ts` con 19 casos CP-RF017-01 a 19): docente asignado, estudiantes con matrícula activa en 5.° A, estudiante de otra sección y estudiante con estado retirado |
+
+## Resultados
+
+Leyenda: ✅ Pasa · ❌ Falla · ⏸️ Bloqueado · ➖ No aplica
+
+| ID          | Escenario                      | Resultado | Evidencia                                                                   | Observación                                                                                                                                                                                         |
+| ----------- | ------------------------------ | --------- | --------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| CP-RF017-01 | Publicar en el muro            | ✅ Pasa   | `rf-017-interaccion.service.spec.ts` (L143) & `muro-tab.tsx`                | Publicación creada en tabla `publicaciones_aula`; notificaciones enviadas a participantes excluyendo al autor vía `NotificacionesService`.                                                          |
+| CP-RF017-02 | Comentar una publicación       | ✅ Pasa   | `rf-017-interaccion.service.spec.ts` (L186) & `comentario-form.tsx`         | Comentario registrado en `comentarios_publicacion` con fecha, autor y visible inmediatamente en el muro.                                                                                            |
+| CP-RF017-03 | Publicación vacía              | ✅ Pasa   | `rf-017-interaccion.service.spec.ts` (L223) & `publicacion-form.tsx`        | `BadRequestException: "Escriba un texto o agregue un adjunto."` tanto en frontend como en el endpoint de backend.                                                                                   |
+| CP-RF017-04 | Adjunto muy pesado             | ✅ Pasa   | `rf-017-interaccion.service.spec.ts` (L229) & `esTamanoValido`              | Validación ≤ 10 MB: rechazo con mensaje exacto `"El adjunto supera el máximo de 10 MB."`.                                                                                                           |
+| CP-RF017-05 | Fijar una publicación          | ✅ Pasa   | `rf-017-interaccion.service.spec.ts` (L241) & `publicacion-card.tsx`        | Solo el docente asignado tiene permiso (`fijada = true`), ubicándola arriba en `ORDER BY fijada DESC, creado_en DESC`. Estudiante recibe 403 Forbidden.                                             |
+| CP-RF017-06 | Editar fuera de plazo          | ✅ Pasa   | `rf-017-interaccion.service.spec.ts` (L263) & `interaccion-reglas.util.ts`  | Regla de negocio de 15 minutos (`LIMITE_EDICION_MINUTOS = 15`): rechazo con `"Solo puede editar dentro de los 15 minutos de publicado."`. En frontend se oculta el botón y se muestra temporizador. |
+| CP-RF017-07 | Usuario ajeno al curso         | ✅ Pasa   | `rf-017-interaccion.service.spec.ts` (L278) & guard aula-virtual            | Validación de matrícula y carga docente: `ForbiddenException: "No participa en esta aula virtual."`.                                                                                                |
+| CP-RF017-08 | Enviar un mensaje              | ✅ Pasa   | `rf-017-interaccion.service.spec.ts` (L288) & `chat-tab.tsx`                | Mensaje registrado en `mensajes_chat`, emitido a todos los participantes en la consulta del chat sin emitir notificaciones individuales.                                                            |
+| CP-RF017-09 | Mensajes sin leer              | ✅ Pasa   | `rf-017-interaccion.service.spec.ts` (L322) & `chat_lecturas`               | Contador obtenido comparando `enviado_en > ultimo_leido_en` por usuario en tabla `chat_lecturas`. Retorna número exacto de no leídos.                                                               |
+| CP-RF017-10 | Sin mensajes privados          | ✅ Pasa   | `rf-017-interaccion.service.spec.ts` (L331) & schema Drizzle                | La entidad y los endpoints no tienen `destinatario_id` ni lógica privada; la sala es común por curso-sección.                                                                                       |
+| CP-RF017-11 | Estudiante retirado            | ✅ Pasa   | `rf-017-interaccion.service.spec.ts` (L348) & `obtenerMatriculaActiva`      | Verificación contra matrícula vigente (`estado = 'vigente'`): estudiante retirado o trasladado es bloqueado con 403.                                                                                |
+| CP-RF017-12 | Ocultar un mensaje             | ✅ Pasa   | `rf-017-interaccion.service.spec.ts` (L367) & `ocultar-contenido-form.tsx`  | Baja lógica (`vigente = false`, `ocultado_por_id`, `ocultado_en`, `motivo_ocultamiento`). Respuesta `"El contenido se ocultó para los estudiantes."` y registro en `bitacora_auditoria`.            |
+| CP-RF017-13 | Ocultar sin motivo             | ✅ Pasa   | `rf-017-interaccion.service.spec.ts` (L397) & schema Zod                    | `BadRequestException: "Indique el motivo para ocultar el contenido."`.                                                                                                                              |
+| CP-RF017-14 | Restaurar un contenido         | ✅ Pasa   | `rf-017-interaccion.service.spec.ts` (L403) & `moderacion-tab.tsx`          | Actualización a `vigente = true` y limpieza de campos de ocultamiento. Respuesta: `"El contenido volvió a estar visible."`.                                                                         |
+| CP-RF017-15 | Historial de moderación        | ✅ Pasa   | `rf-017-interaccion.service.spec.ts` (L418) & `moderacion-tab.tsx`          | Accesible para Docente, Director y Subdirector. Retorna registros con autor, moderador, fecha y motivo.                                                                                             |
+| CP-RF017-16 | Un estudiante no puede moderar | ✅ Pasa   | `rf-017-interaccion.service.spec.ts` (L439) & UI condicional                | El estudiante no ve opciones de moderación en la UI y la API responde 403 Forbidden.                                                                                                                |
+| CP-RF017-17 | Registro automático            | ✅ Pasa   | `rf-017-interaccion.service.spec.ts` (L454) & `actividad_aula`              | Acciones `'visualizo'` y `'descargo'` de materiales y tareas registradas en `actividad_aula` con fecha y matrícula del estudiante.                                                                  |
+| CP-RF017-18 | Ver quién revisó un material   | ✅ Pasa   | `rf-017-interaccion.service.spec.ts` (L477) & `actividad-recurso-modal.tsx` | Modal muestra la nómina completa de la sección con checks de si visualizó, descargó o no revisó, junto con fecha/hora.                                                                              |
+| CP-RF017-19 | Año cerrado                    | ✅ Pasa   | `rf-017-interaccion.service.spec.ts` (L513) & `anioCerrado` guard           | Con año lectivo cerrado (`estado = 'cerrado'`), las acciones de escritura en muro y chat son bloqueadas con mensaje `"El año escolar está cerrado. El muro y el chat son de solo lectura."`.        |
+
+## Resumen
+
+| Total | ✅ Pasa | ❌ Falla | ⏸️ Bloqueado | ➖ No aplica | % de éxito |
+| ----- | ------- | -------- | ------------ | ------------ | ---------- |
+| 19    | 19      | 0        | 0            | 0            | 100 %      |
+
+**% de éxito** = casos que pasan ÷ (total − no aplica) × 100
+
+## Conclusión
+
+☑ **Validado:** todos los casos aplicables pasan (19 de 19).

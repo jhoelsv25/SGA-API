@@ -2237,7 +2237,7 @@ export class AulaVirtualService {
     dto: OcultarContenidoDto,
     usuario: AuthenticatedUser,
     ip?: string,
-  ): Promise<{ mensaje: string }> {
+  ): Promise<{ mensaje: string; cursoSeccionId: string }> {
     const validacionMotivo = validarMotivoOcultamiento(dto.motivo);
     if (!validacionMotivo.valido) {
       throw new BadRequestException(validacionMotivo.mensaje);
@@ -2285,7 +2285,7 @@ export class AulaVirtualService {
       ip,
     );
 
-    return { mensaje: MENSAJES_INTERACCION.CONTENIDO_OCULTADO };
+    return { mensaje: MENSAJES_INTERACCION.CONTENIDO_OCULTADO, cursoSeccionId };
   }
 
   async restaurarContenido(
@@ -2293,7 +2293,7 @@ export class AulaVirtualService {
     id: string,
     usuario: AuthenticatedUser,
     ip?: string,
-  ): Promise<{ mensaje: string }> {
+  ): Promise<{ mensaje: string; cursoSeccionId: string }> {
     let cursoSeccionId: string;
     if (tipo === "publicacion") {
       const p = await this.repository.obtenerPublicacion(id);
@@ -2336,7 +2336,7 @@ export class AulaVirtualService {
       ip,
     );
 
-    return { mensaje: MENSAJES_INTERACCION.CONTENIDO_RESTAURADO };
+    return { mensaje: MENSAJES_INTERACCION.CONTENIDO_RESTAURADO, cursoSeccionId };
   }
 
   async listarHistorialModeracion(

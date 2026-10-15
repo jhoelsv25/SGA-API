@@ -30,6 +30,7 @@ import { ClientInfo, type ClientInfoData, CurrentUser, MenuAccess } from "../../
 import type { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface";
 import { AulaVirtualService } from "./aula-virtual.service";
 import { LIMITE_DURO_SUBIDA_BYTES } from "./constants";
+import { ChatAulaGateway } from "./gateways/chat-aula.gateway";
 import {
   ActualizarMaterialDto,
   ActualizarTareaDto,
@@ -86,7 +87,10 @@ const OPCIONES_SUBIDA = { limits: { fileSize: LIMITE_DURO_SUBIDA_BYTES } };
 })
 @Controller("aula-virtual")
 export class AulaVirtualController {
-  constructor(private readonly service: AulaVirtualService) {}
+  constructor(
+    private readonly service: AulaVirtualService,
+    private readonly chatGateway: ChatAulaGateway,
+  ) {}
 
   @Get("mis-cursos")
   @ApiOperation({ summary: "Cursos con aula virtual del usuario (docente o estudiante)" })
@@ -578,7 +582,9 @@ export class AulaVirtualController {
     @CurrentUser() usuario: AuthenticatedUser,
     @UploadedFile() archivo?: Express.Multer.File,
   ): Promise<MensajeChatFila> {
-    return this.service.enviarMensajeChat(cursoSeccionId, dto, usuario, archivo);
+    const mensaje = await this.service.enviarMensajeChat(cursoSeccionId, dto, usuario, archivo);
+    this.chatGateway.emitirNuevoMensaje(cursoSeccionId, mensaje);
+    return mensaje;
   }
 
   @Get("cursos/:cursoSeccionId/chat/no-leidos")
@@ -616,7 +622,11 @@ export class AulaVirtualController {
     @CurrentUser() usuario: AuthenticatedUser,
     @ClientInfo() clientInfo?: ClientInfoData,
   ): Promise<{ mensaje: string }> {
-    return this.service.ocultarContenido(tipo, id, dto, usuario, clientInfo?.ip);
+    const res = await this.service.ocultarContenido(tipo, id, dto, usuario, clientInfo?.ip);
+    if (tipo === "chat") {
+      this.chatGateway.emitirMensajeModerado(res.cursoSeccionId, id, false);
+    }
+    return { mensaje: res.mensaje };
   }
 
   @Post("moderacion/:tipo/:id/restaurar")
@@ -631,7 +641,11 @@ export class AulaVirtualController {
     @CurrentUser() usuario: AuthenticatedUser,
     @ClientInfo() clientInfo?: ClientInfoData,
   ): Promise<{ mensaje: string }> {
-    return this.service.restaurarContenido(tipo, id, usuario, clientInfo?.ip);
+    const res = await this.service.restaurarContenido(tipo, id, usuario, clientInfo?.ip);
+    if (tipo === "chat") {
+      this.chatGateway.emitirMensajeModerado(res.cursoSeccionId, id, true);
+    }
+    return { mensaje: res.mensaje };
   }
 
   @Get("cursos/:cursoSeccionId/moderacion")
