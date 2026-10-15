@@ -45,5 +45,6 @@ export const MENSAJES_CONSOLIDADO = {
   SOLICITUD_RECHAZADA_SIN_RESPUESTA: "Indique la respuesta para el docente.",
   CONSOLIDADO_CERRADO: "El consolidado de este bimestre está cerrado. Solicite su reapertura.",
   CONSOLIDADO_NO_ENCONTRADO: "Consolidado docente no encontrado.",
+  CONSOLIDADO_NO_VIGENTE: "No se puede reabrir ni cerrar una versión histórica del consolidado.",
   SOLICITUD_NO_ENCONTRADA: "Solicitud de revisión no encontrada.",
 } as const;
