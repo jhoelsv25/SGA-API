@@ -1536,10 +1536,19 @@ export const consolidadosDocente = pgTable(
     id: uuid().defaultRandom().primaryKey().notNull(),
     docenteId: uuid("docente_id").notNull(),
     periodoId: uuid("periodo_id").notNull(),
+    estado: varchar({ length: 20 }).default("cerrado").notNull(),
+    version: integer().default(1).notNull(),
+    vigente: boolean().default(true).notNull(),
+    motivoCambio: varchar("motivo_cambio", { length: 1000 }),
     sesionesProgramadas: smallint("sesiones_programadas").notNull(),
     sesionesCumplidas: smallint("sesiones_cumplidas").notNull(),
+    sesionesParciales: smallint("sesiones_parciales").default(0).notNull(),
+    sesionesNoCumplidas: smallint("sesiones_no_cumplidas").default(0).notNull(),
+    sesionesJustificadas: smallint("sesiones_justificadas").default(0).notNull(),
+    minutosPerdidosFirma: integer("minutos_perdidos_firma").default(0).notNull(),
     totalAusencias: smallint("total_ausencias").default(0).notNull(),
     minutosFueraAula: integer("minutos_fuera_aula").default(0).notNull(),
+    minutosTotalFuera: integer("minutos_total_fuera").default(0).notNull(),
     decision: varchar({ length: 20 }).default("ninguna").notNull(),
     observacion: varchar({ length: 1000 }),
     generadoPorId: uuid("generado_por_id").notNull(),
@@ -1564,18 +1573,66 @@ export const consolidadosDocente = pgTable(
       foreignColumns: [periodosAcademicos.id],
       name: "fk_consolidados_docente_periodo",
     }),
-    unique("uq_consolidados_docente").on(table.docenteId, table.periodoId),
+    uniqueIndex("uq_consolidados_docente_vigente")
+      .on(table.docenteId, table.periodoId)
+      .where(sql`vigente = true`),
     check(
       "ck_consolidados_docente_ausencias",
       sql`(total_ausencias >= 0) AND (minutos_fuera_aula >= 0)`,
     ),
     check(
       "ck_consolidados_docente_decision",
-      sql`(decision)::text = ANY ((ARRAY['ninguna'::character varying, 'llamada_atencion'::character varying, 'descuento'::character varying, 'derivado'::character varying])::text[])`,
+      sql`(decision)::text = ANY ((ARRAY['ninguna'::character varying, 'llamada_atencion'::character varying, 'compromiso_mejora'::character varying, 'descuento'::character varying, 'derivado'::character varying])::text[])`,
     ),
     check(
       "ck_consolidados_docente_sesiones",
-      sql`(sesiones_programadas >= 0) AND ((sesiones_cumplidas >= 0) AND (sesiones_cumplidas <= sesiones_programadas))`,
+      sql`(sesiones_programadas >= 0) AND (sesiones_cumplidas >= 0)`,
+    ),
+    check(
+      "ck_consolidados_docente_estado",
+      sql`(estado)::text = ANY ((ARRAY['cerrado'::character varying, 'reabierto'::character varying])::text[])`,
+    ),
+  ],
+);
+
+export const solicitudesRevisionConsolidado = pgTable(
+  "solicitudes_revision_consolidado",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    consolidadoId: uuid("consolidado_id").notNull(),
+    docenteId: uuid("docente_id").notNull(),
+    estado: varchar({ length: 20 }).default("solicitada").notNull(),
+    motivo: varchar({ length: 1000 }).notNull(),
+    adjuntoUrl: varchar("adjunto_url", { length: 500 }),
+    solicitadoEn: timestamp("solicitado_en", { precision: 0, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    resueltoPorId: uuid("resuelto_por_id"),
+    resueltoEn: timestamp("resuelto_en", { precision: 0, mode: "string" }),
+    respuesta: varchar({ length: 1000 }),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.consolidadoId],
+      foreignColumns: [consolidadosDocente.id],
+      name: "fk_solicitudes_revision_consolidado",
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [table.docenteId],
+      foreignColumns: [docentes.id],
+      name: "fk_solicitudes_revision_docente",
+    }),
+    foreignKey({
+      columns: [table.resueltoPorId],
+      foreignColumns: [usuarios.id],
+      name: "fk_solicitudes_revision_resuelto_por",
+    }),
+    uniqueIndex("uq_solicitud_revision_pendiente")
+      .on(table.consolidadoId)
+      .where(sql`estado = 'solicitada'`),
+    check(
+      "ck_solicitudes_revision_estado",
+      sql`(estado)::text = ANY ((ARRAY['solicitada'::character varying, 'aceptada'::character varying, 'rechazada'::character varying])::text[])`,
     ),
   ],
 );

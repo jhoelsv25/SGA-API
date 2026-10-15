@@ -541,6 +541,8 @@ export class AusenciasDocenteRepository implements IAusenciasDocenteRepository {
         and(
           eq(consolidadosDocente.periodoId, periodo.id),
           eq(consolidadosDocente.docenteId, docenteId),
+          eq(consolidadosDocente.vigente, true),
+          eq(consolidadosDocente.estado, "cerrado"),
         ),
       )
       .limit(1);

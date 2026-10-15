@@ -32,6 +32,7 @@ import {
   ausenciasSesion,
   evidenciasAusencia,
   consolidadosDocente,
+  solicitudesRevisionConsolidado,
   incidenciasConducta,
   observacionesEstudiante,
   comunicados,
@@ -426,7 +427,7 @@ export const evidenciasAusenciaRelations = relations(evidenciasAusencia, ({ one 
   }),
 }));
 
-export const consolidadosDocenteRelations = relations(consolidadosDocente, ({ one }) => ({
+export const consolidadosDocenteRelations = relations(consolidadosDocente, ({ one, many }) => ({
   docente: one(docentes, {
     fields: [consolidadosDocente.docenteId],
     references: [docentes.id],
@@ -439,7 +440,26 @@ export const consolidadosDocenteRelations = relations(consolidadosDocente, ({ on
     fields: [consolidadosDocente.periodoId],
     references: [periodosAcademicos.id],
   }),
+  solicitudes: many(solicitudesRevisionConsolidado),
 }));
+
+export const solicitudesRevisionConsolidadoRelations = relations(
+  solicitudesRevisionConsolidado,
+  ({ one }) => ({
+    consolidado: one(consolidadosDocente, {
+      fields: [solicitudesRevisionConsolidado.consolidadoId],
+      references: [consolidadosDocente.id],
+    }),
+    docente: one(docentes, {
+      fields: [solicitudesRevisionConsolidado.docenteId],
+      references: [docentes.id],
+    }),
+    resueltoPor: one(usuarios, {
+      fields: [solicitudesRevisionConsolidado.resueltoPorId],
+      references: [usuarios.id],
+    }),
+  }),
+);
 
 export const incidenciasConductaRelations = relations(incidenciasConducta, ({ one }) => ({
   matricula: one(matriculas, {

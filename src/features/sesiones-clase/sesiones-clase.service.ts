@@ -16,6 +16,7 @@ import { QUEUES } from "../../core/queues/queues.constants";
 import type { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface";
 import { AniosAcademicosService } from "../anio-escolar/anios.service";
 import { CalendarioService } from "../calendario/calendario.service";
+import { ConsolidadoDocenteService } from "../consolidado-docente/consolidado-docente.service";
 import { EquiposService } from "../equipos/equipos.service";
 import { MarcacionesService } from "../marcaciones/marcaciones.service";
 import { ahoraEnColegio, diaIsoDeFecha, horaCorta } from "../marcaciones/utils";
@@ -84,6 +85,8 @@ export class SesionesClaseService implements OnModuleInit {
     private readonly aniosService: AniosAcademicosService,
     private readonly calendarioService: CalendarioService,
     private readonly auditService: AuditService,
+    @Optional()
+    private readonly consolidadoService?: ConsolidadoDocenteService,
     @Optional()
     @InjectQueue(QUEUES.SESIONES_CLASE)
     private readonly cola?: Queue,
@@ -316,7 +319,7 @@ export class SesionesClaseService implements OnModuleInit {
     if (sesion.docenteId === dto.docenteId) {
       throw new BadRequestException(MENSAJES_SESION.REEMPLAZO_MISMO_DOCENTE);
     }
-    await this.exigirBimestreAbierto(sesion.fecha);
+    await this.exigirBimestreAbierto(sesion.fecha, sesion.docenteId);
     if (!(await this.repository.docenteActivo(dto.docenteId))) {
       throw new BadRequestException(MENSAJES_SESION.DOCENTE_NO_DISPONIBLE);
     }
@@ -345,7 +348,7 @@ export class SesionesClaseService implements OnModuleInit {
     ip?: string,
   ): Promise<MensajeSesionResponseDto> {
     const sesion = await this.requireJustificacionSolicitada(sesionId);
-    await this.exigirBimestreAbierto(sesion.fecha);
+    await this.exigirBimestreAbierto(sesion.fecha, sesion.docenteId);
     await this.repository.resolverJustificacion(sesionId, "aprobada", actorId, null);
     await this.auditService.log({
       usuarioId: actorId,
@@ -373,7 +376,7 @@ export class SesionesClaseService implements OnModuleInit {
       throw new BadRequestException(MENSAJES_SESION.RECHAZO_SIN_COMENTARIO);
     }
     const sesion = await this.requireJustificacionSolicitada(sesionId);
-    await this.exigirBimestreAbierto(sesion.fecha);
+    await this.exigirBimestreAbierto(sesion.fecha, sesion.docenteId);
     await this.repository.resolverJustificacion(sesionId, "rechazada", actorId, comentario);
     await this.auditService.log({
       usuarioId: actorId,
@@ -429,7 +432,7 @@ export class SesionesClaseService implements OnModuleInit {
     if (sesion.docenteId !== docenteId) {
       throw new ForbiddenException(MENSAJES_SESION.SESION_NO_ES_SUYA);
     }
-    await this.exigirBimestreAbierto(sesion.fecha);
+    await this.exigirBimestreAbierto(sesion.fecha, sesion.docenteId);
     if (sesion.estado !== "pendiente" && sesion.estado !== "en_curso") {
       throw new BadRequestException(MENSAJES_SESION.TEMA_CERRADO);
     }
@@ -461,7 +464,7 @@ export class SesionesClaseService implements OnModuleInit {
     if (sesion.docenteId !== docenteId) {
       throw new ForbiddenException(MENSAJES_SESION.SESION_NO_ES_SUYA);
     }
-    await this.exigirBimestreAbierto(sesion.fecha);
+    await this.exigirBimestreAbierto(sesion.fecha, sesion.docenteId);
     if (sesion.estado !== "no_cumplida") {
       throw new BadRequestException(MENSAJES_SESION.SOLO_NO_CUMPLIDA);
     }
@@ -511,7 +514,7 @@ export class SesionesClaseService implements OnModuleInit {
     if (sesion.docenteId !== docenteId) {
       throw new ForbiddenException(MENSAJES_SESION.SESION_AJENA);
     }
-    await this.exigirBimestreAbierto(sesion.fecha);
+    await this.exigirBimestreAbierto(sesion.fecha, sesion.docenteId);
     return sesion;
   }
 
@@ -531,9 +534,12 @@ export class SesionesClaseService implements OnModuleInit {
     return sesion;
   }
 
-  private async exigirBimestreAbierto(fecha: string): Promise<void> {
+  private async exigirBimestreAbierto(fecha: string, docenteId?: string): Promise<void> {
     if (await this.aniosService.sesionesBloqueadasEn(fecha)) {
       throw new ForbiddenException(MENSAJES_SESION.BIMESTRE_CERRADO);
+    }
+    if (docenteId && this.consolidadoService) {
+      await this.consolidadoService.validarModificacionPermitida(docenteId, fecha);
     }
   }
 

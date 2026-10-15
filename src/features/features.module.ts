@@ -34,6 +34,7 @@ import { SesionesClaseModule } from "./sesiones-clase";
 import { AusenciasDocenteModule } from "./ausencias-docente";
 import { AulaVirtualModule } from "./aula-virtual";
 import { LibretasModule } from "./libretas";
+import { ConsolidadoDocenteModule } from "./consolidado-docente";
 
 @Module({
   imports: [
@@ -71,6 +72,7 @@ import { LibretasModule } from "./libretas";
     AulaVirtualModule,
     ConductaModule,
     LibretasModule,
+    ConsolidadoDocenteModule,
   ],
   exports: [
     AuthModule,
@@ -107,6 +109,7 @@ import { LibretasModule } from "./libretas";
     AulaVirtualModule,
     ConductaModule,
     LibretasModule,
+    ConsolidadoDocenteModule,
   ],
 })
 export class FeaturesModule {}

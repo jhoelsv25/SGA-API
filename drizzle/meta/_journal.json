@@ -99,6 +99,13 @@
       "when": 1791904468664,
       "tag": "0014_ausencias_versionado",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1791980000000,
+      "tag": "0015_consolidado_docente",
+      "breakpoints": true
     }
   ]
 }
