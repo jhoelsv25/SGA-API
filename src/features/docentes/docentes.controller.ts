@@ -33,7 +33,7 @@ export class DocentesController {
   @Get()
   @Roles("Administrador", "Director", "Subdirector", "Secretaria")
   @ApiOperation({
-    summary: "Listar docentes con paginación por cursor y filtros (RF-007 V3)",
+    summary: "Listar docentes con paginación por cursor y filtros",
   })
   @ApiResponse({ status: 200, type: PaginatedDocentesResponseDto })
   async findAll(@Query() query: DocenteQueryDto): Promise<PaginatedDocentesResponseDto> {
@@ -53,8 +53,7 @@ export class DocentesController {
   @Roles("Administrador")
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
-    summary:
-      "Registrar docente con vinculación al padrón, cargo, cuenta y credencial de marcación (RF-007 V3)",
+    summary: "Registrar docente con vinculación al padrón, cargo, cuenta y credencial de marcación",
   })
   @ApiResponse({ status: 201, type: CreateDocenteResponseDto })
   @ApiResponse({ status: 400, description: "Datos inválidos" })
@@ -85,8 +84,7 @@ export class DocentesController {
   @Post(":id/cesar")
   @Roles("Administrador")
   @ApiOperation({
-    summary:
-      "Registrar cese del docente, evaluando retiro de rol o desactivación de cuenta (RF-007 V3)",
+    summary: "Registrar cese del docente, evaluando retiro de rol o desactivación de cuenta",
   })
   @ApiResponse({ status: 200, description: "Docente cesado correctamente" })
   @ApiResponse({ status: 400, description: "Docente ya cesado o fecha inválida" })

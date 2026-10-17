@@ -36,7 +36,7 @@ export class PersonasController {
 
   @Get()
   @ApiOperation({
-    summary: "Listar personas del padrón único con paginación por cursor y filtros (RF-007)",
+    summary: "Listar personas del padrón único con paginación por cursor y filtros",
   })
   @ApiResponse({ status: 200, type: PaginatedPersonasResponseDto })
   async findAll(@Query() query: PersonaQueryDto): Promise<PaginatedPersonasResponseDto> {
@@ -45,8 +45,7 @@ export class PersonasController {
 
   @Get("buscar")
   @ApiOperation({
-    summary:
-      "Búsqueda preventiva de personas por documento o nombre antes de crear una ficha (RF-007 V3)",
+    summary: "Búsqueda preventiva de personas por documento o nombre antes de crear una ficha",
   })
   @ApiResponse({ status: 200, type: SearchPersonaResultDto })
   async search(@Query() query: PersonaQueryDto): Promise<SearchPersonaResultDto> {
@@ -63,7 +62,7 @@ export class PersonasController {
 
   @Get(":id/historial-critico")
   @ApiOperation({
-    summary: "Consultar historial de correcciones de datos críticos de una persona (RF-007 HU6)",
+    summary: "Consultar historial de correcciones de datos críticos de una persona",
     description:
       "Retorna la bitácora de modificaciones realizadas a los datos protegidos con motivo, autor y fecha.",
   })
@@ -77,7 +76,7 @@ export class PersonasController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
-    summary: "Registrar una persona (provisional o en padrón único) (RF-007 V3)",
+    summary: "Registrar una persona (provisional o en padrón único)",
   })
   @ApiResponse({ status: 201, type: PersonaResponseDto })
   @ApiResponse({ status: 400, description: "Datos inválidos o fecha futura" })
@@ -93,7 +92,7 @@ export class PersonasController {
   @Patch(":id")
   @ApiOperation({
     summary:
-      "Actualizar datos de una persona. Si es crítica y no provisional, exige rol Administrador y motivo (RF-007 V3)",
+      "Actualizar datos de una persona. Si es crítica y no provisional, exige rol Administrador y motivo",
   })
   @ApiResponse({ status: 200, type: PersonaResponseDto })
   @ApiResponse({ status: 400, description: "Motivo requerido si se editan datos críticos" })
@@ -112,7 +111,7 @@ export class PersonasController {
   @Patch(":id/cargo")
   @ApiOperation({
     summary:
-      "Cambiar el cargo vigente de una persona (RF-002 V3): el cargo anterior termina y queda en el historial",
+      "Cambiar el cargo vigente de una persona: el cargo anterior termina y queda en el historial",
   })
   @ApiResponse({ status: 200, type: CargoAsignadoResponseDto })
   @ApiResponse({ status: 404, description: "Persona o cargo no encontrado" })

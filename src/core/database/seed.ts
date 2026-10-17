@@ -918,7 +918,7 @@ async function seed() {
       [menu.ruta, menu.roles],
     );
   }
-  console.log("✔ Opciones de Asistencia registradas (RF-010).");
+  console.log("✔ Opciones de Asistencia registradas.");
 
   // RF-011: menús de Seguimiento docente
   await pool.query(
@@ -970,7 +970,7 @@ async function seed() {
       [menu.ruta, menu.roles],
     );
   }
-  console.log("✔ Opciones de Seguimiento docente registradas (RF-011).");
+  console.log("✔ Opciones de Seguimiento docente registradas.");
 
   // RF-012: menús de Ausencias docentes bajo el contenedor "Seguimiento docente"
   const MENUS_AUSENCIAS = [
@@ -1134,7 +1134,7 @@ async function seed() {
       [menu.ruta, menu.roles],
     );
   }
-  console.log("✔ Opciones del Aula virtual registradas (RF-015).");
+  console.log("✔ Opciones del Aula virtual registradas.");
 
   await pool.query(
     `INSERT INTO menus (modulo_id, nombre, orden, es_contenedor)
@@ -1178,7 +1178,7 @@ async function seed() {
       [menu.ruta, menu.roles],
     );
   }
-  console.log("✔ Opciones de Libretas registradas (RF-014).");
+  console.log("✔ Opciones de Libretas registradas.");
 
   await pool.end();
   console.log("==========================================");

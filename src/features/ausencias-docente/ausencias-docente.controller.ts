@@ -45,7 +45,7 @@ export class AusenciasDocenteController {
   @MenuAccess(MENU_AUSENCIAS_DOCENTES)
   @UseInterceptors(FilesInterceptor("fotos", 5, OPCIONES_SUBIDA_FOTOS))
   @ApiConsumes("multipart/form-data")
-  @ApiOperation({ summary: "Registrar una ausencia docente en una sesión de clase (HU1)" })
+  @ApiOperation({ summary: "Registrar una ausencia docente en una sesión de clase" })
   @ApiResponse({
     status: 201,
     description: "Ausencia registrada exitosamente",
@@ -65,7 +65,7 @@ export class AusenciasDocenteController {
   @MenuAccess(MENU_AUSENCIAS_DOCENTES)
   @UseInterceptors(FilesInterceptor("fotos", 5, OPCIONES_SUBIDA_FOTOS))
   @ApiConsumes("multipart/form-data")
-  @ApiOperation({ summary: "Corregir una ausencia dentro de las 24 horas (HU2)" })
+  @ApiOperation({ summary: "Corregir una ausencia dentro de las 24 horas" })
   @ApiResponse({
     status: 200,
     description: "Ausencia corregida exitosamente",
@@ -84,7 +84,7 @@ export class AusenciasDocenteController {
   @Patch(":id/anular")
   @ApiBearerAuth()
   @MenuAccess(MENU_AUSENCIAS_DOCENTES)
-  @ApiOperation({ summary: "Anular una ausencia indicando el motivo (HU2)" })
+  @ApiOperation({ summary: "Anular una ausencia indicando el motivo" })
   @ApiResponse({
     status: 200,
     description: "Ausencia anulada exitosamente",
@@ -102,7 +102,7 @@ export class AusenciasDocenteController {
   @Get(":id/historial")
   @ApiBearerAuth()
   @MenuAccess(MENU_AUSENCIAS_DOCENTES)
-  @ApiOperation({ summary: "Historial completo de versiones de una ausencia (HU2)" })
+  @ApiOperation({ summary: "Historial completo de versiones de una ausencia" })
   @ApiResponse({
     status: 200,
     description: "Historial de versiones de la ausencia",
@@ -118,7 +118,7 @@ export class AusenciasDocenteController {
   @ApiBearerAuth()
   @MenuAccess(MENU_AUSENCIAS_DOCENTES)
   @ApiOperation({
-    summary: "Listado de ausencias para supervisores con filtros e indicadores (HU4)",
+    summary: "Listado de ausencias para supervisores con filtros e indicadores",
   })
   @ApiResponse({
     status: 200,
@@ -138,7 +138,7 @@ export class AusenciasDocenteController {
   @Get("mis-ausencias")
   @ApiBearerAuth()
   @MenuAccess(MENU_MIS_AUSENCIAS)
-  @ApiOperation({ summary: "Listado de mis ausencias vigentes (HU3)" })
+  @ApiOperation({ summary: "Listado de mis ausencias vigentes" })
   @ApiResponse({
     status: 200,
     description: "Listado de ausencias vigentes del docente autenticado",
@@ -151,7 +151,7 @@ export class AusenciasDocenteController {
   @Get("mis-ausencias/:id")
   @ApiBearerAuth()
   @MenuAccess(MENU_MIS_AUSENCIAS)
-  @ApiOperation({ summary: "Detalle de una ausencia del docente autenticado (HU3)" })
+  @ApiOperation({ summary: "Detalle de una ausencia del docente autenticado" })
   @ApiResponse({
     status: 200,
     description: "Detalle de la ausencia del docente",
@@ -167,7 +167,7 @@ export class AusenciasDocenteController {
   @Post("mis-ausencias/:id/descargo")
   @ApiBearerAuth()
   @MenuAccess(MENU_MIS_AUSENCIAS)
-  @ApiOperation({ summary: "Presentar descargo a una ausencia dentro del plazo (HU3)" })
+  @ApiOperation({ summary: "Presentar descargo a una ausencia dentro del plazo" })
   @ApiResponse({
     status: 200,
     description: "Descargo registrado exitosamente",

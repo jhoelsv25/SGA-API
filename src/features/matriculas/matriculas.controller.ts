@@ -53,7 +53,7 @@ export class MatriculasController {
 
   @Get(":id/constancia")
   @Roles("Administrador", "Secretaria", "Director", "Subdirector")
-  @ApiOperation({ summary: "Descargar Constancia Oficial de Matrícula en PDF (RF-009 HU1)" })
+  @ApiOperation({ summary: "Descargar Constancia Oficial de Matrícula en PDF" })
   @ApiResponse({ status: 200, description: "Buffer del archivo PDF" })
   async descargarConstancia(
     @Param("id", ParseUUIDPipe) id: string,
@@ -69,7 +69,7 @@ export class MatriculasController {
 
   @Post()
   @Roles("Administrador", "Secretaria")
-  @ApiOperation({ summary: "Matricular individualmente a un estudiante (RF-009 HU1)" })
+  @ApiOperation({ summary: "Matricular individualmente a un estudiante" })
   @ApiResponse({ status: 201, type: MatriculaCreatedResponseDto })
   async matricular(
     @Body() dto: CrearMatriculaDto,
@@ -81,7 +81,7 @@ export class MatriculasController {
 
   @Post("masiva")
   @Roles("Administrador", "Secretaria")
-  @ApiOperation({ summary: "Matrícula masiva de continuadores respetando vacantes (RF-009 HU2)" })
+  @ApiOperation({ summary: "Matrícula masiva de continuadores respetando vacantes" })
   @ApiResponse({ status: 201, type: MatriculaMasivaResultadoDto })
   async matricularMasivamente(
     @Body() dto: MatriculaMasivaDto,
@@ -94,7 +94,7 @@ export class MatriculasController {
   @Post(":id/retirar")
   @Roles("Administrador", "Secretaria")
   @ApiOperation({
-    summary: "Registrar retiro del estudiante y desactivar credenciales (RF-009 HU3)",
+    summary: "Registrar retiro del estudiante y desactivar credenciales",
   })
   @ApiResponse({ status: 200, type: MatriculaResponseDto })
   async retirar(
@@ -109,7 +109,7 @@ export class MatriculasController {
   @Post(":id/trasladar")
   @Roles("Administrador", "Secretaria")
   @ApiOperation({
-    summary: "Registrar traslado a otro colegio y desactivar credenciales (RF-009 HU3)",
+    summary: "Registrar traslado a otro colegio y desactivar credenciales",
   })
   @ApiResponse({ status: 200, type: MatriculaResponseDto })
   async trasladar(
@@ -123,7 +123,7 @@ export class MatriculasController {
 
   @Put(":id/cambiar-seccion")
   @Roles("Administrador", "Secretaria")
-  @ApiOperation({ summary: "Cambiar de sección dentro del mismo grado (RF-009 HU3)" })
+  @ApiOperation({ summary: "Cambiar de sección dentro del mismo grado" })
   @ApiResponse({ status: 200, type: MatriculaResponseDto })
   async cambiarSeccion(
     @Param("id", ParseUUIDPipe) id: string,
@@ -137,7 +137,7 @@ export class MatriculasController {
   @Delete(":id")
   @Roles("Administrador", "Secretaria")
   @ApiOperation({
-    summary: "Anular matrícula registrada por error si aún no tiene actividad (RF-009 HU3)",
+    summary: "Anular matrícula registrada por error si aún no tiene actividad",
   })
   @ApiResponse({ status: 200 })
   async anular(

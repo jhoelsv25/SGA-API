@@ -24,7 +24,7 @@ export class CargosController {
   constructor(private readonly cargosService: CargosService) {}
 
   @Get()
-  @ApiOperation({ summary: "Listar cargos con sus roles sugeridos (RF-002 V2)" })
+  @ApiOperation({ summary: "Listar cargos con sus roles sugeridos" })
   @ApiResponse({ status: 200, type: [CargoResponseDto] })
   async findAll(
     @Query("vigentes", new ParseBoolPipe({ optional: true })) vigentes?: boolean,

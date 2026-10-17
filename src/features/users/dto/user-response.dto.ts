@@ -87,8 +87,7 @@ export class UserCreatedResponseDto {
   tempPassword!: string | null;
 
   @ApiProperty({
-    description:
-      "RF-002 V3: true si la persona ya tenía cuenta y solo se le agregaron cargo y roles",
+    description: "true si la persona ya tenía cuenta y solo se le agregaron cargo y roles",
   })
   cuentaExistente!: boolean;
 }
