@@ -4,3 +4,6 @@ export * from "./interfaces";
 export * from "./repositories";
 export * from "./services";
 export * from "./utils";
+export * from "./indicadores.service";
+export * from "./indicadores.controller";
+export * from "./indicadores.module";

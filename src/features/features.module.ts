@@ -35,6 +35,7 @@ import { AusenciasDocenteModule } from "./ausencias-docente";
 import { AulaVirtualModule } from "./aula-virtual";
 import { LibretasModule } from "./libretas";
 import { ConsolidadoDocenteModule } from "./consolidado-docente";
+import { IndicadoresModule } from "./indicadores";
 
 @Module({
   imports: [
@@ -73,6 +74,7 @@ import { ConsolidadoDocenteModule } from "./consolidado-docente";
     ConductaModule,
     LibretasModule,
     ConsolidadoDocenteModule,
+    IndicadoresModule,
   ],
   exports: [
     AuthModule,
@@ -110,6 +112,7 @@ import { ConsolidadoDocenteModule } from "./consolidado-docente";
     ConductaModule,
     LibretasModule,
     ConsolidadoDocenteModule,
+    IndicadoresModule,
   ],
 })
 export class FeaturesModule {}
