@@ -32,7 +32,7 @@ export class ImportacionController {
   @Get("plantilla/:tipo")
   @Roles("Administrador", "Secretaria")
   @ApiOperation({
-    summary: "Descargar plantilla Excel para carga masiva (RF-007 HU3)",
+    summary: "Descargar plantilla Excel para carga masiva",
     description:
       "Genera y descarga un archivo .xlsx con los encabezados requeridos y una fila de ejemplo para el tipo especificado.",
   })
@@ -60,7 +60,7 @@ export class ImportacionController {
   @Roles("Administrador", "Secretaria")
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: "Previsualizar archivo de importación masiva (RF-007 HU3)",
+    summary: "Previsualizar archivo de importación masiva",
     description:
       "Valida hasta 500 filas del lote, clasifica cada fila con semáforo (válida, ya registrada, error) y detecta duplicados.",
   })
@@ -73,7 +73,7 @@ export class ImportacionController {
   @Roles("Administrador", "Secretaria")
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: "Ejecutar la importación en segundo plano con BullMQ (RF-007 HU3)",
+    summary: "Ejecutar la importación en segundo plano con BullMQ",
     description:
       "Encola el lote de importación masiva en BullMQ y retorna el jobId para seguimiento asíncrono y descarga de credenciales en Redis.",
   })
@@ -89,7 +89,7 @@ export class ImportacionController {
   @Get("jobs/:id")
   @Roles("Administrador", "Secretaria")
   @ApiOperation({
-    summary: "Consultar progreso y resultado del trabajo de importación masiva (RF-007 HU3)",
+    summary: "Consultar progreso y resultado del trabajo de importación masiva",
     description:
       "Devuelve el estado, porcentaje de avance (0 a 100) y el resultado con credenciales guardadas en Redis al finalizar.",
   })
@@ -102,7 +102,7 @@ export class ImportacionController {
   @Get("jobs/:id/credenciales-excel")
   @Roles("Administrador", "Secretaria")
   @ApiOperation({
-    summary: "Descargar reporte Excel de credenciales generadas en segundo plano (RF-007)",
+    summary: "Descargar reporte Excel de credenciales generadas en segundo plano",
     description:
       "Genera y envía el buffer binario del archivo Excel con los usuarios, contraseñas temporales y PINs almacenados en Redis.",
   })

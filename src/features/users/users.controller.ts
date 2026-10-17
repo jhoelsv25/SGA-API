@@ -91,7 +91,7 @@ export class UsersController {
 
   @Get(":id/roles")
   @ApiOperation({
-    summary: "Roles de la cuenta (RF-002 V2); con historial=true incluye los retirados",
+    summary: "Roles de la cuenta; con historial=true incluye los retirados",
   })
   @ApiResponse({ status: 200, type: [UserRoleAssignmentDto] })
   async listRoles(
@@ -102,7 +102,7 @@ export class UsersController {
   }
 
   @Post(":id/roles")
-  @ApiOperation({ summary: "Asignar un rol adicional a la cuenta (RF-002 V2)" })
+  @ApiOperation({ summary: "Asignar un rol adicional a la cuenta" })
   @ApiResponse({ status: 201, type: [UserRoleAssignmentDto] })
   @ApiResponse({ status: 409, description: "La cuenta ya tiene ese rol" })
   async addRole(
@@ -115,7 +115,7 @@ export class UsersController {
   }
 
   @Patch(":id/roles/:rolId/principal")
-  @ApiOperation({ summary: "Marcar un rol de la cuenta como principal (RF-002 V2)" })
+  @ApiOperation({ summary: "Marcar un rol de la cuenta como principal" })
   @ApiResponse({ status: 200, type: [UserRoleAssignmentDto] })
   @ApiResponse({ status: 404, description: "La cuenta no tiene ese rol" })
   async setPrincipalRole(
@@ -129,7 +129,7 @@ export class UsersController {
 
   @Delete(":id/roles/:rolId")
   @ApiOperation({
-    summary: "Retirar un rol de la cuenta; queda en el historial (RF-002 V2)",
+    summary: "Retirar un rol de la cuenta; queda en el historial",
   })
   @ApiResponse({ status: 200, type: [UserRoleAssignmentDto] })
   @ApiResponse({

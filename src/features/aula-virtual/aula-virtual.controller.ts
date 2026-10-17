@@ -78,7 +78,7 @@ import type { TipoModeracion } from "./constants";
 
 const OPCIONES_SUBIDA = { limits: { fileSize: LIMITE_DURO_SUBIDA_BYTES } };
 
-@ApiTags("Aula virtual - Unidades y materiales (RF-015)")
+@ApiTags("Aula virtual - Unidades y materiales")
 @ApiBearerAuth()
 @ApiHeader({
   name: HEADER_ANIO_ACADEMICO,
@@ -470,7 +470,7 @@ export class AulaVirtualController {
   // ── Muro ──
 
   @Get("cursos/:cursoSeccionId/muro")
-  @ApiOperation({ summary: "Listar publicaciones del muro del curso (RF-017 HU1)" })
+  @ApiOperation({ summary: "Listar publicaciones del muro del curso" })
   @ApiParam({ name: "cursoSeccionId", description: "UUID del curso de la sección" })
   async listarMuro(
     @Param("cursoSeccionId", ParseUUIDPipe) cursoSeccionId: string,
@@ -482,7 +482,7 @@ export class AulaVirtualController {
   @Post("cursos/:cursoSeccionId/muro")
   @UseInterceptors(FileInterceptor("archivo", OPCIONES_SUBIDA))
   @ApiConsumes("multipart/form-data")
-  @ApiOperation({ summary: "Publicar en el muro del curso (RF-017 HU1)" })
+  @ApiOperation({ summary: "Publicar en el muro del curso" })
   @ApiParam({ name: "cursoSeccionId", description: "UUID del curso de la sección" })
   async crearPublicacion(
     @Param("cursoSeccionId", ParseUUIDPipe) cursoSeccionId: string,
@@ -497,7 +497,7 @@ export class AulaVirtualController {
   @Patch("muro/publicaciones/:id")
   @UseInterceptors(FileInterceptor("archivo", OPCIONES_SUBIDA))
   @ApiConsumes("multipart/form-data")
-  @ApiOperation({ summary: "Editar una publicación dentro de los 15 minutos (RF-017 HU1)" })
+  @ApiOperation({ summary: "Editar una publicación dentro de los 15 minutos" })
   @ApiParam({ name: "id", description: "UUID de la publicación" })
   async editarPublicacion(
     @Param("id", ParseUUIDPipe) id: string,
@@ -511,7 +511,7 @@ export class AulaVirtualController {
 
   @Patch("muro/publicaciones/:id/fijar")
   @ApiOperation({
-    summary: "Fijar o desfijar publicación arriba del muro (solo docente) (RF-017 HU1)",
+    summary: "Fijar o desfijar publicación arriba del muro (solo docente)",
   })
   @ApiParam({ name: "id", description: "UUID de la publicación" })
   async fijarPublicacion(
@@ -526,7 +526,7 @@ export class AulaVirtualController {
   // ── Comentarios ──
 
   @Get("muro/publicaciones/:id/comentarios")
-  @ApiOperation({ summary: "Listar comentarios de una publicación (RF-017 HU1)" })
+  @ApiOperation({ summary: "Listar comentarios de una publicación" })
   @ApiParam({ name: "id", description: "UUID de la publicación" })
   async listarComentarios(
     @Param("id", ParseUUIDPipe) id: string,
@@ -536,7 +536,7 @@ export class AulaVirtualController {
   }
 
   @Post("muro/publicaciones/:id/comentarios")
-  @ApiOperation({ summary: "Comentar una publicación (RF-017 HU1)" })
+  @ApiOperation({ summary: "Comentar una publicación" })
   @ApiParam({ name: "id", description: "UUID de la publicación" })
   async crearComentario(
     @Param("id", ParseUUIDPipe) id: string,
@@ -548,7 +548,7 @@ export class AulaVirtualController {
   }
 
   @Patch("muro/comentarios/:id")
-  @ApiOperation({ summary: "Editar un comentario dentro de los 15 minutos (RF-017 HU1)" })
+  @ApiOperation({ summary: "Editar un comentario dentro de los 15 minutos" })
   @ApiParam({ name: "id", description: "UUID del comentario" })
   async editarComentario(
     @Param("id", ParseUUIDPipe) id: string,
@@ -562,7 +562,7 @@ export class AulaVirtualController {
   // ── Chat Grupal ──
 
   @Get("cursos/:cursoSeccionId/chat")
-  @ApiOperation({ summary: "Listar mensajes del chat grupal del curso (RF-017 HU2)" })
+  @ApiOperation({ summary: "Listar mensajes del chat grupal del curso" })
   @ApiParam({ name: "cursoSeccionId", description: "UUID del curso de la sección" })
   async listarChat(
     @Param("cursoSeccionId", ParseUUIDPipe) cursoSeccionId: string,
@@ -574,7 +574,7 @@ export class AulaVirtualController {
   @Post("cursos/:cursoSeccionId/chat")
   @UseInterceptors(FileInterceptor("archivo", OPCIONES_SUBIDA))
   @ApiConsumes("multipart/form-data")
-  @ApiOperation({ summary: "Enviar mensaje al chat grupal del curso (RF-017 HU2)" })
+  @ApiOperation({ summary: "Enviar mensaje al chat grupal del curso" })
   @ApiParam({ name: "cursoSeccionId", description: "UUID del curso de la sección" })
   async enviarMensajeChat(
     @Param("cursoSeccionId", ParseUUIDPipe) cursoSeccionId: string,
@@ -588,7 +588,7 @@ export class AulaVirtualController {
   }
 
   @Get("cursos/:cursoSeccionId/chat/no-leidos")
-  @ApiOperation({ summary: "Contador de mensajes sin leer en el chat grupal (RF-017 HU2)" })
+  @ApiOperation({ summary: "Contador de mensajes sin leer en el chat grupal" })
   @ApiParam({ name: "cursoSeccionId", description: "UUID del curso de la sección" })
   async obtenerMensajesNoLeidosChat(
     @Param("cursoSeccionId", ParseUUIDPipe) cursoSeccionId: string,
@@ -598,7 +598,7 @@ export class AulaVirtualController {
   }
 
   @Post("cursos/:cursoSeccionId/chat/marcar-leido")
-  @ApiOperation({ summary: "Marcar el chat grupal como leído (RF-017 HU2)" })
+  @ApiOperation({ summary: "Marcar el chat grupal como leído" })
   @ApiParam({ name: "cursoSeccionId", description: "UUID del curso de la sección" })
   async marcarChatLeido(
     @Param("cursoSeccionId", ParseUUIDPipe) cursoSeccionId: string,
@@ -611,7 +611,7 @@ export class AulaVirtualController {
 
   @Post("moderacion/:tipo/:id/ocultar")
   @ApiOperation({
-    summary: "Ocultar publicación, comentario o mensaje por moderación (docente) (RF-017 HU3)",
+    summary: "Ocultar publicación, comentario o mensaje por moderación (docente)",
   })
   @ApiParam({ name: "tipo", enum: ["publicacion", "comentario", "chat"] })
   @ApiParam({ name: "id", description: "UUID del contenido a ocultar" })
@@ -631,7 +631,7 @@ export class AulaVirtualController {
 
   @Post("moderacion/:tipo/:id/restaurar")
   @ApiOperation({
-    summary: "Restaurar publicación, comentario o mensaje ocultado (docente) (RF-017 HU3)",
+    summary: "Restaurar publicación, comentario o mensaje ocultado (docente)",
   })
   @ApiParam({ name: "tipo", enum: ["publicacion", "comentario", "chat"] })
   @ApiParam({ name: "id", description: "UUID del contenido a restaurar" })
@@ -650,7 +650,7 @@ export class AulaVirtualController {
 
   @Get("cursos/:cursoSeccionId/moderacion")
   @ApiOperation({
-    summary: "Historial de moderación del curso (docente y directivos) (RF-017 HU3)",
+    summary: "Historial de moderación del curso (docente y directivos)",
   })
   @ApiParam({ name: "cursoSeccionId", description: "UUID del curso de la sección" })
   async listarHistorialModeracion(
@@ -664,7 +664,7 @@ export class AulaVirtualController {
 
   @Post("actividad")
   @ApiOperation({
-    summary: "Registrar actividad automática de un estudiante en un material o tarea (RF-017 HU4)",
+    summary: "Registrar actividad automática de un estudiante en un material o tarea",
   })
   async registrarActividad(
     @Body() dto: RegistrarActividadDto,
@@ -674,7 +674,7 @@ export class AulaVirtualController {
   }
 
   @Get("materiales/:materialId/actividad")
-  @ApiOperation({ summary: "Ver qué estudiantes revisaron o descargaron un material (RF-017 HU4)" })
+  @ApiOperation({ summary: "Ver qué estudiantes revisaron o descargaron un material" })
   @ApiParam({ name: "materialId", description: "UUID del material" })
   async obtenerActividadMaterial(
     @Param("materialId", ParseUUIDPipe) materialId: string,
@@ -684,7 +684,7 @@ export class AulaVirtualController {
   }
 
   @Get("tareas/:tareaId/actividad")
-  @ApiOperation({ summary: "Ver qué estudiantes abrieron o completaron una tarea (RF-017 HU4)" })
+  @ApiOperation({ summary: "Ver qué estudiantes abrieron o completaron una tarea" })
   @ApiParam({ name: "tareaId", description: "UUID de la tarea" })
   async obtenerActividadTarea(
     @Param("tareaId", ParseUUIDPipe) tareaId: string,

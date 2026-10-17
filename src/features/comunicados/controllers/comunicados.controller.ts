@@ -21,7 +21,7 @@ import {
   PaginatedComunicadosResponseDto,
 } from "../dto";
 
-@ApiTags("Comunicación - Comunicados Institucionales (RF-019)")
+@ApiTags("Comunicación - Comunicados Institucionales")
 @ApiBearerAuth()
 @Controller("comunicados")
 export class ComunicadosController {
@@ -29,7 +29,7 @@ export class ComunicadosController {
 
   @Get()
   @ApiOperation({
-    summary: "Listar comunicados con filtros y paginación por cursor (RF-019 HU1 / HU2)",
+    summary: "Listar comunicados con filtros y paginación por cursor",
   })
   @ApiResponse({ status: 200, type: PaginatedComunicadosResponseDto })
   async listar(
@@ -46,7 +46,7 @@ export class ComunicadosController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
-    summary: "Redactar un comunicado institucional (borrador o publicación directa) (RF-019 HU1)",
+    summary: "Redactar un comunicado institucional (borrador o publicación directa)",
   })
   @ApiResponse({ status: 201, description: "Comunicado creado o publicado con éxito" })
   async crear(
@@ -63,7 +63,7 @@ export class ComunicadosController {
 
   @Get(":id")
   @ApiOperation({
-    summary: "Obtener detalle de un comunicado y registrar automáticamente la lectura (RF-019 HU2)",
+    summary: "Obtener detalle de un comunicado y registrar automáticamente la lectura",
   })
   @ApiResponse({ status: 200, description: "Detalle del comunicado" })
   async obtenerPorId(
@@ -80,7 +80,7 @@ export class ComunicadosController {
   @Post(":id/publicar")
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: "Publicar un comunicado en estado borrador y despachar notificaciones (RF-019 HU1)",
+    summary: "Publicar un comunicado en estado borrador y despachar notificaciones",
   })
   @ApiResponse({ status: 200, description: "Comunicado publicado y notificaciones encoladas" })
   async publicar(
@@ -98,7 +98,7 @@ export class ComunicadosController {
   @Post(":id/archivar")
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: "Archivar un comunicado publicado (RF-019 HU1)",
+    summary: "Archivar un comunicado publicado",
   })
   @ApiResponse({ status: 200, description: "Comunicado archivado" })
   async archivar(
@@ -115,7 +115,7 @@ export class ComunicadosController {
 
   @Get(":id/avance")
   @ApiOperation({
-    summary: "Consultar el avance de lectura y lista de destinatarios (RF-019 HU2)",
+    summary: "Consultar el avance de lectura y lista de destinatarios",
   })
   @ApiResponse({ status: 200, type: AvanceLecturaResponseDto })
   async obtenerAvanceLectura(

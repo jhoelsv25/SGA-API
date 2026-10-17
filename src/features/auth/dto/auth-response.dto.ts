@@ -47,7 +47,7 @@ export class CurrentUserDto {
 
   @ApiPropertyOptional({
     type: [AuthRoleDto],
-    description: "Roles vigentes del usuario (RF-001 V2: puede tener varios)",
+    description: "Roles vigentes del usuario",
   })
   userRoles?: AuthRoleDto[];
 

@@ -77,7 +77,7 @@ export class RolesController {
   }
 
   @Put(":id/menus")
-  @ApiOperation({ summary: "Asignar las opciones de menú del rol (Roles-Menú, RF-002 V2)" })
+  @ApiOperation({ summary: "Asignar las opciones de menú del rol" })
   @ApiResponse({ status: 200 })
   @ApiResponse({ status: 400, description: "Rol Administrador o menú no vigente" })
   async assignMenus(

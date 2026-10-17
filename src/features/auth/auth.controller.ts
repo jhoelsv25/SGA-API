@@ -72,7 +72,7 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiCookieAuth()
   @ApiOperation({
-    summary: "Fijar el rol elegido en el paso 2 del inicio de sesión (RF-001 V3)",
+    summary: "Fijar el rol elegido en el paso 2 del inicio de sesión",
   })
   @ApiResponse({
     status: 200,

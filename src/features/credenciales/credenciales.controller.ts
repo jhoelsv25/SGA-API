@@ -27,7 +27,7 @@ export class CredencialesController {
   @Roles("Administrador", "Secretaria")
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: "Anular credencial anterior por pérdida/deterioro y emitir una nueva (RF-007 HU5)",
+    summary: "Anular credencial anterior por pérdida/deterioro y emitir una nueva",
     description:
       "Anula la credencial activa con motivo y genera nuevo código y PIN mostrado una sola vez.",
   })
@@ -42,7 +42,7 @@ export class CredencialesController {
 
   @Patch("mi-pin")
   @ApiOperation({
-    summary: "Cambiar el PIN de marcación de la sesión actual (RF-007 HU5)",
+    summary: "Cambiar el PIN de marcación de la sesión actual",
     description:
       "Permite al docente o estudiante autenticado actualizar su PIN de marcación en kiosko.",
   })
@@ -72,7 +72,7 @@ export class CredencialesController {
 
   @Get("personas/:personaId/carne")
   @ApiOperation({
-    summary: "Obtener datos completos para la emisión o impresión del carné con QR (RF-007 HU5)",
+    summary: "Obtener datos completos para la emisión o impresión del carné con QR",
   })
   @ApiResponse({ status: 200, type: CarneDatosDto })
   async obtenerCarne(@Param("personaId", ParseUUIDPipe) personaId: string): Promise<CarneDatosDto> {
@@ -81,7 +81,7 @@ export class CredencialesController {
 
   @Get("personas/:personaId/carne/pdf")
   @ApiOperation({
-    summary: "Descargar o previsualizar el Carné Oficial con QR en PDF estándar PVC (RF-007 HU5)",
+    summary: "Descargar o previsualizar el Carné Oficial con QR en PDF estándar PVC",
   })
   @ApiResponse({ status: 200, description: "Buffer del archivo PDF del carné PVC" })
   async descargarCarnePdf(

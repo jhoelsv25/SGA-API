@@ -19,7 +19,7 @@ import { NotificacionesService } from "./notificaciones.service";
 import { NotificacionesRealtimeEmitter } from "./services";
 import { NotificacionQueryDto, PaginatedNotificacionesResponseDto } from "./dto";
 
-@ApiTags("Comunicación - Notificaciones Personales (RF-019)")
+@ApiTags("Comunicación - Notificaciones Personales")
 @ApiBearerAuth()
 @Controller("notificaciones")
 export class NotificacionesController {

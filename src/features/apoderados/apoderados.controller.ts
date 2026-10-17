@@ -36,7 +36,7 @@ export class ApoderadosController {
   @Get()
   @Roles("Administrador", "Director", "Subdirector", "Secretaria")
   @ApiOperation({
-    summary: "Listar apoderados con paginación por cursor y filtros (RF-007 V3)",
+    summary: "Listar apoderados con paginación por cursor y filtros",
   })
   @ApiResponse({ status: 200, type: PaginatedApoderadosResponseDto })
   async findAll(@Query() query: ApoderadoQueryDto): Promise<PaginatedApoderadosResponseDto> {
@@ -46,7 +46,7 @@ export class ApoderadosController {
   @Get("mis-estudiantes")
   @Roles("Apoderado")
   @ApiOperation({
-    summary: "Listar los estudiantes vinculados al apoderado autenticado (RF-008 P-24)",
+    summary: "Listar los estudiantes vinculados al apoderado autenticado",
   })
   @ApiResponse({ status: 200, type: [EstudianteDelApoderadoResponseDto] })
   async misEstudiantes(
@@ -79,7 +79,7 @@ export class ApoderadosController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary:
-      "Registrar apoderado con vinculación al padrón, cargo, cuenta y vínculo escolar opcional (RF-007 V3)",
+      "Registrar apoderado con vinculación al padrón, cargo, cuenta y vínculo escolar opcional",
   })
   @ApiResponse({ status: 201, type: CreateApoderadoResponseDto })
   @ApiResponse({ status: 409, description: "La persona ya cuenta con ficha de apoderado" })

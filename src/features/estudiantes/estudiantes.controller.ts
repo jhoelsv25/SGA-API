@@ -33,7 +33,7 @@ export class EstudiantesController {
   @Get()
   @Roles("Administrador", "Director", "Subdirector", "Secretaria")
   @ApiOperation({
-    summary: "Listar estudiantes con paginación por cursor y filtros (RF-007 V3)",
+    summary: "Listar estudiantes con paginación por cursor y filtros",
   })
   @ApiResponse({ status: 200, type: PaginatedEstudiantesResponseDto })
   async findAll(@Query() query: EstudianteQueryDto): Promise<PaginatedEstudiantesResponseDto> {
@@ -54,7 +54,7 @@ export class EstudiantesController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary:
-      "Registrar estudiante con vinculación al padrón, cargo, cuenta y credencial de marcación (RF-007 V3)",
+      "Registrar estudiante con vinculación al padrón, cargo, cuenta y credencial de marcación",
   })
   @ApiResponse({ status: 201, type: CreateEstudianteResponseDto })
   @ApiResponse({ status: 400, description: "Datos inválidos" })

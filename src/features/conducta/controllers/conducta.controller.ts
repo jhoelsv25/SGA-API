@@ -24,7 +24,7 @@ import {
   QueryObservacionesDto,
 } from "../dto";
 
-@ApiTags("Convivencia - Conducta y Observaciones del Estudiante (RF-018)")
+@ApiTags("Convivencia - Conducta y Observaciones del Estudiante")
 @ApiBearerAuth()
 @Controller("conducta")
 export class ConductaController {
@@ -33,7 +33,7 @@ export class ConductaController {
   @Post("incidencias")
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
-    summary: "Registrar incidencia de conducta (mérito o falta) (RF-018 HU1)",
+    summary: "Registrar incidencia de conducta (mérito o falta)",
   })
   @ApiResponse({ status: 201, description: "Incidencia registrada exitosamente." })
   async registrarIncidencia(
@@ -50,7 +50,7 @@ export class ConductaController {
 
   @Get("incidencias")
   @ApiOperation({
-    summary: "Listar incidencias de conducta con filtros y paginación por cursor (RF-018)",
+    summary: "Listar incidencias de conducta con filtros y paginación por cursor",
   })
   async listarIncidencias(
     @CurrentUser() user: AuthenticatedUser,
@@ -65,7 +65,7 @@ export class ConductaController {
 
   @Patch("incidencias/:id")
   @ApiOperation({
-    summary: "Corregir incidencia dentro del plazo de 24 horas (RF-018 HU1)",
+    summary: "Corregir incidencia dentro del plazo de 24 horas",
   })
   async corregirIncidencia(
     @CurrentUser() user: AuthenticatedUser,
@@ -83,7 +83,7 @@ export class ConductaController {
   @Post("incidencias/:id/anular")
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: "Anular una incidencia con motivo obligatorio (RF-018 HU1)",
+    summary: "Anular una incidencia con motivo obligatorio",
   })
   async anularIncidencia(
     @CurrentUser() user: AuthenticatedUser,
@@ -101,7 +101,7 @@ export class ConductaController {
   @Post("observaciones")
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
-    summary: "Registrar observación tutorial o psicopedagógica (RF-018 HU2)",
+    summary: "Registrar observación tutorial o psicopedagógica",
   })
   @ApiResponse({ status: 201, description: "Observación registrada exitosamente." })
   async registrarObservacion(
@@ -118,7 +118,7 @@ export class ConductaController {
 
   @Get("observaciones")
   @ApiOperation({
-    summary: "Listar observaciones de estudiantes con filtros y paginación por cursor (RF-018 HU2)",
+    summary: "Listar observaciones de estudiantes con filtros y paginación por cursor",
   })
   async listarObservaciones(
     @CurrentUser() user: AuthenticatedUser,
@@ -133,7 +133,7 @@ export class ConductaController {
 
   @Get("observaciones/:id")
   @ApiOperation({
-    summary: "Obtener detalle de observación con filtro de confidencialidad (RF-018 HU2)",
+    summary: "Obtener detalle de observación con filtro de confidencialidad",
   })
   async obtenerObservacionPorId(
     @CurrentUser() user: AuthenticatedUser,
@@ -148,7 +148,7 @@ export class ConductaController {
 
   @Get("resumen/estudiante/:matriculaId")
   @ApiOperation({
-    summary: "Obtener resumen y desglose de conducta por bimestre del estudiante (RF-018 HU3)",
+    summary: "Obtener resumen y desglose de conducta por bimestre del estudiante",
   })
   async obtenerResumenConducta(
     @CurrentUser() user: AuthenticatedUser,

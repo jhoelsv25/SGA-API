@@ -28,7 +28,7 @@ export class RoleResponseDto {
 
 export class RoleDetailResponseDto extends RoleResponseDto {
   @ApiProperty({
-    description: "RF-002 V2: IDs de las opciones de menú asignadas al rol",
+    description: "IDs de las opciones de menú asignadas al rol",
     type: [String],
   })
   menus!: string[];
