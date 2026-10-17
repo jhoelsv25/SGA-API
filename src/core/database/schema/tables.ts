@@ -2578,3 +2578,101 @@ export const variablesSistema = pgTable(
     ),
   ],
 );
+
+export const indicadoresPretest = pgTable(
+  "indicadores_pretest",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    indicador: varchar({ length: 10 }).notNull(),
+    periodoDescrito: varchar("periodo_descrito", { length: 120 }).notNull(),
+    fechaInicio: date("fecha_inicio").notNull(),
+    fechaFin: date("fecha_fin").notNull(),
+    numerador: integer().notNull(),
+    denominador: integer().notNull(),
+    porcentaje: numeric({ precision: 5, scale: 2 }).notNull(),
+    fuente: varchar({ length: 500 }).notNull(),
+    vigente: boolean().default(true).notNull(),
+    registradoPorId: uuid("registrado_por_id"),
+    creadoEn: timestamp("creado_en", { precision: 0, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("uq_indicadores_pretest_vigente")
+      .on(table.indicador)
+      .where(sql`vigente = true`),
+    foreignKey({
+      columns: [table.registradoPorId],
+      foreignColumns: [usuarios.id],
+      name: "fk_indicadores_pretest_registrado_por",
+    }),
+    check("ck_indicadores_pretest_fechas", sql`fecha_fin >= fecha_inicio`),
+    check("ck_indicadores_pretest_numerador", sql`numerador >= 0`),
+    check("ck_indicadores_pretest_denominador", sql`denominador > 0`),
+    check("ck_indicadores_pretest_num_den", sql`numerador <= denominador`),
+    check("ck_indicadores_pretest_fuente", sql`length(btrim(fuente::text)) > 0`),
+    check(
+      "ck_indicadores_pretest_indicador",
+      sql`(indicador)::text = ANY ((ARRAY['CSP'::character varying, 'ISA'::character varying, 'IGM'::character varying])::text[])`,
+    ),
+  ],
+);
+
+export const medicionesBimestre = pgTable(
+  "mediciones_bimestre",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    periodoId: uuid("periodo_id").notNull(),
+    version: smallint().default(1).notNull(),
+    vigente: boolean().default(true).notNull(),
+    motivoCambio: varchar("motivo_cambio", { length: 500 }),
+    cerradaPorId: uuid("cerrada_por_id"),
+    cerradaEn: timestamp("cerrada_en", { precision: 0, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("uq_mediciones_bimestre_vigente")
+      .on(table.periodoId)
+      .where(sql`vigente = true`),
+    foreignKey({
+      columns: [table.periodoId],
+      foreignColumns: [periodosAcademicos.id],
+      name: "fk_mediciones_bimestre_periodo",
+    }),
+    foreignKey({
+      columns: [table.cerradaPorId],
+      foreignColumns: [usuarios.id],
+      name: "fk_mediciones_bimestre_cerrada_por",
+    }),
+    check("ck_mediciones_bimestre_version", sql`version >= 1`),
+    check("ck_mediciones_bimestre_motivo", sql`version = 1 OR motivo_cambio IS NOT NULL`),
+  ],
+);
+
+export const medicionesBimestreIndicadores = pgTable(
+  "mediciones_bimestre_indicadores",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    medicionId: uuid("medicion_id").notNull(),
+    indicador: varchar({ length: 10 }).notNull(),
+    numerador: integer().notNull(),
+    denominador: integer().notNull(),
+    porcentaje: numeric({ precision: 5, scale: 2 }).notNull(),
+    desglose: jsonb().default({}).notNull(),
+  },
+  (table) => [
+    unique("uq_mediciones_bimestre_ind").on(table.medicionId, table.indicador),
+    foreignKey({
+      columns: [table.medicionId],
+      foreignColumns: [medicionesBimestre.id],
+      name: "fk_mediciones_bimestre_ind_medicion",
+    }).onDelete("cascade"),
+    check(
+      "ck_mediciones_bimestre_ind_tipo",
+      sql`(indicador)::text = ANY ((ARRAY['CSP'::character varying, 'ISA'::character varying, 'IGM'::character varying])::text[])`,
+    ),
+    check("ck_mediciones_bimestre_ind_num", sql`numerador >= 0`),
+    check("ck_mediciones_bimestre_ind_den", sql`denominador >= 0`),
+  ],
+);
