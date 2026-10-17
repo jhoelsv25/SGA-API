@@ -36,6 +36,7 @@ import { AulaVirtualModule } from "./aula-virtual";
 import { LibretasModule } from "./libretas";
 import { ConsolidadoDocenteModule } from "./consolidado-docente";
 import { IndicadoresModule } from "./indicadores";
+import { DashboardModule } from "./dashboard";
 
 @Module({
   imports: [
@@ -75,6 +76,7 @@ import { IndicadoresModule } from "./indicadores";
     LibretasModule,
     ConsolidadoDocenteModule,
     IndicadoresModule,
+    DashboardModule,
   ],
   exports: [
     AuthModule,
@@ -113,6 +115,7 @@ import { IndicadoresModule } from "./indicadores";
     LibretasModule,
     ConsolidadoDocenteModule,
     IndicadoresModule,
+    DashboardModule,
   ],
 })
 export class FeaturesModule {}
