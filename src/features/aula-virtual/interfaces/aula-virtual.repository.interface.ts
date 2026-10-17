@@ -384,6 +384,29 @@ export interface IAulaVirtualRepository {
     tareaId: string,
     cursoSeccionId: string,
   ): Promise<ActividadEstudianteTarea[]>;
+  findTareasParaVentana(
+    desde: string,
+    hasta: string,
+  ): Promise<
+    Array<{
+      id: string;
+      titulo: string;
+      tipo: TipoTarea;
+      fechaLimite: string;
+      permiteEntregaTardia: boolean;
+      cursoSeccionId: string;
+      cursoNombre: string;
+      seccionNombre: string;
+      seccionId: string;
+      anioAcademicoId: string;
+    }>
+  >;
+  findEstudiantesSinEntrega(
+    tareaId: string,
+    seccionId: string,
+    anioAcademicoId: string,
+  ): Promise<Array<{ usuarioId: string; matriculaId: string }>>;
+  yaSeNotifico(usuarioId: string, enlaceUrl: string): Promise<boolean>;
 }
 
 export interface TareaFila {

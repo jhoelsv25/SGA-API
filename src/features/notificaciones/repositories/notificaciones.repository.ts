@@ -1,7 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { and, eq, sql } from "drizzle-orm";
 import { Database, DRIZZLE } from "../../../core/database";
-import { notificaciones } from "../../../core/database/schema";
+import { notificaciones, suscripcionesPush } from "../../../core/database/schema";
 import { decodeCursor, encodeCursor } from "../../../common/utils";
 import type {
   DbNotificacionesProcedureExecutionResult,
@@ -153,5 +153,56 @@ export class NotificacionesRepository {
       .returning({ id: notificaciones.id });
 
     return deleted.length;
+  }
+
+  async guardarSuscripcionPush(datos: {
+    usuarioId: string;
+    endpoint: string;
+    p256dh: string;
+    auth: string;
+    dispositivo?: string;
+  }): Promise<void> {
+    await this.db
+      .insert(suscripcionesPush)
+      .values({
+        usuarioId: datos.usuarioId,
+        endpoint: datos.endpoint,
+        p256dh: datos.p256dh,
+        auth: datos.auth,
+        dispositivo: datos.dispositivo?.slice(0, 150) ?? null,
+      })
+      .onConflictDoUpdate({
+        target: suscripcionesPush.endpoint,
+        set: {
+          usuarioId: datos.usuarioId,
+          p256dh: datos.p256dh,
+          auth: datos.auth,
+          dispositivo: datos.dispositivo?.slice(0, 150) ?? null,
+          actualizadoEn: sql`CURRENT_TIMESTAMP`,
+        },
+      });
+  }
+
+  async eliminarSuscripcionPush(endpoint: string): Promise<void> {
+    await this.db.delete(suscripcionesPush).where(eq(suscripcionesPush.endpoint, endpoint));
+  }
+
+  async obtenerSuscripcionesPushDeUsuario(usuarioId: string): Promise<
+    Array<{
+      id: string;
+      endpoint: string;
+      p256dh: string;
+      auth: string;
+    }>
+  > {
+    return this.db
+      .select({
+        id: suscripcionesPush.id,
+        endpoint: suscripcionesPush.endpoint,
+        p256dh: suscripcionesPush.p256dh,
+        auth: suscripcionesPush.auth,
+      })
+      .from(suscripcionesPush)
+      .where(eq(suscripcionesPush.usuarioId, usuarioId));
   }
 }

@@ -2676,3 +2676,31 @@ export const medicionesBimestreIndicadores = pgTable(
     check("ck_mediciones_bimestre_ind_den", sql`denominador >= 0`),
   ],
 );
+
+export const suscripcionesPush = pgTable(
+  "suscripciones_push",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    usuarioId: uuid("usuario_id").notNull(),
+    endpoint: text().notNull(),
+    p256dh: text().notNull(),
+    auth: text().notNull(),
+    dispositivo: varchar({ length: 150 }),
+    creadoEn: timestamp("creado_en", { precision: 0, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    actualizadoEn: timestamp("actualizado_en", { precision: 0, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("ux_suscripciones_push_endpoint").on(table.endpoint),
+    index("ix_suscripciones_push_usuario").on(table.usuarioId),
+    foreignKey({
+      columns: [table.usuarioId],
+      foreignColumns: [usuarios.id],
+      name: "fk_suscripciones_push_usuario",
+    }).onDelete("cascade"),
+  ],
+);
+

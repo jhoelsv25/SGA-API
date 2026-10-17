@@ -6,7 +6,11 @@ import { NotificacionesController } from "./notificaciones.controller";
 import { NotificacionesService } from "./notificaciones.service";
 import { NotificacionesRealtimeEmitter } from "./services";
 import { NotificacionesRepository } from "./repositories";
-import { EmailNotificationStrategy, InAppNotificationStrategy } from "./strategies";
+import {
+  EmailNotificationStrategy,
+  InAppNotificationStrategy,
+  PushNotificationStrategy,
+} from "./strategies";
 import { NotificationsProcessor } from "./processors";
 
 @Module({
@@ -23,6 +27,7 @@ import { NotificationsProcessor } from "./processors";
     NotificacionesService,
     InAppNotificationStrategy,
     EmailNotificationStrategy,
+    PushNotificationStrategy,
     NotificationsProcessor,
   ],
   exports: [NotificacionesService, NotificacionesRealtimeEmitter],

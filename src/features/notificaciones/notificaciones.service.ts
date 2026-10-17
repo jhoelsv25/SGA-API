@@ -7,6 +7,9 @@ import { NotificacionesRepository } from "./repositories";
 import type { EnviarNotificacionParams } from "./interfaces";
 import type { NotificacionQueryDto, PaginatedNotificacionesResponseDto } from "./dto";
 
+import { ConfigService } from "@nestjs/config";
+import type { SuscribirPushDto, DesuscribirPushDto } from "./dto";
+
 @Injectable()
 export class NotificacionesService {
   private readonly logger = new Logger(NotificacionesService.name);
@@ -14,10 +17,14 @@ export class NotificacionesService {
   constructor(
     private readonly repository: NotificacionesRepository,
     @Optional()
+    private readonly configService?: ConfigService,
+    @Optional()
     @InjectQueue(QUEUES.NOTIFICATIONS)
     private readonly notificationsQueue?: Queue<EnviarNotificacionParams>,
     @Optional()
     private readonly emitter?: import("./services").NotificacionesRealtimeEmitter,
+    @Optional()
+    private readonly pushStrategy?: import("./strategies").PushNotificationStrategy,
   ) {}
 
   /**
@@ -50,6 +57,11 @@ export class NotificacionesService {
       const inserted = await this.repository.insertDirect(params);
       if (this.emitter) {
         this.emitter.emit(inserted);
+      }
+      if (this.pushStrategy) {
+        this.pushStrategy.enviar(params).catch((err) => {
+          this.logger.warn(`Error en envío directo de Web Push: ${(err as Error).message}`);
+        });
       }
     } catch (insertError) {
       this.logger.error(
@@ -121,5 +133,27 @@ export class NotificacionesService {
       message: "Todas las notificaciones leídas han sido eliminadas.",
       eliminadas,
     };
+  }
+
+  getVapidPublicKey(): { publicKey: string } {
+    const publicKey =
+      this.configService?.get<string>("VAPID_PUBLIC_KEY") || process.env.VAPID_PUBLIC_KEY || "";
+    return { publicKey };
+  }
+
+  async suscribirPush(usuarioId: string, dto: SuscribirPushDto): Promise<{ message: string }> {
+    await this.repository.guardarSuscripcionPush({
+      usuarioId,
+      endpoint: dto.endpoint,
+      p256dh: dto.keys.p256dh,
+      auth: dto.keys.auth,
+      dispositivo: dto.dispositivo,
+    });
+    return { message: "Dispositivo suscrito exitosamente a notificaciones push." };
+  }
+
+  async desuscribirPush(dto: DesuscribirPushDto): Promise<{ message: string }> {
+    await this.repository.eliminarSuscripcionPush(dto.endpoint);
+    return { message: "Dispositivo desuscrito de notificaciones push." };
   }
 }

@@ -2,11 +2,17 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
+  OnModuleInit,
+  Optional,
 } from "@nestjs/common";
+import { InjectQueue } from "@nestjs/bullmq";
+import { Queue } from "bullmq";
 import * as fs from "fs";
 import * as path from "path";
 import { randomUUID } from "crypto";
+import { QUEUES } from "../../core/queues/queues.constants";
 import { AnioLectivoCls } from "../../common/anio-lectivo";
 import { AuditService } from "../../common/services/audit.service";
 import type { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface";
@@ -16,7 +22,9 @@ import { NotificacionesService } from "../notificaciones/notificaciones.service"
 import {
   CARPETA_INTERACCION,
   CARPETA_MATERIALES,
+  CRON_RECORDATORIO_TAREAS,
   DIAS_PLANIFICACION_POR_DEFECTO,
+  JOB_RECORDATORIO_TAREAS,
   MENSAJES_AULA_VIRTUAL,
   MENSAJES_INTERACCION,
   MENSAJES_TAREA,
@@ -107,14 +115,123 @@ import {
 } from "./utils";
 
 @Injectable()
-export class AulaVirtualService {
+export class AulaVirtualService implements OnModuleInit {
+  private readonly logger = new Logger(AulaVirtualService.name);
+
   constructor(
     private readonly repository: AulaVirtualRepository,
     private readonly aniosService: AniosAcademicosService,
     private readonly anioLectivoCls: AnioLectivoCls,
     private readonly notificaciones: NotificacionesService,
     private readonly auditService: AuditService,
+    @Optional()
+    @InjectQueue(QUEUES.AULA_VIRTUAL)
+    private readonly cola?: Queue,
   ) {}
+
+  async onModuleInit(): Promise<void> {
+    if (!this.cola) return;
+    try {
+      await this.cola.upsertJobScheduler(
+        JOB_RECORDATORIO_TAREAS,
+        { pattern: CRON_RECORDATORIO_TAREAS, tz: "America/Lima" },
+        { name: JOB_RECORDATORIO_TAREAS, data: {} },
+      );
+    } catch (error) {
+      this.logger.warn(
+        `No se pudo programar el verificador de recordatorios de tareas: ${(error as Error).message}`,
+      );
+    }
+  }
+
+  /**
+   * Cron periódico cada 5 minutos:
+   * 1. Detecta exámenes y tareas que vencen en menos de 30-35 minutos y avisa a estudiantes sin entrega.
+   * 2. Detecta tareas que vencieron recientemente y notifica a los estudiantes que no enviaron.
+   */
+  async procesarRecordatoriosYVencimientos(): Promise<{
+    recordatoriosEnviados: number;
+    vencimientosEnviados: number;
+  }> {
+    const ahora = new Date();
+    let recordatoriosEnviados = 0;
+    let vencimientosEnviados = 0;
+
+    // 1. Tareas próximas a vencer en los siguientes 35 minutos
+    const en35Min = new Date(ahora.getTime() + 35 * 60 * 1000);
+    const tareasPorVencer = await this.repository.findTareasParaVentana(
+      ahora.toISOString(),
+      en35Min.toISOString(),
+    );
+
+    for (const tarea of tareasPorVencer) {
+      const sinEntrega = await this.repository.findEstudiantesSinEntrega(
+        tarea.id,
+        tarea.seccionId,
+        tarea.anioAcademicoId,
+      );
+
+      const esExamen = tarea.tipo === "examen" || tarea.tipo === "cuestionario";
+      const tipoNombre = esExamen ? "examen" : "trabajo";
+      const enlaceUrl = `/admin/aula-virtual/${tarea.cursoSeccionId}?tareaId=${tarea.id}&alerta=recordatorio_30m`;
+
+      const msRestantes = new Date(tarea.fechaLimite).getTime() - ahora.getTime();
+      const minRestantes = Math.max(1, Math.round(msRestantes / (60 * 1000)));
+
+      for (const estudiante of sinEntrega) {
+        const yaNotificado = await this.repository.yaSeNotifico(estudiante.usuarioId, enlaceUrl);
+        if (yaNotificado) continue;
+
+        await this.notificaciones.enviar({
+          usuarioId: estudiante.usuarioId,
+          titulo: `⏳ ${esExamen ? "Examen" : "Trabajo"} por vencer en ${tarea.cursoNombre}`,
+          mensaje: esExamen
+            ? `Tu ${tipoNombre} «${tarea.titulo}» vence en aproximadamente ${minRestantes} minutos. Recuerda ingresar a resolverlo.`
+            : `Tu ${tipoNombre} «${tarea.titulo}» vence en aproximadamente ${minRestantes} minutos. No olvides adjuntar tu entrega.`,
+          tipo: "recordatorio",
+          enlaceUrl,
+        });
+        recordatoriosEnviados++;
+      }
+    }
+
+    // 2. Tareas vencidas recientemente (últimas 2 horas) para alertar que no entregaron
+    const hace2Horas = new Date(ahora.getTime() - 2 * 60 * 60 * 1000);
+    const tareasVencidas = await this.repository.findTareasParaVentana(
+      hace2Horas.toISOString(),
+      ahora.toISOString(),
+    );
+
+    for (const tarea of tareasVencidas) {
+      const sinEntrega = await this.repository.findEstudiantesSinEntrega(
+        tarea.id,
+        tarea.seccionId,
+        tarea.anioAcademicoId,
+      );
+
+      const enlaceUrl = `/admin/aula-virtual/${tarea.cursoSeccionId}?tareaId=${tarea.id}&alerta=vencida`;
+
+      for (const estudiante of sinEntrega) {
+        const yaNotificado = await this.repository.yaSeNotifico(estudiante.usuarioId, enlaceUrl);
+        if (yaNotificado) continue;
+
+        const extraTardia = tarea.permiteEntregaTardia
+          ? " La tarea permite entregas tardías con penalización."
+          : " La tarea no acepta entregas fuera de plazo.";
+
+        await this.notificaciones.enviar({
+          usuarioId: estudiante.usuarioId,
+          titulo: `⚠️ Plazo vencido en ${tarea.cursoNombre}`,
+          mensaje: `El plazo para «${tarea.titulo}» ha finalizado y no registraste ninguna entrega.${extraTardia}`,
+          tipo: "alerta",
+          enlaceUrl,
+        });
+        vencimientosEnviados++;
+      }
+    }
+
+    return { recordatoriosEnviados, vencimientosEnviados };
+  }
 
   // ───────────────────────── Consulta del aula ─────────────────────────
 

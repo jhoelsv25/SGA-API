@@ -18,6 +18,7 @@ import {
   materiales,
   matriculas,
   mensajesChat,
+  notificaciones,
   opcionesPregunta,
   periodosAcademicos,
   personas,
@@ -1992,5 +1993,96 @@ export class AulaVirtualRepository implements IAulaVirtualRepository {
     const material = await this.findMaterial(materialId);
     if (!material) throw new Error(`Material ${materialId} no encontrado tras su registro.`);
     return material;
+  }
+
+  async findTareasParaVentana(
+    desde: string,
+    hasta: string,
+  ): Promise<
+    Array<{
+      id: string;
+      titulo: string;
+      tipo: TipoTarea;
+      fechaLimite: string;
+      permiteEntregaTardia: boolean;
+      cursoSeccionId: string;
+      cursoNombre: string;
+      seccionNombre: string;
+      seccionId: string;
+      anioAcademicoId: string;
+    }>
+  > {
+    const filas = await this.db
+      .select({
+        id: tareas.id,
+        titulo: tareas.titulo,
+        tipo: tareas.tipo,
+        fechaLimite: tareas.fechaLimite,
+        permiteEntregaTardia: tareas.permiteEntregaTardia,
+        cursoSeccionId: cursosSeccion.id,
+        cursoNombre: cursos.nombre,
+        seccionNombre: sql<string>`CONCAT(${grados.nombre}, ' ', ${secciones.nombre})`,
+        seccionId: cursosSeccion.seccionId,
+        anioAcademicoId: secciones.anioAcademicoId,
+      })
+      .from(tareas)
+      .innerJoin(cursosSeccion, eq(cursosSeccion.id, tareas.cursoSeccionId))
+      .innerJoin(cursos, eq(cursos.id, cursosSeccion.cursoId))
+      .innerJoin(secciones, eq(secciones.id, cursosSeccion.seccionId))
+      .innerJoin(grados, eq(grados.id, secciones.gradoId))
+      .where(
+        and(
+          eq(tareas.estado, "publicada"),
+          sql`${tareas.fechaLimite} >= ${desde}::timestamp`,
+          sql`${tareas.fechaLimite} <= ${hasta}::timestamp`,
+        ),
+      );
+    return filas.map((f) => ({
+      ...f,
+      tipo: f.tipo as TipoTarea,
+    }));
+  }
+
+  async findEstudiantesSinEntrega(
+    tareaId: string,
+    seccionId: string,
+    anioAcademicoId: string,
+  ): Promise<Array<{ usuarioId: string; matriculaId: string }>> {
+    const filas = await this.db
+      .selectDistinct({
+        usuarioId: usuarios.id,
+        matriculaId: matriculas.id,
+      })
+      .from(matriculas)
+      .innerJoin(estudiantes, eq(estudiantes.id, matriculas.estudianteId))
+      .innerJoin(personas, eq(personas.id, estudiantes.personaId))
+      .innerJoin(usuarios, eq(usuarios.personaId, personas.id))
+      .leftJoin(
+        entregasTarea,
+        and(
+          eq(entregasTarea.tareaId, tareaId),
+          eq(entregasTarea.matriculaId, matriculas.id),
+          sql`${entregasTarea.estado} IN ('entregada', 'calificada')`,
+        ),
+      )
+      .where(
+        and(
+          eq(matriculas.seccionId, seccionId),
+          eq(matriculas.anioAcademicoId, anioAcademicoId),
+          eq(matriculas.estado, "matriculado"),
+          isNull(usuarios.eliminadoEn),
+          isNull(entregasTarea.id),
+        ),
+      );
+    return filas;
+  }
+
+  async yaSeNotifico(usuarioId: string, enlaceUrl: string): Promise<boolean> {
+    const [fila] = await this.db
+      .select({ id: notificaciones.id })
+      .from(notificaciones)
+      .where(and(eq(notificaciones.usuarioId, usuarioId), eq(notificaciones.enlaceUrl, enlaceUrl)))
+      .limit(1);
+    return Boolean(fila);
   }
 }

@@ -150,6 +150,9 @@ export const MENSAJES_TAREA = {
     "El sistema no ofrece varios intentos para trabajos o proyectos porque tienen una sola entrega editable.",
 } as const;
 
+export const JOB_RECORDATORIO_TAREAS = "verificar-recordatorios-tareas";
+export const CRON_RECORDATORIO_TAREAS = "*/5 * * * *"; // Cada 5 minutos en horario escolar
+
 /**
  * Constantes y mensajes de interacción y actividad del curso (RF-017).
  */
