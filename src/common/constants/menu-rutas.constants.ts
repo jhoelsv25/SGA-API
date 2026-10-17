@@ -51,3 +51,9 @@ export const MENU_MIS_AUSENCIAS = "/admin/mis-ausencias";
  */
 export const MENU_CONSOLIDADOS_DOCENTES = "/admin/consolidados-docentes";
 export const MENU_MI_SEGUIMIENTO = "/admin/mi-seguimiento";
+
+/**
+ * RF-020: indicadores de la tesis y panel general.
+ */
+export const MENU_INDICADORES = "/admin/indicadores";
+export const MENU_MIS_INDICADORES = "/admin/mis-indicadores";

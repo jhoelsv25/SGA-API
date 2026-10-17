@@ -22,6 +22,8 @@ import {
   MENU_MIS_AUSENCIAS,
   MENU_CONSOLIDADOS_DOCENTES,
   MENU_MI_SEGUIMIENTO,
+  MENU_INDICADORES,
+  MENU_MIS_INDICADORES,
 } from "../../common/constants";
 
 const pool = new Pool({
@@ -1039,6 +1041,42 @@ async function seed() {
       [menu.ruta, menu.roles],
     );
   }
+
+  // RF-020: menús de Indicadores de la tesis bajo el contenedor "Seguimiento docente"
+  const MENUS_INDICADORES_SEED = [
+    {
+      nombre: "Indicadores",
+      ruta: MENU_INDICADORES,
+      icono: "ChartBarLineIcon",
+      orden: 8,
+      roles: ["Director", "Subdirector", "Administrador"],
+    },
+    {
+      nombre: "Mis indicadores",
+      ruta: MENU_MIS_INDICADORES,
+      icono: "File02Icon",
+      orden: 9,
+      roles: ["Docente"],
+    },
+  ];
+  for (const menu of MENUS_INDICADORES_SEED) {
+    await pool.query(
+      `INSERT INTO menus (modulo_id, menu_padre_id, nombre, ruta, icono, orden, es_contenedor)
+       SELECT c.modulo_id, c.id, $2::varchar, $1::varchar, $3::varchar, $4::int, false
+       FROM menus c JOIN modulos m ON m.id = c.modulo_id
+       WHERE m.codigo = 'academico' AND c.es_contenedor AND c.nombre = 'Seguimiento docente'
+         AND NOT EXISTS (SELECT 1 FROM menus x WHERE x.ruta = $1::varchar);`,
+      [menu.ruta, menu.nombre, menu.icono, menu.orden],
+    );
+    await pool.query(
+      `INSERT INTO rol_menus (rol_id, menu_id)
+       SELECT r.id, m.id FROM roles r, menus m
+       WHERE r.nombre = ANY($2::varchar[]) AND m.ruta = $1
+       ON CONFLICT DO NOTHING;`,
+      [menu.ruta, menu.roles],
+    );
+  }
+  console.log("✔ Opciones de Indicadores de la tesis registradas (RF-020).");
 
   // RF-015: menús del Aula virtual bajo el contenedor "Aula virtual"
   await pool.query(
