@@ -9,7 +9,9 @@ export class DashboardService {
 
   constructor(private readonly dashboardRepository: DashboardRepository) {}
 
-  private categorizarRol(rolNombre: string): "directivo" | "docente" | "estudiante" | "apoderado" {
+  private categorizarRol(
+    rolNombre: string,
+  ): "directivo" | "docente" | "estudiante" | "apoderado" | "admin" | "secretaria" {
     const rolLower = (rolNombre || "").toLowerCase();
 
     if (rolLower.includes("docente") || rolLower.includes("profesor")) {
@@ -28,7 +30,19 @@ export class DashboardService {
       return "apoderado";
     }
 
-    // Por defecto administradores, directores, secretarias, soporte ti
+    if (rolLower.includes("secretaria") || rolLower.includes("secretario")) {
+      return "secretaria";
+    }
+
+    if (
+      rolLower.includes("admin") ||
+      rolLower.includes("soporte") ||
+      rolLower.includes("sistemas") ||
+      rolLower.includes("ti")
+    ) {
+      return "admin";
+    }
+
     return "directivo";
   }
 
@@ -62,6 +76,29 @@ export class DashboardService {
       periodoId: referencia.periodoId,
       periodoNombre: referencia.periodoNombre,
     };
+
+    if (rolCategoria === "admin") {
+      const dataAdmin = await this.dashboardRepository.obtenerDatosAdmin();
+      return {
+        rolCategoria,
+        rolNombre: user.role,
+        periodoActual,
+        admin: dataAdmin,
+      };
+    }
+
+    if (rolCategoria === "secretaria") {
+      const dataSecretaria = await this.dashboardRepository.obtenerDatosSecretaria(
+        referencia,
+        filtros,
+      );
+      return {
+        rolCategoria,
+        rolNombre: user.role,
+        periodoActual,
+        secretaria: dataSecretaria,
+      };
+    }
 
     if (rolCategoria === "directivo") {
       const dataDirectivo = await this.dashboardRepository.obtenerDatosDirectivo(

@@ -81,6 +81,26 @@ export class DirectivoDistribucionGradosDto {
   porcentaje!: number;
 }
 
+export class IndicadorTesisItemDto {
+  @ApiProperty()
+  codigo!: "CSP" | "ISA" | "IGM";
+
+  @ApiProperty()
+  nombre!: string;
+
+  @ApiProperty()
+  porcentaje!: number;
+
+  @ApiPropertyOptional()
+  pretestPorcentaje?: number | null;
+
+  @ApiPropertyOptional()
+  variacionPuntos?: number | null;
+
+  @ApiProperty()
+  estado!: "en_curso" | "cerrado" | "sin_datos";
+}
+
 export class DirectivoDashboardDataDto {
   @ApiProperty({ type: DirectivoKpisDto })
   kpis!: DirectivoKpisDto;
@@ -90,6 +110,9 @@ export class DirectivoDashboardDataDto {
 
   @ApiProperty({ type: [DirectivoDistribucionGradosDto] })
   distribucionGrados!: DirectivoDistribucionGradosDto[];
+
+  @ApiPropertyOptional({ type: [IndicadorTesisItemDto] })
+  indicadoresTesis?: IndicadorTesisItemDto[];
 }
 
 export class DocenteKpisDto {
@@ -312,9 +335,152 @@ export class EstudianteDashboardDataDto {
   estudiantesAsociados?: EstudianteAsociadoDto[];
 }
 
+export class AdminKpisDto {
+  @ApiProperty()
+  totalUsuarios!: number;
+
+  @ApiProperty()
+  usuariosActivos!: number;
+
+  @ApiProperty()
+  usuariosBloqueados!: number;
+
+  @ApiProperty()
+  usuariosInactivos!: number;
+
+  @ApiProperty()
+  intentosFallidosHoy!: number;
+
+  @ApiProperty()
+  sinAcceso30Dias!: number;
+
+  @ApiProperty()
+  totalEquipos!: number;
+
+  @ApiProperty()
+  equiposActivos!: number;
+}
+
+export class DistribucionUsuariosRolDto {
+  @ApiProperty()
+  rol!: string;
+
+  @ApiProperty()
+  cantidad!: number;
+
+  @ApiProperty()
+  fill!: string;
+}
+
+export class AuditoriaRecienteItemDto {
+  @ApiProperty()
+  id!: number;
+
+  @ApiProperty()
+  accion!: string;
+
+  @ApiProperty()
+  tabla!: string;
+
+  @ApiProperty()
+  usuarioNombre!: string;
+
+  @ApiProperty()
+  fecha!: string;
+
+  @ApiPropertyOptional()
+  ip?: string | null;
+}
+
+export class AdminDashboardDataDto {
+  @ApiProperty({ type: AdminKpisDto })
+  kpis!: AdminKpisDto;
+
+  @ApiProperty({ type: [DistribucionUsuariosRolDto] })
+  distribucionRoles!: DistribucionUsuariosRolDto[];
+
+  @ApiProperty({ type: [AuditoriaRecienteItemDto] })
+  ultimasAuditorias!: AuditoriaRecienteItemDto[];
+}
+
+export class SecretariaKpisDto {
+  @ApiProperty()
+  matriculasMes!: number;
+
+  @ApiProperty()
+  retiradosMes!: number;
+
+  @ApiProperty()
+  trasladadosMes!: number;
+
+  @ApiProperty()
+  estudiantesSinApoderado!: number;
+
+  @ApiProperty()
+  estudiantesSinDocumento!: number;
+
+  @ApiProperty()
+  libretasPendientes!: number;
+
+  @ApiProperty()
+  asistenciaHoyPorcentaje!: number;
+}
+
+export class SecretariaMatriculasGradoDto {
+  @ApiProperty()
+  grado!: string;
+
+  @ApiProperty()
+  matriculados!: number;
+}
+
+export class SecretariaEstudianteAlertaDto {
+  @ApiProperty()
+  id!: string;
+
+  @ApiProperty()
+  nombreCompleto!: string;
+
+  @ApiProperty()
+  grado!: string;
+
+  @ApiProperty()
+  seccion!: string;
+
+  @ApiProperty()
+  tipoAlerta!: "sin_apoderado" | "sin_documento";
+}
+
+export class SecretariaComunicadoRecienteDto {
+  @ApiProperty()
+  id!: string;
+
+  @ApiProperty()
+  titulo!: string;
+
+  @ApiProperty()
+  publicadoEn!: string;
+}
+
+export class SecretariaDashboardDataDto {
+  @ApiProperty({ type: SecretariaKpisDto })
+  kpis!: SecretariaKpisDto;
+
+  @ApiProperty({ type: [SecretariaMatriculasGradoDto] })
+  matriculasPorGrado!: SecretariaMatriculasGradoDto[];
+
+  @ApiProperty({ type: [SecretariaEstudianteAlertaDto] })
+  estudiantesConAlerta!: SecretariaEstudianteAlertaDto[];
+
+  @ApiProperty({ type: [SecretariaComunicadoRecienteDto] })
+  comunicadosRecientes!: SecretariaComunicadoRecienteDto[];
+}
+
 export class DashboardResponseDto {
-  @ApiProperty({ enum: ["directivo", "docente", "estudiante", "apoderado"] })
-  rolCategoria!: "directivo" | "docente" | "estudiante" | "apoderado";
+  @ApiProperty({
+    enum: ["directivo", "docente", "estudiante", "apoderado", "admin", "secretaria"],
+  })
+  rolCategoria!: "directivo" | "docente" | "estudiante" | "apoderado" | "admin" | "secretaria";
 
   @ApiProperty()
   rolNombre!: string;
@@ -330,4 +496,10 @@ export class DashboardResponseDto {
 
   @ApiPropertyOptional({ type: EstudianteDashboardDataDto })
   estudiante?: EstudianteDashboardDataDto;
+
+  @ApiPropertyOptional({ type: AdminDashboardDataDto })
+  admin?: AdminDashboardDataDto;
+
+  @ApiPropertyOptional({ type: SecretariaDashboardDataDto })
+  secretaria?: SecretariaDashboardDataDto;
 }
