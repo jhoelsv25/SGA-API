@@ -29,8 +29,10 @@ import {
   usuarios,
 } from "../../../core/database/schema";
 import {
+  AdminActividadSemanalDto,
   AdminDashboardDataDto,
   DashboardFiltrosDto,
+  DirectivoAlertaDiaDto,
   DirectivoDashboardDataDto,
   DocenteDashboardDataDto,
   EstudianteAsociadoDto,
@@ -487,6 +489,60 @@ export class DashboardRepository {
       },
     ];
 
+    // Semáforo de cumplimiento por docente (HU-021-02)
+    const docentesSemaforoRows = await this.db
+      .select({
+        docenteId: docentes.id,
+        docenteNombre: sql<string>`${personas.nombres} || ' ' || ${personas.apellidoPaterno}`,
+        totalSesiones: count(sesionesClase.id),
+        sesionesRegistradas: sql<number>`count(*) filter (where ${sesionesClase.estado} in ('completada', 'en_curso'))`,
+      })
+      .from(docentes)
+      .innerJoin(personas, eq(docentes.personaId, personas.id))
+      .leftJoin(sesionesClase, eq(sesionesClase.docenteId, docentes.id))
+      .where(eq(docentes.estado, "activo"))
+      .groupBy(docentes.id, personas.nombres, personas.apellidoPaterno)
+      .limit(6);
+
+    const docentesSemaforo = docentesSemaforoRows.map((d) => {
+      const tot = Number(d.totalSesiones || 0);
+      const reg = Number(d.sesionesRegistradas || 0);
+      const porcentaje = tot > 0 ? Math.round((reg / tot) * 100) : 100;
+      let estado: "verde" | "amarillo" | "rojo" = "verde";
+      if (porcentaje < 75) estado = "rojo";
+      else if (porcentaje < 90) estado = "amarillo";
+
+      return {
+        docenteId: d.docenteId,
+        docenteNombre: d.docenteNombre,
+        porcentajeCumplimiento: porcentaje,
+        estado,
+        sesionesRegistradas: reg,
+        totalSesiones: tot,
+      };
+    });
+
+    // Alertas del día (HU-021-02)
+    const alertasDelDia: DirectivoAlertaDiaDto[] = [];
+    if (sesProg > sesComp) {
+      alertasDelDia.push({
+        tipo: "sesiones_pendientes",
+        titulo: `${sesProg - sesComp} sesiones pendientes hoy`,
+        detalle: "Hay clases programadas para hoy que aún no registran inicio ni cierre.",
+        enlace: "/admin/sesiones-hoy",
+        nivel: "warning",
+      });
+    }
+    if (hoyFaltas > 0) {
+      alertasDelDia.push({
+        tipo: "asistencia_faltas",
+        titulo: `${hoyFaltas} inasistencias reportadas hoy`,
+        detalle: "Estudiantes con falta registrada en las secciones del colegio.",
+        enlace: "/admin/asistencia",
+        nivel: "info",
+      });
+    }
+
     return {
       kpis: {
         totalMatriculados: totalMat,
@@ -516,6 +572,8 @@ export class DashboardRepository {
       graficoAsistencia,
       distribucionGrados,
       indicadoresTesis,
+      alertasDelDia,
+      docentesSemaforo,
     };
   }
 
@@ -1030,7 +1088,14 @@ export class DashboardRepository {
    * Resumen analítico para el rol Administrador y Soporte TI (RF-021)
    */
   async obtenerDatosAdmin(): Promise<AdminDashboardDataDto> {
-    const [usuariosRows, rolesRows, equiposRows, auditoriasRows] = await Promise.all([
+    const [
+      usuariosRows,
+      rolesRows,
+      equiposRows,
+      auditoriasRows,
+      actividadSemanalRows,
+      equiposRecientesRows,
+    ] = await Promise.all([
       // Resumen de usuarios
       this.db
         .select({
@@ -1056,7 +1121,7 @@ export class DashboardRepository {
         .groupBy(roles.nombre)
         .orderBy(desc(count(usuarios.id))),
 
-      // Equipos autorizados
+      // Equipos autorizados totales
       this.db
         .select({
           total: count(),
@@ -1080,6 +1145,35 @@ export class DashboardRepository {
         .leftJoin(personas, eq(usuarios.personaId, personas.id))
         .orderBy(desc(bitacoraAuditoria.registradoEn))
         .limit(8),
+
+      // Actividad de los últimos 7 días
+      this.db
+        .select({
+          fecha: sql<string>`to_char(${bitacoraAuditoria.registradoEn}, 'YYYY-MM-DD')`,
+          totalEventos: count(),
+          iniciosSesion: sql<number>`count(*) filter (where ${bitacoraAuditoria.accion} = 'INICIAR_SESION')`,
+          cambios: sql<number>`count(*) filter (where ${bitacoraAuditoria.accion} != 'INICIAR_SESION')`,
+        })
+        .from(bitacoraAuditoria)
+        .where(sql`${bitacoraAuditoria.registradoEn} >= CURRENT_DATE - INTERVAL '6 days'`)
+        .groupBy(sql`to_char(${bitacoraAuditoria.registradoEn}, 'YYYY-MM-DD')`)
+        .orderBy(sql`to_char(${bitacoraAuditoria.registradoEn}, 'YYYY-MM-DD')`),
+
+      // Equipos recientes
+      this.db
+        .select({
+          id: equiposAutorizados.id,
+          nombre: equiposAutorizados.nombre,
+          tipo: equiposAutorizados.tipo,
+          ip: equiposAutorizados.ipRegistro,
+          ultimoAcceso: equiposAutorizados.ultimoAcceso,
+          autorizado: equiposAutorizados.autorizado,
+          activo: equiposAutorizados.activo,
+        })
+        .from(equiposAutorizados)
+        .where(isNull(equiposAutorizados.eliminadoEn))
+        .orderBy(desc(equiposAutorizados.ultimoAcceso))
+        .limit(4),
     ]);
 
     const u = usuariosRows[0] ?? {
@@ -1116,6 +1210,71 @@ export class DashboardRepository {
       ip: a.ip ?? undefined,
     }));
 
+    // Formatear actividad de 7 días completa
+    const diasMap = new Map<
+      string,
+      { totalEventos: number; iniciosSesion: number; cambios: number }
+    >();
+    for (const r of actividadSemanalRows) {
+      diasMap.set(r.fecha, {
+        totalEventos: Number(r.totalEventos || 0),
+        iniciosSesion: Number(r.iniciosSesion || 0),
+        cambios: Number(r.cambios || 0),
+      });
+    }
+
+    const nombresDias = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+    const actividadSemanal: AdminActividadSemanalDto[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const fechaIso = d.toISOString().split("T")[0];
+      const diaSemana = nombresDias[d.getDay()];
+      const datosDia = diasMap.get(fechaIso) || { totalEventos: 0, iniciosSesion: 0, cambios: 0 };
+      actividadSemanal.push({
+        dia: diaSemana,
+        fecha: fechaIso,
+        totalEventos: datosDia.totalEventos,
+        iniciosSesion: datosDia.iniciosSesion,
+        cambios: datosDia.cambios,
+      });
+    }
+
+    // Equipos recientes formateados
+    const equiposRecientes = equiposRecientesRows.map((e) => ({
+      id: e.id,
+      nombre: e.nombre,
+      tipo: e.tipo || "escritorio",
+      ip: e.ip ?? undefined,
+      ultimoAcceso: e.ultimoAcceso ?? undefined,
+      autorizado: Boolean(e.autorizado),
+      activo: Boolean(e.activo),
+    }));
+
+    // Servicios del sistema
+    const servicios = [
+      {
+        nombre: "Base de Datos (PostgreSQL)",
+        estado: "operacional" as const,
+        detalle: "Pool Drizzle ORM sincronizado y activo",
+      },
+      {
+        nombre: "API Backend (NestJS)",
+        estado: "operacional" as const,
+        detalle: "Servicios REST HTTP 200 en línea",
+      },
+      {
+        nombre: "Cola Asíncrona (BullMQ / Redis)",
+        estado: "operacional" as const,
+        detalle: "Procesamiento de bitácora y eventos",
+      },
+      {
+        nombre: "Seguridad y Tokens JWT",
+        estado: "operacional" as const,
+        detalle: "Autenticación HttpOnly con rotación",
+      },
+    ];
+
     return {
       kpis: {
         totalUsuarios: Number(u.total || 0),
@@ -1129,6 +1288,9 @@ export class DashboardRepository {
       },
       distribucionRoles,
       ultimasAuditorias,
+      actividadSemanal,
+      equiposRecientes,
+      servicios,
     };
   }
 

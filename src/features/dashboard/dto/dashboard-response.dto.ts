@@ -101,6 +101,43 @@ export class IndicadorTesisItemDto {
   estado!: "en_curso" | "cerrado" | "sin_datos";
 }
 
+export class DirectivoAlertaDiaDto {
+  @ApiProperty()
+  tipo!: string;
+
+  @ApiProperty()
+  titulo!: string;
+
+  @ApiProperty()
+  detalle!: string;
+
+  @ApiProperty()
+  enlace!: string;
+
+  @ApiProperty({ enum: ["info", "warning", "danger"] })
+  nivel!: "info" | "warning" | "danger";
+}
+
+export class DocenteSemaforoItemDto {
+  @ApiProperty()
+  docenteId!: string;
+
+  @ApiProperty()
+  docenteNombre!: string;
+
+  @ApiProperty()
+  porcentajeCumplimiento!: number;
+
+  @ApiProperty({ enum: ["verde", "amarillo", "rojo"] })
+  estado!: "verde" | "amarillo" | "rojo";
+
+  @ApiProperty()
+  sesionesRegistradas!: number;
+
+  @ApiProperty()
+  totalSesiones!: number;
+}
+
 export class DirectivoDashboardDataDto {
   @ApiProperty({ type: DirectivoKpisDto })
   kpis!: DirectivoKpisDto;
@@ -113,6 +150,12 @@ export class DirectivoDashboardDataDto {
 
   @ApiPropertyOptional({ type: [IndicadorTesisItemDto] })
   indicadoresTesis?: IndicadorTesisItemDto[];
+
+  @ApiPropertyOptional({ type: [DirectivoAlertaDiaDto] })
+  alertasDelDia?: DirectivoAlertaDiaDto[];
+
+  @ApiPropertyOptional({ type: [DocenteSemaforoItemDto] })
+  docentesSemaforo?: DocenteSemaforoItemDto[];
 }
 
 export class DocenteKpisDto {
@@ -392,6 +435,57 @@ export class AuditoriaRecienteItemDto {
   ip?: string | null;
 }
 
+export class AdminActividadSemanalDto {
+  @ApiProperty()
+  dia!: string;
+
+  @ApiProperty()
+  fecha!: string;
+
+  @ApiProperty()
+  totalEventos!: number;
+
+  @ApiProperty()
+  iniciosSesion!: number;
+
+  @ApiProperty()
+  cambios!: number;
+}
+
+export class AdminEquipoRecienteDto {
+  @ApiProperty()
+  id!: string;
+
+  @ApiProperty()
+  nombre!: string;
+
+  @ApiProperty()
+  tipo!: string;
+
+  @ApiPropertyOptional()
+  ip?: string | null;
+
+  @ApiPropertyOptional()
+  ultimoAcceso?: string | null;
+
+  @ApiProperty()
+  autorizado!: boolean;
+
+  @ApiProperty()
+  activo!: boolean;
+}
+
+export class AdminServicioEstadoDto {
+  @ApiProperty()
+  nombre!: string;
+
+  @ApiProperty({ enum: ["operacional", "degradado", "inactivo"] })
+  estado!: "operacional" | "degradado" | "inactivo";
+
+  @ApiProperty()
+  detalle!: string;
+}
+
 export class AdminDashboardDataDto {
   @ApiProperty({ type: AdminKpisDto })
   kpis!: AdminKpisDto;
@@ -401,6 +495,15 @@ export class AdminDashboardDataDto {
 
   @ApiProperty({ type: [AuditoriaRecienteItemDto] })
   ultimasAuditorias!: AuditoriaRecienteItemDto[];
+
+  @ApiPropertyOptional({ type: [AdminActividadSemanalDto] })
+  actividadSemanal?: AdminActividadSemanalDto[];
+
+  @ApiPropertyOptional({ type: [AdminEquipoRecienteDto] })
+  equiposRecientes?: AdminEquipoRecienteDto[];
+
+  @ApiPropertyOptional({ type: [AdminServicioEstadoDto] })
+  servicios?: AdminServicioEstadoDto[];
 }
 
 export class SecretariaKpisDto {
