@@ -69,6 +69,12 @@ export class PersonasService {
         if (queryDto.destinoFicha === "docente" && persona.fichas.esDocente) {
           yaTieneFicha = true;
           mensaje = "Esta persona ya está registrada como docente.";
+        } else if (queryDto.destinoFicha === "docente" && persona.fichas.esEstudiante) {
+          yaTieneFicha = true;
+          mensaje = "Esta persona ya está registrada como estudiante; solo puede tener una ficha.";
+        } else if (queryDto.destinoFicha === "estudiante" && persona.fichas.esDocente) {
+          yaTieneFicha = true;
+          mensaje = "Esta persona ya está registrada como docente; solo puede tener una ficha.";
         } else if (queryDto.destinoFicha === "estudiante" && persona.fichas.esEstudiante) {
           yaTieneFicha = true;
           mensaje = "Esta persona ya está registrada como estudiante.";
