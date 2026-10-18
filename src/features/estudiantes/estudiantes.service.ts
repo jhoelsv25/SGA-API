@@ -8,6 +8,7 @@ import {
 import { AuditService } from "../../common/services/audit.service";
 import { hashPassword, hashSha256 } from "../../common/utils";
 import { CargosRepository } from "../cargos/repositories/cargos.repository";
+import { DocentesRepository } from "../docentes/repositories/docentes.repository";
 import { PersonasRepository } from "../personas/repositories/personas.repository";
 import { RolesRepository } from "../roles/repositories/roles.repository";
 import { generateTemporaryPassword } from "../users/utils/password-generator.util";
@@ -38,7 +39,14 @@ export class EstudiantesService {
     private readonly cargosRepository: CargosRepository,
     private readonly rolesRepository: RolesRepository,
     private readonly auditService: AuditService,
+    private readonly docentesRepository: DocentesRepository,
   ) {}
+
+  private async assertSinFichaDocente(personaId: string): Promise<void> {
+    if (await this.docentesRepository.findByPersonaId(personaId)) {
+      throw new ConflictException(ESTUDIANTE_MESSAGES.PERSONA_YA_DOCENTE);
+    }
+  }
 
   async findAll(query?: EstudianteQueryDto): Promise<PaginatedEstudiantesResponseDto> {
     return this.repository.findAll(query);
@@ -77,6 +85,7 @@ export class EstudiantesService {
       if (existingEstudiante) {
         throw new ConflictException(ESTUDIANTE_MESSAGES.PERSONA_YA_ESTUDIANTE);
       }
+      await this.assertSinFichaDocente(dto.personaId);
     } else if (dto.nuevaPersona) {
       validarFechaNacimiento(dto.nuevaPersona.fechaNacimiento);
 
@@ -89,6 +98,7 @@ export class EstudiantesService {
         if (existingEstudiante) {
           throw new ConflictException(ESTUDIANTE_MESSAGES.PERSONA_YA_ESTUDIANTE);
         }
+        await this.assertSinFichaDocente(existingDoc.id);
         dto.personaId = existingDoc.id;
         dto.nuevaPersona = undefined;
       }

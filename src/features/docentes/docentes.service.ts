@@ -8,6 +8,7 @@ import {
 import { AuditService } from "../../common/services/audit.service";
 import { hashPassword, hashSha256 } from "../../common/utils";
 import { CargosRepository } from "../cargos/repositories/cargos.repository";
+import { EstudiantesRepository } from "../estudiantes/repositories/estudiantes.repository";
 import { PersonasRepository } from "../personas/repositories/personas.repository";
 import { RolesRepository } from "../roles/repositories/roles.repository";
 import { generateTemporaryPassword } from "../users/utils/password-generator.util";
@@ -34,6 +35,7 @@ export class DocentesService {
     private readonly cargosRepository: CargosRepository,
     private readonly rolesRepository: RolesRepository,
     private readonly auditService: AuditService,
+    private readonly estudiantesRepository: EstudiantesRepository,
   ) {}
 
   async findAll(query?: DocenteQueryDto): Promise<PaginatedDocentesResponseDto> {
@@ -46,6 +48,12 @@ export class DocentesService {
       throw new NotFoundException(DOCENTE_MESSAGES.NOT_FOUND);
     }
     return docente;
+  }
+
+  private async assertSinFichaEstudiante(personaId: string): Promise<void> {
+    if (await this.estudiantesRepository.findByPersonaId(personaId)) {
+      throw new ConflictException(DOCENTE_MESSAGES.PERSONA_YA_ESTUDIANTE);
+    }
   }
 
   async create(
@@ -73,6 +81,7 @@ export class DocentesService {
       if (existingDocente) {
         throw new ConflictException(DOCENTE_MESSAGES.PERSONA_YA_DOCENTE);
       }
+      await this.assertSinFichaEstudiante(dto.personaId);
     } else if (dto.nuevaPersona) {
       numeroDocumento = dto.nuevaPersona.numeroDocumento.trim();
 
@@ -86,6 +95,7 @@ export class DocentesService {
         if (existingDocente) {
           throw new ConflictException(DOCENTE_MESSAGES.PERSONA_YA_DOCENTE);
         }
+        await this.assertSinFichaEstudiante(existingDoc.id);
         // Asignar el personaId existente para reutilizarla
         dto.personaId = existingDoc.id;
         dto.nuevaPersona = undefined;

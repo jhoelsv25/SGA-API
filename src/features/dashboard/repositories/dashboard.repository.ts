@@ -1428,7 +1428,7 @@ export class DashboardRepository {
       nombreCompleto: String(e.nombreCompleto),
       grado: String(e.grado),
       seccion: String(e.seccion),
-      tipoAlerta: e.sinApoderado ? "sin_apoderado" : "sin_documento",
+      tipoAlerta: e.sinApoderado ? ("sin_apoderado" as const) : ("sin_documento" as const),
     }));
 
     return {

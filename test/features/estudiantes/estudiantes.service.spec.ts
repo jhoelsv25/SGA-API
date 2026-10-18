@@ -5,6 +5,7 @@ import { CargosRepository } from "@/features/cargos/repositories/cargos.reposito
 import { ESTUDIANTE_MESSAGES } from "@/features/estudiantes/constants";
 import { EstudiantesService } from "@/features/estudiantes/estudiantes.service";
 import type { CreateEstudianteDto } from "@/features/estudiantes/dto";
+import { DocentesRepository } from "@/features/docentes/repositories/docentes.repository";
 import { EstudiantesRepository } from "@/features/estudiantes/repositories/estudiantes.repository";
 import { PersonasRepository } from "@/features/personas/repositories/personas.repository";
 import { RolesRepository } from "@/features/roles/repositories/roles.repository";
@@ -19,6 +20,7 @@ describe("EstudiantesService (RF-007 Historia de Usuario 2)", () => {
   let cargosRepository: jest.Mocked<CargosRepository>;
   let rolesRepository: jest.Mocked<RolesRepository>;
   let auditService: jest.Mocked<AuditService>;
+  let docentesRepository: jest.Mocked<DocentesRepository>;
 
   const mockPersona: PersonaResponseDto = {
     id: "per-1",
@@ -91,6 +93,10 @@ describe("EstudiantesService (RF-007 Historia de Usuario 2)", () => {
       log: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<AuditService>;
 
+    docentesRepository = {
+      findByPersonaId: jest.fn().mockResolvedValue(null),
+    } as unknown as jest.Mocked<DocentesRepository>;
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         EstudiantesService,
@@ -99,6 +105,7 @@ describe("EstudiantesService (RF-007 Historia de Usuario 2)", () => {
         { provide: CargosRepository, useValue: cargosRepository },
         { provide: RolesRepository, useValue: rolesRepository },
         { provide: AuditService, useValue: auditService },
+        { provide: DocentesRepository, useValue: docentesRepository },
       ],
     }).compile();
 
@@ -226,6 +233,55 @@ describe("EstudiantesService (RF-007 Historia de Usuario 2)", () => {
       await expect(service.create(dtoPersonaExistente, "admin-1")).rejects.toThrow(
         new ConflictException(ESTUDIANTE_MESSAGES.PERSONA_YA_ESTUDIANTE),
       );
+    });
+  });
+
+  describe("create: ficha única (docente o estudiante, nunca ambas)", () => {
+    const dtoPersona: CreateEstudianteDto = {
+      codigo: "20269999999999",
+      fechaIngreso: "2026-03-01",
+      personaId: "per-1",
+    };
+
+    it("Escenario: Bloquear si la persona ya está registrada como docente (por personaId)", async () => {
+      repository.findByCodigo.mockResolvedValue(null);
+      personasRepository.findById.mockResolvedValue(mockPersona);
+      repository.findByPersonaId.mockResolvedValue(null);
+      docentesRepository.findByPersonaId.mockResolvedValue({
+        id: "doc-1",
+      } as Awaited<ReturnType<DocentesRepository["findByPersonaId"]>>);
+
+      await expect(service.create(dtoPersona, "admin-1")).rejects.toThrow(
+        new ConflictException(ESTUDIANTE_MESSAGES.PERSONA_YA_DOCENTE),
+      );
+      expect(repository.create).not.toHaveBeenCalled();
+    });
+
+    it("Escenario: Bloquear si el documento ya pertenece a un docente (nueva persona)", async () => {
+      repository.findByCodigo.mockResolvedValue(null);
+      personasRepository.findByDocumento.mockResolvedValue(mockPersona);
+      repository.findByPersonaId.mockResolvedValue(null);
+      docentesRepository.findByPersonaId.mockResolvedValue({
+        id: "doc-1",
+      } as Awaited<ReturnType<DocentesRepository["findByPersonaId"]>>);
+
+      await expect(
+        service.create(
+          {
+            codigo: "20269999999999",
+            fechaIngreso: "2026-03-01",
+            nuevaPersona: {
+              tipoDocumento: "dni",
+              numeroDocumento: "71234567",
+              nombres: "Mateo",
+              apellidoPaterno: "Quispe",
+              sexo: "M",
+              fechaNacimiento: "2010-04-12",
+            },
+          },
+          "admin-1",
+        ),
+      ).rejects.toThrow(ESTUDIANTE_MESSAGES.PERSONA_YA_DOCENTE);
     });
   });
 
