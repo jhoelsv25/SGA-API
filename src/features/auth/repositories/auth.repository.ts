@@ -139,6 +139,16 @@ export class AuthRepository implements IAuthRepository {
     });
   }
 
+  async hasPreviousSessionFromIp(userId: string, ipAddress: string): Promise<boolean> {
+    const [row] = await this.db
+      .select({ id: sesiones.id })
+      .from(sesiones)
+      .where(and(eq(sesiones.usuarioId, userId), eq(sesiones.direccionIp, ipAddress)))
+      .limit(1);
+
+    return Boolean(row);
+  }
+
   async closeSession(tokenHash: string): Promise<void> {
     await this.db
       .update(sesiones)

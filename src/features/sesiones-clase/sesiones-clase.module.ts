@@ -8,6 +8,8 @@ import { CalendarioModule } from "../calendario/calendario.module";
 import { EquiposModule } from "../equipos/equipos.module";
 import { MarcacionesModule } from "../marcaciones/marcaciones.module";
 import { ConsolidadoDocenteModule } from "../consolidado-docente/consolidado-docente.module";
+import { NotificacionesModule } from "../notificaciones/notificaciones.module";
+import { VariablesSistemaModule } from "../variables-sistema/variables-sistema.module";
 import { SesionesClaseProcessor } from "./processors";
 import { SesionesClaseRepository } from "./repositories";
 import { SesionesClaseController } from "./sesiones-clase.controller";
@@ -22,6 +24,8 @@ import { SesionesClaseService } from "./sesiones-clase.service";
     AnioEscolarModule,
     CalendarioModule,
     ConsolidadoDocenteModule,
+    NotificacionesModule,
+    VariablesSistemaModule,
   ],
   controllers: [SesionesClaseController],
   providers: [SesionesClaseService, SesionesClaseRepository, SesionesClaseProcessor, AuditService],

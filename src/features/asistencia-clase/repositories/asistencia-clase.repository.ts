@@ -18,6 +18,7 @@ import {
   personas,
   secciones,
   sesionesClase,
+  usuarios,
 } from "../../../core/database/schema";
 import type { EstadoAsistencia } from "../constants";
 import type { EstudianteListaAsistenciaDto, EstudianteVinculadoDto } from "../dto";
@@ -414,5 +415,25 @@ export class AsistenciaClaseRepository implements IAsistenciaClaseRepository {
         ),
       )
       .orderBy(asc(personas.apellidoPaterno), asc(personas.apellidoMaterno), asc(personas.nombres));
+  }
+
+  async findApoderadosUsuariosDeMatriculas(
+    matriculaIds: string[],
+  ): Promise<Array<{ matriculaId: string; usuarioId: string; estudianteNombre: string }>> {
+    if (matriculaIds.length === 0) return [];
+
+    return this.db
+      .select({
+        matriculaId: matriculas.id,
+        usuarioId: usuarios.id,
+        estudianteNombre: nombreCompletoSql,
+      })
+      .from(matriculas)
+      .innerJoin(estudiantes, eq(estudiantes.id, matriculas.estudianteId))
+      .innerJoin(personas, eq(personas.id, estudiantes.personaId))
+      .innerJoin(estudianteApoderados, eq(estudianteApoderados.estudianteId, estudiantes.id))
+      .innerJoin(apoderados, eq(apoderados.id, estudianteApoderados.apoderadoId))
+      .innerJoin(usuarios, eq(usuarios.personaId, apoderados.personaId))
+      .where(and(inArray(matriculas.id, matriculaIds), eq(usuarios.estado, "activo")));
   }
 }

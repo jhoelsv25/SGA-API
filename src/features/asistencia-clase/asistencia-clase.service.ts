@@ -3,11 +3,14 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  Optional,
 } from "@nestjs/common";
 import { AnioLectivoCls } from "../../common/anio-lectivo";
 import { AuditService } from "../../common/services/audit.service";
 import type { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface";
 import { AniosAcademicosService } from "../anio-escolar/anios.service";
+import { NotificacionesService } from "../notificaciones/notificaciones.service";
+import { VariablesSistemaService } from "../variables-sistema/variables-sistema.service";
 import { ahoraEnColegio } from "../marcaciones/utils";
 import { TurnosRepository } from "../turnos/repositories/turnos.repository";
 import {
@@ -43,6 +46,8 @@ export class AsistenciaClaseService {
     private readonly aniosService: AniosAcademicosService,
     private readonly anioLectivoCls: AnioLectivoCls,
     private readonly auditService: AuditService,
+    @Optional() private readonly notificacionesService?: NotificacionesService,
+    @Optional() private readonly variablesService?: VariablesSistemaService,
   ) {}
 
   /** Lista de la sesión: todos presentes por defecto, con la señal "No marcó ingreso". */
@@ -112,6 +117,9 @@ export class AsistenciaClaseService {
 
     const resumen = resumirEstados(finales.map((f) => f.estado));
     await this.auditarGuardado(sesion, finales, lista, usuario.id, ip);
+
+    // Enviar alerta a apoderados si el switch está encendido en configuración
+    await this.despacharAlertasInasistencia(sesion, finales);
 
     return {
       mensaje: mensajeAsistenciaGuardada(resumen.presentes, resumen.tardanzas, resumen.faltas),
@@ -447,5 +455,42 @@ export class AsistenciaClaseService {
       },
       direccionIp: ip,
     });
+  }
+
+  /**
+   * Despacha alertas a los apoderados si el switch 'notificacion.aviso_inasistencia_apoderado'
+   * está habilitado en la base de datos (RF-004 / RF-010).
+   */
+  private async despacharAlertasInasistencia(
+    sesion: SesionParaAsistencia,
+    finales: Array<{ estudiante: EstudianteListaAsistenciaDto; estado: EstadoAsistencia }>,
+  ): Promise<void> {
+    if (!this.notificacionesService || !this.variablesService) return;
+
+    try {
+      const activo = await this.variablesService.isActiva(
+        "notificacion.aviso_inasistencia_apoderado",
+        true,
+      );
+      if (!activo) return;
+
+      const faltas = finales.filter((f) => f.estado === "falta");
+      if (faltas.length === 0) return;
+
+      const matriculaIds = faltas.map((f) => f.estudiante.matriculaId);
+      const destinatarios = await this.repository.findApoderadosUsuariosDeMatriculas(matriculaIds);
+
+      for (const dest of destinatarios) {
+        await this.notificacionesService.enviar({
+          usuarioId: dest.usuarioId,
+          titulo: "Aviso de inasistencia",
+          mensaje: `El estudiante ${dest.estudianteNombre} ha registrado falta el día ${sesion.fecha} en la clase de ${sesion.cursoNombre}.`,
+          tipo: "alerta",
+          enlaceUrl: "/portal/mi-asistencia",
+        });
+      }
+    } catch {
+      // Silenciar errores de despacho para no bloquear la transacción principal
+    }
   }
 }

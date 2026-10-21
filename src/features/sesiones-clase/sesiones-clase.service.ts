@@ -19,6 +19,8 @@ import { CalendarioService } from "../calendario/calendario.service";
 import { ConsolidadoDocenteService } from "../consolidado-docente/consolidado-docente.service";
 import { EquiposService } from "../equipos/equipos.service";
 import { MarcacionesService } from "../marcaciones/marcaciones.service";
+import { NotificacionesService } from "../notificaciones/notificaciones.service";
+import { VariablesSistemaService } from "../variables-sistema/variables-sistema.service";
 import { ahoraEnColegio, diaIsoDeFecha, horaCorta } from "../marcaciones/utils";
 import {
   CRON_CERRAR_SESIONES,
@@ -90,6 +92,10 @@ export class SesionesClaseService implements OnModuleInit {
     @Optional()
     @InjectQueue(QUEUES.SESIONES_CLASE)
     private readonly cola?: Queue,
+    @Optional()
+    private readonly notificacionesService?: NotificacionesService,
+    @Optional()
+    private readonly variablesService?: VariablesSistemaService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -149,6 +155,42 @@ export class SesionesClaseService implements OnModuleInit {
         tabla: "sesiones_clase",
         valorNuevo: { proceso: "cierre_diario", fecha, salidaAutomatica, ...resultado },
       });
+
+      if (resultado.docentesAfectados && resultado.docentesAfectados.length > 0) {
+        await this.notificarDocentesSesionesCerradas(resultado.docentesAfectados, fecha);
+      }
+    }
+  }
+
+  /**
+   * Notifica a los docentes si el switch 'notificacion.recordatorio_sesiones_docente'
+   * está habilitado en la base de datos (RF-011 / RF-004).
+   */
+  private async notificarDocentesSesionesCerradas(
+    docenteIds: string[],
+    fecha: string,
+  ): Promise<void> {
+    if (!this.notificacionesService || !this.variablesService || docenteIds.length === 0) return;
+
+    try {
+      const activo = await this.variablesService.isActiva(
+        "notificacion.recordatorio_sesiones_docente",
+        true,
+      );
+      if (!activo) return;
+
+      const userIds = await this.repository.findUsuariosDeDocentes(docenteIds);
+      for (const usuarioId of userIds) {
+        await this.notificacionesService.enviar({
+          usuarioId,
+          titulo: "Cierre de jornada escolar",
+          mensaje: `Se ha registrado el cierre de tus sesiones de clase correspondientes al ${fecha}. Recuerda registrar y firmar tus sesiones a tiempo.`,
+          tipo: "recordatorio",
+          enlaceUrl: "/docente/mis-sesiones",
+        });
+      }
+    } catch {
+      // Silenciar para no frenar el cierre automático
     }
   }
 

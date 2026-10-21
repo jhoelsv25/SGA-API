@@ -23,6 +23,26 @@ export class VariablesSistemaService {
     return variable;
   }
 
+  async isActiva(codigo: string, defaultValue = true): Promise<boolean> {
+    try {
+      const variable = await this.repository.findByCodigoVigente(codigo);
+      if (!variable) return defaultValue;
+      const normalizado = variable.valor?.trim().toLowerCase();
+      return normalizado === "true" || normalizado === "1";
+    } catch {
+      return defaultValue;
+    }
+  }
+
+  async getValor(codigo: string, defaultValue = ""): Promise<string> {
+    try {
+      const variable = await this.repository.findByCodigoVigente(codigo);
+      return variable?.valor ?? defaultValue;
+    } catch {
+      return defaultValue;
+    }
+  }
+
   async getHistorial(codigo: string): Promise<VariableSistemaResponseDto[]> {
     const variable = await this.repository.findByCodigoVigente(codigo);
     if (!variable) {

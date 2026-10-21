@@ -11,6 +11,7 @@ import {
   personas,
   secciones,
   sesionesClase,
+  usuarios,
   variablesSistema,
 } from "../../../core/database/schema";
 import type { EstadoJustificacion, EstadoSesion } from "../constants";
@@ -176,7 +177,7 @@ export class SesionesClaseRepository implements ISesionesClaseRepository {
         .update(sesionesClase)
         .set({ estado: "no_cumplida", actualizadoEn: sql`CURRENT_TIMESTAMP` })
         .where(and(eq(sesionesClase.estado, "pendiente"), sql`${sesionesClase.fecha} <= ${fecha}`))
-        .returning({ id: sesionesClase.id });
+        .returning({ id: sesionesClase.id, docenteId: sesionesClase.docenteId });
       const parciales = await tx
         .update(sesionesClase)
         .set({
@@ -193,9 +194,33 @@ export class SesionesClaseRepository implements ISesionesClaseRepository {
           actualizadoEn: sql`CURRENT_TIMESTAMP`,
         })
         .where(and(eq(sesionesClase.estado, "en_curso"), sql`${sesionesClase.fecha} <= ${fecha}`))
-        .returning({ id: sesionesClase.id });
-      return { noCumplidas: noCumplidas.length, parciales: parciales.length };
+        .returning({ id: sesionesClase.id, docenteId: sesionesClase.docenteId });
+
+      const docentesAfectados = Array.from(
+        new Set(
+          [...noCumplidas, ...parciales]
+            .map((s) => s.docenteId)
+            .filter((id): id is string => Boolean(id)),
+        ),
+      );
+
+      return {
+        noCumplidas: noCumplidas.length,
+        parciales: parciales.length,
+        docentesAfectados,
+      };
     });
+  }
+
+  async findUsuariosDeDocentes(docenteIds: string[]): Promise<string[]> {
+    if (docenteIds.length === 0) return [];
+    const rows = await this.db
+      .select({ usuarioId: usuarios.id })
+      .from(docentes)
+      .innerJoin(personas, eq(personas.id, docentes.personaId))
+      .innerJoin(usuarios, eq(usuarios.personaId, personas.id))
+      .where(and(inArray(docentes.id, docenteIds), eq(usuarios.estado, "activo")));
+    return rows.map((r) => r.usuarioId);
   }
 
   async findById(id: string): Promise<SesionResponseDto | null> {

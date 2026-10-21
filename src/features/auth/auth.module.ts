@@ -7,12 +7,14 @@ import { VariablesSistemaModule } from "../variables-sistema/variables-sistema.m
 import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
 import { AuthRepository } from "./repositories/auth.repository";
+import { NotificacionesModule } from "../notificaciones/notificaciones.module";
 import { AuthPasswordService, SessionService } from "./services";
 import { JwtStrategy } from "./strategies/jwt.strategy";
 
 @Module({
   imports: [
     VariablesSistemaModule,
+    NotificacionesModule,
     PassportModule.register({ defaultStrategy: "jwt" }),
     JwtModule.registerAsync({
       imports: [ConfigModule],

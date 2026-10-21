@@ -19,6 +19,7 @@ export interface DatosFirmaSalida {
 export interface ResultadoCierre {
   noCumplidas: number;
   parciales: number;
+  docentesAfectados?: string[];
 }
 
 export interface ISesionesClaseRepository {

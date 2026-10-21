@@ -15,6 +15,8 @@ import type { UsuarioRolRecord, UsuarioRecord } from "./interfaces/auth-reposito
 import type { JwtPayload } from "./interfaces/jwt-payload.interface";
 import { AuthRepository } from "./repositories/auth.repository";
 import { AuthPasswordService, SessionService } from "./services";
+import { NotificacionesService } from "../notificaciones/notificaciones.service";
+import { VariablesSistemaService } from "../variables-sistema/variables-sistema.service";
 
 @Injectable()
 export class AuthService {
@@ -25,6 +27,8 @@ export class AuthService {
     private readonly sessionService: SessionService,
     private readonly authPasswordService: AuthPasswordService,
     @Optional() private readonly auditService?: AuditService,
+    @Optional() private readonly notificacionesService?: NotificacionesService,
+    @Optional() private readonly variablesService?: VariablesSistemaService,
   ) {}
 
   async login(dto: LoginDto, ipAddress?: string, userAgent?: string): Promise<AuthResponseDto> {
@@ -61,6 +65,13 @@ export class AuthService {
     };
 
     const accessToken = this.sessionService.generateAccessToken(payload, dto.rememberMe);
+
+    // Detectar si la IP es nueva para el usuario antes de persistir la sesión
+    const esNuevaIp =
+      Boolean(ipAddress) && this.authRepository.hasPreviousSessionFromIp
+        ? !(await this.authRepository.hasPreviousSessionFromIp(user.id, ipAddress!))
+        : false;
+
     await this.sessionService.recordSession({
       userId: user.id,
       token: accessToken,
@@ -68,6 +79,10 @@ export class AuthService {
       ipAddress,
       userAgent,
     });
+
+    if (esNuevaIp && ipAddress) {
+      await this.despacharAlertaNuevoDispositivo(user.id, ipAddress);
+    }
 
     await this.auditService?.log({
       usuarioId: user.id,
@@ -312,5 +327,30 @@ export class AuthService {
     };
 
     return { userDto, modules, activeRole };
+  }
+
+  /**
+   * Envía una notificación si el switch 'notificacion.alerta_nuevo_dispositivo'
+   * está habilitado en la base de datos (RF-001 / RF-004).
+   */
+  private async despacharAlertaNuevoDispositivo(userId: string, ipAddress: string): Promise<void> {
+    if (!this.variablesService || !this.notificacionesService) return;
+
+    try {
+      const activo = await this.variablesService.isActiva(
+        "notificacion.alerta_nuevo_dispositivo",
+        true,
+      );
+      if (!activo) return;
+
+      await this.notificacionesService.enviar({
+        usuarioId: userId,
+        titulo: "Alerta de nuevo dispositivo",
+        mensaje: `Se ha detectado un inicio de sesión en tu cuenta desde una nueva dirección IP (${ipAddress}).`,
+        tipo: "alerta",
+      });
+    } catch {
+      // Silenciar para no bloquear la respuesta de inicio de sesión
+    }
   }
 }
