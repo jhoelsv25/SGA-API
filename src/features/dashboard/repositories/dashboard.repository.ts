@@ -1095,6 +1095,7 @@ export class DashboardRepository {
       auditoriasRows,
       actividadSemanalRows,
       equiposRecientesRows,
+      refPeriodo,
     ] = await Promise.all([
       // Resumen de usuarios
       this.db
@@ -1174,6 +1175,9 @@ export class DashboardRepository {
         .where(isNull(equiposAutorizados.eliminadoEn))
         .orderBy(desc(equiposAutorizados.ultimoAcceso))
         .limit(4),
+
+      // Año y período de referencia activo
+      this.obtenerPeriodoReferencia(),
     ]);
 
     const u = usuariosRows[0] ?? {
@@ -1251,27 +1255,46 @@ export class DashboardRepository {
       activo: Boolean(e.activo),
     }));
 
-    // Servicios del sistema
+    const totalEquipos = Number(equiposRows[0]?.total || 0);
+    const equiposActivos = Number(equiposRows[0]?.activos || 0);
+    const cuentasBloqueadas = Number(u.bloqueados || 0);
+    const intentosFallidos = Number(u.intentosFallidos || 0);
+
+    // Estado operativo de servicios y módulos clave (RF-021)
     const servicios = [
       {
-        nombre: "Base de Datos (PostgreSQL)",
-        estado: "operacional" as const,
-        detalle: "Pool Drizzle ORM sincronizado y activo",
+        nombre: "Año Escolar y Período",
+        estado: refPeriodo ? ("operacional" as const) : ("degradado" as const),
+        detalle: refPeriodo
+          ? `Año ${refPeriodo.anio}${refPeriodo.periodoNombre ? ` · ${refPeriodo.periodoNombre}` : " activo"}`
+          : "Sin año lectivo activo configurado",
       },
       {
-        nombre: "API Backend (NestJS)",
-        estado: "operacional" as const,
-        detalle: "Servicios REST HTTP 200 en línea",
+        nombre: "Equipos y Kioskos en Red",
+        estado:
+          totalEquipos === 0 || equiposActivos === totalEquipos
+            ? ("operacional" as const)
+            : ("degradado" as const),
+        detalle:
+          totalEquipos === 0
+            ? "Sin equipos registrados"
+            : `${equiposActivos} de ${totalEquipos} dispositivos autorizados y activos`,
       },
       {
-        nombre: "Cola Asíncrona (BullMQ / Redis)",
-        estado: "operacional" as const,
-        detalle: "Procesamiento de bitácora y eventos",
+        nombre: "Seguridad y Accesos",
+        estado: cuentasBloqueadas > 0 ? ("degradado" as const) : ("operacional" as const),
+        detalle:
+          cuentasBloqueadas > 0
+            ? `${cuentasBloqueadas} cuenta(s) bloqueada(s) · ${intentosFallidos} fallos hoy`
+            : `Sin incidentes · ${Number(u.activos || 0)} usuarios activos`,
       },
       {
-        nombre: "Seguridad y Tokens JWT",
+        nombre: "Bitácora y Auditoría",
         estado: "operacional" as const,
-        detalle: "Autenticación HttpOnly con rotación",
+        detalle:
+          auditoriasRows.length > 0
+            ? "Trazabilidad activa e inmutable"
+            : "Esperando registros de actividad",
       },
     ];
 
