@@ -61,7 +61,11 @@ export class ConductaService {
 
     // 4. Validar alcance por rol (docente acotado a sus secciones)
     const rol = (user.rol || "").toLowerCase();
-    const esAdminODirectivo = ["admin", "director", "subdirector"].includes(rol);
+    const esAdminODirectivo = ["admin", "administrador", "director", "subdirector"].includes(rol);
+
+    if (rol === "estudiante" || rol === "apoderado") {
+      throw new ForbiddenException(MENSAJES_CONDUCTA.FUERA_DE_ALCANCE);
+    }
 
     if (!esAdminODirectivo) {
       const autorizado = await this.repository.esDocenteDeSeccion(user.id, matInfo.seccionId);
@@ -149,7 +153,7 @@ export class ConductaService {
 
     // Validar que sea el autor original o administrador
     const rol = (user.rol || "").toLowerCase();
-    if (incidencia.registradoPorId !== user.id && rol !== "admin") {
+    if (incidencia.registradoPorId !== user.id && !["admin", "administrador"].includes(rol)) {
       throw new ForbiddenException("Solo quien registró la incidencia puede corregirla.");
     }
 
@@ -187,6 +191,14 @@ export class ConductaService {
     const incidencia = await this.repository.obtenerIncidenciaPorId(id);
     if (!incidencia) {
       throw new NotFoundException(MENSAJES_CONDUCTA.INCIDENCIA_NO_ENCONTRADA);
+    }
+
+    const rol = (user.rol || "").toLowerCase();
+    if (
+      incidencia.registradoPorId !== user.id &&
+      !["admin", "administrador", "director", "subdirector"].includes(rol)
+    ) {
+      throw new ForbiddenException("Solo quien registró la incidencia o un directivo puede anularla.");
     }
 
     // Registro inmutable en bitácora antes de anular
@@ -229,7 +241,11 @@ export class ConductaService {
     }
 
     const rol = (user.rol || "").toLowerCase();
-    const esAdminODirectivo = ["admin", "director", "subdirector"].includes(rol);
+    const esAdminODirectivo = ["admin", "administrador", "director", "subdirector"].includes(rol);
+
+    if (rol === "estudiante" || rol === "apoderado") {
+      throw new ForbiddenException(MENSAJES_CONDUCTA.FUERA_DE_ALCANCE);
+    }
 
     if (!esAdminODirectivo) {
       const autorizado = await this.repository.esDocenteDeSeccion(user.id, matInfo.seccionId);
@@ -283,7 +299,7 @@ export class ConductaService {
     const rol = (user.rol || "").toLowerCase();
 
     // Directores, subdirectores y administradores siempre ven todas las observaciones
-    if (["admin", "director", "subdirector"].includes(rol)) {
+    if (["admin", "administrador", "director", "subdirector"].includes(rol)) {
       return true;
     }
 
@@ -341,22 +357,34 @@ export class ConductaService {
     // Control de acceso para apoderado
     if (rol === "apoderado") {
       if (!dto.matriculaId) {
-        throw new ForbiddenException(MENSAJES_CONDUCTA.SIN_ACCESO_ESTUDIANTE);
-      }
-      const esHijo = await this.repository.esApoderadoDeEstudiante(user.id, dto.matriculaId);
-      if (!esHijo) {
-        throw new ForbiddenException(MENSAJES_CONDUCTA.SIN_ACCESO_ESTUDIANTE);
+        const matriculasHijos =
+          await this.repository.obtenerMatriculasDeUsuario?.(user.id, "apoderado");
+        if (!matriculasHijos?.length) {
+          return { data: [], nextCursor: null, hasMore: false };
+        }
+        dto = { ...dto, matriculaId: matriculasHijos[0] };
+      } else {
+        const esHijo = await this.repository.esApoderadoDeEstudiante(user.id, dto.matriculaId);
+        if (!esHijo) {
+          throw new ForbiddenException(MENSAJES_CONDUCTA.SIN_ACCESO_ESTUDIANTE);
+        }
       }
     }
 
     // Control de acceso para estudiante
     if (rol === "estudiante") {
       if (!dto.matriculaId) {
-        throw new ForbiddenException(MENSAJES_CONDUCTA.SIN_ACCESO_ESTUDIANTE);
-      }
-      const esSuyo = await this.repository.esEstudianteDeMatricula(user.id, dto.matriculaId);
-      if (!esSuyo) {
-        throw new ForbiddenException(MENSAJES_CONDUCTA.SIN_ACCESO_ESTUDIANTE);
+        const matriculasPropias =
+          await this.repository.obtenerMatriculasDeUsuario?.(user.id, "estudiante");
+        if (!matriculasPropias?.length) {
+          return { data: [], nextCursor: null, hasMore: false };
+        }
+        dto = { ...dto, matriculaId: matriculasPropias[0] };
+      } else {
+        const esSuyo = await this.repository.esEstudianteDeMatricula(user.id, dto.matriculaId);
+        if (!esSuyo) {
+          throw new ForbiddenException(MENSAJES_CONDUCTA.SIN_ACCESO_ESTUDIANTE);
+        }
       }
     }
 
@@ -374,21 +402,33 @@ export class ConductaService {
 
     if (rol === "apoderado") {
       if (!dto.matriculaId) {
-        throw new ForbiddenException(MENSAJES_CONDUCTA.SIN_ACCESO_ESTUDIANTE);
-      }
-      const esHijo = await this.repository.esApoderadoDeEstudiante(user.id, dto.matriculaId);
-      if (!esHijo) {
-        throw new ForbiddenException(MENSAJES_CONDUCTA.SIN_ACCESO_ESTUDIANTE);
+        const matriculasHijos =
+          await this.repository.obtenerMatriculasDeUsuario?.(user.id, "apoderado");
+        if (!matriculasHijos?.length) {
+          return { data: [], nextCursor: null, hasMore: false };
+        }
+        dto = { ...dto, matriculaId: matriculasHijos[0] };
+      } else {
+        const esHijo = await this.repository.esApoderadoDeEstudiante(user.id, dto.matriculaId);
+        if (!esHijo) {
+          throw new ForbiddenException(MENSAJES_CONDUCTA.SIN_ACCESO_ESTUDIANTE);
+        }
       }
     }
 
     if (rol === "estudiante") {
       if (!dto.matriculaId) {
-        throw new ForbiddenException(MENSAJES_CONDUCTA.SIN_ACCESO_ESTUDIANTE);
-      }
-      const esSuyo = await this.repository.esEstudianteDeMatricula(user.id, dto.matriculaId);
-      if (!esSuyo) {
-        throw new ForbiddenException(MENSAJES_CONDUCTA.SIN_ACCESO_ESTUDIANTE);
+        const matriculasPropias =
+          await this.repository.obtenerMatriculasDeUsuario?.(user.id, "estudiante");
+        if (!matriculasPropias?.length) {
+          return { data: [], nextCursor: null, hasMore: false };
+        }
+        dto = { ...dto, matriculaId: matriculasPropias[0] };
+      } else {
+        const esSuyo = await this.repository.esEstudianteDeMatricula(user.id, dto.matriculaId);
+        if (!esSuyo) {
+          throw new ForbiddenException(MENSAJES_CONDUCTA.SIN_ACCESO_ESTUDIANTE);
+        }
       }
     }
 

@@ -186,7 +186,7 @@ export class SesionesClaseService implements OnModuleInit {
           titulo: "Cierre de jornada escolar",
           mensaje: `Se ha registrado el cierre de tus sesiones de clase correspondientes al ${fecha}. Recuerda registrar y firmar tus sesiones a tiempo.`,
           tipo: "recordatorio",
-          enlaceUrl: "/docente/mis-sesiones",
+          enlaceUrl: "/admin/mis-sesiones",
         });
       }
     } catch {
@@ -445,6 +445,10 @@ export class SesionesClaseService implements OnModuleInit {
       throw new BadRequestException(MENSAJES_SESION.RANGO_INVALIDO);
     }
     const docenteId = await this.docenteDelUsuario(usuario);
+    const { fecha: hoy } = ahoraEnColegio();
+    if (hoy >= query.desde && hoy <= query.hasta) {
+      await this.asegurarGeneracion(hoy);
+    }
     const sesiones = await this.repository.sesionesDeDocente(docenteId, query.desde, query.hasta);
     const cuenta = (estado: string) => sesiones.filter((s) => s.estado === estado).length;
     return {

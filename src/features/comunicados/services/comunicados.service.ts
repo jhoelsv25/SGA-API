@@ -257,6 +257,10 @@ export class ComunicadosService {
   ): Promise<void> {
     const rol = (user.rol || "").toLowerCase();
 
+    if (rol === "estudiante" || rol === "apoderado") {
+      throw new ForbiddenException("No tiene permisos para emitir comunicados.");
+    }
+
     // Si es docente / tutor con alcance de tutoría:
     if (rol === "docente" || rol.includes("tutor")) {
       if (!seccionId || gradoId) {

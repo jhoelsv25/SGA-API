@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, desc, eq, gte, lte, sql, SQL } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lte, sql, SQL } from "drizzle-orm";
 import { Database, DRIZZLE } from "@/core/database";
 import {
   apoderados,
@@ -232,6 +232,48 @@ export class ConductaRepository {
   }
 
   /**
+   * Obtiene las matrículas asociadas a un usuario estudiante o apoderado.
+   */
+  async obtenerMatriculasDeUsuario(
+    usuarioId: string,
+    rol: "estudiante" | "apoderado",
+  ): Promise<string[]> {
+    if (rol === "estudiante") {
+      const rows = await this.db
+        .select({ matriculaId: matriculas.id })
+        .from(matriculas)
+        .innerJoin(estudiantes, eq(matriculas.estudianteId, estudiantes.id))
+        .innerJoin(usuarios, eq(estudiantes.personaId, usuarios.personaId))
+        .where(
+          and(
+            eq(usuarios.id, usuarioId),
+            inArray(matriculas.estado, ["matriculado", "vigente"]),
+          ),
+        )
+        .orderBy(desc(matriculas.creadoEn));
+      return rows.map((r) => r.matriculaId);
+    }
+
+    const rows = await this.db
+      .select({ matriculaId: matriculas.id })
+      .from(matriculas)
+      .innerJoin(
+        estudianteApoderados,
+        eq(matriculas.estudianteId, estudianteApoderados.estudianteId),
+      )
+      .innerJoin(apoderados, eq(estudianteApoderados.apoderadoId, apoderados.id))
+      .innerJoin(usuarios, eq(apoderados.personaId, usuarios.personaId))
+      .where(
+        and(
+          eq(usuarios.id, usuarioId),
+          inArray(matriculas.estado, ["matriculado", "vigente"]),
+        ),
+      )
+      .orderBy(desc(matriculas.creadoEn));
+    return rows.map((r) => r.matriculaId);
+  }
+
+  /**
    * Deduce el bimestre/periodo académico según la fecha.
    */
   async deducirPeriodoId(matriculaId: string, fecha: string): Promise<string> {
@@ -349,6 +391,13 @@ export class ConductaRepository {
         estNombres: personas.nombres,
         estPaterno: personas.apellidoPaterno,
         estMaterno: personas.apellidoMaterno,
+        registradoPorNombre: sql<string>`(
+          SELECT TRIM(CONCAT(p2.nombres, ' ', p2.apellido_paterno, ' ', COALESCE(p2.apellido_materno, '')))
+          FROM usuarios u2
+          JOIN personas p2 ON p2.id = u2.persona_id
+          WHERE u2.id = ${incidenciasConducta.registradoPorId}
+          LIMIT 1
+        )`,
       })
       .from(incidenciasConducta)
       .innerJoin(periodosAcademicos, eq(incidenciasConducta.periodoId, periodosAcademicos.id))
@@ -374,6 +423,7 @@ export class ConductaRepository {
       periodoId: r.periodoId,
       periodoNombre: r.periodoNombre,
       registradoPorId: r.registradoPorId,
+      registradoPorNombre: r.registradoPorNombre || undefined,
       fecha: r.fecha,
       tipo: r.tipo as "merito" | "falta",
       categoria: r.categoria,
@@ -485,6 +535,13 @@ export class ConductaRepository {
         estNombres: personas.nombres,
         estPaterno: personas.apellidoPaterno,
         estMaterno: personas.apellidoMaterno,
+        registradoPorNombre: sql<string>`(
+          SELECT TRIM(CONCAT(p2.nombres, ' ', p2.apellido_paterno, ' ', COALESCE(p2.apellido_materno, '')))
+          FROM usuarios u2
+          JOIN personas p2 ON p2.id = u2.persona_id
+          WHERE u2.id = ${incidenciasConducta.registradoPorId}
+          LIMIT 1
+        )`,
       })
       .from(incidenciasConducta)
       .innerJoin(periodosAcademicos, eq(incidenciasConducta.periodoId, periodosAcademicos.id))
@@ -515,6 +572,7 @@ export class ConductaRepository {
       periodoId: r.periodoId,
       periodoNombre: r.periodoNombre,
       registradoPorId: r.registradoPorId,
+      registradoPorNombre: r.registradoPorNombre || undefined,
       fecha: r.fecha,
       tipo: r.tipo as "merito" | "falta",
       categoria: r.categoria,
@@ -575,6 +633,13 @@ export class ConductaRepository {
         estNombres: personas.nombres,
         estPaterno: personas.apellidoPaterno,
         estMaterno: personas.apellidoMaterno,
+        registradoPorNombre: sql<string>`(
+          SELECT TRIM(CONCAT(p2.nombres, ' ', p2.apellido_paterno, ' ', COALESCE(p2.apellido_materno, '')))
+          FROM usuarios u2
+          JOIN personas p2 ON p2.id = u2.persona_id
+          WHERE u2.id = ${observacionesEstudiante.registradoPorId}
+          LIMIT 1
+        )`,
       })
       .from(observacionesEstudiante)
       .innerJoin(matriculas, eq(observacionesEstudiante.matriculaId, matriculas.id))
@@ -595,6 +660,7 @@ export class ConductaRepository {
       seccionId: r.seccionId,
       seccionNombre: r.seccionNombre,
       registradoPorId: r.registradoPorId,
+      registradoPorNombre: r.registradoPorNombre || undefined,
       fecha: r.fecha,
       tipo: r.tipo as TipoObservacion,
       observacion: r.observacion,
@@ -659,6 +725,13 @@ export class ConductaRepository {
         estNombres: personas.nombres,
         estPaterno: personas.apellidoPaterno,
         estMaterno: personas.apellidoMaterno,
+        registradoPorNombre: sql<string>`(
+          SELECT TRIM(CONCAT(p2.nombres, ' ', p2.apellido_paterno, ' ', COALESCE(p2.apellido_materno, '')))
+          FROM usuarios u2
+          JOIN personas p2 ON p2.id = u2.persona_id
+          WHERE u2.id = ${observacionesEstudiante.registradoPorId}
+          LIMIT 1
+        )`,
       })
       .from(observacionesEstudiante)
       .innerJoin(matriculas, eq(observacionesEstudiante.matriculaId, matriculas.id))
@@ -686,6 +759,7 @@ export class ConductaRepository {
       seccionId: r.seccionId,
       seccionNombre: r.seccionNombre,
       registradoPorId: r.registradoPorId,
+      registradoPorNombre: r.registradoPorNombre || undefined,
       fecha: r.fecha,
       tipo: r.tipo as TipoObservacion,
       observacion: r.observacion,

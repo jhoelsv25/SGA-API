@@ -282,9 +282,16 @@ export class LibretasRepository {
       .where(eq(roles.activo, true));
 
     return rows.flatMap((row) => {
-      const alcance = row.alcance;
+      let alcance = row.alcance as AlcanceLibreta | null;
       if (alcance !== "tutoria" && alcance !== "mis_secciones" && alcance !== "colegio") {
-        return [];
+        const nombreNorm = row.rolNombre.toLowerCase();
+        if (nombreNorm === "docente") {
+          alcance = "tutoria";
+        } else if (["secretaria", "director", "subdirector"].includes(nombreNorm)) {
+          alcance = "colegio";
+        } else {
+          return [];
+        }
       }
       return [{ rolId: row.rolId, rolNombre: row.rolNombre, alcance }];
     });

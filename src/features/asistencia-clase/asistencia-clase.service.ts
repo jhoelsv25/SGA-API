@@ -486,7 +486,7 @@ export class AsistenciaClaseService {
           titulo: "Aviso de inasistencia",
           mensaje: `El estudiante ${dest.estudianteNombre} ha registrado falta el día ${sesion.fecha} en la clase de ${sesion.cursoNombre}.`,
           tipo: "alerta",
-          enlaceUrl: "/portal/mi-asistencia",
+          enlaceUrl: "/admin/mi-asistencia",
         });
       }
     } catch {

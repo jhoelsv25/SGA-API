@@ -340,7 +340,7 @@ export class DashboardRepository {
     let sesEnCurso = 0;
     for (const s of sesionesHoyRes) {
       const tot = Number(s.total);
-      if (s.estado === "completada") sesComp += tot;
+      if (s.estado === "cumplida") sesComp += tot;
       else if (s.estado === "en_curso") sesEnCurso += tot;
       sesProg += tot;
     }
@@ -495,7 +495,7 @@ export class DashboardRepository {
         docenteId: docentes.id,
         docenteNombre: sql<string>`${personas.nombres} || ' ' || ${personas.apellidoPaterno}`,
         totalSesiones: count(sesionesClase.id),
-        sesionesRegistradas: sql<number>`count(*) filter (where ${sesionesClase.estado} in ('completada', 'en_curso'))`,
+        sesionesRegistradas: sql<number>`count(*) filter (where ${sesionesClase.estado} in ('cumplida', 'en_curso'))`,
       })
       .from(docentes)
       .innerJoin(personas, eq(docentes.personaId, personas.id))
@@ -538,7 +538,7 @@ export class DashboardRepository {
         tipo: "asistencia_faltas",
         titulo: `${hoyFaltas} inasistencias reportadas hoy`,
         detalle: "Estudiantes con falta registrada en las secciones del colegio.",
-        enlace: "/admin/asistencia",
+        enlace: "/admin/asistencia-seccion",
         nivel: "info",
       });
     }
@@ -757,7 +757,7 @@ export class DashboardRepository {
       estado: s.estado,
     }));
 
-    const sesCompletadas = sesionesHoy.filter((s) => s.estado === "completada").length;
+    const sesCompletadas = sesionesHoy.filter((s) => s.estado === "cumplida").length;
 
     const tareasPorCorregir = tareasRecientesRows.map((t) => ({
       id: t.id,

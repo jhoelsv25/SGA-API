@@ -36,7 +36,7 @@ export class MatriculasController {
   constructor(private readonly matriculasService: MatriculasService) {}
 
   @Get()
-  @Roles("Administrador", "Secretaria", "Director", "Subdirector")
+  @Roles("Administrador", "Secretaria", "Director", "Subdirector", "Docente")
   @ApiOperation({ summary: "Listar matrículas con paginación por cursor y filtros avanzados" })
   @ApiResponse({ status: 200, type: PaginatedMatriculasResponseDto })
   async findAll(@Query() query: MatriculaQueryDto): Promise<PaginatedMatriculasResponseDto> {

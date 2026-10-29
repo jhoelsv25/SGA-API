@@ -65,7 +65,7 @@ export class MedicionService {
     ip?: string,
   ): Promise<MensajeIndicadoresResponseDto & { medicion: MedicionBimestreResponseDto }> {
     const rolNormalizado = rol?.toLowerCase();
-    if (rolNormalizado !== "director" && rolNormalizado !== "admin") {
+    if (!["director", "admin", "administrador"].includes(rolNormalizado)) {
       throw new ForbiddenException(MENSAJES_INDICADORES.ROL_NO_AUTORIZADO);
     }
 
@@ -165,7 +165,7 @@ export class MedicionService {
     ip?: string,
   ): Promise<MensajeIndicadoresResponseDto & { medicion: MedicionBimestreResponseDto }> {
     const rolNormalizado = rol?.toLowerCase();
-    if (rolNormalizado !== "director" && rolNormalizado !== "admin") {
+    if (!["director", "admin", "administrador"].includes(rolNormalizado)) {
       throw new ForbiddenException(MENSAJES_INDICADORES.ROL_NO_AUTORIZADO);
     }
 

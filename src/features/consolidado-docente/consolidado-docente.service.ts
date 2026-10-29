@@ -471,6 +471,10 @@ export class ConsolidadoDocenteService {
 
     // Notificar al docente
     if (solicitud.docenteUsuarioId) {
+      const consolidadoSolicitud = await this.repository.obtenerConsolidadoPorId(
+        solicitud.consolidadoId,
+      );
+      const periodoDestino = consolidadoSolicitud?.periodoId ?? solicitud.consolidadoId;
       const textoMensaje =
         dto.accion === "aceptar"
           ? `Tu solicitud de revisión fue aceptada. El consolidado fue reabierto.${respuestaFinal ? " Respuesta: " + respuestaFinal : ""}`
@@ -481,7 +485,7 @@ export class ConsolidadoDocenteService {
         tipo: "informacion",
         titulo: `Solicitud de revisión ${dto.accion === "aceptar" ? "aceptada" : "rechazada"}`,
         mensaje: textoMensaje,
-        enlaceUrl: `/admin/mi-seguimiento?periodoId=${solicitud.consolidadoId}`,
+        enlaceUrl: `/admin/mi-seguimiento?periodoId=${periodoDestino}`,
       });
     }
 

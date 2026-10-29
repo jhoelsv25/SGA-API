@@ -1,7 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { sql } from "drizzle-orm";
 import { Database, DRIZZLE } from "@/core/database";
-import { comunicados, notificaciones } from "@/core/database/schema";
+import { comunicados } from "@/core/database/schema";
 import { decodeCursor, encodeCursor } from "@/common/utils";
 import {
   AvanceLecturaResponse,
@@ -197,8 +197,9 @@ export class ComunicadosRepository {
         JOIN personas p ON p.id = e.persona_id
         JOIN usuarios u ON u.persona_id = p.id
         JOIN secciones s ON s.id = m.seccion_id
-        WHERE m.estado = 'matriculado'
-          AND u.activo = TRUE
+        WHERE m.estado IN ('matriculado', 'vigente')
+          AND u.estado = 'activo'
+          AND u.eliminado_en IS NULL
           ${seccionId ? `AND m.seccion_id = '${seccionId}'::UUID` : ""}
           ${gradoId ? `AND s.grado_id = '${gradoId}'::UUID` : ""}
       `);
@@ -216,8 +217,9 @@ export class ComunicadosRepository {
         JOIN apoderados a ON a.id = ea.apoderado_id
         JOIN personas p ON p.id = a.persona_id
         JOIN usuarios u ON u.persona_id = p.id
-        WHERE m.estado = 'matriculado'
-          AND u.activo = TRUE
+        WHERE m.estado IN ('matriculado', 'vigente')
+          AND u.estado = 'activo'
+          AND u.eliminado_en IS NULL
           ${seccionId ? `AND m.seccion_id = '${seccionId}'::UUID` : ""}
           ${gradoId ? `AND s.grado_id = '${gradoId}'::UUID` : ""}
       `);
@@ -232,19 +234,21 @@ export class ComunicadosRepository {
         FROM docentes d
         JOIN personas p ON p.id = d.persona_id
         JOIN usuarios u ON u.persona_id = p.id
-        WHERE u.activo = TRUE
+        WHERE u.estado = 'activo'
+          AND u.eliminado_en IS NULL
           ${
             seccionId
               ? `AND (
-                  d.id IN (SELECT tutor_id FROM secciones WHERE id = '${seccionId}'::UUID)
-                  OR d.id IN (SELECT docente_id FROM carga_academica WHERE seccion_id = '${seccionId}'::UUID)
+                  d.id IN (SELECT tutor_id FROM secciones WHERE id = '${seccionId}'::UUID AND tutor_id IS NOT NULL)
+                  OR d.id IN (SELECT docente_id FROM cursos_seccion WHERE seccion_id = '${seccionId}'::UUID AND docente_id IS NOT NULL)
                 )`
               : gradoId
                 ? `AND d.id IN (
-                  SELECT ca.docente_id 
-                  FROM carga_academica ca 
-                  JOIN secciones sec ON sec.id = ca.seccion_id 
+                  SELECT cs.docente_id 
+                  FROM cursos_seccion cs 
+                  JOIN secciones sec ON sec.id = cs.seccion_id 
                   WHERE sec.grado_id = '${gradoId}'::UUID
+                    AND cs.docente_id IS NOT NULL
                 )`
                 : ""
           }
@@ -269,27 +273,16 @@ export class ComunicadosRepository {
     return Array.from(map.values());
   }
 
-  async registrarNotificacionesComunicado(
-    comunicadoId: string,
-    titulo: string,
-    mensaje: string,
-    tipo: "informacion" | "alerta" | "recordatorio",
+  registrarNotificacionesComunicado(
+    _comunicadoId: string,
+    _titulo: string,
+    _mensaje: string,
+    _tipo: "informacion" | "alerta" | "recordatorio",
     destinatarioUserIds: string[],
   ): Promise<number> {
-    if (destinatarioUserIds.length === 0) return 0;
-
-    const values = destinatarioUserIds.map((userId) => ({
-      usuarioId: userId,
-      titulo,
-      mensaje,
-      tipo,
-      comunicadoId,
-      enlaceUrl: `/admin/comunicados?id=${comunicadoId}`,
-      leida: false,
-    }));
-
-    await this.db.insert(notificaciones).values(values);
-    return values.length;
+    // La inserción y el encolado por canal los realiza NotificacionesService.enviar
+    // para evitar duplicar filas in_app en la tabla notificaciones.
+    return Promise.resolve(destinatarioUserIds.length);
   }
 
   async marcarLectura(comunicadoId: string, usuarioId: string): Promise<boolean> {

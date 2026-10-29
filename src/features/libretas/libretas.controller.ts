@@ -3,6 +3,7 @@ import {
   Body,
   Controller,
   Get,
+  NotFoundException,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -13,7 +14,7 @@ import {
   UseInterceptors,
 } from "@nestjs/common";
 import { FilesInterceptor } from "@nestjs/platform-express";
-import { createReadStream } from "node:fs";
+import { createReadStream, existsSync } from "node:fs";
 import { ApiBearerAuth, ApiConsumes, ApiHeader, ApiTags } from "@nestjs/swagger";
 import { HEADER_ANIO_ACADEMICO } from "@/common/anio-lectivo";
 import { MENU_LIBRETAS, MENU_MIS_LIBRETAS } from "@/common/constants";
@@ -205,6 +206,9 @@ export class LibretasController {
     @ClientInfo() clientInfo: ClientInfoData,
   ): Promise<StreamableFile> {
     const archivo = await this.service.abrir(id, actorDe(usuario), clientInfo.ip);
+    if (!existsSync(archivo.ruta)) {
+      throw new NotFoundException("El archivo PDF de la libreta no se encuentra en el servidor.");
+    }
     return new StreamableFile(createReadStream(archivo.ruta), {
       type: "application/pdf",
       disposition: `inline; filename="${archivo.nombre.replace(/"/g, "")}"`,

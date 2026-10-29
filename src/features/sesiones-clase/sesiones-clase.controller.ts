@@ -127,7 +127,7 @@ export class SesionesClaseController {
 
   @Patch(":id/reemplazo")
   @ApiBearerAuth()
-  @MenuAccess(MENU_JUSTIFICACIONES_SESION)
+  @MenuAccess(MENU_SESIONES_HOY)
   @ApiOperation({ summary: "Asignar un docente de reemplazo a una sesión sin firmar" })
   @ApiParam({ name: "id", description: "UUID de la sesión" })
   @ApiResponse({ status: 200, type: SesionResponseDto })
