@@ -51,12 +51,25 @@ export interface BloqueCursoResponse {
   horaFin: string;
 }
 
+export interface HijoAulaResponse {
+  estudianteId: string;
+  personaId: string;
+  matriculaId: string;
+  nombreCompleto: string;
+}
+
 export interface AulaVirtualResponse {
   cursoSeccionId: string;
   cursoNombre: string;
   seccionNombre: string;
   /** El docente asignado puede administrar el aula; el resto solo la consulta. */
   puedeAdministrar: boolean;
+  /** Rol efectivo del usuario dentro de esta aula virtual. */
+  rolEnAula?: "docente" | "estudiante" | "directivo" | "apoderado";
+  /** Indica si el usuario puede consultar el historial de moderación. */
+  puedeVerModeracion?: boolean;
+  /** Hijos del apoderado matriculados en la sección de este curso. */
+  hijosEnCurso?: HijoAulaResponse[];
   diasPlanificacion: number;
   tamanoMaximoMb: number;
   bloques: BloqueCursoResponse[];

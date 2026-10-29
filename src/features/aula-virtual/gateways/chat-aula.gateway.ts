@@ -113,6 +113,23 @@ export class ChatAulaGateway implements OnGatewayConnection, OnGatewayDisconnect
       return { ok: false, mensaje: "Curso no encontrado" };
     }
 
+    const esDirectivo = ["Administrador", "Director", "Subdirector"].includes(user.role);
+    let tieneAcceso = esDirectivo;
+    if (!tieneAcceso && curso.docenteId) {
+      const docenteId = await this.aulaRepository.findDocenteIdPorPersona(user.personaId);
+      tieneAcceso = docenteId === curso.docenteId;
+    }
+    if (!tieneAcceso) {
+      const matricula = await this.aulaRepository.obtenerMatriculaActivaEstudiante(
+        user.personaId,
+        curso.seccionId,
+      );
+      tieneAcceso = Boolean(matricula);
+    }
+    if (!tieneAcceso) {
+      return { ok: false, mensaje: "No participa en esta aula virtual." };
+    }
+
     // Unirse a la sala del curso
     const roomName = `curso_${data.cursoSeccionId}`;
     await client.join(roomName);

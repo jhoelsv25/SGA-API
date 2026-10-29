@@ -1,4 +1,6 @@
+import { extname } from "node:path";
 import {
+  EXTENSIONES_ADJUNTO_INTERACCION,
   MENSAJES_INTERACCION,
   MINUTOS_MAXIMO_EDICION_INTERACCION,
   TAMANO_MAXIMO_ADJUNTO_INTERACCION_BYTES,
@@ -7,6 +9,20 @@ import {
 export interface ValidacionResultado {
   valido: boolean;
   mensaje?: string;
+}
+
+/**
+ * Valida que el formato del adjunto en el muro o chat sea imagen o PDF.
+ */
+export function validarFormatoAdjuntoInteraccion(nombreArchivo: string): ValidacionResultado {
+  const ext = extname(nombreArchivo).toLowerCase();
+  if (!(EXTENSIONES_ADJUNTO_INTERACCION as readonly string[]).includes(ext)) {
+    return {
+      valido: false,
+      mensaje: MENSAJES_INTERACCION.FORMATO_ADJUNTO_NO_PERMITIDO,
+    };
+  }
+  return { valido: true };
 }
 
 /**

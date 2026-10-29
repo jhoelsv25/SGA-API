@@ -166,7 +166,28 @@ export interface IAulaVirtualRepository {
   leerVariableEntera(codigo: string, porDefecto: number): Promise<number>;
   cursosDelDocente(docenteId: string, anioAcademicoId: string): Promise<CursoAulaResumen[]>;
   cursosDelEstudiante(personaId: string, anioAcademicoId: string): Promise<CursoAulaResumen[]>;
+  cursosDelAnio(anioAcademicoId: string): Promise<CursoAulaResumen[]>;
+  cursosDelApoderado(
+    apoderadoPersonaId: string,
+    anioAcademicoId: string,
+  ): Promise<CursoAulaResumen[]>;
   estudianteTieneMatriculaEnSeccion(personaId: string, seccionId: string): Promise<boolean>;
+  apoderadoTieneHijoEnSeccion(apoderadoPersonaId: string, seccionId: string): Promise<boolean>;
+  esApoderadoDeEstudiante(
+    apoderadoPersonaId: string,
+    estudiantePersonaIdOId: string,
+  ): Promise<boolean>;
+  estudiantesDeApoderadoEnSeccion(
+    apoderadoPersonaId: string,
+    seccionId: string,
+  ): Promise<
+    Array<{
+      estudianteId: string;
+      personaId: string;
+      matriculaId: string;
+      nombreCompleto: string;
+    }>
+  >;
 
   listarUnidades(cursoSeccionId: string, soloPublicadas: boolean): Promise<UnidadFila[]>;
   findUnidad(unidadId: string): Promise<UnidadFila | null>;

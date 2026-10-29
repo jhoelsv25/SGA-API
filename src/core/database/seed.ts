@@ -1170,7 +1170,7 @@ async function seed() {
       ruta: MENU_AULA_VIRTUAL,
       icono: "BookOpen01Icon",
       orden: 1,
-      roles: ["Docente", "Estudiante"],
+      roles: ["Director", "Subdirector", "Docente", "Estudiante", "Apoderado"],
     },
     {
       nombre: "Materiales del bimestre",

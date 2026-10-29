@@ -185,6 +185,11 @@ export class ActualizarTareaDto {
   @MaxLength(2000)
   instrucciones?: string;
 
+  @ApiPropertyOptional({ description: "Unidad de aprendizaje a la que pertenece." })
+  @IsOptional()
+  @IsUUID("4", { message: "La unidad no es válida." })
+  unidadId?: string | null;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsDateString()
@@ -314,4 +319,21 @@ export class ListarTareasQueryDto {
   @IsOptional()
   @IsUUID("4")
   periodoId?: string;
+
+  @ApiPropertyOptional({
+    description: "UUID del estudiante o su persona (para consulta del apoderado).",
+  })
+  @IsOptional()
+  @IsUUID("4")
+  estudianteId?: string;
+}
+
+export class CerrarTareaDto {
+  @ApiPropertyOptional({
+    default: false,
+    description: "Si es verdadero, asigna 0 a los estudiantes sin entrega cuando venció el plazo.",
+  })
+  @IsOptional()
+  @IsBoolean()
+  asignarCeroSinEntrega?: boolean;
 }

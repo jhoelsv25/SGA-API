@@ -158,6 +158,14 @@ export const CRON_RECORDATORIO_TAREAS = "*/5 * * * *"; // Cada 5 minutos en hora
  */
 export const TAMANO_MAXIMO_ADJUNTO_INTERACCION_BYTES = 10 * 1024 * 1024; // 10 MB
 export const MINUTOS_MAXIMO_EDICION_INTERACCION = 15;
+export const EXTENSIONES_ADJUNTO_INTERACCION = [
+  ".pdf",
+  ".png",
+  ".jpg",
+  ".jpeg",
+  ".webp",
+  ".gif",
+] as const;
 
 export const CARPETA_INTERACCION = "interaccion";
 
@@ -170,6 +178,8 @@ export type AccionActividadAula = (typeof ACCIONES_ACTIVIDAD_AULA)[number];
 export const MENSAJES_INTERACCION = {
   PUBLICACION_VACIA: "Escriba un texto o agregue un adjunto.",
   ADJUNTO_MUY_PESADO: "El adjunto supera el máximo de 10 MB.",
+  FORMATO_ADJUNTO_NO_PERMITIDO:
+    "Solo se permiten imágenes (PNG, JPG, WEBP, GIF) o archivos PDF en el muro y chat.",
   EDICION_FUERA_DE_PLAZO: "Solo puede editar dentro de los 15 minutos de publicado.",
   MOTIVO_REQUERIDO: "Indique el motivo para ocultar el contenido.",
   CONTENIDO_OCULTADO: "El contenido se ocultó para los estudiantes.",

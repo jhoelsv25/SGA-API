@@ -4,12 +4,14 @@ import { Database, DRIZZLE } from "../../../core/database";
 import {
   actividadAula,
   aniosAcademicos,
+  apoderados,
   chatLecturas,
   comentariosPublicacion,
   cursos,
   cursosSeccion,
   docentes,
   entregasTarea,
+  estudianteApoderados,
   estudiantes,
   grados,
   horarios,
@@ -330,9 +332,9 @@ export class AulaVirtualRepository implements IAulaVirtualRepository {
       .innerJoin(cursos, eq(cursos.id, cursosSeccion.cursoId))
       .where(
         and(
-          eq(estudiantes.personaId, personaId),
+          or(eq(estudiantes.personaId, personaId), eq(estudiantes.id, personaId)),
           eq(matriculas.anioAcademicoId, anioAcademicoId),
-          eq(matriculas.estado, "matriculado"),
+          inArray(matriculas.estado, ["matriculado", "vigente"]),
         ),
       )
       .orderBy(asc(cursos.nombre));
@@ -347,11 +349,151 @@ export class AulaVirtualRepository implements IAulaVirtualRepository {
         and(
           eq(estudiantes.personaId, personaId),
           eq(matriculas.seccionId, seccionId),
-          eq(matriculas.estado, "matriculado"),
+          inArray(matriculas.estado, ["matriculado", "vigente"]),
         ),
       )
       .limit(1);
     return Boolean(fila);
+  }
+
+  async cursosDelAnio(anioAcademicoId: string): Promise<CursoAulaResumen[]> {
+    const docentePersona = sql<string | null>`(
+      SELECT ${nombreSql(personas)} FROM ${docentes}
+      JOIN ${personas} ON ${personas.id} = ${docentes.personaId}
+      WHERE ${docentes.id} = ${cursosSeccion.docenteId})`;
+    return this.db
+      .select({
+        cursoSeccionId: cursosSeccion.id,
+        cursoNombre: cursos.nombre,
+        seccionNombre: seccionNombreSql,
+        docenteNombre: docentePersona,
+      })
+      .from(cursosSeccion)
+      .innerJoin(cursos, eq(cursos.id, cursosSeccion.cursoId))
+      .innerJoin(secciones, eq(secciones.id, cursosSeccion.seccionId))
+      .innerJoin(grados, eq(grados.id, secciones.gradoId))
+      .where(eq(secciones.anioAcademicoId, anioAcademicoId))
+      .orderBy(asc(grados.numero), asc(secciones.nombre), asc(cursos.nombre));
+  }
+
+  async cursosDelApoderado(
+    apoderadoPersonaId: string,
+    anioAcademicoId: string,
+  ): Promise<CursoAulaResumen[]> {
+    const docentePersona = sql<string | null>`(
+      SELECT ${nombreSql(personas)} FROM ${docentes}
+      JOIN ${personas} ON ${personas.id} = ${docentes.personaId}
+      WHERE ${docentes.id} = ${cursosSeccion.docenteId})`;
+    const filas = await this.db
+      .select({
+        cursoSeccionId: cursosSeccion.id,
+        cursoNombre: cursos.nombre,
+        seccionNombre: seccionNombreSql,
+        docenteNombre: docentePersona,
+      })
+      .from(estudianteApoderados)
+      .innerJoin(apoderados, eq(apoderados.id, estudianteApoderados.apoderadoId))
+      .innerJoin(estudiantes, eq(estudiantes.id, estudianteApoderados.estudianteId))
+      .innerJoin(matriculas, eq(matriculas.estudianteId, estudiantes.id))
+      .innerJoin(secciones, eq(secciones.id, matriculas.seccionId))
+      .innerJoin(grados, eq(grados.id, secciones.gradoId))
+      .innerJoin(cursosSeccion, eq(cursosSeccion.seccionId, secciones.id))
+      .innerJoin(cursos, eq(cursos.id, cursosSeccion.cursoId))
+      .where(
+        and(
+          eq(apoderados.personaId, apoderadoPersonaId),
+          isNull(apoderados.eliminadoEn),
+          eq(matriculas.anioAcademicoId, anioAcademicoId),
+          inArray(matriculas.estado, ["matriculado", "vigente"]),
+        ),
+      )
+      .orderBy(asc(grados.numero), asc(secciones.nombre), asc(cursos.nombre));
+
+    const vistos = new Set<string>();
+    return filas.filter((f) => {
+      if (vistos.has(f.cursoSeccionId)) return false;
+      vistos.add(f.cursoSeccionId);
+      return true;
+    });
+  }
+
+  async apoderadoTieneHijoEnSeccion(
+    apoderadoPersonaId: string,
+    seccionId: string,
+  ): Promise<boolean> {
+    const [fila] = await this.db
+      .select({ id: matriculas.id })
+      .from(estudianteApoderados)
+      .innerJoin(apoderados, eq(apoderados.id, estudianteApoderados.apoderadoId))
+      .innerJoin(estudiantes, eq(estudiantes.id, estudianteApoderados.estudianteId))
+      .innerJoin(matriculas, eq(matriculas.estudianteId, estudiantes.id))
+      .where(
+        and(
+          eq(apoderados.personaId, apoderadoPersonaId),
+          isNull(apoderados.eliminadoEn),
+          eq(matriculas.seccionId, seccionId),
+          inArray(matriculas.estado, ["matriculado", "vigente"]),
+        ),
+      )
+      .limit(1);
+    return Boolean(fila);
+  }
+
+  async esApoderadoDeEstudiante(
+    apoderadoPersonaId: string,
+    estudiantePersonaIdOId: string,
+  ): Promise<boolean> {
+    const [fila] = await this.db
+      .select({ estudianteId: estudiantes.id })
+      .from(estudianteApoderados)
+      .innerJoin(apoderados, eq(apoderados.id, estudianteApoderados.apoderadoId))
+      .innerJoin(estudiantes, eq(estudiantes.id, estudianteApoderados.estudianteId))
+      .where(
+        and(
+          eq(apoderados.personaId, apoderadoPersonaId),
+          isNull(apoderados.eliminadoEn),
+          or(
+            eq(estudiantes.personaId, estudiantePersonaIdOId),
+            eq(estudiantes.id, estudiantePersonaIdOId),
+          ),
+        ),
+      )
+      .limit(1);
+    return Boolean(fila);
+  }
+
+  async estudiantesDeApoderadoEnSeccion(
+    apoderadoPersonaId: string,
+    seccionId: string,
+  ): Promise<
+    Array<{
+      estudianteId: string;
+      personaId: string;
+      matriculaId: string;
+      nombreCompleto: string;
+    }>
+  > {
+    return this.db
+      .select({
+        estudianteId: estudiantes.id,
+        personaId: personas.id,
+        matriculaId: matriculas.id,
+        nombreCompleto: nombreSql(personas),
+      })
+      .from(estudianteApoderados)
+      .innerJoin(apoderados, eq(apoderados.id, estudianteApoderados.apoderadoId))
+      .innerJoin(estudiantes, eq(estudiantes.id, estudianteApoderados.estudianteId))
+      .innerJoin(personas, eq(personas.id, estudiantes.personaId))
+      .innerJoin(matriculas, eq(matriculas.estudianteId, estudiantes.id))
+      .where(
+        and(
+          eq(apoderados.personaId, apoderadoPersonaId),
+          isNull(apoderados.eliminadoEn),
+          eq(matriculas.seccionId, seccionId),
+          inArray(matriculas.estado, ["matriculado", "vigente"]),
+        ),
+      )
+      .orderBy(asc(personas.apellidoPaterno), asc(personas.nombres));
   }
 
   async listarUnidades(cursoSeccionId: string, soloPublicadas: boolean): Promise<UnidadFila[]> {
@@ -1224,7 +1366,7 @@ export class AulaVirtualRepository implements IAulaVirtualRepository {
       .where(
         and(
           eq(matriculas.seccionId, seccionId),
-          eq(matriculas.estado, "vigente"),
+          inArray(matriculas.estado, ["matriculado", "vigente"]),
           or(
             eq(estudiantes.personaId, estudiantePersonaIdOId),
             eq(estudiantes.id, estudiantePersonaIdOId),
@@ -1251,7 +1393,12 @@ export class AulaVirtualRepository implements IAulaVirtualRepository {
       .from(matriculas)
       .innerJoin(estudiantes, eq(estudiantes.id, matriculas.estudianteId))
       .innerJoin(personas, eq(personas.id, estudiantes.personaId))
-      .where(and(eq(matriculas.seccionId, seccionId), eq(matriculas.estado, "vigente")))
+      .where(
+        and(
+          eq(matriculas.seccionId, seccionId),
+          inArray(matriculas.estado, ["matriculado", "vigente"]),
+        ),
+      )
       .orderBy(asc(personas.apellidoPaterno), asc(personas.nombres));
 
     return filas;
@@ -1350,12 +1497,17 @@ export class AulaVirtualRepository implements IAulaVirtualRepository {
       ${verOcultos ? sql`` : sql`AND cp.vigente = true`}
     )`;
 
+    const autorRolSql = sql<string>`CASE WHEN EXISTS (
+      SELECT 1 FROM roles r WHERE r.id = ${usuarios.rolId} AND LOWER(r.nombre) IN ('docente', 'director', 'subdirector', 'administrador')
+    ) THEN 'docente' ELSE 'estudiante' END`;
+
     const filas = await this.db
       .select({
         id: publicacionesAula.id,
         cursoSeccionId: publicacionesAula.cursoSeccionId,
         autorId: publicacionesAula.autorId,
         autorNombre: nombreSql(personas),
+        autorRol: autorRolSql,
         contenido: publicacionesAula.contenido,
         adjuntoUrl: publicacionesAula.adjuntoUrl,
         fijada: publicacionesAula.fijada,
@@ -1379,8 +1531,12 @@ export class AulaVirtualRepository implements IAulaVirtualRepository {
   async obtenerPublicacion(id: string): Promise<PublicacionMuroFila | null> {
     const comentariosCountSql = sql<number>`(
       SELECT COUNT(*)::int FROM comentarios_publicacion cp
-      WHERE cp.publicacion_id = ${publicacionesAula.id}
+      WHERE cp.publicacion_id = ${publicacionesAula.id} AND cp.vigente = true
     )`;
+
+    const autorRolSql = sql<string>`CASE WHEN EXISTS (
+      SELECT 1 FROM roles r WHERE r.id = ${usuarios.rolId} AND LOWER(r.nombre) IN ('docente', 'director', 'subdirector', 'administrador')
+    ) THEN 'docente' ELSE 'estudiante' END`;
 
     const [fila] = await this.db
       .select({
@@ -1388,6 +1544,7 @@ export class AulaVirtualRepository implements IAulaVirtualRepository {
         cursoSeccionId: publicacionesAula.cursoSeccionId,
         autorId: publicacionesAula.autorId,
         autorNombre: nombreSql(personas),
+        autorRol: autorRolSql,
         contenido: publicacionesAula.contenido,
         adjuntoUrl: publicacionesAula.adjuntoUrl,
         fijada: publicacionesAula.fijada,
@@ -1472,12 +1629,17 @@ export class AulaVirtualRepository implements IAulaVirtualRepository {
       condiciones.push(eq(comentariosPublicacion.vigente, true));
     }
 
+    const autorRolSql = sql<string>`CASE WHEN EXISTS (
+      SELECT 1 FROM roles r WHERE r.id = ${usuarios.rolId} AND LOWER(r.nombre) IN ('docente', 'director', 'subdirector', 'administrador')
+    ) THEN 'docente' ELSE 'estudiante' END`;
+
     const filas = await this.db
       .select({
         id: comentariosPublicacion.id,
         publicacionId: comentariosPublicacion.publicacionId,
         autorId: comentariosPublicacion.autorId,
         autorNombre: nombreSql(personas),
+        autorRol: autorRolSql,
         contenido: comentariosPublicacion.contenido,
         vigente: comentariosPublicacion.vigente,
         creadoEn: sql<string>`${comentariosPublicacion.creadoEn}::text`,
@@ -1496,12 +1658,17 @@ export class AulaVirtualRepository implements IAulaVirtualRepository {
   }
 
   async obtenerComentario(id: string): Promise<ComentarioMuroFila | null> {
+    const autorRolSql = sql<string>`CASE WHEN EXISTS (
+      SELECT 1 FROM roles r WHERE r.id = ${usuarios.rolId} AND LOWER(r.nombre) IN ('docente', 'director', 'subdirector', 'administrador')
+    ) THEN 'docente' ELSE 'estudiante' END`;
+
     const [fila] = await this.db
       .select({
         id: comentariosPublicacion.id,
         publicacionId: comentariosPublicacion.publicacionId,
         autorId: comentariosPublicacion.autorId,
         autorNombre: nombreSql(personas),
+        autorRol: autorRolSql,
         contenido: comentariosPublicacion.contenido,
         vigente: comentariosPublicacion.vigente,
         creadoEn: sql<string>`${comentariosPublicacion.creadoEn}::text`,
@@ -1569,12 +1736,17 @@ export class AulaVirtualRepository implements IAulaVirtualRepository {
       condiciones.push(eq(mensajesChat.vigente, true));
     }
 
+    const emisorRolSql = sql<string>`CASE WHEN EXISTS (
+      SELECT 1 FROM roles r WHERE r.id = ${usuarios.rolId} AND LOWER(r.nombre) IN ('docente', 'director', 'subdirector', 'administrador')
+    ) THEN 'docente' ELSE 'estudiante' END`;
+
     const filas = await this.db
       .select({
         id: mensajesChat.id,
         cursoSeccionId: mensajesChat.cursoSeccionId,
         emisorId: mensajesChat.emisorId,
         emisorNombre: nombreSql(personas),
+        emisorRol: emisorRolSql,
         contenido: mensajesChat.contenido,
         adjuntoUrl: mensajesChat.adjuntoUrl,
         vigente: mensajesChat.vigente,
@@ -1595,12 +1767,17 @@ export class AulaVirtualRepository implements IAulaVirtualRepository {
   }
 
   async obtenerMensajeChat(id: string): Promise<MensajeChatFila | null> {
+    const emisorRolSql = sql<string>`CASE WHEN EXISTS (
+      SELECT 1 FROM roles r WHERE r.id = ${usuarios.rolId} AND LOWER(r.nombre) IN ('docente', 'director', 'subdirector', 'administrador')
+    ) THEN 'docente' ELSE 'estudiante' END`;
+
     const [fila] = await this.db
       .select({
         id: mensajesChat.id,
         cursoSeccionId: mensajesChat.cursoSeccionId,
         emisorId: mensajesChat.emisorId,
         emisorNombre: nombreSql(personas),
+        emisorRol: emisorRolSql,
         contenido: mensajesChat.contenido,
         adjuntoUrl: mensajesChat.adjuntoUrl,
         vigente: mensajesChat.vigente,

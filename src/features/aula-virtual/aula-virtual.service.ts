@@ -45,6 +45,7 @@ import type {
   ActualizarUnidadDto,
   AulaVirtualResponse,
   CalificarEntregaDto,
+  CerrarTareaDto,
   ContenidoMaterialDto,
   CrearComentarioDto,
   CrearEntregaDto,
@@ -108,6 +109,7 @@ import {
   puedenRevelarseRespuestas,
   validarAnioParaInteraccion,
   validarExtensionArchivo,
+  validarFormatoAdjuntoInteraccion,
   validarMotivoOcultamiento,
   validarPublicacionTarea,
   validarTamanoAdjunto,
@@ -235,9 +237,15 @@ export class AulaVirtualService implements OnModuleInit {
 
   // ───────────────────────── Consulta del aula ─────────────────────────
 
-  /** Cursos con aula virtual del usuario: dicta (docente) o cursa (estudiante). */
+  /** Cursos con aula virtual del usuario: dicta (docente), supervisa (directivo), cursa (estudiante) o acompaña (apoderado). */
   async misCursos(usuario: AuthenticatedUser): Promise<CursoAulaResponse[]> {
     const anioId = await this.anioDeTrabajo();
+    if (this.esRolDeSeguimiento(usuario)) {
+      return this.repository.cursosDelAnio(anioId);
+    }
+    if (usuario.role === "Apoderado") {
+      return this.repository.cursosDelApoderado(usuario.personaId, anioId);
+    }
     const docenteId = await this.repository.findDocenteIdPorPersona(usuario.personaId);
     if (docenteId) {
       const dictados = await this.repository.cursosDelDocente(docenteId, anioId);
@@ -253,15 +261,38 @@ export class AulaVirtualService implements OnModuleInit {
     const curso = await this.requerirCurso(cursoSeccionId);
     const esDocente = await this.esDocenteDelCurso(curso, usuario);
     const esDirectivo = this.esRolDeSeguimiento(usuario);
+    const esApoderado = usuario.role === "Apoderado";
+    let hijosEnCurso: AulaVirtualResponse["hijosEnCurso"] = undefined;
+
     if (!esDocente && !esDirectivo) {
-      const matriculado = await this.repository.estudianteTieneMatriculaEnSeccion(
-        usuario.personaId,
-        curso.seccionId,
-      );
-      if (!matriculado) throw new ForbiddenException(MENSAJES_AULA_VIRTUAL.SIN_ACCESO_AULA);
+      if (esApoderado) {
+        const hijos =
+          (await this.repository.estudiantesDeApoderadoEnSeccion?.(
+            usuario.personaId,
+            curso.seccionId,
+          )) ?? [];
+        if (hijos.length === 0) {
+          throw new ForbiddenException(MENSAJES_AULA_VIRTUAL.SIN_ACCESO_AULA);
+        }
+        hijosEnCurso = hijos;
+      } else {
+        const matriculado = await this.repository.estudianteTieneMatriculaEnSeccion(
+          usuario.personaId,
+          curso.seccionId,
+        );
+        if (!matriculado) throw new ForbiddenException(MENSAJES_AULA_VIRTUAL.SIN_ACCESO_AULA);
+      }
     }
 
     const verTodo = esDocente || esDirectivo;
+    const rolEnAula: AulaVirtualResponse["rolEnAula"] = esDocente
+      ? "docente"
+      : esDirectivo
+        ? "directivo"
+        : esApoderado
+          ? "apoderado"
+          : "estudiante";
+
     const [unidades, materiales, dias, tamano, bloques] = await Promise.all([
       this.repository.listarUnidades(cursoSeccionId, !verTodo),
       this.repository.listarMateriales(cursoSeccionId, { soloPublicados: !verTodo }),
@@ -279,6 +310,9 @@ export class AulaVirtualService implements OnModuleInit {
       cursoNombre: curso.cursoNombre,
       seccionNombre: curso.seccionNombre,
       puedeAdministrar: esDocente,
+      rolEnAula,
+      puedeVerModeracion: verTodo,
+      hijosEnCurso,
       diasPlanificacion: dias,
       tamanoMaximoMb: tamano,
       bloques: bloques.map((b) => ({
@@ -1221,6 +1255,7 @@ export class AulaVirtualService implements OnModuleInit {
     const actualizada = await this.repository.actualizarTarea(tareaId, {
       titulo: dto.titulo?.trim(),
       instrucciones: dto.instrucciones?.trim(),
+      unidadId: dto.unidadId,
       fechaLimite: dto.fechaLimite,
       permiteEntregaTardia: dto.permiteEntregaTardia,
       intentosMaximos: dto.intentosMaximos,
@@ -1257,6 +1292,7 @@ export class AulaVirtualService implements OnModuleInit {
   async cerrarTarea(
     usuario: AuthenticatedUser,
     tareaId: string,
+    dto?: CerrarTareaDto,
   ): Promise<{ mensaje: string; tarea: TareaResponse }> {
     const tarea = await this.repository.findTarea(tareaId);
     if (!tarea) throw new NotFoundException(MENSAJES_TAREA.TAREA_NO_ENCONTRADA);
@@ -1264,9 +1300,42 @@ export class AulaVirtualService implements OnModuleInit {
     const curso = await this.requerirCurso(tarea.cursoSeccionId);
     await this.exigirDocenteDelCurso(curso, usuario);
 
-    const cerrada = await this.repository.cerrarTarea(tareaId, new Date().toISOString());
+    const ahora = new Date().toISOString();
+    const cerrada = await this.repository.cerrarTarea(tareaId, ahora);
+
+    if (dto?.asignarCeroSinEntrega) {
+      const estudiantes =
+        (await this.repository.listarEstudiantesDeSeccion?.(curso.seccionId)) ?? [];
+      for (const est of estudiantes) {
+        const entregas =
+          (await this.repository.findEntregasDeEstudiante?.(tareaId, est.matriculaId)) ?? [];
+        const tieneEntregaValida = entregas.some(
+          (e) => e.estado === "entregada" || e.estado === "calificada",
+        );
+        if (!tieneEntregaValida) {
+          const intentoNum = entregas.length > 0 ? entregas[entregas.length - 1].intento : 1;
+          await this.repository.guardarEntrega?.({
+            tareaId,
+            matriculaId: est.matriculaId,
+            intento: intentoNum,
+            entregadaEn: ahora,
+            estado: "calificada",
+            nota: 0,
+            retroalimentacion: "Sin entrega al cierre del plazo.",
+            calificadaPorId: usuario.id,
+            calificadaEn: ahora,
+          });
+        }
+      }
+    }
+
     const response = await this.armarTarea(cerrada, usuario);
-    return { mensaje: "Tarea cerrada.", tarea: response };
+    return {
+      mensaje: dto?.asignarCeroSinEntrega
+        ? "Tarea cerrada y nota 0 asignada a quienes no entregaron."
+        : "Tarea cerrada.",
+      tarea: response,
+    };
   }
 
   async eliminarTarea(usuario: AuthenticatedUser, tareaId: string): Promise<{ mensaje: string }> {
@@ -1283,17 +1352,12 @@ export class AulaVirtualService implements OnModuleInit {
   async listarTareas(
     usuario: AuthenticatedUser,
     cursoSeccionId: string,
-    filtro: { unidadId?: string; periodoId?: string },
+    filtro: { unidadId?: string; periodoId?: string; estudianteId?: string },
   ): Promise<TareaResponse[]> {
     const curso = await this.requerirCurso(cursoSeccionId);
     const esDocente = await this.esDocenteDelCurso(curso, usuario);
-    const esAdmin = ["Administrador", "Director", "Subdirector"].includes(usuario.role);
+    const esAdmin = this.esRolDeSeguimiento(usuario);
     const soloPublicadas = !(esDocente || esAdmin);
-
-    const tareas = await this.repository.listarTareas(cursoSeccionId, {
-      soloPublicadas,
-      ...filtro,
-    });
 
     let matriculaId: string | undefined;
     if (usuario.role === "Estudiante") {
@@ -1301,8 +1365,35 @@ export class AulaVirtualService implements OnModuleInit {
         curso.seccionId,
         usuario.personaId,
       );
-      matriculaId = mat?.id;
+      if (!mat) throw new ForbiddenException(MENSAJES_AULA_VIRTUAL.SIN_ACCESO_AULA);
+      matriculaId = mat.id;
+    } else if (usuario.role === "Apoderado") {
+      const hijos =
+        (await this.repository.estudiantesDeApoderadoEnSeccion?.(
+          usuario.personaId,
+          curso.seccionId,
+        )) ?? [];
+      if (hijos.length === 0) {
+        throw new ForbiddenException(MENSAJES_AULA_VIRTUAL.SIN_ACCESO_AULA);
+      }
+      const hijoSeleccionado = filtro.estudianteId
+        ? hijos.find(
+            (h) => h.estudianteId === filtro.estudianteId || h.personaId === filtro.estudianteId,
+          )
+        : hijos[0];
+      if (!hijoSeleccionado) {
+        throw new ForbiddenException(MENSAJES_AULA_VIRTUAL.SIN_ACCESO_AULA);
+      }
+      matriculaId = hijoSeleccionado.matriculaId;
+    } else if (!esDocente && !esAdmin) {
+      throw new ForbiddenException(MENSAJES_AULA_VIRTUAL.SIN_ACCESO_AULA);
     }
+
+    const tareas = await this.repository.listarTareas(cursoSeccionId, {
+      soloPublicadas,
+      unidadId: filtro.unidadId,
+      periodoId: filtro.periodoId,
+    });
 
     return Promise.all(tareas.map((t) => this.armarTarea(t, usuario, matriculaId)));
   }
@@ -1317,19 +1408,41 @@ export class AulaVirtualService implements OnModuleInit {
 
     const curso = await this.requerirCurso(tarea.cursoSeccionId);
     const esDocente = await this.esDocenteDelCurso(curso, usuario);
-    const esAdmin = ["Administrador", "Director", "Subdirector"].includes(usuario.role);
+    const esAdmin = this.esRolDeSeguimiento(usuario);
 
-    if (!esDocente && !esAdmin && tarea.estado !== "publicada") {
+    if (!esDocente && !esAdmin && tarea.estado === "borrador") {
       throw new NotFoundException(MENSAJES_TAREA.TAREA_NO_ENCONTRADA);
     }
 
-    const personaIdConsultada = estudiantePersonaId || usuario.personaId;
-    const mat = await this.repository.findMatriculaDeEstudiante(
-      curso.seccionId,
-      personaIdConsultada,
-    );
+    let matriculaId: string | undefined;
+    if (usuario.role === "Apoderado") {
+      const hijos =
+        (await this.repository.estudiantesDeApoderadoEnSeccion?.(
+          usuario.personaId,
+          curso.seccionId,
+        )) ?? [];
+      if (hijos.length === 0) {
+        throw new ForbiddenException(MENSAJES_AULA_VIRTUAL.SIN_ACCESO_AULA);
+      }
+      const hijo = estudiantePersonaId
+        ? hijos.find(
+            (h) => h.estudianteId === estudiantePersonaId || h.personaId === estudiantePersonaId,
+          )
+        : hijos[0];
+      if (!hijo) {
+        throw new ForbiddenException(MENSAJES_AULA_VIRTUAL.SIN_ACCESO_AULA);
+      }
+      matriculaId = hijo.matriculaId;
+    } else {
+      const personaIdConsultada = estudiantePersonaId || usuario.personaId;
+      const mat = await this.repository.findMatriculaDeEstudiante(
+        curso.seccionId,
+        personaIdConsultada,
+      );
+      matriculaId = mat?.id;
+    }
 
-    return this.armarTarea(tarea, usuario, mat?.id);
+    return this.armarTarea(tarea, usuario, matriculaId);
   }
 
   async iniciarIntentoExamen(
@@ -1476,6 +1589,13 @@ export class AulaVirtualService implements OnModuleInit {
         estado: "entregada",
       });
 
+      await this.repository.registrarActividad?.({
+        matriculaId: matricula.id,
+        materialId: null,
+        tareaId,
+        accion: "completo",
+      });
+
       const mensaje = esTardia ? MENSAJES_TAREA.ENTREGA_TARDIA : MENSAJES_TAREA.ENTREGA_ENVIADA;
       return { mensaje, entrega: entrega };
     }
@@ -1515,6 +1635,13 @@ export class AulaVirtualService implements OnModuleInit {
         calificadaEn: ahora,
       });
 
+      await this.repository.registrarActividad?.({
+        matriculaId: matricula.id,
+        materialId: null,
+        tareaId,
+        accion: "completo",
+      });
+
       const mensaje = tiempoAgotado
         ? MENSAJES_TAREA.TIEMPO_AGOTADO
         : MENSAJES_TAREA.INTENTO_CALIFICADO(evaluacion.notaVigesimal.toFixed(2), restantes);
@@ -1537,6 +1664,13 @@ export class AulaVirtualService implements OnModuleInit {
       estado: "entregada",
     });
 
+    await this.repository.registrarActividad?.({
+      matriculaId: matricula.id,
+      materialId: null,
+      tareaId,
+      accion: "completo",
+    });
+
     const mensaje = tiempoAgotado
       ? MENSAJES_TAREA.TIEMPO_AGOTADO
       : "Tu entrega fue enviada. Pendiente de calificación de preguntas abiertas.";
@@ -1556,7 +1690,11 @@ export class AulaVirtualService implements OnModuleInit {
     if (!tarea) throw new NotFoundException(MENSAJES_TAREA.TAREA_NO_ENCONTRADA);
 
     const curso = await this.requerirCurso(tarea.cursoSeccionId);
-    await this.exigirDocenteDelCurso(curso, usuario);
+    const esDocente = await this.esDocenteDelCurso(curso, usuario);
+    const esDirectivo = this.esRolDeSeguimiento(usuario);
+    if (!esDocente && !esDirectivo) {
+      throw new ForbiddenException(MENSAJES_AULA_VIRTUAL.AULA_AJENA);
+    }
 
     const entregas = await this.repository.findEntregasDeTarea(tareaId);
     return entregas;
@@ -1669,6 +1807,11 @@ export class AulaVirtualService implements OnModuleInit {
     periodoId?: string,
   ): Promise<LibroNotasResponse> {
     const curso = await this.requerirCurso(cursoSeccionId);
+    const esDocente = await this.esDocenteDelCurso(curso, usuario);
+    const esDirectivo = this.esRolDeSeguimiento(usuario);
+    if (!esDocente && !esDirectivo) {
+      throw new ForbiddenException(MENSAJES_AULA_VIRTUAL.SIN_ACCESO_AULA);
+    }
     const periodo = periodoId
       ? await this.requerirPeriodo(periodoId)
       : await this.periodoEnCursoDelAnio();
@@ -1799,6 +1942,17 @@ export class AulaVirtualService implements OnModuleInit {
     estudianteId: string,
     periodoId?: string,
   ): Promise<Record<string, unknown>[]> {
+    if (usuario.role === "Estudiante" && estudianteId !== usuario.personaId) {
+      throw new ForbiddenException(MENSAJES_AULA_VIRTUAL.SIN_ACCESO_AULA);
+    }
+    if (usuario.role === "Apoderado") {
+      const esSuHijo =
+        (await this.repository.esApoderadoDeEstudiante?.(usuario.personaId, estudianteId)) ?? false;
+      if (!esSuHijo) {
+        throw new ForbiddenException(MENSAJES_AULA_VIRTUAL.SIN_ACCESO_AULA);
+      }
+    }
+
     const anioId = await this.anioDeTrabajo();
     const periodoTarget = periodoId
       ? await this.requerirPeriodo(periodoId)
@@ -1882,7 +2036,7 @@ export class AulaVirtualService implements OnModuleInit {
     }
 
     let preguntas: PreguntaConOpciones[] | undefined = tareaConP?.preguntas;
-    if (preguntas && usuario?.role === "Estudiante") {
+    if (preguntas && (usuario?.role === "Estudiante" || usuario?.role === "Apoderado")) {
       const intentoNum = miEntrega ? miEntrega.intento : 0;
       const revelar = puedenRevelarseRespuestas(
         tarea.revelarRespuestas,
@@ -2009,6 +2163,10 @@ export class AulaVirtualService implements OnModuleInit {
       if (!validacion.valido) {
         throw new BadRequestException(validacion.mensaje);
       }
+      const valFormato = validarFormatoAdjuntoInteraccion(archivo.originalname);
+      if (!valFormato.valido) {
+        throw new BadRequestException(valFormato.mensaje);
+      }
       const extension = path.extname(archivo.originalname).toLowerCase();
       const nombreGuardado = `${Date.now()}-${randomUUID().slice(0, 8)}${extension}`;
       const carpeta = path.join(process.cwd(), "uploads", CARPETA_INTERACCION);
@@ -2064,9 +2222,8 @@ export class AulaVirtualService implements OnModuleInit {
     usuario: AuthenticatedUser,
   ): Promise<PublicacionMuroFila[]> {
     const curso = await this.requerirCurso(cursoSeccionId);
-    const { esDocente } = await this.verificarParticipante(curso, usuario, true);
-    const verOcultos = esDocente || this.esRolDeSeguimiento(usuario);
-    return this.repository.listarPublicacionesMuro(cursoSeccionId, verOcultos);
+    await this.verificarParticipante(curso, usuario, true);
+    return this.repository.listarPublicacionesMuro(cursoSeccionId, false);
   }
 
   async crearPublicacion(
@@ -2199,10 +2356,9 @@ export class AulaVirtualService implements OnModuleInit {
     if (!pub) throw new NotFoundException(MENSAJES_INTERACCION.PUBLICACION_NO_ENCONTRADA);
 
     const curso = await this.requerirCurso(pub.cursoSeccionId);
-    const { esDocente } = await this.verificarParticipante(curso, usuario, true);
-    const verOcultos = esDocente || this.esRolDeSeguimiento(usuario);
+    await this.verificarParticipante(curso, usuario, true);
 
-    return this.repository.listarComentarios(publicacionId, verOcultos);
+    return this.repository.listarComentarios(publicacionId, false);
   }
 
   async crearComentario(
@@ -2291,10 +2447,9 @@ export class AulaVirtualService implements OnModuleInit {
     usuario: AuthenticatedUser,
   ): Promise<MensajeChatFila[]> {
     const curso = await this.requerirCurso(cursoSeccionId);
-    const { esDocente } = await this.verificarParticipante(curso, usuario, true);
-    const verOcultos = esDocente || this.esRolDeSeguimiento(usuario);
+    await this.verificarParticipante(curso, usuario, true);
 
-    const mensajes = await this.repository.listarMensajesChat(cursoSeccionId, verOcultos);
+    const mensajes = await this.repository.listarMensajesChat(cursoSeccionId, false);
     await this.repository.actualizarUltimaLecturaChat(cursoSeccionId, usuario.id);
     return mensajes;
   }

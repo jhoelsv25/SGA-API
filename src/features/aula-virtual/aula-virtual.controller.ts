@@ -36,6 +36,7 @@ import {
   ActualizarTareaDto,
   ActualizarUnidadDto,
   CalificarEntregaDto,
+  CerrarTareaDto,
   ContenidoMaterialDto,
   CrearComentarioDto,
   CrearEntregaDto,
@@ -282,7 +283,10 @@ export class AulaVirtualController {
     @Query() query: ListarTareasQueryDto,
     @CurrentUser() usuario: AuthenticatedUser,
   ): Promise<TareaResponse[]> {
-    return this.service.listarTareas(usuario, cursoSeccionId, { periodoId: query.periodoId });
+    return this.service.listarTareas(usuario, cursoSeccionId, {
+      periodoId: query.periodoId,
+      estudianteId: query.estudianteId,
+    });
   }
 
   @Post("cursos/:cursoSeccionId/tareas")
@@ -301,9 +305,10 @@ export class AulaVirtualController {
   @ApiParam({ name: "id", description: "UUID de la tarea" })
   async obtenerDetalleTarea(
     @Param("id", ParseUUIDPipe) id: string,
+    @Query("estudianteId") estudianteId: string | undefined,
     @CurrentUser() usuario: AuthenticatedUser,
   ): Promise<TareaResponse> {
-    return this.service.obtenerDetalleTarea(usuario, id);
+    return this.service.obtenerDetalleTarea(usuario, id, estudianteId);
   }
 
   @Patch("tareas/:id")
@@ -332,9 +337,10 @@ export class AulaVirtualController {
   @ApiParam({ name: "id", description: "UUID de la tarea" })
   async cerrarTarea(
     @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: CerrarTareaDto | undefined,
     @CurrentUser() usuario: AuthenticatedUser,
   ): Promise<{ mensaje: string; tarea: TareaResponse }> {
-    return this.service.cerrarTarea(usuario, id);
+    return this.service.cerrarTarea(usuario, id, dto);
   }
 
   @Delete("tareas/:id")
