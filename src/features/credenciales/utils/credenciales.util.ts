@@ -1,10 +1,11 @@
+import { randomInt } from "node:crypto";
 import { hashSha256 } from "../../../common/utils";
 
 /**
  * Genera un PIN numérico de 4 dígitos para marcación en kiosko.
  */
 export function generarPinCredencial(): string {
-  return Math.floor(1000 + Math.random() * 9000).toString();
+  return randomInt(1000, 10000).toString();
 }
 
 /**
@@ -20,7 +21,7 @@ export function generarCodigoCredencial(
   if (!conSufijoAleatorio) {
     return `CR-${doc}`;
   }
-  const sufijoAleatorio = Math.floor(100 + Math.random() * 900).toString();
+  const sufijoAleatorio = randomInt(100, 1000).toString();
   return `CR-${doc}-${sufijoAleatorio}`;
 }
 
