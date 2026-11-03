@@ -21,6 +21,11 @@ export const MENU_ASISTENCIA_SECCION = "/admin/asistencia-seccion";
 export const MENU_MI_ASISTENCIA = "/admin/mi-asistencia";
 
 /**
+ * RF-022: integración con biométrico ZKTeco.
+ */
+export const MENU_MARCACIONES_PENDIENTES = "/admin/marcaciones-pendientes";
+
+/**
  * RF-011: registro de sesión de clase.
  */
 export const MENU_SESIONES_HOY = "/admin/sesiones-hoy";

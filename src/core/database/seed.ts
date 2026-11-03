@@ -6,6 +6,7 @@ import {
   MENU_SECCIONES,
   MENU_MI_HORARIO,
   MENU_MARCACIONES_HOY,
+  MENU_MARCACIONES_PENDIENTES,
   MENU_MARCACION_MANUAL,
   MENU_ASISTENCIA_CLASE,
   MENU_ASISTENCIA_SECCION,
@@ -324,6 +325,39 @@ async function seed() {
       unidad: null,
       valorMinimo: null,
       valorMaximo: null,
+    },
+    {
+      codigo: "biometrico.minutos_antirrebote",
+      descripcion:
+        "Minutos tras una marcación del reloj biométrico en los que otra del mismo docente se ignora (rebote del dedo)",
+      modulo: "asistencia",
+      tipo: "entero",
+      valor: "5",
+      unidad: "minutos",
+      valorMinimo: 0,
+      valorMaximo: 60,
+    },
+    {
+      codigo: "biometrico.desfase_maximo_min",
+      descripcion:
+        "Diferencia máxima entre la hora del reloj biométrico y la del servidor antes de ponerlo en hora y avisar",
+      modulo: "asistencia",
+      tipo: "entero",
+      valor: "2",
+      unidad: "minutos",
+      valorMinimo: 0,
+      valorMaximo: 60,
+    },
+    {
+      codigo: "biometrico.minutos_sin_comunicacion",
+      descripcion:
+        "Minutos sin avisos de la app puente (o sin respuesta del reloj) en horario de marcación antes de alertar",
+      modulo: "asistencia",
+      tipo: "entero",
+      valor: "10",
+      unidad: "minutos",
+      valorMinimo: 1,
+      valorMaximo: 120,
     },
     {
       codigo: "ausencia.plazo_descargo_dias",
@@ -969,6 +1003,13 @@ async function seed() {
       icono: "UserGroupIcon",
       orden: 5,
       roles: ["Estudiante", "Apoderado"],
+    },
+    {
+      nombre: "Marcaciones pendientes",
+      ruta: MENU_MARCACIONES_PENDIENTES,
+      icono: "FingerPrintIcon",
+      orden: 6,
+      roles: ["Soporte TI", "Secretaria"],
     },
   ];
   for (const menu of MENUS_ASISTENCIA) {

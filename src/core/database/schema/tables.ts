@@ -115,6 +115,8 @@ export const personas = pgTable(
     celular: varchar({ length: 20 }),
     correo: varchar({ length: 100 }),
     fotoUrl: varchar("foto_url", { length: 255 }),
+    /** RF-022: ID de la persona en el reloj biométrico (único). */
+    codigoBiometrico: varchar("codigo_biometrico", { length: 20 }),
     creadoEn: timestamp("creado_en", { precision: 0, mode: "string" })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
@@ -124,6 +126,9 @@ export const personas = pgTable(
     eliminadoEn: timestamp("eliminado_en", { precision: 0, mode: "string" }),
   },
   (table) => [
+    uniqueIndex("ux_personas_codigo_biometrico")
+      .using("btree", table.codigoBiometrico.asc().nullsLast().op("text_ops"))
+      .where(sql`((codigo_biometrico IS NOT NULL) AND (eliminado_en IS NULL))`),
     index("ix_personas_apellidos").using(
       "btree",
       table.apellidoPaterno.asc().nullsLast().op("text_ops"),
@@ -1187,8 +1192,22 @@ export const marcaciones = pgTable(
     justificadaEn: timestamp("justificada_en", { precision: 0, mode: "string" }),
     observacion: varchar({ length: 500 }),
     registradaPorId: uuid("registrada_por_id"),
+    /** RF-022: reloj biométrico que originó la marcación. */
+    equipoId: uuid("equipo_id"),
   },
   (table) => [
+    uniqueIndex("ux_marcaciones_biometrico_persona_hora")
+      .using(
+        "btree",
+        table.personaId.asc().nullsLast().op("uuid_ops"),
+        table.fechaHora.asc().nullsLast().op("timestamp_ops"),
+      )
+      .where(sql`((origen)::text = 'biometrico'::text)`),
+    foreignKey({
+      columns: [table.equipoId],
+      foreignColumns: [equiposAutorizados.id],
+      name: "fk_marcaciones_equipo",
+    }),
     index("ix_marcaciones_fecha").using(
       "btree",
       table.fechaHora.asc().nullsLast().op("timestamp_ops"),
@@ -1234,7 +1253,7 @@ export const marcaciones = pgTable(
     check("ck_marcaciones_minutos", sql`minutos_tardanza >= 0`),
     check(
       "ck_marcaciones_origen",
-      sql`(origen)::text = ANY ((ARRAY['kiosko'::character varying, 'intranet'::character varying, 'manual'::character varying])::text[])`,
+      sql`(origen)::text = ANY ((ARRAY['kiosko'::character varying, 'intranet'::character varying, 'manual'::character varying, 'biometrico'::character varying])::text[])`,
     ),
     check(
       "ck_marcaciones_resultado",
@@ -1296,6 +1315,11 @@ export const equiposAutorizados = pgTable(
     activo: boolean().default(true).notNull(),
     ultimoAcceso: timestamp("ultimo_acceso", { precision: 0, mode: "string" }),
     ipRegistro: varchar("ip_registro", { length: 45 }),
+    /** RF-022: último aviso de la app puente y última vez que el reloj le respondió. */
+    ultimoLatidoEn: timestamp("ultimo_latido_en", { precision: 0, mode: "string" }),
+    relojRespondioEn: timestamp("reloj_respondio_en", { precision: 0, mode: "string" }),
+    /** RF-022: diferencia (minutos) entre la hora del reloj y la del servidor en el último aviso. */
+    ultimoDesfaseMin: integer("ultimo_desfase_min"),
     creadoEn: timestamp("creado_en", { precision: 0, mode: "string" })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
@@ -1318,6 +1342,72 @@ export const equiposAutorizados = pgTable(
     check(
       "ck_equipos_proposito",
       sql`(proposito)::text = ANY ((ARRAY['marcacion'::character varying, 'sesiones'::character varying])::text[])`,
+    ),
+  ],
+);
+
+/** RF-022: marcaciones del reloj que no se pudieron asignar a un docente activo. */
+export const marcacionesBiometricoPendientes = pgTable(
+  "marcaciones_biometrico_pendientes",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    equipoId: uuid("equipo_id").notNull(),
+    codigoBiometrico: varchar("codigo_biometrico", { length: 20 }).notNull(),
+    fechaHora: timestamp("fecha_hora", { precision: 0, mode: "string" }).notNull(),
+    motivo: varchar({ length: 30 }).notNull(),
+    estado: varchar({ length: 15 }).default("pendiente").notNull(),
+    personaId: uuid("persona_id"),
+    marcacionId: uuid("marcacion_id"),
+    motivoDescarte: varchar("motivo_descarte", { length: 500 }),
+    resueltaPorId: uuid("resuelta_por_id"),
+    resueltaEn: timestamp("resuelta_en", { precision: 0, mode: "string" }),
+    creadoEn: timestamp("creado_en", { precision: 0, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("ux_pendientes_biometrico_equipo_codigo_hora").using(
+      "btree",
+      table.equipoId.asc().nullsLast().op("uuid_ops"),
+      table.codigoBiometrico.asc().nullsLast().op("text_ops"),
+      table.fechaHora.asc().nullsLast().op("timestamp_ops"),
+    ),
+    index("ix_pendientes_biometrico_estado").using(
+      "btree",
+      table.estado.asc().nullsLast().op("text_ops"),
+      table.fechaHora.asc().nullsLast().op("timestamp_ops"),
+    ),
+    foreignKey({
+      columns: [table.equipoId],
+      foreignColumns: [equiposAutorizados.id],
+      name: "fk_pendientes_biometrico_equipo",
+    }),
+    foreignKey({
+      columns: [table.personaId],
+      foreignColumns: [personas.id],
+      name: "fk_pendientes_biometrico_persona",
+    }),
+    foreignKey({
+      columns: [table.marcacionId],
+      foreignColumns: [marcaciones.id],
+      name: "fk_pendientes_biometrico_marcacion",
+    }),
+    foreignKey({
+      columns: [table.resueltaPorId],
+      foreignColumns: [usuarios.id],
+      name: "fk_pendientes_biometrico_resuelta_por",
+    }),
+    check(
+      "ck_pendientes_biometrico_motivo",
+      sql`(motivo)::text = ANY ((ARRAY['codigo_desconocido'::character varying, 'no_docente'::character varying, 'sin_turno'::character varying])::text[])`,
+    ),
+    check(
+      "ck_pendientes_biometrico_estado",
+      sql`(estado)::text = ANY ((ARRAY['pendiente'::character varying, 'asignada'::character varying, 'descartada'::character varying])::text[])`,
+    ),
+    check(
+      "ck_pendientes_biometrico_descarte",
+      sql`((estado)::text <> 'descartada'::text) OR (motivo_descarte IS NOT NULL)`,
     ),
   ],
 );

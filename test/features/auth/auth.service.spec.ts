@@ -54,6 +54,7 @@ describe("AuthService (RF-001: Acceso al Sistema)", () => {
     direccion: "Av. Principal 123",
     distrito: "Miraflores",
     fotoUrl: "https://cdn.colegio.edu.pe/foto.jpg",
+    codigoBiometrico: null,
     creadoEn: "2026-10-01T00:00:00.000Z",
     actualizadoEn: "2026-10-01T00:00:00.000Z",
     eliminadoEn: null,
