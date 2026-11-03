@@ -15,8 +15,11 @@ import { TurnosRepository } from "../turnos/repositories/turnos.repository";
 import { VariablesSistemaService } from "../variables-sistema/variables-sistema.service";
 import { ahoraEnColegio, esDiaLaborable, minutosDelDia } from "../marcaciones/utils";
 import {
+  LIMITE_ORDENES,
   LIMITE_PENDIENTES,
   MENSAJES_BIOMETRICO,
+  MINUTOS_VENCIMIENTO_ORDEN,
+  type TipoOrden,
   VARIABLES_BIOMETRICO,
   type EstadoPendiente,
   type EstadoReloj,
@@ -26,6 +29,11 @@ import type {
   AsignarCodigoBiometricoDto,
   AsignarPendienteDto,
   CodigoBiometricoResponseDto,
+  ConfigRelojDto,
+  GuardarConfigRelojDto,
+  GuardarConfigRelojResponseDto,
+  OrdenDto,
+  ResultadoOrdenDto,
   DescartarPendienteDto,
   EstadoRelojDto,
   LatidoDto,
@@ -37,6 +45,13 @@ import type {
 } from "./dto";
 import { BiometricoRepository } from "./repositories";
 import { desfaseEnMinutos, minutosDesde, normalizarFechaHora, ordenarPorHora } from "./utils";
+
+const CONFIG_POR_DEFECTO: ConfigRelojDto = {
+  relojIp: null,
+  relojPuerto: 4370,
+  relojClaveComunicacion: 0,
+  intervaloSegundos: 60,
+};
 
 @Injectable()
 export class BiometricoService {
@@ -125,7 +140,14 @@ export class BiometricoService {
       relojResponde: dto.relojResponde,
       desfaseMinutos,
     });
-    return { horaServidor, desfaseMinutos: desfaseMinutos ?? 0, ponerEnHora };
+    const config = (await this.repository.findConfig(equipo.id)) ?? CONFIG_POR_DEFECTO;
+    await this.repository.vencerOrdenes(
+      equipo.id,
+      MINUTOS_VENCIMIENTO_ORDEN,
+      MENSAJES_BIOMETRICO.ORDEN_VENCIDA,
+    );
+    const ordenes = await this.repository.listarOrdenesPendientes(equipo.id);
+    return { horaServidor, desfaseMinutos: desfaseMinutos ?? 0, ponerEnHora, config, ordenes };
   }
 
   // ---------------------------------------------------------------------------
@@ -352,6 +374,7 @@ export class BiometricoService {
         ultimoLatidoEn: r.ultimoLatidoEn,
         relojRespondioEn: r.relojRespondioEn,
         desfaseMinutos: r.ultimoDesfaseMin,
+        config: r.config,
         estado,
         alertas,
       };
@@ -363,6 +386,80 @@ export class BiometricoService {
   // ---------------------------------------------------------------------------
 
   /** Una marcación del reloj: asistencia, duplicada, ignorada o pendiente. */
+  // ---- Configuración remota y órdenes (app puente) -----------------------
+
+  async guardarConfig(
+    equipoId: string,
+    dto: GuardarConfigRelojDto,
+    usuarioId: string,
+    ip?: string,
+  ): Promise<GuardarConfigRelojResponseDto> {
+    const anterior = await this.repository.findConfig(equipoId);
+    if (!anterior) throw new NotFoundException(MENSAJES_BIOMETRICO.RELOJ_NO_ENCONTRADO);
+    const config: ConfigRelojDto = {
+      relojIp: dto.relojIp.trim(),
+      relojPuerto: dto.relojPuerto,
+      relojClaveComunicacion: dto.relojClaveComunicacion,
+      intervaloSegundos: dto.intervaloSegundos,
+    };
+    await this.repository.guardarConfig(equipoId, config);
+    await this.auditService.log({
+      usuarioId,
+      accion: "actualizar",
+      tabla: "equipos_autorizados",
+      registroId: equipoId,
+      // La clave de comunicación del reloj es un secreto: no se guarda en la auditoría.
+      valorAnterior: { ...anterior, relojClaveComunicacion: undefined },
+      valorNuevo: { ...config, relojClaveComunicacion: undefined },
+      direccionIp: ip,
+    });
+    return { mensaje: MENSAJES_BIOMETRICO.CONFIG_GUARDADA, config };
+  }
+
+  async crearOrden(equipoId: string, tipo: TipoOrden, usuarioId: string): Promise<OrdenDto> {
+    const config = await this.repository.findConfig(equipoId);
+    if (!config) throw new NotFoundException(MENSAJES_BIOMETRICO.RELOJ_NO_ENCONTRADO);
+    if (!config.relojIp) throw new BadRequestException(MENSAJES_BIOMETRICO.ORDEN_SIN_IP);
+    await this.repository.vencerOrdenes(
+      equipoId,
+      MINUTOS_VENCIMIENTO_ORDEN,
+      MENSAJES_BIOMETRICO.ORDEN_VENCIDA,
+    );
+    const existente = await this.repository.findOrdenPendiente(equipoId, tipo);
+    if (existente) return existente;
+    return this.repository.crearOrden(equipoId, tipo, usuarioId);
+  }
+
+  async listarOrdenes(equipoId: string): Promise<OrdenDto[]> {
+    if (!(await this.repository.findConfig(equipoId))) {
+      throw new NotFoundException(MENSAJES_BIOMETRICO.RELOJ_NO_ENCONTRADO);
+    }
+    await this.repository.vencerOrdenes(
+      equipoId,
+      MINUTOS_VENCIMIENTO_ORDEN,
+      MENSAJES_BIOMETRICO.ORDEN_VENCIDA,
+    );
+    return this.repository.listarOrdenes(equipoId, LIMITE_ORDENES);
+  }
+
+  async resolverOrden(
+    claveApp: string | undefined,
+    ordenId: string,
+    dto: ResultadoOrdenDto,
+    ip?: string,
+  ): Promise<{ mensaje: string }> {
+    const equipo = await this.validarReloj(claveApp, ip);
+    const resuelta = await this.repository.resolverOrden(
+      equipo.id,
+      ordenId,
+      dto.ok ? "completada" : "error",
+      dto.mensaje,
+      dto.datos ?? null,
+    );
+    if (!resuelta) throw new NotFoundException(MENSAJES_BIOMETRICO.ORDEN_NO_ENCONTRADA);
+    return { mensaje: "Resultado registrado." };
+  }
+
   private async procesarMarcacion(
     equipoId: string,
     codigo: string,

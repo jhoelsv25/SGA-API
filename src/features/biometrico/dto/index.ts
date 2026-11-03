@@ -3,3 +3,4 @@ export * from "./latido.dto";
 export * from "./codigo-biometrico.dto";
 export * from "./pendiente.dto";
 export * from "./estado-reloj.dto";
+export * from "./config-reloj.dto";

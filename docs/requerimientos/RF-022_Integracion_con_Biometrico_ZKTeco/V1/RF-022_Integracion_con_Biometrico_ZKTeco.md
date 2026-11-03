@@ -248,6 +248,33 @@
 **Cuando** intento descartarla sin motivo
 **Entonces** el sistema muestra "Indique el motivo para descartar la marcación."
 
+## Historia de Usuario 5: Configurar el reloj desde el sistema
+
+Como Soporte TI, quiero indicar desde el sistema la IP, el puerto y la clave del reloj, y pedir pruebas, para no tener que abrir la pantalla de la app puente en el computador del colegio.
+
+### Escenario: Configurar la conexión del reloj
+```gherkin
+Dado que existe un reloj biométrico registrado
+Cuando guardo su IP, puerto, clave de comunicación e intervalo de lectura en Configuración
+Entonces el sistema muestra "Configuración del reloj guardada. La app puente la tomará en su próxima comunicación."
+Y la app puente descarga esos datos en su siguiente aviso
+```
+
+### Escenario: Probar, leer o sincronizar el reloj desde el sistema
+```gherkin
+Dado que el reloj tiene IP guardada
+Cuando pido "Probar conexión con el reloj"
+Entonces el sistema deja una orden para la app puente y muestra su resultado cuando la app lo informa
+Y si la app no responde en 3 minutos muestra "La app puente no respondió a tiempo. Verifique que esté encendida y con internet."
+```
+
+### Escenario: Probar sin IP guardada
+```gherkin
+Dado que el reloj no tiene IP guardada
+Cuando pido una prueba
+Entonces el sistema muestra "Primero guarde la IP del reloj."
+```
+
 ## Reglas de validación y negocio (resumen)
 
 - **Reloj:** uno solo, tipo `biometrico`, número de serie obligatorio y único, registrado y activo para ser aceptado. Solo docentes.

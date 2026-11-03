@@ -1,5 +1,6 @@
 import type { EstadoPendiente, MotivoPendiente } from "../constants";
-import type { PendienteResponseDto } from "../dto";
+import type { ConfigRelojDto, OrdenDto, PendienteResponseDto } from "../dto";
+import type { EstadoOrden, TipoOrden } from "../constants";
 
 export interface PersonaBasica {
   id: string;
@@ -37,6 +38,7 @@ export interface RelojRegistrado {
   ultimoLatidoEn: string | null;
   relojRespondioEn: string | null;
   ultimoDesfaseMin: number | null;
+  config: ConfigRelojDto;
 }
 
 export interface IBiometricoRepository {
@@ -50,4 +52,18 @@ export interface IBiometricoRepository {
   resolverPendiente(id: string, resolucion: ResolucionPendiente): Promise<PendienteResponseDto>;
   registrarLatido(equipoId: string, latido: LatidoRegistrado): Promise<void>;
   listarRelojes(): Promise<RelojRegistrado[]>;
+  findConfig(equipoId: string): Promise<ConfigRelojDto | null>;
+  guardarConfig(equipoId: string, config: ConfigRelojDto): Promise<void>;
+  vencerOrdenes(equipoId: string, minutos: number, mensaje: string): Promise<void>;
+  findOrdenPendiente(equipoId: string, tipo: TipoOrden): Promise<OrdenDto | null>;
+  crearOrden(equipoId: string, tipo: TipoOrden, usuarioId: string): Promise<OrdenDto>;
+  listarOrdenes(equipoId: string, limite: number): Promise<OrdenDto[]>;
+  listarOrdenesPendientes(equipoId: string): Promise<{ id: string; tipo: TipoOrden }[]>;
+  resolverOrden(
+    equipoId: string,
+    ordenId: string,
+    estado: Exclude<EstadoOrden, "pendiente">,
+    mensaje: string,
+    datos: Record<string, unknown> | null,
+  ): Promise<boolean>;
 }

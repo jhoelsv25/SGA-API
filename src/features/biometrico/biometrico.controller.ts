@@ -26,7 +26,12 @@ import {
   AsignarCodigoBiometricoDto,
   AsignarPendienteDto,
   CodigoBiometricoResponseDto,
+  CrearOrdenDto,
   DescartarPendienteDto,
+  GuardarConfigRelojDto,
+  GuardarConfigRelojResponseDto,
+  OrdenDto,
+  ResultadoOrdenDto,
   EstadoRelojDto,
   LatidoDto,
   LatidoResponseDto,
@@ -77,6 +82,21 @@ export class BiometricoController {
     @ClientInfo() clientInfo: ClientInfoData,
   ): Promise<LatidoResponseDto> {
     return this.service.registrarLatido(clave, dto, clientInfo.ip);
+  }
+
+  @Public()
+  @Post("ordenes/:ordenId/resultado")
+  @HttpCode(200)
+  @Throttle({ default: { limit: 120, ttl: 60000 } })
+  @ApiOperation({ summary: "La app puente informa el resultado de una orden" })
+  @ApiHeader({ name: "x-puente-token", required: true, description: "Clave de la app puente" })
+  async resultadoOrden(
+    @Headers("x-puente-token") clave: string | undefined,
+    @Param("ordenId", ParseUUIDPipe) ordenId: string,
+    @Body() dto: ResultadoOrdenDto,
+    @ClientInfo() clientInfo: ClientInfoData,
+  ): Promise<{ mensaje: string }> {
+    return this.service.resolverOrden(clave, ordenId, dto, clientInfo.ip);
   }
 
   // ---- Administración ----------------------------------------------------
@@ -165,5 +185,42 @@ export class BiometricoController {
     @ClientInfo() clientInfo: ClientInfoData,
   ): Promise<ResolverPendienteResponseDto> {
     return this.service.descartarPendiente(id, dto, usuario.id, clientInfo.ip);
+  }
+
+  @Put("relojes/:equipoId/config")
+  @ApiBearerAuth()
+  @Roles(...ROLES_BIOMETRICO)
+  @ApiOperation({ summary: "Guardar la conexión al reloj (IP, puerto, clave, intervalo)" })
+  @ApiResponse({ status: 200, type: GuardarConfigRelojResponseDto })
+  async guardarConfig(
+    @Param("equipoId", ParseUUIDPipe) equipoId: string,
+    @Body() dto: GuardarConfigRelojDto,
+    @CurrentUser() usuario: AuthenticatedUser,
+    @ClientInfo() clientInfo: ClientInfoData,
+  ): Promise<GuardarConfigRelojResponseDto> {
+    return this.service.guardarConfig(equipoId, dto, usuario.id, clientInfo.ip);
+  }
+
+  @Post("relojes/:equipoId/ordenes")
+  @HttpCode(200)
+  @ApiBearerAuth()
+  @Roles(...ROLES_BIOMETRICO)
+  @ApiOperation({ summary: "Pedir a la app puente probar, leer o sincronizar el reloj" })
+  @ApiResponse({ status: 200, type: OrdenDto })
+  async crearOrden(
+    @Param("equipoId", ParseUUIDPipe) equipoId: string,
+    @Body() dto: CrearOrdenDto,
+    @CurrentUser() usuario: AuthenticatedUser,
+  ): Promise<OrdenDto> {
+    return this.service.crearOrden(equipoId, dto.tipo, usuario.id);
+  }
+
+  @Get("relojes/:equipoId/ordenes")
+  @ApiBearerAuth()
+  @Roles(...ROLES_BIOMETRICO)
+  @ApiOperation({ summary: "Últimas órdenes del reloj y su resultado" })
+  @ApiResponse({ status: 200, type: [OrdenDto] })
+  async ordenes(@Param("equipoId", ParseUUIDPipe) equipoId: string): Promise<OrdenDto[]> {
+    return this.service.listarOrdenes(equipoId);
   }
 }

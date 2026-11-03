@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { IsBoolean, IsOptional, IsString, Matches } from "class-validator";
 import { MENSAJES_BIOMETRICO } from "../constants";
+import { ConfigRelojDto, OrdenPendienteDto } from "./config-reloj.dto";
 
 export class LatidoDto {
   @ApiProperty({ description: "Indica si el reloj respondió a la app en la última lectura" })
@@ -25,4 +26,10 @@ export class LatidoResponseDto {
   desfaseMinutos!: number;
   @ApiProperty({ description: "La app debe poner el reloj en la hora del servidor" })
   ponerEnHora!: boolean;
+
+  @ApiProperty({ type: ConfigRelojDto, description: "Conexión al reloj configurada en el SGA" })
+  config!: ConfigRelojDto;
+
+  @ApiProperty({ type: [OrdenPendienteDto], description: "Órdenes que la app debe atender" })
+  ordenes!: OrdenPendienteDto[];
 }

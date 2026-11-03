@@ -81,6 +81,19 @@ describe("RF-022: Integración con biométrico ZKTeco", () => {
         ),
       registrarLatido: jest.fn().mockResolvedValue(undefined),
       listarRelojes: jest.fn().mockResolvedValue([]),
+      findConfig: jest.fn().mockResolvedValue({
+        relojIp: "192.168.1.201",
+        relojPuerto: 4370,
+        relojClaveComunicacion: 0,
+        intervaloSegundos: 60,
+      }),
+      guardarConfig: jest.fn().mockResolvedValue(undefined),
+      vencerOrdenes: jest.fn().mockResolvedValue(undefined),
+      findOrdenPendiente: jest.fn().mockResolvedValue(null),
+      crearOrden: jest.fn().mockResolvedValue({ id: "ord-1", tipo: "probar_reloj" }),
+      listarOrdenes: jest.fn().mockResolvedValue([]),
+      listarOrdenesPendientes: jest.fn().mockResolvedValue([]),
+      resolverOrden: jest.fn().mockResolvedValue(true),
     };
     equipos = { validarKiosko: jest.fn().mockResolvedValue({ valido: true, equipo: reloj }) };
     marcaciones = {
@@ -249,7 +262,11 @@ describe("RF-022: Integración con biométrico ZKTeco", () => {
         relojResponde: true,
         horaReloj: `${HOY} 07:50:00`,
       });
-      expect(r).toEqual({ horaServidor: `${HOY} 08:00:00`, desfaseMinutos: 10, ponerEnHora: true });
+      expect(r).toMatchObject({
+        horaServidor: `${HOY} 08:00:00`,
+        desfaseMinutos: 10,
+        ponerEnHora: true,
+      });
       expect(audit.log).toHaveBeenCalledTimes(1);
       expect(repo.registrarLatido).toHaveBeenCalledWith(
         "eq-1",
@@ -486,6 +503,79 @@ describe("RF-022: Integración con biométrico ZKTeco", () => {
       expect(estado.alertas[0]).toBe(
         "El reloj Reloj docentes tiene la hora desfasada 12 minutos. Se sincronizó con el servidor.",
       );
+    });
+  });
+
+  describe("Configuración remota del reloj y órdenes a la app puente", () => {
+    const dto = {
+      relojIp: " 192.168.1.50 ",
+      relojPuerto: 4370,
+      relojClaveComunicacion: 123456,
+      intervaloSegundos: 30,
+    };
+
+    it("CP-RF022-25: guardar la conexión del reloj, auditarla sin la clave de comunicación", async () => {
+      const r = await service.guardarConfig("eq-1", dto, "usr-1", "10.0.0.1");
+      expect(r.mensaje).toBe(MENSAJES_BIOMETRICO.CONFIG_GUARDADA);
+      expect(repo.guardarConfig).toHaveBeenCalledWith(
+        "eq-1",
+        expect.objectContaining({ relojIp: "192.168.1.50", intervaloSegundos: 30 }),
+      );
+      const llamada = audit.log?.mock.calls[0] as [{ valorNuevo: Record<string, unknown> }];
+      expect(llamada[0].valorNuevo.relojClaveComunicacion).toBeUndefined();
+    });
+
+    it("CP-RF022-25b: no guarda la conexión de un reloj que no existe", async () => {
+      repo.findConfig?.mockResolvedValueOnce(null);
+      await expect(service.guardarConfig("nada", dto, "usr-1")).rejects.toThrow(NotFoundException);
+      expect(repo.guardarConfig).not.toHaveBeenCalled();
+    });
+
+    it("CP-RF022-26: la app recibe la configuración y sus órdenes en el latido", async () => {
+      repo.listarOrdenesPendientes?.mockResolvedValueOnce([{ id: "ord-9", tipo: "leer_reloj" }]);
+      const r = await service.registrarLatido("clave", { relojResponde: true });
+      expect(r.config.relojIp).toBe("192.168.1.201");
+      expect(r.ordenes).toEqual([{ id: "ord-9", tipo: "leer_reloj" }]);
+    });
+
+    it("CP-RF022-27: pedir una prueba crea la orden; si ya hay una igual pendiente se reutiliza", async () => {
+      await service.crearOrden("eq-1", "probar_reloj", "usr-1");
+      expect(repo.crearOrden).toHaveBeenCalledWith("eq-1", "probar_reloj", "usr-1");
+
+      repo.findOrdenPendiente?.mockResolvedValueOnce({ id: "ord-0", tipo: "probar_reloj" });
+      const r = await service.crearOrden("eq-1", "probar_reloj", "usr-1");
+      expect(r.id).toBe("ord-0");
+      expect(repo.crearOrden).toHaveBeenCalledTimes(1);
+    });
+
+    it("CP-RF022-27b: no se pueden pedir órdenes sin haber guardado la IP del reloj", async () => {
+      repo.findConfig?.mockResolvedValueOnce({
+        relojIp: null,
+        relojPuerto: 4370,
+        relojClaveComunicacion: 0,
+        intervaloSegundos: 60,
+      });
+      await expect(service.crearOrden("eq-1", "probar_reloj", "usr-1")).rejects.toThrow(
+        new BadRequestException(MENSAJES_BIOMETRICO.ORDEN_SIN_IP),
+      );
+    });
+
+    it("CP-RF022-28: la app informa el resultado de una orden con su clave", async () => {
+      await service.resolverOrden("clave", "ord-1", { ok: true, mensaje: "El reloj respondió." });
+      expect(repo.resolverOrden).toHaveBeenCalledWith(
+        "eq-1",
+        "ord-1",
+        "completada",
+        "El reloj respondió.",
+        null,
+      );
+    });
+
+    it("CP-RF022-28b: una orden ajena o ya resuelta se rechaza", async () => {
+      repo.resolverOrden?.mockResolvedValueOnce(false);
+      await expect(
+        service.resolverOrden("clave", "ord-1", { ok: false, mensaje: "x" }),
+      ).rejects.toThrow(new NotFoundException(MENSAJES_BIOMETRICO.ORDEN_NO_ENCONTRADA));
     });
   });
 });

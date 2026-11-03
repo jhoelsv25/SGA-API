@@ -1320,6 +1320,11 @@ export const equiposAutorizados = pgTable(
     relojRespondioEn: timestamp("reloj_respondio_en", { precision: 0, mode: "string" }),
     /** RF-022: diferencia (minutos) entre la hora del reloj y la del servidor en el último aviso. */
     ultimoDesfaseMin: integer("ultimo_desfase_min"),
+    /** RF-022: conexión al reloj, configurada desde el SGA y descargada por la app puente. */
+    relojIp: varchar("reloj_ip", { length: 255 }),
+    relojPuerto: integer("reloj_puerto").default(4370).notNull(),
+    relojClaveComunicacion: integer("reloj_clave_comunicacion").default(0).notNull(),
+    intervaloSegundos: integer("intervalo_segundos").default(60).notNull(),
     creadoEn: timestamp("creado_en", { precision: 0, mode: "string" })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
@@ -2794,3 +2799,45 @@ export const suscripcionesPush = pgTable(
   ],
 );
 
+/** RF-022: órdenes que el SGA le deja a la app puente (probar el reloj, leerlo, sincronizar). */
+export const puenteOrdenes = pgTable(
+  "puente_ordenes",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    equipoId: uuid("equipo_id").notNull(),
+    tipo: varchar({ length: 20 }).notNull(),
+    estado: varchar({ length: 15 }).default("pendiente").notNull(),
+    mensaje: varchar({ length: 1000 }),
+    datos: jsonb(),
+    solicitadaPorId: uuid("solicitada_por_id"),
+    creadoEn: timestamp("creado_en", { precision: 0, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    resueltaEn: timestamp("resuelta_en", { precision: 0, mode: "string" }),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.equipoId],
+      foreignColumns: [equiposAutorizados.id],
+      name: "fk_puente_ordenes_equipo",
+    }),
+    foreignKey({
+      columns: [table.solicitadaPorId],
+      foreignColumns: [usuarios.id],
+      name: "fk_puente_ordenes_solicitante",
+    }),
+    index("ix_puente_ordenes_equipo_estado").using(
+      "btree",
+      table.equipoId.asc().nullsLast().op("uuid_ops"),
+      table.estado.asc().nullsLast().op("text_ops"),
+    ),
+    check(
+      "ck_puente_ordenes_tipo",
+      sql`(tipo)::text = ANY ((ARRAY['probar_reloj'::character varying, 'leer_reloj'::character varying, 'sincronizar'::character varying])::text[])`,
+    ),
+    check(
+      "ck_puente_ordenes_estado",
+      sql`(estado)::text = ANY ((ARRAY['pendiente'::character varying, 'completada'::character varying, 'error'::character varying])::text[])`,
+    ),
+  ],
+);

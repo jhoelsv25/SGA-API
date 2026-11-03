@@ -13,6 +13,16 @@ export const ESTADOS_RELOJ = [
 ] as const;
 export type EstadoReloj = (typeof ESTADOS_RELOJ)[number];
 
+export const TIPOS_ORDEN = ["probar_reloj", "leer_reloj", "sincronizar"] as const;
+export type TipoOrden = (typeof TIPOS_ORDEN)[number];
+
+export const ESTADOS_ORDEN = ["pendiente", "completada", "error"] as const;
+export type EstadoOrden = (typeof ESTADOS_ORDEN)[number];
+
+/** Una orden que la app puente no atiende en este tiempo se da por fallida. */
+export const MINUTOS_VENCIMIENTO_ORDEN = 3;
+export const LIMITE_ORDENES = 10;
+
 export const LIMITE_LOTE_BIOMETRICO = 500;
 export const LIMITE_PENDIENTES = 200;
 
@@ -39,6 +49,14 @@ export const MENSAJES_BIOMETRICO = {
   PERSONA_NO_DOCENTE: "Solo se puede asignar la marcación a un docente activo.",
   YA_COMPLETO: "El docente ya tiene entrada y salida ese día.",
   SIN_TURNO: "No hay un turno configurado para docentes.",
+  RELOJ_NO_ENCONTRADO: "El reloj biométrico no existe.",
+  RELOJ_IP_INVALIDA: "Ingrese una IP o nombre de equipo válido para el reloj.",
+  CONFIG_GUARDADA:
+    "Configuración del reloj guardada. La app puente la tomará en su próxima comunicación.",
+  ORDEN_NO_ENCONTRADA: "La orden no existe o ya fue resuelta.",
+  ORDEN_SIN_IP: "Primero guarde la IP del reloj.",
+  ORDEN_VENCIDA:
+    "La app puente no respondió a tiempo. Verifique que esté encendida y con internet.",
   FECHA_HORA_INVALIDA: "La fecha y hora debe tener el formato AAAA-MM-DD HH:mm:ss.",
   ALERTA_APP: (nombre: string, hora: string): string =>
     `La app puente del reloj ${nombre} no se comunica desde las ${hora}.`,
