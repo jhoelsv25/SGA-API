@@ -78,11 +78,24 @@ describe("auth-cookie.util (RF-001: Cookies de Sesión)", () => {
   });
 
   describe("clearAuthCookie", () => {
-    it("debe limpiar la cookie access_token", () => {
-      clearAuthCookie(mockResponse as unknown as Response);
+    it("debe limpiar la cookie access_token con opciones de desarrollo", () => {
+      clearAuthCookie(mockResponse as unknown as Response, false);
 
       expect(mockResponse.clearCookie).toHaveBeenCalledWith("access_token", {
         httpOnly: true,
+        secure: false,
+        sameSite: "lax",
+        path: "/",
+      });
+    });
+
+    it("debe limpiar la cookie con las mismas opciones secure/sameSite que setAuthCookie en producción", () => {
+      clearAuthCookie(mockResponse as unknown as Response, true);
+
+      expect(mockResponse.clearCookie).toHaveBeenCalledWith("access_token", {
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
         path: "/",
       });
     });
