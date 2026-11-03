@@ -56,8 +56,11 @@ async function bootstrap() {
   // Configuración modular de CORS
   app.enableCors(getCorsConfig(configService));
 
-  // Documentación modular OpenAPI / Swagger
-  setupSwagger(app);
+  // Documentación OpenAPI / Swagger: solo fuera de producción, salvo SWAGGER_ENABLED=true
+  const esProduccion = configService.get<string>("NODE_ENV") === "production";
+  if (!esProduccion || configService.get<string>("SWAGGER_ENABLED") === "true") {
+    setupSwagger(app);
+  }
 
   const port = configService.get<number>("PORT", 3000);
   await app.listen(port);
