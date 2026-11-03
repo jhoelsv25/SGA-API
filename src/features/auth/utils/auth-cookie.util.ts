@@ -30,9 +30,15 @@ export function setAuthCookie({
 /**
  * Limpia la cookie access_token al cerrar sesión.
  */
-export function clearAuthCookie(res: Response): void {
+export function clearAuthCookie(
+  res: Response,
+  isProduction: boolean = process.env.NODE_ENV === "production",
+): void {
+  // Debe coincidir con las opciones de setAuthCookie o el navegador no borra la cookie
   res.clearCookie("access_token", {
     httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? "none" : "lax",
     path: "/",
   });
 }

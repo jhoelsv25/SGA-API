@@ -13,6 +13,7 @@ import { Server, Socket } from "socket.io";
 import { ConfigService } from "@nestjs/config";
 import type { AuthenticatedUser, JwtPayload } from "../../auth/interfaces/jwt-payload.interface";
 import { AuthRepository } from "../../auth/repositories/auth.repository";
+import { getJwtSecret } from "../../auth/utils/jwt-secret.util";
 import type { MensajeChatFila } from "../interfaces";
 import { AulaVirtualRepository } from "../repositories";
 
@@ -62,10 +63,7 @@ export class ChatAulaGateway implements OnGatewayConnection, OnGatewayDisconnect
         return;
       }
 
-      const secret = this.configService.get<string>(
-        "JWT_SECRET",
-        "sga_super_secret_jwt_key_2026_change_in_prod",
-      );
+      const secret = getJwtSecret(this.configService);
 
       const payload = await this.jwtService.verifyAsync<JwtPayload>(token, { secret });
       const user = await this.authRepository.findUserById(payload.sub);

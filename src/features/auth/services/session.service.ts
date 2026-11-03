@@ -7,6 +7,7 @@ import {
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import { hashSha256 } from "../../../common/utils";
+import { getJwtSecret } from "../utils/jwt-secret.util";
 import type { JwtPayload } from "../interfaces/jwt-payload.interface";
 import { AuthRepository } from "../repositories/auth.repository";
 
@@ -36,10 +37,7 @@ export class SessionService {
   verifyAccessToken(token: string): JwtPayload {
     try {
       return this.jwtService.verify<JwtPayload>(token, {
-        secret: this.configService.get<string>(
-          "JWT_SECRET",
-          "sga_super_secret_jwt_key_2026_change_in_prod",
-        ),
+        secret: getJwtSecret(this.configService),
       });
     } catch (error) {
       this.logger.warn(`Token inválido o expirado: ${(error as Error).message}`);

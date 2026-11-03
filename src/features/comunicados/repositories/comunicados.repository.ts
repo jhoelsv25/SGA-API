@@ -1,4 +1,4 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable } from "@nestjs/common";
 import { sql } from "drizzle-orm";
 import { Database, DRIZZLE } from "@/core/database";
 import { comunicados } from "@/core/database/schema";
@@ -13,6 +13,15 @@ import {
   EstadoComunicado,
 } from "../interfaces";
 import { ComunicadoQueryDto, PaginatedComunicadosResponseDto } from "../dto";
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Las consultas de destinatarios interpolan IDs en SQL: se exige UUID válido. */
+function assertUuidOpcional(valor: string | null | undefined, campo: string): void {
+  if (valor && !UUID_REGEX.test(valor)) {
+    throw new BadRequestException(`El ${campo} debe ser un UUID válido`);
+  }
+}
 
 export interface DestinatarioInfo {
   usuarioId: string;
@@ -180,6 +189,9 @@ export class ComunicadosRepository {
     gradoId?: string | null,
     seccionId?: string | null,
   ): Promise<DestinatarioInfo[]> {
+    assertUuidOpcional(gradoId, "gradoId");
+    assertUuidOpcional(seccionId, "seccionId");
+
     const incluirEstudiantes = dirigidoA === "todos" || dirigidoA === "estudiantes";
     const incluirApoderados = dirigidoA === "todos" || dirigidoA === "apoderados";
     const incluirDocentes = dirigidoA === "todos" || dirigidoA === "docentes";

@@ -6,6 +6,7 @@ import { ExtractJwt, Strategy } from "passport-jwt";
 import { hashSha256 } from "../../../common/utils";
 import type { AuthenticatedUser, JwtPayload } from "../interfaces/jwt-payload.interface";
 import { AuthRepository } from "../repositories/auth.repository";
+import { getJwtSecret } from "../utils/jwt-secret.util";
 
 const extraerToken = ExtractJwt.fromExtractors([
   ExtractJwt.fromAuthHeaderAsBearerToken(),
@@ -25,10 +26,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       jwtFromRequest: extraerToken,
       ignoreExpiration: false,
       passReqToCallback: true,
-      secretOrKey: configService.get<string>(
-        "JWT_SECRET",
-        "sga_super_secret_jwt_key_2026_change_in_prod",
-      ),
+      secretOrKey: getJwtSecret(configService),
     });
   }
 

@@ -9,11 +9,12 @@ import { HEADER_ANIO_ACADEMICO } from "../common/anio-lectivo";
 export const getCorsConfig = (configService: ConfigService): CorsOptions => {
   const frontendUrl = configService.get<string>("FRONTEND_URL", "http://localhost:3001");
 
-  const allowedOrigins: (string | RegExp)[] = [
-    frontendUrl,
-    "http://localhost:3000",
-    "http://localhost:3001",
-  ];
+  const isProduction = configService.get<string>("NODE_ENV") === "production";
+
+  // Los orígenes locales solo se permiten fuera de producción
+  const allowedOrigins: (string | RegExp)[] = isProduction
+    ? [frontendUrl]
+    : [frontendUrl, "http://localhost:3000", "http://localhost:3001"];
 
   return {
     origin: allowedOrigins,

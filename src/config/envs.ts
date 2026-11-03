@@ -15,6 +15,5 @@ export const envConfig = () => ({
   nodeEnv: (process.env.NODE_ENV ?? "development") as EnvironmentVariables["NODE_ENV"],
   redisUrl: process.env.REDIS_URL ?? "redis://localhost:6379",
   databaseUrl: process.env.DATABASE_URL ?? "",
-  jwtSecret: process.env.JWT_SECRET ?? "sga_super_secret_jwt_key_2026_change_in_prod",
   jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? "1d",
 });

@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
+import { getJwtSecret } from "./utils/jwt-secret.util";
 import { JwtModule } from "@nestjs/jwt";
 import { PassportModule } from "@nestjs/passport";
 import { AuditService } from "../../common/services/audit.service";
@@ -20,10 +21,7 @@ import { JwtStrategy } from "./strategies/jwt.strategy";
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
-        secret: configService.get<string>(
-          "JWT_SECRET",
-          "sga_super_secret_jwt_key_2026_change_in_prod",
-        ),
+        secret: getJwtSecret(configService),
         signOptions: {
           expiresIn: configService.get<string>("JWT_EXPIRES_IN", "1d") as unknown as number,
         },
