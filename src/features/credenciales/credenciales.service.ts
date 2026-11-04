@@ -10,7 +10,12 @@ import type {
   ReemitirCredencialDto,
 } from "./dto";
 import { CredencialesRepository } from "./repositories/credenciales.repository";
-import { generarCarnePdf, generarCodigoCredencial, generarPinConHash } from "./utils";
+import {
+  generarCarnePdf,
+  generarCarnetsA4Pdf,
+  generarCodigoCredencial,
+  generarPinConHash,
+} from "./utils";
 
 @Injectable()
 export class CredencialesService {
@@ -137,5 +142,66 @@ export class CredencialesService {
         distrito: "Lircay",
       },
     });
+  }
+
+  async generarCarnesSeccionPdf(seccionId: string): Promise<Buffer> {
+    const seccion = await this.repository.findSeccionInfo(seccionId);
+    if (!seccion) {
+      throw new NotFoundException("La sección solicitada no fue encontrada.");
+    }
+
+    const carnes = await this.repository.findCarnesPorSeccion(seccionId);
+    if (carnes.length === 0) {
+      throw new BadRequestException(
+        "La sección no cuenta con estudiantes matriculados activos o con credenciales de marcación activas.",
+      );
+    }
+
+    const institucionDefault = {
+      nombre: "I.E. De Mujeres Nuestra Señora del Carmen",
+      distrito: "Lircay",
+    };
+
+    const datosPdf = carnes.map((c) => ({
+      nombreCompleto: c.nombreCompleto,
+      tipoDocumento: c.tipoDocumento,
+      numeroDocumento: c.numeroDocumento,
+      fotoUrl: c.fotoUrl,
+      tipoRol: c.tipoRol,
+      codigoCredencial: c.codigoCredencial,
+      codigoInstitucional: c.codigoInstitucional,
+      emitidaEn: c.emitidaEn,
+      institucion: c.institucion || institucionDefault,
+    }));
+
+    return generarCarnetsA4Pdf(datosPdf, `${seccion.gradoNombre} "${seccion.nombre}"`);
+  }
+
+  async generarCarnesDocentesPdf(): Promise<Buffer> {
+    const carnes = await this.repository.findCarnesDocentes();
+    if (carnes.length === 0) {
+      throw new BadRequestException(
+        "No se encontraron docentes activos con credenciales de marcación activas.",
+      );
+    }
+
+    const institucionDefault = {
+      nombre: "I.E. De Mujeres Nuestra Señora del Carmen",
+      distrito: "Lircay",
+    };
+
+    const datosPdf = carnes.map((c) => ({
+      nombreCompleto: c.nombreCompleto,
+      tipoDocumento: c.tipoDocumento,
+      numeroDocumento: c.numeroDocumento,
+      fotoUrl: c.fotoUrl,
+      tipoRol: c.tipoRol,
+      codigoCredencial: c.codigoCredencial,
+      codigoInstitucional: c.codigoInstitucional,
+      emitidaEn: c.emitidaEn,
+      institucion: c.institucion || institucionDefault,
+    }));
+
+    return generarCarnetsA4Pdf(datosPdf, "Plana Docente Oficial");
   }
 }

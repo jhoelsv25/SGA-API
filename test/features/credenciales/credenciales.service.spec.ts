@@ -33,6 +33,9 @@ describe("CredencialesService", () => {
     const mockRepo = {
       findActivaByPersonaId: jest.fn(),
       findPersonaForCarne: jest.fn(),
+      findSeccionInfo: jest.fn(),
+      findCarnesPorSeccion: jest.fn(),
+      findCarnesDocentes: jest.fn(),
       reemitir: jest.fn(),
       actualizarPin: jest.fn(),
     };
@@ -194,6 +197,92 @@ describe("CredencialesService", () => {
       expect(res.codigo).toBe(mockCredencial.codigo);
       expect(res.activa).toBe(true);
       expect((res as unknown as Record<string, unknown>)["pinHash"]).toBeUndefined();
+    });
+  });
+
+  describe("generarCarnesSeccionPdf", () => {
+    const mockSeccionId = "s0eebc99-9c0b-4ef8-bb6d-6bb9bd380a01";
+
+    it("debe lanzar NotFoundException si la sección no existe", async () => {
+      repository.findSeccionInfo.mockResolvedValue(null);
+
+      await expect(service.generarCarnesSeccionPdf(mockSeccionId)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it("debe lanzar BadRequestException si no hay estudiantes con credenciales", async () => {
+      repository.findSeccionInfo.mockResolvedValue({
+        id: mockSeccionId,
+        nombre: "A",
+        gradoNombre: "1.° de Secundaria",
+      });
+      repository.findCarnesPorSeccion.mockResolvedValue([]);
+
+      await expect(service.generarCarnesSeccionPdf(mockSeccionId)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it("debe generar un buffer PDF A4 con los carnés de la sección", async () => {
+      repository.findSeccionInfo.mockResolvedValue({
+        id: mockSeccionId,
+        nombre: "A",
+        gradoNombre: "1.° de Secundaria",
+      });
+      repository.findCarnesPorSeccion.mockResolvedValue([
+        {
+          personaId: mockPersonaId,
+          nombreCompleto: "Ana Condori Quispe",
+          tipoDocumento: "dni",
+          numeroDocumento: "70123456",
+          fotoUrl: null,
+          tipoRol: "Estudiante",
+          codigoCredencial: "CR-70123456-101",
+          codigoInstitucional: "6001234",
+          emitidaEn: "2026-10-09T16:00:00Z",
+          institucion: {
+            nombre: "I.E. De Mujeres Nuestra Señora del Carmen",
+            distrito: "Lircay",
+          },
+        },
+      ]);
+
+      const buffer = await service.generarCarnesSeccionPdf(mockSeccionId);
+      expect(Buffer.isBuffer(buffer)).toBe(true);
+      expect(buffer.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe("generarCarnesDocentesPdf", () => {
+    it("debe lanzar BadRequestException si no hay docentes activos con credencial", async () => {
+      repository.findCarnesDocentes.mockResolvedValue([]);
+
+      await expect(service.generarCarnesDocentesPdf()).rejects.toThrow(BadRequestException);
+    });
+
+    it("debe generar un buffer PDF A4 con los carnés de los docentes", async () => {
+      repository.findCarnesDocentes.mockResolvedValue([
+        {
+          personaId: mockPersonaId,
+          nombreCompleto: "Prof. Mario Huamán",
+          tipoDocumento: "dni",
+          numeroDocumento: "10203040",
+          fotoUrl: null,
+          tipoRol: "Docente",
+          codigoCredencial: "CR-10203040-201",
+          codigoInstitucional: "DOC-001",
+          emitidaEn: "2026-10-09T16:00:00Z",
+          institucion: {
+            nombre: "I.E. De Mujeres Nuestra Señora del Carmen",
+            distrito: "Lircay",
+          },
+        },
+      ]);
+
+      const buffer = await service.generarCarnesDocentesPdf();
+      expect(Buffer.isBuffer(buffer)).toBe(true);
+      expect(buffer.length).toBeGreaterThan(0);
     });
   });
 });

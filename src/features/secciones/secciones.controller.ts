@@ -11,7 +11,14 @@ import { HEADER_ANIO_ACADEMICO } from "../../common/anio-lectivo";
 import { MENU_SECCIONES } from "../../common/constants";
 import { ClientInfo, type ClientInfoData, CurrentUser, MenuAccess } from "../../common/decorators";
 import type { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface";
-import { CreateSeccionDto, SeccionQueryDto, SeccionResponseDto, UpdateSeccionDto } from "./dto";
+import {
+  ClonarSeccionesDto,
+  ClonarSeccionesResultadoDto,
+  CreateSeccionDto,
+  SeccionQueryDto,
+  SeccionResponseDto,
+  UpdateSeccionDto,
+} from "./dto";
 import { SeccionesService } from "./secciones.service";
 
 @ApiTags("Secciones")
@@ -39,6 +46,27 @@ export class SeccionesController {
     @ClientInfo() clientInfo: ClientInfoData,
   ): Promise<SeccionResponseDto> {
     return this.service.create(dto, usuario.id, clientInfo.ip);
+  }
+
+  @Post("clonar")
+  @MenuAccess(MENU_SECCIONES)
+  @ApiOperation({
+    summary:
+      "Clonar la estructura de secciones de un año escolar anterior al año de trabajo (P-25)",
+    description:
+      "Copia las secciones del año origen al año destino, generando automáticamente su carga académica y omitiendo duplicadas.",
+  })
+  @ApiResponse({
+    status: 201,
+    description: "Resultado de la clonación de secciones",
+    type: ClonarSeccionesResultadoDto,
+  })
+  async clonar(
+    @Body() dto: ClonarSeccionesDto,
+    @CurrentUser() usuario: AuthenticatedUser,
+    @ClientInfo() clientInfo: ClientInfoData,
+  ): Promise<ClonarSeccionesResultadoDto> {
+    return this.service.clonar(dto, usuario.id, clientInfo.ip);
   }
 
   @Patch(":id")

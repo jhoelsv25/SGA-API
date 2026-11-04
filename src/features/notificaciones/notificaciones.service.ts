@@ -25,6 +25,10 @@ export class NotificacionesService {
     private readonly emitter?: import("./services").NotificacionesRealtimeEmitter,
     @Optional()
     private readonly pushStrategy?: import("./strategies").PushNotificationStrategy,
+    @Optional()
+    private readonly emailStrategy?: import("./strategies").EmailNotificationStrategy,
+    @Optional()
+    private readonly webhookStrategy?: import("./strategies").WebhookNotificationStrategy,
   ) {}
 
   /**
@@ -61,6 +65,16 @@ export class NotificacionesService {
       if (this.pushStrategy) {
         this.pushStrategy.enviar(params).catch((err) => {
           this.logger.warn(`Error en envío directo de Web Push: ${(err as Error).message}`);
+        });
+      }
+      if (this.emailStrategy && params.canales?.includes("email")) {
+        this.emailStrategy.enviar(params).catch((err) => {
+          this.logger.warn(`Error en envío directo de Email: ${(err as Error).message}`);
+        });
+      }
+      if (this.webhookStrategy && params.canales?.includes("webhook")) {
+        this.webhookStrategy.enviar(params).catch((err) => {
+          this.logger.warn(`Error en envío directo de Webhook: ${(err as Error).message}`);
         });
       }
     } catch (insertError) {

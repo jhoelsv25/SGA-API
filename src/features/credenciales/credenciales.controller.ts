@@ -95,6 +95,47 @@ export class CredencialesController {
     res.end(buffer);
   }
 
+  @Get("secciones/:seccionId/carnes/pdf")
+  @Roles("Administrador", "Secretaria", "Director", "Subdirector")
+  @ApiOperation({
+    summary: "Descargar en PDF A4 los carnés con QR de toda una sección listos para impresión",
+    description:
+      "Genera una planilla A4 con cuadrícula de 8 carnés por hoja con guías de corte punteadas.",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Buffer del archivo PDF A4 con los carnés de la sección",
+  })
+  async descargarCarnesSeccionPdf(
+    @Param("seccionId", ParseUUIDPipe) seccionId: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    const buffer = await this.credencialesService.generarCarnesSeccionPdf(seccionId);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename="carnes-seccion-${seccionId}.pdf"`);
+    res.setHeader("Content-Length", buffer.length.toString());
+    res.end(buffer);
+  }
+
+  @Get("docentes/carnes/pdf")
+  @Roles("Administrador", "Secretaria", "Director", "Subdirector")
+  @ApiOperation({
+    summary: "Descargar en PDF A4 los carnés con QR de todo el personal docente activo",
+    description:
+      "Genera una planilla A4 con cuadrícula de 8 carnés por hoja con guías de corte punteadas.",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Buffer del archivo PDF A4 con los carnés de los docentes",
+  })
+  async descargarCarnesDocentesPdf(@Res() res: Response): Promise<void> {
+    const buffer = await this.credencialesService.generarCarnesDocentesPdf();
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename="carnes-docentes.pdf"`);
+    res.setHeader("Content-Length", buffer.length.toString());
+    res.end(buffer);
+  }
+
   @Get("personas/:personaId")
   @ApiOperation({
     summary: "Consultar la credencial activa de una persona",

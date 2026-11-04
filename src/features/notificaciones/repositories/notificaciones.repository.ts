@@ -1,7 +1,12 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { and, eq, sql } from "drizzle-orm";
 import { Database, DRIZZLE } from "../../../core/database";
-import { notificaciones, suscripcionesPush } from "../../../core/database/schema";
+import {
+  notificaciones,
+  personas,
+  suscripcionesPush,
+  usuarios,
+} from "../../../core/database/schema";
 import { decodeCursor, encodeCursor } from "../../../common/utils";
 import type {
   DbNotificacionesProcedureExecutionResult,
@@ -204,5 +209,40 @@ export class NotificacionesRepository {
       })
       .from(suscripcionesPush)
       .where(eq(suscripcionesPush.usuarioId, usuarioId));
+  }
+
+  async findDatosContactoUsuario(usuarioId: string): Promise<{
+    usuarioId: string;
+    nombreCompleto: string;
+    correo: string | null;
+    celular: string | null;
+  } | null> {
+    const rows = await this.db
+      .select({
+        usuarioId: usuarios.id,
+        nombres: personas.nombres,
+        apellidoPaterno: personas.apellidoPaterno,
+        apellidoMaterno: personas.apellidoMaterno,
+        correo: personas.correo,
+        celular: personas.celular,
+        telefono: personas.telefono,
+      })
+      .from(usuarios)
+      .innerJoin(personas, eq(usuarios.personaId, personas.id))
+      .where(eq(usuarios.id, usuarioId))
+      .limit(1);
+
+    if (rows.length === 0) return null;
+    const r = rows[0];
+    const nombreCompleto = [r.nombres, r.apellidoPaterno, r.apellidoMaterno]
+      .filter(Boolean)
+      .join(" ");
+
+    return {
+      usuarioId: r.usuarioId,
+      nombreCompleto,
+      correo: r.correo,
+      celular: r.celular || r.telefono || null,
+    };
   }
 }

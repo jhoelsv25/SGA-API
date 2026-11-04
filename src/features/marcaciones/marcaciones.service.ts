@@ -4,12 +4,14 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  Optional,
 } from "@nestjs/common";
 import { AuditService } from "../../common/services/audit.service";
 import { hashSha256 } from "../../common/utils";
 import { AniosAcademicosService } from "../anio-escolar/anios.service";
 import { CalendarioService } from "../calendario/calendario.service";
 import { EquiposService } from "../equipos/equipos.service";
+import { NotificacionesService } from "../notificaciones/notificaciones.service";
 import { TurnosRepository } from "../turnos/repositories/turnos.repository";
 import type { TurnoResponseDto } from "../turnos/dto";
 import {
@@ -56,6 +58,8 @@ export class MarcacionesService {
     private readonly calendarioService: CalendarioService,
     private readonly aniosService: AniosAcademicosService,
     private readonly auditService: AuditService,
+    @Optional()
+    private readonly notificacionesService?: NotificacionesService,
   ) {}
 
   /** Marcación en un kiosko autorizado: código/QR + PIN. Usa siempre la hora del servidor. */
@@ -104,6 +108,15 @@ export class MarcacionesService {
     });
 
     const horaMarcada = horaCorta(hora);
+
+    if (
+      persona.tipoPersona === "estudiantes" &&
+      creada.resultado === "tardanza" &&
+      this.notificacionesService
+    ) {
+      this.despacharAlertaTardanza(persona, creada.minutosTardanza, horaMarcada).catch(() => {});
+    }
+
     return {
       registrada: true,
       mensaje: this.mensajeDeResultado(
@@ -328,5 +341,28 @@ export class MarcacionesService {
     return resultado === "tardanza"
       ? mensajeTardanza(nombre, hora, minutos)
       : mensajeEntrada(nombre, hora);
+  }
+
+  private async despacharAlertaTardanza(
+    persona: PersonaAutenticada,
+    minutosTardanza: number,
+    horaMarcada: string,
+  ): Promise<void> {
+    if (!this.notificacionesService) return;
+    try {
+      const apoderados = await this.repository.findApoderadosDePersonaEstudiante(persona.personaId);
+      for (const apo of apoderados) {
+        await this.notificacionesService.enviar({
+          usuarioId: apo.usuarioId,
+          titulo: "Aviso de tardanza en ingreso",
+          mensaje: `El estudiante ${persona.nombreCompleto} ingresó al colegio con ${minutosTardanza} minutos de tardanza a las ${horaMarcada}.`,
+          tipo: "alerta",
+          enlaceUrl: "/admin/mi-asistencia",
+          canales: ["in_app", "push", "email", "webhook"],
+        });
+      }
+    } catch {
+      // Silenciar para no afectar la marcación en el kiosko
+    }
   }
 }

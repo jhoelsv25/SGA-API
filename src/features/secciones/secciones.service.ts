@@ -10,7 +10,16 @@ import { AniosAcademicosService } from "../anio-escolar/anios.service";
 import { DocentesRepository } from "../docentes";
 import { GradosService } from "../grados";
 import { MENSAJES_SECCIONES, TABLA_SECCIONES } from "./constants";
-import { CreateSeccionDto, SeccionQueryDto, SeccionResponseDto, UpdateSeccionDto } from "./dto";
+import {
+  ClonarSeccionesDto,
+  ClonarSeccionesResultadoDto,
+  CreateSeccionDto,
+  SeccionClonadaDetalleDto,
+  SeccionOmitidaDetalleDto,
+  SeccionQueryDto,
+  SeccionResponseDto,
+  UpdateSeccionDto,
+} from "./dto";
 import { SeccionesRepository } from "./repositories";
 import { construirMensajeSeccionRepetida } from "./utils";
 
@@ -174,6 +183,113 @@ export class SeccionesService {
     });
 
     return cerrada;
+  }
+
+  async clonar(
+    dto: ClonarSeccionesDto,
+    actorId: string,
+    ip?: string,
+  ): Promise<ClonarSeccionesResultadoDto> {
+    const anioDestino = await this.resolverAnio(true);
+
+    if (dto.anioOrigenId === anioDestino.id) {
+      throw new BadRequestException(
+        "El año académico de origen no puede ser el mismo año lectivo de destino.",
+      );
+    }
+
+    // Verificar que el año de origen exista
+    const anioOrigen = await this.aniosService.findById(dto.anioOrigenId);
+    if (!anioOrigen) {
+      throw new NotFoundException("El año escolar de origen no fue encontrado.");
+    }
+
+    const seccionesOrigen = await this.seccionesRepo.findAll(dto.anioOrigenId, {
+      estado: "activa",
+    });
+
+    if (seccionesOrigen.length === 0) {
+      throw new BadRequestException(
+        "El año escolar de origen no cuenta con secciones activas para clonar.",
+      );
+    }
+
+    const clonadas: SeccionClonadaDetalleDto[] = [];
+    const omitidas: SeccionOmitidaDetalleDto[] = [];
+
+    for (const sec of seccionesOrigen) {
+      const nombreTrimmed = sec.nombre.trim();
+      const yaExiste = await this.seccionesRepo.findPorNombre(
+        anioDestino.id,
+        sec.gradoId,
+        nombreTrimmed,
+      );
+
+      if (yaExiste) {
+        omitidas.push({
+          gradoNombre: sec.gradoNombre,
+          nombre: sec.nombre,
+          motivo: `Ya existe una sección con el mismo grado y letra en el año de destino (${yaExiste.nombre}).`,
+        });
+        continue;
+      }
+
+      let tutorId: string | null = null;
+      let tutorAsignado = false;
+
+      if (dto.copiarTutores && sec.tutor?.id) {
+        const docente = await this.docentesRepo.findById(sec.tutor.id);
+        if (docente && docente.estado === "activo") {
+          const tutorOcupado = await this.seccionesRepo.tutorOcupado(anioDestino.id, sec.tutor.id);
+          if (!tutorOcupado) {
+            tutorId = sec.tutor.id;
+            tutorAsignado = true;
+          }
+        }
+      }
+
+      const nueva = await this.seccionesRepo.createConCarga({
+        anioAcademicoId: anioDestino.id,
+        gradoId: sec.gradoId,
+        nombre: nombreTrimmed,
+        aula: dto.copiarAulas !== false ? sec.aula : null,
+        vacantes: sec.vacantes,
+        tutorId,
+      });
+
+      clonadas.push({
+        id: nueva.id,
+        gradoNombre: nueva.gradoNombre,
+        nombre: nueva.nombre,
+        aula: nueva.aula,
+        vacantes: nueva.vacantes,
+        tutorAsignado,
+      });
+    }
+
+    await this.auditService.log({
+      usuarioId: actorId,
+      accion: "crear",
+      tabla: TABLA_SECCIONES,
+      registroId: anioDestino.id,
+      valorNuevo: {
+        tipo: "clonacion_secciones",
+        anioOrigenId: dto.anioOrigenId,
+        totalClonadas: clonadas.length,
+        totalOmitidas: omitidas.length,
+      },
+      direccionIp: ip,
+    });
+
+    const mensaje = `Se clonaron exitosamente ${clonadas.length} secciones en el año académico ${anioDestino.anio} (${omitidas.length} omitidas).`;
+
+    return {
+      mensaje,
+      totalClonadas: clonadas.length,
+      totalOmitidas: omitidas.length,
+      clonadas,
+      omitidas,
+    };
   }
 
   async findAll(query?: SeccionQueryDto): Promise<SeccionResponseDto[]> {

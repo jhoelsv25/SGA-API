@@ -9,6 +9,7 @@ import { hashSha256 } from "@/common/utils";
 import { AniosAcademicosService } from "@/features/anio-escolar/anios.service";
 import { CalendarioService } from "@/features/calendario/calendario.service";
 import { EquiposService } from "@/features/equipos/equipos.service";
+import { NotificacionesService } from "@/features/notificaciones/notificaciones.service";
 import {
   MarcacionesRepository,
   MarcacionesService,
@@ -158,12 +159,36 @@ describe("RF-010: Marcaciones (HU1 y HU2)", () => {
     );
   });
 
-  it("CP-RF010-02: estudiante llega tarde", async () => {
+  it("CP-RF010-02: estudiante llega tarde y despacha alerta a apoderados", async () => {
+    const notificaciones = { enviar: jest.fn().mockResolvedValue(undefined) };
+    service = new MarcacionesService(
+      repo as unknown as MarcacionesRepository,
+      equipos as unknown as EquiposService,
+      turnos as unknown as TurnosRepository,
+      calendario as unknown as CalendarioService,
+      anios as unknown as AniosAcademicosService,
+      audit as unknown as AuditService,
+      notificaciones as unknown as NotificacionesService,
+    );
+    repo.findApoderadosDePersonaEstudiante = jest
+      .fn()
+      .mockResolvedValue([{ usuarioId: "apo-1", apoderadoNombre: "Juan Pérez" }]);
+
     horaServidor("08:05:00");
     const r = await service.marcarEnKiosko("tok", { codigo: "CR-1", pin: "1234" });
     expect(r.resultado).toBe("tardanza");
     expect(r.minutosTardanza).toBe(10);
     expect(r.mensaje).toBe("Ana, entrada registrada a las 08:05 con 10 minutos de tardanza.");
+    expect(notificaciones.enviar).toHaveBeenCalledWith(
+      expect.objectContaining({
+        usuarioId: "apo-1",
+        titulo: "Aviso de tardanza en ingreso",
+      }),
+    );
+    const envioCall = (notificaciones.enviar.mock.calls[0] as [{ canales?: string[] }])[0];
+    expect(envioCall.canales).toContain("in_app");
+    expect(envioCall.canales).toContain("email");
+    expect(envioCall.canales).toContain("webhook");
   });
 
   it("CP-RF010-03: segunda marcación no registra nada", async () => {

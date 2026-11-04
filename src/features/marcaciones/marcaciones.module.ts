@@ -3,13 +3,14 @@ import { AuditService } from "../../common/services/audit.service";
 import { AnioEscolarModule } from "../anio-escolar/anio-escolar.module";
 import { CalendarioModule } from "../calendario/calendario.module";
 import { EquiposModule } from "../equipos/equipos.module";
+import { NotificacionesModule } from "../notificaciones/notificaciones.module";
 import { TurnosModule } from "../turnos/turnos.module";
 import { MarcacionesController } from "./marcaciones.controller";
 import { MarcacionesService } from "./marcaciones.service";
 import { MarcacionesRepository } from "./repositories";
 
 @Module({
-  imports: [EquiposModule, TurnosModule, CalendarioModule, AnioEscolarModule],
+  imports: [EquiposModule, TurnosModule, CalendarioModule, AnioEscolarModule, NotificacionesModule],
   controllers: [MarcacionesController],
   providers: [MarcacionesService, MarcacionesRepository, AuditService],
   exports: [MarcacionesService, MarcacionesRepository],

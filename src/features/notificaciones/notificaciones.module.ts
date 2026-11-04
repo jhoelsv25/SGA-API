@@ -10,6 +10,7 @@ import {
   EmailNotificationStrategy,
   InAppNotificationStrategy,
   PushNotificationStrategy,
+  WebhookNotificationStrategy,
 } from "./strategies";
 import { NotificationsProcessor } from "./processors";
 
@@ -28,6 +29,7 @@ import { NotificationsProcessor } from "./processors";
     InAppNotificationStrategy,
     EmailNotificationStrategy,
     PushNotificationStrategy,
+    WebhookNotificationStrategy,
     NotificationsProcessor,
   ],
   exports: [NotificacionesService, NotificacionesRealtimeEmitter],
