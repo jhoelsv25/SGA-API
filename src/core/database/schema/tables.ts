@@ -260,6 +260,10 @@ export const rolMenus = pgTable(
     asignadoEn: timestamp("asignado_en", { precision: 0, mode: "string" })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
+    // Permisos finos por opción de menú: la fila da "Ver"; estas columnas dan Crear, Editar y Eliminar (los lee SGA-NET).
+    puedeCrear: boolean("puede_crear").default(false).notNull(),
+    puedeEditar: boolean("puede_editar").default(false).notNull(),
+    puedeEliminar: boolean("puede_eliminar").default(false).notNull(),
   },
   (table) => [
     primaryKey({ columns: [table.rolId, table.menuId], name: "pk_rol_menus" }),
@@ -1234,7 +1238,7 @@ export const marcaciones = pgTable(
     check("ck_marcaciones_minutos", sql`minutos_tardanza >= 0`),
     check(
       "ck_marcaciones_origen",
-      sql`(origen)::text = ANY ((ARRAY['kiosko'::character varying, 'intranet'::character varying, 'manual'::character varying])::text[])`,
+      sql`(origen)::text = ANY ((ARRAY['kiosko'::character varying, 'intranet'::character varying, 'manual'::character varying, 'biometrico'::character varying])::text[])`,
     ),
     check(
       "ck_marcaciones_resultado",
@@ -1244,6 +1248,88 @@ export const marcaciones = pgTable(
       "ck_marcaciones_tipo",
       sql`(tipo)::text = ANY ((ARRAY['entrada'::character varying, 'salida'::character varying])::text[])`,
     ),
+  ],
+);
+
+// Marcaciones crudas del reloj biométrico. SGA-NET solo inserta aquí (código del reloj + fecha y hora);
+// SGA-API las convierte en `marcaciones` (persona, turno, resultado y tardanza) y las marca como procesadas.
+export const marcacionesBiometricas = pgTable(
+  "marcaciones_biometricas",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    relojSerie: varchar("reloj_serie", { length: 100 }).notNull(),
+    codigoUsuario: varchar("codigo_usuario", { length: 50 }).notNull(),
+    fechaHora: timestamp("fecha_hora", { precision: 0, mode: "string" }).notNull(),
+    tipoReloj: varchar("tipo_reloj", { length: 20 }),
+    estado: varchar({ length: 20 }).default("pendiente").notNull(),
+    motivoRechazo: varchar("motivo_rechazo", { length: 255 }),
+    marcacionId: uuid("marcacion_id"),
+    recibidaEn: timestamp("recibida_en", { precision: 0, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    procesadaEn: timestamp("procesada_en", { precision: 0, mode: "string" }),
+  },
+  (table) => [
+    uniqueIndex("ux_marcaciones_biometricas_marca").on(
+      table.relojSerie,
+      table.codigoUsuario,
+      table.fechaHora,
+    ),
+    index("ix_marcaciones_biometricas_pendientes")
+      .using("btree", table.fechaHora.asc().nullsLast().op("timestamp_ops"))
+      .where(sql`estado = 'pendiente'`),
+    foreignKey({
+      columns: [table.marcacionId],
+      foreignColumns: [marcaciones.id],
+      name: "fk_marcaciones_biometricas_marcacion",
+    }),
+    check(
+      "ck_marcaciones_biometricas_estado",
+      sql`(estado)::text = ANY ((ARRAY['pendiente'::character varying, 'procesada'::character varying, 'rechazada'::character varying])::text[])`,
+    ),
+  ],
+);
+
+// Dispositivos desde los que un usuario inicia sesión en SGA-NET. SGA-WEB/SGA-API los autoriza; SGA-NET solo lee.
+export const equiposAcceso = pgTable(
+  "equipos_acceso",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    usuarioId: uuid("usuario_id").notNull(),
+    equipoHash: varchar("equipo_hash", { length: 128 }).notNull(),
+    nombre: varchar({ length: 100 }).notNull(),
+    plataforma: smallint().notNull(),
+    estado: smallint().default(1).notNull(),
+    solicitadoEn: timestamp("solicitado_en", { withTimezone: true, precision: 6, mode: "string" })
+      .default(sql`now()`)
+      .notNull(),
+    resueltoEn: timestamp("resuelto_en", { withTimezone: true, precision: 6, mode: "string" }),
+    resueltoPor: uuid("resuelto_por"),
+    motivo: varchar({ length: 255 }),
+    ultimoAcceso: timestamp("ultimo_acceso", { withTimezone: true, precision: 6, mode: "string" }),
+    vigenteHasta: timestamp("vigente_hasta", { withTimezone: true, precision: 6, mode: "string" }),
+    ip: varchar({ length: 45 }),
+    actualizadoEn: timestamp("actualizado_en", {
+      withTimezone: true,
+      precision: 6,
+      mode: "string",
+    }),
+  },
+  (table) => [
+    uniqueIndex("ux_equipos_acceso_usuario_hash").on(table.usuarioId, table.equipoHash),
+    index("ix_equipos_acceso_estado").on(table.estado, table.solicitadoEn),
+    foreignKey({
+      columns: [table.usuarioId],
+      foreignColumns: [usuarios.id],
+      name: "fk_equipos_acceso_usuario",
+    }),
+    foreignKey({
+      columns: [table.resueltoPor],
+      foreignColumns: [usuarios.id],
+      name: "fk_equipos_acceso_resuelto",
+    }),
+    check("ck_equipos_acceso_plataforma", sql`plataforma IN (0, 1, 2, 3)`),
+    check("ck_equipos_acceso_estado", sql`estado IN (1, 2, 3, 4)`),
   ],
 );
 
@@ -2703,4 +2789,3 @@ export const suscripcionesPush = pgTable(
     }).onDelete("cascade"),
   ],
 );
-
