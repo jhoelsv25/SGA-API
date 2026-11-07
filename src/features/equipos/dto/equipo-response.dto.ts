@@ -38,9 +38,6 @@ export class EquipoResponseDto {
   @ApiPropertyOptional({ description: "Último acceso registrado" })
   ultimoAcceso?: string | null;
 
-  @ApiPropertyOptional({ description: "IP de registro" })
-  ipRegistro?: string | null;
-
   @ApiPropertyOptional({ description: "RF-022: último aviso de la app puente (solo biométricos)" })
   ultimoLatidoEn?: string | null;
 

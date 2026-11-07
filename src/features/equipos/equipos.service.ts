@@ -171,7 +171,7 @@ export class EquiposService {
     const rawToken = crypto.randomBytes(32).toString("hex");
     const tokenHash = this.hashToken(rawToken);
 
-    const updated = await this.equiposRepository.authorize(id, tokenHash, actorId, ip);
+    const updated = await this.equiposRepository.authorize(id, tokenHash, actorId);
 
     await this.auditService.log({
       usuarioId: actorId,
@@ -196,10 +196,7 @@ export class EquiposService {
     };
   }
 
-  async validarKiosko(
-    rawToken: string | undefined,
-    ip?: string,
-  ): Promise<ValidarEquipoResponseDto> {
+  async validarKiosko(rawToken: string | undefined): Promise<ValidarEquipoResponseDto> {
     if (!rawToken || rawToken.trim().length === 0) {
       throw new UnauthorizedException(
         "Este equipo no está autorizado. Comuníquese con el área de TI.",
@@ -216,7 +213,7 @@ export class EquiposService {
     }
 
     // Actualizar marca de último acceso
-    await this.equiposRepository.updateLastAccess(equipo.id, ip);
+    await this.equiposRepository.updateLastAccess(equipo.id);
 
     return {
       valido: true,

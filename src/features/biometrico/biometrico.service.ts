@@ -528,7 +528,7 @@ export class BiometricoService {
     ip?: string,
   ): Promise<EquipoResponseDto> {
     try {
-      const { equipo } = await this.equiposService.validarKiosko(claveApp, ip);
+      const { equipo } = await this.equiposService.validarKiosko(claveApp);
       if (equipo && equipo.tipo === "biometrico") return equipo;
     } catch (error) {
       if (!(error instanceof UnauthorizedException)) throw error;

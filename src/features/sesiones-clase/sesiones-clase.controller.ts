@@ -68,9 +68,8 @@ export class SesionesClaseController {
   async sesionesEnKiosko(
     @Headers(TOKEN_KIOSKO) token: string | undefined,
     @Body() dto: CredencialesKioskoDto,
-    @ClientInfo() clientInfo: ClientInfoData,
   ): Promise<SesionesKioskoResponseDto> {
-    return this.service.sesionesEnKiosko(token, dto, clientInfo.ip);
+    return this.service.sesionesEnKiosko(token, dto);
   }
 
   @Public()

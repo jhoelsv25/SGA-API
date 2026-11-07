@@ -8,11 +8,6 @@ export interface IEquiposRepository {
   create(dto: CreateEquipoDto): Promise<EquipoResponseDto>;
   update(id: string, dto: UpdateEquipoDto): Promise<EquipoResponseDto>;
   toggleActivo(id: string, activo: boolean): Promise<EquipoResponseDto>;
-  authorize(
-    id: string,
-    tokenHash: string,
-    usuarioId: string,
-    ip?: string,
-  ): Promise<EquipoResponseDto>;
-  updateLastAccess(id: string, ip?: string): Promise<void>;
+  authorize(id: string, tokenHash: string, usuarioId: string): Promise<EquipoResponseDto>;
+  updateLastAccess(id: string): Promise<void>;
 }

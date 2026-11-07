@@ -22,7 +22,6 @@ describe("EquiposService (RF-004 HU3)", () => {
     autorizadoPorId: null,
     activo: true,
     ultimoAcceso: null,
-    ipRegistro: null,
     creadoEn: "2026-10-06T20:30:30Z",
     actualizadoEn: "2026-10-08T07:35:17Z",
   };
@@ -226,14 +225,11 @@ describe("EquiposService (RF-004 HU3)", () => {
       };
       mockRepository.findByTokenHash = jest.fn().mockResolvedValue(equipoAutorizadoYActivo);
 
-      const res = await service.validarKiosko("token-secreto-valido", "192.168.1.50");
+      const res = await service.validarKiosko("token-secreto-valido");
 
       expect(res.valido).toBe(true);
       expect(res.equipo?.nombre).toBe("Kiosko Estudiantes");
-      expect(mockRepository.updateLastAccess).toHaveBeenCalledWith(
-        equipoAutorizadoYActivo.id,
-        "192.168.1.50",
-      );
+      expect(mockRepository.updateLastAccess).toHaveBeenCalledWith(equipoAutorizadoYActivo.id);
     });
 
     it("debe rechazar si la terminal no está autorizada o no envía token (Escenario: Abrir el kiosko en un equipo no autorizado)", async () => {
