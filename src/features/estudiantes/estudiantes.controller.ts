@@ -14,6 +14,7 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { ClientInfo, type ClientInfoData, CurrentUser, Roles } from "../../common/decorators";
 import type { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface";
+import { DarBajaFichaActualDto } from "../personas/dto/baja-ficha.dto";
 import { EstudiantesService } from "./estudiantes.service";
 import {
   CreateEstudianteDto,
@@ -93,5 +94,40 @@ export class EstudiantesController {
     @ClientInfo() client: ClientInfoData,
   ): Promise<{ message: string }> {
     return this.estudiantesService.delete(id, user.id, client.ip);
+  }
+
+  @Post(":id/baja")
+  @HttpCode(HttpStatus.OK)
+  @Roles("Administrador", "Secretaria")
+  @ApiOperation({
+    summary: "Dar de baja la ficha del estudiante (retirado). Se bloquea si tiene matrícula activa",
+  })
+  @ApiResponse({ status: 200, description: "Ficha dada de baja" })
+  @ApiResponse({ status: 404, description: "Estudiante no encontrado" })
+  @ApiResponse({ status: 409, description: "Tiene una matrícula activa (FICHA_CON_DEPENDENCIAS)" })
+  async darDeBaja(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: DarBajaFichaActualDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @ClientInfo() client: ClientInfoData,
+  ): Promise<{ estudiante: EstudianteResponseDto; message: string }> {
+    return this.estudiantesService.darDeBaja(id, dto, user.id, client.ip);
+  }
+
+  @Post(":id/reactivar")
+  @HttpCode(HttpStatus.OK)
+  @Roles("Administrador", "Secretaria")
+  @ApiOperation({
+    summary: "Reactivar un estudiante retirado o trasladado (sin ficha de docente vigente)",
+  })
+  @ApiResponse({ status: 200, description: "Ficha reactivada" })
+  @ApiResponse({ status: 404, description: "Estudiante no encontrado" })
+  @ApiResponse({ status: 409, description: "La persona tiene una ficha de docente vigente" })
+  async reactivar(
+    @Param("id", ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @ClientInfo() client: ClientInfoData,
+  ): Promise<{ estudiante: EstudianteResponseDto; message: string }> {
+    return this.estudiantesService.reactivar(id, user.id, client.ip);
   }
 }

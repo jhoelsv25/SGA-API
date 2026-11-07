@@ -11,6 +11,7 @@ import {
   ValidateIf,
   ValidateNested,
 } from "class-validator";
+import { DarBajaFichaActualDto } from "../../personas/dto/baja-ficha.dto";
 import { CreatePersonaDto } from "../../personas/dto/create-persona.dto";
 
 export class CreateEstudianteDto {
@@ -30,6 +31,16 @@ export class CreateEstudianteDto {
   @ValidateNested()
   @Type(() => CreatePersonaDto)
   nuevaPersona?: CreatePersonaDto;
+
+  @ApiPropertyOptional({
+    description:
+      "Si la persona tiene la otra ficha académica vigente, datos para darla de baja antes de crear esta.",
+    type: DarBajaFichaActualDto,
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => DarBajaFichaActualDto)
+  darBajaFichaActual?: DarBajaFichaActualDto;
 
   @ApiProperty({
     description: "Código SIAGIE único de identificación del estudiante",

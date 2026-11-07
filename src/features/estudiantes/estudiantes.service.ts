@@ -9,7 +9,15 @@ import { AuditService } from "../../common/services/audit.service";
 import { hashPassword, hashSha256 } from "../../common/utils";
 import { CargosRepository } from "../cargos/repositories/cargos.repository";
 import { DocentesRepository } from "../docentes/repositories/docentes.repository";
+import { validarFechasDocente } from "../docentes/utils";
+import type { DarBajaFichaActualDto } from "../personas/dto/baja-ficha.dto";
 import { PersonasRepository } from "../personas/repositories/personas.repository";
+import {
+  conflictoConDependencias,
+  conflictoFichaVigente,
+  esFichaVigente,
+  FICHA_MESSAGES,
+} from "../personas/utils/ficha-academica.util";
 import { RolesRepository } from "../roles/repositories/roles.repository";
 import { generateTemporaryPassword } from "../users/utils/password-generator.util";
 import { CARGO_ESTUDIANTE_DEFAULT, ESTUDIANTE_MESSAGES, ROL_ESTUDIANTE_DEFAULT } from "./constants";
@@ -42,10 +50,65 @@ export class EstudiantesService {
     private readonly docentesRepository: DocentesRepository,
   ) {}
 
-  private async assertSinFichaDocente(personaId: string): Promise<void> {
-    if (await this.docentesRepository.findByPersonaId(personaId)) {
-      throw new ConflictException(ESTUDIANTE_MESSAGES.PERSONA_YA_DOCENTE);
+  /**
+   * Una persona solo puede tener una ficha académica vigente (docente o estudiante).
+   * Si tiene la de docente vigente: sin `baja` se rechaza con un 409 de código estable;
+   * con `baja` se cesa al docente y se devuelve cómo deshacerlo si la creación falla.
+   */
+  private async liberarFichaDocente(
+    personaId: string,
+    baja: DarBajaFichaActualDto | undefined,
+    actorId: string,
+    ip?: string,
+  ): Promise<(() => Promise<void>) | null> {
+    const docente = await this.docentesRepository.findByPersonaId(personaId);
+    if (!docente || !esFichaVigente("docente", docente.estado)) return null;
+
+    if (!baja) {
+      throw conflictoFichaVigente("estudiante", {
+        tipo: "docente",
+        id: docente.id,
+        codigo: docente.codigo,
+        estado: docente.estado,
+      });
     }
+
+    if ((await this.docentesRepository.contarCargaVigente(docente.id)) > 0) {
+      throw conflictoConDependencias(FICHA_MESSAGES.DOCENTE_CON_CARGA);
+    }
+
+    const fechaCese = baja.fecha ?? new Date().toISOString().slice(0, 10);
+    validarFechasDocente(docente.fechaIngreso, fechaCese);
+
+    await this.docentesRepository.cesar(docente.id, fechaCese);
+    await this.auditService.log({
+      usuarioId: actorId,
+      accion: "actualizar",
+      tabla: "docentes",
+      registroId: docente.id,
+      valorAnterior: { estado: docente.estado, fechaCese: docente.fechaCese },
+      valorNuevo: {
+        estado: "cesado",
+        fechaCese,
+        motivo: baja.motivo,
+        origen: "cambio_de_condicion_a_estudiante",
+      },
+      direccionIp: ip,
+    });
+
+    return async () => {
+      await this.docentesRepository.reactivar(docente.id);
+    };
+  }
+
+  private async assertSinFichaEstudianteVigente(personaId: string): Promise<void> {
+    const existente = await this.repository.findByPersonaId(personaId);
+    if (!existente) return;
+    throw new ConflictException(
+      existente.estado === "activo"
+        ? ESTUDIANTE_MESSAGES.PERSONA_YA_ESTUDIANTE
+        : ESTUDIANTE_MESSAGES.PERSONA_ESTUDIANTE_DE_BAJA,
+    );
   }
 
   async findAll(query?: EstudianteQueryDto): Promise<PaginatedEstudiantesResponseDto> {
@@ -81,11 +144,7 @@ export class EstudiantesService {
         throw new NotFoundException("Persona seleccionada no encontrada en el padrón.");
       }
 
-      const existingEstudiante = await this.repository.findByPersonaId(dto.personaId);
-      if (existingEstudiante) {
-        throw new ConflictException(ESTUDIANTE_MESSAGES.PERSONA_YA_ESTUDIANTE);
-      }
-      await this.assertSinFichaDocente(dto.personaId);
+      await this.assertSinFichaEstudianteVigente(dto.personaId);
     } else if (dto.nuevaPersona) {
       validarFechaNacimiento(dto.nuevaPersona.fechaNacimiento);
 
@@ -94,11 +153,7 @@ export class EstudiantesService {
         dto.nuevaPersona.numeroDocumento.trim(),
       );
       if (existingDoc) {
-        const existingEstudiante = await this.repository.findByPersonaId(existingDoc.id);
-        if (existingEstudiante) {
-          throw new ConflictException(ESTUDIANTE_MESSAGES.PERSONA_YA_ESTUDIANTE);
-        }
-        await this.assertSinFichaDocente(existingDoc.id);
+        await this.assertSinFichaEstudianteVigente(existingDoc.id);
         dto.personaId = existingDoc.id;
         dto.nuevaPersona = undefined;
       }
@@ -128,17 +183,32 @@ export class EstudiantesService {
     const tempPassword = generateTemporaryPassword(10);
     const contrasenaHash = await hashPassword(tempPassword);
 
-    const created = await this.repository.create({
-      dto,
-      actorId,
-      cargoId: cargoEstudiante.id,
-      rolId: rolEstudiante.id,
-      pinPlano,
-      pinHash,
-      codigoCredencial,
-      tempPassword,
-      contrasenaHash,
-    });
+    // 6b. Liberar la ficha de docente vigente (si la hay y se pidió la baja)
+    const deshacerBaja = dto.personaId
+      ? await this.liberarFichaDocente(dto.personaId, dto.darBajaFichaActual, actorId, ip)
+      : null;
+
+    let created: CreateEstudianteResponseDto;
+    try {
+      created = await this.repository.create({
+        dto,
+        actorId,
+        cargoId: cargoEstudiante.id,
+        rolId: rolEstudiante.id,
+        pinPlano,
+        pinHash,
+        codigoCredencial,
+        tempPassword,
+        contrasenaHash,
+      });
+    } catch (error) {
+      if (deshacerBaja) {
+        await deshacerBaja().catch((e: unknown) =>
+          this.logger.error(`No se pudo revertir el cese de la ficha de docente: ${String(e)}`),
+        );
+      }
+      throw error;
+    }
 
     // 7. Auditoría inmutable
     await this.auditService.log({
@@ -239,5 +309,82 @@ export class EstudiantesService {
     });
 
     return { message: ESTUDIANTE_MESSAGES.DELETED_SUCCESS };
+  }
+
+  /** Baja lógica de la ficha de estudiante (estado 'retirado'). Bloquea si tiene matrícula activa. */
+  async darDeBaja(
+    id: string,
+    dto: DarBajaFichaActualDto,
+    actorId: string,
+    ip?: string,
+  ): Promise<{ estudiante: EstudianteResponseDto; message: string }> {
+    const actual = await this.findById(id);
+
+    if (!esFichaVigente("estudiante", actual.estado)) {
+      throw new BadRequestException("La ficha del estudiante ya está dada de baja.");
+    }
+    if ((await this.repository.contarMatriculasActivas(id)) > 0) {
+      throw conflictoConDependencias(FICHA_MESSAGES.ESTUDIANTE_CON_MATRICULA);
+    }
+
+    const estudiante = await this.repository.cambiarEstado(id, "retirado");
+    if (!estudiante) {
+      throw new NotFoundException(ESTUDIANTE_MESSAGES.NOT_FOUND);
+    }
+
+    await this.auditService.log({
+      usuarioId: actorId,
+      accion: "actualizar",
+      tabla: "estudiantes",
+      registroId: id,
+      valorAnterior: { estado: actual.estado },
+      valorNuevo: { estado: "retirado", motivo: dto.motivo, fechaBaja: dto.fecha ?? null },
+      direccionIp: ip,
+    });
+
+    return { estudiante, message: FICHA_MESSAGES.ESTUDIANTE_DE_BAJA };
+  }
+
+  /** Reactiva un estudiante retirado o trasladado, si la persona no tiene ficha de docente vigente. */
+  async reactivar(
+    id: string,
+    actorId: string,
+    ip?: string,
+  ): Promise<{ estudiante: EstudianteResponseDto; message: string }> {
+    const actual = await this.findById(id);
+
+    if (actual.estado === "egresado") {
+      throw new BadRequestException(FICHA_MESSAGES.ESTUDIANTE_EGRESADO);
+    }
+    if (actual.estado === "activo") {
+      throw new BadRequestException(FICHA_MESSAGES.ESTUDIANTE_NO_DE_BAJA);
+    }
+
+    const docente = await this.docentesRepository.findByPersonaId(actual.personaId);
+    if (docente && esFichaVigente("docente", docente.estado)) {
+      throw conflictoFichaVigente("estudiante", {
+        tipo: "docente",
+        id: docente.id,
+        codigo: docente.codigo,
+        estado: docente.estado,
+      });
+    }
+
+    const estudiante = await this.repository.cambiarEstado(id, "activo");
+    if (!estudiante) {
+      throw new NotFoundException(ESTUDIANTE_MESSAGES.NOT_FOUND);
+    }
+
+    await this.auditService.log({
+      usuarioId: actorId,
+      accion: "actualizar",
+      tabla: "estudiantes",
+      registroId: id,
+      valorAnterior: { estado: actual.estado },
+      valorNuevo: { estado: "activo", origen: "reactivacion" },
+      direccionIp: ip,
+    });
+
+    return { estudiante, message: FICHA_MESSAGES.ESTUDIANTE_REACTIVADO };
   }
 }

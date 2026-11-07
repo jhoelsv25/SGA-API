@@ -97,4 +97,21 @@ export class DocentesController {
   ): Promise<{ docente: DocenteResponseDto; message: string }> {
     return this.docentesService.cesar(id, dto, user.id, client.ip);
   }
+
+  @Post(":id/reactivar")
+  @Roles("Administrador")
+  @ApiOperation({
+    summary: "Reactivar un docente cesado (la persona no debe tener ficha de estudiante vigente)",
+  })
+  @ApiResponse({ status: 200, description: "Docente reactivado" })
+  @ApiResponse({ status: 400, description: "El docente no está cesado" })
+  @ApiResponse({ status: 404, description: "Docente no encontrado" })
+  @ApiResponse({ status: 409, description: "La persona tiene una ficha de estudiante vigente" })
+  async reactivar(
+    @Param("id", ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @ClientInfo() client: ClientInfoData,
+  ): Promise<{ docente: DocenteResponseDto; message: string }> {
+    return this.docentesService.reactivar(id, user.id, client.ip);
+  }
 }

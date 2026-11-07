@@ -287,4 +287,27 @@ export class EstudiantesRepository implements IEstudiantesRepository {
 
     return result.length > 0;
   }
+  /** Matrículas vigentes (estado 'matriculado') del estudiante, en cualquier año. */
+  async contarMatriculasActivas(estudianteId: string): Promise<number> {
+    const result = (await this.db.execute(sql`
+      SELECT COUNT(*)::int AS total
+      FROM matriculas
+      WHERE estudiante_id = ${estudianteId} AND estado = 'matriculado'
+    `)) as unknown as { rows: { total: number }[] };
+    return Number(result.rows?.[0]?.total ?? 0);
+  }
+
+  /** Cambia el estado de la ficha (baja lógica 'retirado' o reactivación 'activo'). */
+  async cambiarEstado(
+    id: string,
+    estado: "activo" | "retirado",
+  ): Promise<EstudianteResponseDto | null> {
+    const [fila] = await this.db
+      .update(estudiantes)
+      .set({ estado, actualizadoEn: sql`CURRENT_TIMESTAMP` })
+      .where(and(eq(estudiantes.id, id), isNull(estudiantes.eliminadoEn)))
+      .returning({ id: estudiantes.id });
+
+    return fila ? this.findById(id) : null;
+  }
 }

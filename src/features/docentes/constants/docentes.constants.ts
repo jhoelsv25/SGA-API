@@ -12,6 +12,8 @@ export const DOCENTE_MESSAGES = {
   PERSONA_YA_DOCENTE: "Esta persona ya está registrada como docente.",
   PERSONA_YA_ESTUDIANTE:
     "Esta persona ya está registrada como estudiante; una persona solo puede tener una ficha (docente o estudiante).",
+  PERSONA_DOCENTE_CESADO:
+    "Esta persona tiene una ficha de docente cesada. Reactive esa ficha en lugar de crear una nueva.",
   FECHA_CESE_INVALIDA: "La fecha de cese debe ser posterior a la fecha de ingreso.",
   NOT_FOUND: "Docente no encontrado.",
   ALREADY_CESADO: "El docente ya se encuentra en estado cesado.",

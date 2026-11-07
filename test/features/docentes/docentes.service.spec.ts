@@ -79,6 +79,8 @@ describe("DocentesService (RF-007 Historia de Usuario 1)", () => {
       create: jest.fn(),
       update: jest.fn(),
       cesar: jest.fn(),
+      contarCargaVigente: jest.fn().mockResolvedValue(0),
+      reactivar: jest.fn(),
     } as unknown as jest.Mocked<DocentesRepository>;
 
     personasRepository = {
@@ -101,6 +103,8 @@ describe("DocentesService (RF-007 Historia de Usuario 1)", () => {
 
     estudiantesRepository = {
       findByPersonaId: jest.fn().mockResolvedValue(null),
+      contarMatriculasActivas: jest.fn().mockResolvedValue(0),
+      cambiarEstado: jest.fn().mockResolvedValue(null),
     } as unknown as jest.Mocked<EstudiantesRepository>;
 
     const module: TestingModule = await Test.createTestingModule({
@@ -195,44 +199,149 @@ describe("DocentesService (RF-007 Historia de Usuario 1)", () => {
       ).rejects.toThrow(DOCENTE_MESSAGES.PERSONA_YA_DOCENTE);
     });
 
-    it("debe rechazar si la persona ya cuenta con ficha de estudiante (por personaId)", async () => {
-      repository.findByCodigo.mockResolvedValue(null);
-      personasRepository.findById.mockResolvedValue(mockPersona);
-      repository.findByPersonaId.mockResolvedValue(null);
-      estudiantesRepository.findByPersonaId.mockResolvedValue({
+    describe("ficha única: persona con ficha de estudiante", () => {
+      const estudianteActivo = {
         id: "est-1",
-      } as Awaited<ReturnType<EstudiantesRepository["findByPersonaId"]>>);
+        codigo: "E-1",
+        estado: "activo",
+      } as Awaited<ReturnType<EstudiantesRepository["findByPersonaId"]>>;
 
-      await expect(
-        service.create({ ...createDto, personaId: "per-1", nuevaPersona: undefined }, "admin-1"),
-      ).rejects.toThrow(DOCENTE_MESSAGES.PERSONA_YA_ESTUDIANTE);
-      expect(repository.create).not.toHaveBeenCalled();
+      beforeEach(() => {
+        repository.findByCodigo.mockResolvedValue(null);
+        personasRepository.findById.mockResolvedValue(mockPersona);
+        repository.findByPersonaId.mockResolvedValue(null);
+        cargosRepository.findByName.mockResolvedValue({ id: "cargo-doc-aula" });
+        rolesRepository.findByName.mockResolvedValue(mockRolDocente);
+        repository.create.mockResolvedValue({
+          docente: mockDocente,
+          tempPassword: "TempPassword123*",
+          credencial: { codigo: "CR-45678912", pin: "1234" },
+        });
+      });
+
+      const dtoPersona = { ...createDto, personaId: "per-1", nuevaPersona: undefined };
+
+      it("rechaza con código FICHA_ACADEMICA_ACTIVA si el estudiante está vigente y no se pidió la baja", async () => {
+        estudiantesRepository.findByPersonaId.mockResolvedValue(estudianteActivo);
+
+        await expect(service.create(dtoPersona, "admin-1")).rejects.toMatchObject({
+          response: {
+            code: "FICHA_ACADEMICA_ACTIVA",
+            fichaActiva: { tipo: "estudiante", id: "est-1" },
+          },
+        });
+        expect(repository.create).not.toHaveBeenCalled();
+        expect(estudiantesRepository.cambiarEstado).not.toHaveBeenCalled();
+      });
+
+      it("da de baja al estudiante y crea el docente cuando se pide la baja", async () => {
+        estudiantesRepository.findByPersonaId.mockResolvedValue(estudianteActivo);
+
+        await service.create(
+          { ...dtoPersona, darBajaFichaActual: { motivo: "Pasa a ser docente" } },
+          "admin-1",
+        );
+
+        expect(estudiantesRepository.cambiarEstado).toHaveBeenCalledWith("est-1", "retirado");
+        expect(repository.create).toHaveBeenCalled();
+      });
+
+      it("bloquea la baja si el estudiante tiene matrícula activa", async () => {
+        estudiantesRepository.findByPersonaId.mockResolvedValue(estudianteActivo);
+        estudiantesRepository.contarMatriculasActivas.mockResolvedValue(1);
+
+        await expect(
+          service.create(
+            { ...dtoPersona, darBajaFichaActual: { motivo: "Pasa a ser docente" } },
+            "admin-1",
+          ),
+        ).rejects.toMatchObject({
+          response: { code: "FICHA_CON_DEPENDENCIAS" },
+        });
+        expect(estudiantesRepository.cambiarEstado).not.toHaveBeenCalled();
+        expect(repository.create).not.toHaveBeenCalled();
+      });
+
+      it("revierte la baja si la creación del docente falla", async () => {
+        estudiantesRepository.findByPersonaId.mockResolvedValue(estudianteActivo);
+        repository.create.mockRejectedValue(new Error("fallo de base de datos"));
+
+        await expect(
+          service.create(
+            { ...dtoPersona, darBajaFichaActual: { motivo: "Pasa a ser docente" } },
+            "admin-1",
+          ),
+        ).rejects.toThrow("fallo de base de datos");
+
+        expect(estudiantesRepository.cambiarEstado).toHaveBeenNthCalledWith(1, "est-1", "retirado");
+        expect(estudiantesRepository.cambiarEstado).toHaveBeenNthCalledWith(2, "est-1", "activo");
+      });
+
+      it("permite crear docente sin baja si el estudiante ya está de baja", async () => {
+        estudiantesRepository.findByPersonaId.mockResolvedValue({
+          ...estudianteActivo,
+          estado: "retirado",
+        } as typeof estudianteActivo);
+
+        await service.create(dtoPersona, "admin-1");
+
+        expect(repository.create).toHaveBeenCalled();
+        expect(estudiantesRepository.cambiarEstado).not.toHaveBeenCalled();
+      });
+
+      it("indica reactivar si la persona tiene una ficha de docente cesada", async () => {
+        repository.findByPersonaId.mockResolvedValue({ ...mockDocente, estado: "cesado" });
+
+        await expect(service.create(dtoPersona, "admin-1")).rejects.toThrow(
+          DOCENTE_MESSAGES.PERSONA_DOCENTE_CESADO,
+        );
+      });
+    });
+  });
+
+  describe("reactivar", () => {
+    it("reactiva un docente cesado cuando la persona no tiene estudiante vigente", async () => {
+      repository.findById.mockResolvedValue({ ...mockDocente, estado: "cesado" });
+      repository.reactivar.mockResolvedValue(mockDocente);
+
+      const result = await service.reactivar("doc-1", "admin-1");
+
+      expect(result.docente.estado).toBe("activo");
+      expect(repository.reactivar).toHaveBeenCalledWith("doc-1");
     });
 
-    it("debe rechazar si el documento ya pertenece a un estudiante (nueva persona)", async () => {
-      repository.findByCodigo.mockResolvedValue(null);
-      personasRepository.findByDocumento.mockResolvedValue(mockPersona);
-      repository.findByPersonaId.mockResolvedValue(null);
+    it("rechaza reactivar si la persona tiene ficha de estudiante vigente", async () => {
+      repository.findById.mockResolvedValue({ ...mockDocente, estado: "cesado" });
       estudiantesRepository.findByPersonaId.mockResolvedValue({
         id: "est-1",
+        codigo: "E-1",
+        estado: "activo",
       } as Awaited<ReturnType<EstudiantesRepository["findByPersonaId"]>>);
 
+      await expect(service.reactivar("doc-1", "admin-1")).rejects.toMatchObject({
+        response: { code: "FICHA_ACADEMICA_ACTIVA" },
+      });
+      expect(repository.reactivar).not.toHaveBeenCalled();
+    });
+
+    it("rechaza reactivar un docente que no está cesado", async () => {
+      repository.findById.mockResolvedValue(mockDocente);
+
+      await expect(service.reactivar("doc-1", "admin-1")).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe("cesar: dependencias", () => {
+    it("bloquea el cese si el docente tiene cursos en el año vigente", async () => {
+      repository.findById.mockResolvedValue(mockDocente);
+      repository.contarCargaVigente.mockResolvedValue(3);
+
       await expect(
-        service.create(
-          {
-            ...createDto,
-            personaId: undefined,
-            nuevaPersona: {
-              tipoDocumento: "dni",
-              numeroDocumento: "45678912",
-              nombres: "Diego",
-              apellidoPaterno: "Ramos",
-              sexo: "M",
-            },
-          },
-          "admin-1",
-        ),
-      ).rejects.toThrow(DOCENTE_MESSAGES.PERSONA_YA_ESTUDIANTE);
+        service.cesar("doc-1", { fechaCese: "2026-12-31" }, "admin-1"),
+      ).rejects.toMatchObject({
+        response: { code: "FICHA_CON_DEPENDENCIAS" },
+      });
+      expect(repository.cesar).not.toHaveBeenCalled();
     });
   });
 

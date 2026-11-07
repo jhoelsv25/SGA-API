@@ -202,6 +202,66 @@ describe("PersonasService (RF-007 Core Base)", () => {
       expect(result.yaTieneFicha).toBe(true);
       expect(result.mensaje).toBe("Esta persona ya está registrada como docente.");
     });
+
+    it("exige dar de baja la ficha de estudiante vigente al buscar para docente", async () => {
+      (repository.search as jest.Mock).mockResolvedValue([
+        {
+          ...mockPersonaProvisional,
+          fichas: {
+            esDocente: false,
+            esEstudiante: true,
+            estadoEstudiante: "activo",
+            esApoderado: false,
+            tieneUsuario: true,
+          },
+        },
+      ]);
+
+      const result = await service.search({ search: "71234567", destinoFicha: "docente" });
+
+      expect(result.yaTieneFicha).toBe(false);
+      expect(result.requiereBajaDe).toBe("estudiante");
+    });
+
+    it("no exige baja si la ficha de estudiante ya está retirada", async () => {
+      (repository.search as jest.Mock).mockResolvedValue([
+        {
+          ...mockPersonaProvisional,
+          fichas: {
+            esDocente: false,
+            esEstudiante: true,
+            estadoEstudiante: "retirado",
+            esApoderado: false,
+            tieneUsuario: true,
+          },
+        },
+      ]);
+
+      const result = await service.search({ search: "71234567", destinoFicha: "docente" });
+
+      expect(result.yaTieneFicha).toBe(false);
+      expect(result.requiereBajaDe).toBeUndefined();
+    });
+
+    it("indica reactivar si la ficha de destino existe pero está de baja", async () => {
+      (repository.search as jest.Mock).mockResolvedValue([
+        {
+          ...mockPersonaProvisional,
+          fichas: {
+            esDocente: true,
+            estadoDocente: "cesado",
+            esEstudiante: false,
+            esApoderado: false,
+            tieneUsuario: true,
+          },
+        },
+      ]);
+
+      const result = await service.search({ search: "71234567", destinoFicha: "docente" });
+
+      expect(result.yaTieneFicha).toBe(true);
+      expect(result.mensaje).toContain("Reactívela");
+    });
   });
 
   describe("update (datos libres y críticos)", () => {

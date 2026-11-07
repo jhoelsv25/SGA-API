@@ -14,6 +14,7 @@ import type {
   UpdatePersonaDto,
 } from "./dto";
 import { PersonasRepository } from "./repositories";
+import { esFichaVigente } from "./utils/ficha-academica.util";
 import {
   handlePersonaDatabaseError,
   validarDatosCriticosModificados,
@@ -65,22 +66,34 @@ export class PersonasService {
       let yaTieneFicha = false;
       let mensaje: string = PERSONA_MESSAGES.DOCUMENTO_DUPLICADO;
 
-      if (queryDto.destinoFicha) {
-        if (queryDto.destinoFicha === "docente" && persona.fichas.esDocente) {
-          yaTieneFicha = true;
-          mensaje = "Esta persona ya está registrada como docente.";
-        } else if (queryDto.destinoFicha === "docente" && persona.fichas.esEstudiante) {
-          yaTieneFicha = true;
-          mensaje = "Esta persona ya está registrada como estudiante; solo puede tener una ficha.";
-        } else if (queryDto.destinoFicha === "estudiante" && persona.fichas.esDocente) {
-          yaTieneFicha = true;
-          mensaje = "Esta persona ya está registrada como docente; solo puede tener una ficha.";
-        } else if (queryDto.destinoFicha === "estudiante" && persona.fichas.esEstudiante) {
-          yaTieneFicha = true;
-          mensaje = "Esta persona ya está registrada como estudiante.";
-        } else if (queryDto.destinoFicha === "apoderado" && persona.fichas.esApoderado) {
+      let requiereBajaDe: "docente" | "estudiante" | undefined;
+
+      if (queryDto.destinoFicha === "apoderado") {
+        if (persona.fichas.esApoderado) {
           yaTieneFicha = true;
           mensaje = "Esta persona ya está registrada como apoderado.";
+        }
+      } else if (queryDto.destinoFicha) {
+        const destino = queryDto.destinoFicha;
+        const otra = destino === "docente" ? "estudiante" : "docente";
+        // Si el procedure aún no devuelve el estado, se asume 'activo' cuando existe la ficha
+        const estadoDocente =
+          persona.fichas.estadoDocente ?? (persona.fichas.esDocente ? "activo" : null);
+        const estadoEstudiante =
+          persona.fichas.estadoEstudiante ?? (persona.fichas.esEstudiante ? "activo" : null);
+        const estadoDestino = destino === "docente" ? estadoDocente : estadoEstudiante;
+        const estadoOtra = otra === "docente" ? estadoDocente : estadoEstudiante;
+
+        if (estadoDestino) {
+          // Ya tiene la ficha de destino: si está de baja se reactiva, no se crea otra
+          yaTieneFicha = true;
+          mensaje = esFichaVigente(destino, estadoDestino)
+            ? `Esta persona ya está registrada como ${destino}.`
+            : `Esta persona tiene una ficha de ${destino} dada de baja. Reactívela en lugar de crear una nueva.`;
+        } else if (estadoOtra && esFichaVigente(otra, estadoOtra)) {
+          // La otra ficha está vigente: se permite continuar dándola de baja
+          requiereBajaDe = otra;
+          mensaje = `Esta persona tiene una ficha de ${otra} activa. Para registrarla como ${destino} se dará de baja esa ficha.`;
         }
       }
 
@@ -89,6 +102,7 @@ export class PersonasService {
         persona,
         mensaje,
         yaTieneFicha,
+        requiereBajaDe,
       };
     } catch (error) {
       handlePersonaDatabaseError(error, this.logger);
