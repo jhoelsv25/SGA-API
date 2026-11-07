@@ -1,7 +1,16 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { and, asc, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { Database, DRIZZLE } from "../../../core/database";
-import { aniosAcademicos, periodosAcademicos } from "../../../core/database/schema";
+import {
+  aniosAcademicos,
+  cursosSeccion,
+  docentes,
+  periodosAcademicos,
+  roles,
+  secciones,
+  usuarioRoles,
+  usuarios,
+} from "../../../core/database/schema";
 import { EstadoAnio, EstadoBimestre } from "../constants";
 import {
   ActualizarAnioData,
@@ -254,6 +263,39 @@ export class AniosAcademicosRepository implements IAniosAcademicosRepository {
     return this.conBimestres(
       vencidos.map((row) => ({ ...row, estado: "cerrado", reabiertoHasta: null })),
     );
+  }
+
+  async findDocentesUsuariosConCarga(anioAcademicoId: string): Promise<string[]> {
+    const filas = await this.db
+      .selectDistinct({ usuarioId: usuarios.id })
+      .from(cursosSeccion)
+      .innerJoin(secciones, eq(secciones.id, cursosSeccion.seccionId))
+      .innerJoin(docentes, eq(docentes.id, cursosSeccion.docenteId))
+      .innerJoin(usuarios, eq(usuarios.personaId, docentes.personaId))
+      .where(
+        and(
+          eq(secciones.anioAcademicoId, anioAcademicoId),
+          eq(secciones.estado, "activa"),
+          eq(usuarios.estado, "activo"),
+        ),
+      );
+    return filas.map((f) => f.usuarioId);
+  }
+
+  async findDirectivosUsuarios(): Promise<string[]> {
+    const filas = await this.db
+      .selectDistinct({ usuarioId: usuarios.id })
+      .from(usuarios)
+      .innerJoin(usuarioRoles, eq(usuarioRoles.usuarioId, usuarios.id))
+      .innerJoin(roles, eq(roles.id, usuarioRoles.rolId))
+      .where(
+        and(
+          inArray(roles.nombre, ["Director", "Subdirector", "Administrador"]),
+          eq(usuarios.estado, "activo"),
+          eq(usuarioRoles.vigente, true),
+        ),
+      );
+    return filas.map((f) => f.usuarioId);
   }
 
   private async findPorEstado(estado: EstadoAnio): Promise<AnioPersistido | null> {

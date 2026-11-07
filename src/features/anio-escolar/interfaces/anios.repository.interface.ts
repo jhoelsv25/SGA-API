@@ -45,4 +45,6 @@ export interface IAniosAcademicosRepository {
   hayOtroBimestreEnCurso(anioId: string, exceptoId?: string): Promise<boolean>;
   bimestreCerradoEn(fecha: string): Promise<boolean>;
   cerrarReaperturasVencidas(hoy: string): Promise<AnioPersistido[]>;
+  findDocentesUsuariosConCarga(anioAcademicoId: string): Promise<string[]>;
+  findDirectivosUsuarios(): Promise<string[]>;
 }
