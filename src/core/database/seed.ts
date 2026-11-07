@@ -1,5 +1,6 @@
 import { Pool } from "pg";
 import * as bcrypt from "bcryptjs";
+import { asegurarCuentaServicioBiometrico } from "./seed-cuenta-biometrico";
 import {
   MENU_CORREGIR_DATOS_CRITICOS,
   MENU_ESCRITORIO_BIOMETRICOS,
@@ -1329,6 +1330,9 @@ async function seed() {
     [MENU_ESCRITORIO_BIOMETRICOS],
   );
   console.log("✔ Opción 'Biométricos' del escritorio registrada (solo Administrador).");
+
+  // RF-022: cuenta de servicio con la que el programa del reloj pide la aprobación de su equipo.
+  await asegurarCuentaServicioBiometrico(pool);
 
   await pool.end();
   console.log("==========================================");
