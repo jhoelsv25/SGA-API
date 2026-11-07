@@ -2461,7 +2461,7 @@ export class AulaVirtualService implements OnModuleInit {
     archivo?: Express.Multer.File,
   ): Promise<MensajeChatFila> {
     const curso = await this.requerirCurso(cursoSeccionId);
-    await this.verificarParticipante(curso, usuario);
+    await this.verificarParticipante(curso, usuario, true);
     await this.verificarAnioAbierto(cursoSeccionId);
 
     const adjuntoUrl = await this.guardarAdjuntoInteraccion(archivo, dto.enlaceAdjunto);
