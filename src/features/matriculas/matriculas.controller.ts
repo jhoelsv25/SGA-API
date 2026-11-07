@@ -20,6 +20,7 @@ import {
   MatriculaCreatedResponseDto,
   MatriculaMasivaDto,
   MatriculaMasivaResultadoDto,
+  MatricularLoteDto,
   MatriculaQueryDto,
   MatriculaResponseDto,
   PaginatedMatriculasResponseDto,
@@ -89,6 +90,18 @@ export class MatriculasController {
     @ClientInfo() client: ClientInfoData,
   ): Promise<MatriculaMasivaResultadoDto> {
     return this.matriculasService.matricularMasivamente(dto, user.id, client.ip);
+  }
+
+  @Post("lote")
+  @Roles("Administrador", "Secretaria")
+  @ApiOperation({ summary: "Matrícula en lote de estudiantes del padrón en una sección" })
+  @ApiResponse({ status: 201, type: MatriculaMasivaResultadoDto })
+  async matricularLote(
+    @Body() dto: MatricularLoteDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @ClientInfo() client: ClientInfoData,
+  ): Promise<MatriculaMasivaResultadoDto> {
+    return this.matriculasService.matricularLote(dto, user.id, client.ip);
   }
 
   @Post(":id/retirar")
