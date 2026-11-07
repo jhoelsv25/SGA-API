@@ -184,21 +184,22 @@ export async function generarPdfIndicadores(
 
     doc.moveDown(0.3);
 
-    const graficoX = 60;
-    const graficoY = doc.y + 15;
-    const anchoGrafico = 430;
-    const altoGrafico = 110;
-
     // Leyenda del gráfico
-    doc.rect(140, doc.y, 10, 8).fill(COLOR_PRIMARIO);
+    const leyendaY = doc.y;
+    doc.rect(140, leyendaY, 10, 8).fill(COLOR_PRIMARIO);
     doc
       .fontSize(7.5)
       .font("Helvetica")
       .fillColor(COLOR_TEXTO)
-      .text("Pretest (Línea Base)", 155, doc.y);
+      .text("Pretest (Línea Base)", 155, leyendaY);
 
-    doc.rect(320, doc.y - 8, 10, 8).fill(COLOR_SECUNDARIO);
-    doc.text("Postest (Medición SGA)", 335, doc.y - 8);
+    doc.rect(320, leyendaY, 10, 8).fill(COLOR_SECUNDARIO);
+    doc.text("Postest (Medición SGA)", 335, leyendaY);
+
+    const graficoX = 60;
+    const graficoY = leyendaY + 16;
+    const anchoGrafico = 430;
+    const altoGrafico = 110;
 
     // Fondo y marco del gráfico
     doc.rect(graficoX, graficoY, anchoGrafico, altoGrafico).fillAndStroke("#FFFFFF", COLOR_BORDE);

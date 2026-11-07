@@ -102,22 +102,32 @@ export async function generarFichaDocentePdf(datos: DatosFichaDocentePdf): Promi
     doc.moveDown(0.6);
 
     // ── 2. Datos del Docente ──
+    const col1X = 40;
+    const col2X = 340;
+    const col1Width = 285;
+    const col2Width = 215;
     const startY = doc.y;
+
     doc
       .fontSize(9)
       .font("Helvetica-Bold")
       .fillColor(COLOR_TEXT)
-      .text("Docente: ", 40, startY, { continued: true })
+      .text("Docente: ", col1X, startY, { continued: true, width: col1Width })
       .font("Helvetica")
-      .text(datos.docente.nombreCompleto)
-      .font("Helvetica-Bold")
-      .text("N.° Documento: ", 40, startY + 14, { continued: true })
-      .font("Helvetica")
-      .text(datos.docente.numeroDocumento);
+      .text(datos.docente.nombreCompleto, { width: col1Width, ellipsis: true });
+
+    const docNumY = Math.max(doc.y + 2, startY + 14);
 
     doc
       .font("Helvetica-Bold")
-      .text("Fecha generación: ", 340, startY, { continued: true })
+      .fillColor(COLOR_TEXT)
+      .text("N.° Documento: ", col1X, docNumY, { continued: true, width: col1Width })
+      .font("Helvetica")
+      .text(datos.docente.numeroDocumento, { width: col1Width });
+
+    doc
+      .font("Helvetica-Bold")
+      .text("Fecha generación: ", col2X, startY, { continued: true, width: col2Width })
       .font("Helvetica")
       .text(
         new Date(datos.consolidado.generadoEn).toLocaleDateString("es-PE", {
@@ -125,13 +135,16 @@ export async function generarFichaDocentePdf(datos: DatosFichaDocentePdf): Promi
           month: "2-digit",
           day: "2-digit",
         }),
-      )
-      .font("Helvetica-Bold")
-      .text("Decisión director: ", 340, startY + 14, { continued: true })
-      .font("Helvetica")
-      .text(datos.consolidado.decision.replace(/_/g, " ").toUpperCase());
+        { width: col2Width },
+      );
 
-    doc.y = startY + 34;
+    doc
+      .font("Helvetica-Bold")
+      .text("Decisión director: ", col2X, docNumY, { continued: true, width: col2Width })
+      .font("Helvetica")
+      .text(datos.consolidado.decision.replace(/_/g, " ").toUpperCase(), { width: col2Width });
+
+    doc.y = Math.max(doc.y + 10, startY + 34);
 
     // ── 3. Resumen de Totales ──
     doc.rect(40, doc.y, 515, 45).fillAndStroke("#F8FAFC", COLOR_BORDER);
@@ -198,6 +211,7 @@ export async function generarFichaDocentePdf(datos: DatosFichaDocentePdf): Promi
             `${sesion.fecha} · ${sesion.grado} ${sesion.seccion} · ${sesion.curso}`,
             46,
             sesionY + 5,
+            { width: 250, ellipsis: true },
           );
 
         const firmaTexto = `Ingreso: ${sesion.horaIngresoFirmada || "--:--"} | Salida: ${sesion.horaSalidaFirmada || "--:--"} | Estado: ${sesion.estado.toUpperCase()}`;
