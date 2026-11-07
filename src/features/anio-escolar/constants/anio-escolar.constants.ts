@@ -8,6 +8,9 @@ export const NOMBRES_BIMESTRE = ["I", "II", "III", "IV"] as const;
 
 export const ZONA_HORARIA_COLEGIO = "America/Lima";
 
+export const JOB_AVISO_FIN_BIMESTRE = "aviso-fin-bimestre";
+export const CRON_AVISO_FIN_BIMESTRE = "0 8 * * *"; // Todos los días a las 08:00 a. m. hora Lima
+
 export const MENSAJES = {
   anioRepetido: (anio: number) => `Ya existe el año escolar ${anio}.`,
   fechasInvertidas: "La fecha de fin debe ser posterior a la fecha de inicio.",

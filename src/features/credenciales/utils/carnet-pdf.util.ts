@@ -110,12 +110,12 @@ function dibujarCarneEnDoc(
   const titleWidth = CARD_WIDTH - (titleLeft - originX) - 48;
 
   doc
-    .fontSize(6.5)
+    .fontSize(6)
     .font("Helvetica-Bold")
     .fillColor(COLOR_PRIMARY)
     .text(datos.institucion.nombre.toUpperCase(), titleLeft, headerTop + 1, {
       width: titleWidth,
-      ellipsis: true,
+      lineGap: 0.5,
     });
 
   const subtitulo = [
@@ -123,11 +123,13 @@ function dibujarCarneEnDoc(
     datos.institucion.ugel ? datos.institucion.ugel.split("/")[0].trim() : "UGEL Angaraes",
   ].join(" · ");
 
+  const subtituloY = doc.y + 1;
+
   doc
-    .fontSize(5)
+    .fontSize(4.5)
     .font("Helvetica")
     .fillColor(COLOR_TEXT_MUTED)
-    .text(subtitulo, titleLeft, headerTop + 10, {
+    .text(subtitulo, titleLeft, subtituloY, {
       width: titleWidth,
       ellipsis: true,
     });
@@ -205,31 +207,22 @@ function dibujarCarneEnDoc(
       });
   }
 
-  doc
-    .fontSize(4)
-    .font("Helvetica-Bold")
-    .fillColor(COLOR_TEXT_MUTED)
-    .text("OFICIAL", fotoX, fotoY + fotoSize + 7.5, {
-      width: fotoSize,
-      align: "center",
-    });
-
   // Columna Central: Datos Personales
   const dataX = fotoX + fotoSize + 6;
   const dataWidth = 115;
-  let curY = bodyTop + 1;
+  const startY = bodyTop + 1;
 
   doc
     .fontSize(7.5)
     .font("Helvetica-Bold")
     .fillColor(COLOR_TEXT_MAIN)
-    .text(datos.nombreCompleto, dataX, curY, {
+    .text(datos.nombreCompleto, dataX, startY, {
       width: dataWidth,
-      lineGap: 1,
+      lineGap: 0.5,
       ellipsis: true,
     });
 
-  curY = bodyTop + 13;
+  let curY = doc.y + 2.5;
 
   doc
     .fontSize(5.5)
@@ -238,7 +231,7 @@ function dibujarCarneEnDoc(
     .text(`${datos.tipoDocumento.toUpperCase()}: `, dataX, curY, { continued: true });
   doc.font("Helvetica-Bold").fillColor(COLOR_TEXT_MAIN).text(datos.numeroDocumento);
 
-  curY += 8;
+  curY = doc.y + 2;
 
   if (datos.codigoInstitucional) {
     const labelId = isEstudiante ? "SIAGIE: " : "CÓDIGO: ";
@@ -248,7 +241,9 @@ function dibujarCarneEnDoc(
       .fillColor(COLOR_TEXT_MUTED)
       .text(labelId, dataX, curY, { continued: true });
     doc.font("Helvetica").fillColor(COLOR_TEXT_MAIN).text(datos.codigoInstitucional);
-    curY += 8;
+    curY = doc.y + 2.5;
+  } else {
+    curY = doc.y + 3;
   }
 
   // Código de Marcación
@@ -258,7 +253,7 @@ function dibujarCarneEnDoc(
     .fillColor(COLOR_TEXT_MUTED)
     .text("CÓDIGO DE MARCACIÓN", dataX, curY);
 
-  curY += 6;
+  curY = doc.y + 1;
 
   doc
     .fontSize(7.5)
@@ -274,15 +269,6 @@ function dibujarCarneEnDoc(
   doc.image(qrBuffer, qrX, qrY, {
     fit: [qrSize, qrSize],
   });
-
-  doc
-    .fontSize(4.5)
-    .font("Helvetica-Bold")
-    .fillColor(COLOR_TEXT_MUTED)
-    .text("ESCANEABLE", qrX, qrY + qrSize + 2, {
-      width: qrSize,
-      align: "center",
-    });
 
   // ── 4. Pie Institucional ──
   const footerY = originY + CARD_HEIGHT - 12;

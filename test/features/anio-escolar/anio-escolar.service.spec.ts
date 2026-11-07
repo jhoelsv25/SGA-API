@@ -12,6 +12,7 @@ import { MENSAJES } from "@/features/anio-escolar/constants";
 import { AniosAcademicosService } from "@/features/anio-escolar/anios.service";
 import { AnioPersistido, BimestrePersistido } from "@/features/anio-escolar/interfaces";
 import { AniosAcademicosRepository } from "@/features/anio-escolar/repositories/anios.repository";
+import { NotificacionesService } from "@/features/notificaciones/notificaciones.service";
 import { MENSAJES as MENSAJES_CALENDARIO } from "@/features/calendario/constants";
 import { CalendarioService } from "@/features/calendario/calendario.service";
 import { EventoPersistido } from "@/features/calendario/interfaces";
@@ -96,6 +97,8 @@ describe("AniosAcademicosService (RF-005)", () => {
       hayOtroBimestreEnCurso: jest.fn(),
       bimestreCerradoEn: jest.fn(),
       cerrarReaperturasVencidas: jest.fn().mockResolvedValue([]),
+      findDocentesUsuariosConCarga: jest.fn().mockResolvedValue([]),
+      findDirectivosUsuarios: jest.fn().mockResolvedValue([]),
     } as unknown as jest.Mocked<AniosAcademicosRepository>;
 
     audit = { log: jest.fn().mockResolvedValue(undefined) };
@@ -364,6 +367,95 @@ describe("AniosAcademicosService (RF-005)", () => {
       expect(entrada.usuarioId).toBeNull();
       expect(entrada.registroId).toBe("anio-2026");
       expect(entrada.valorNuevo).toMatchObject({ estado: "cerrado" });
+    });
+  });
+
+  describe("avisos de fin de bimestre", () => {
+    it("notifica a docentes cuando faltan 5 días para el fin del bimestre en curso", async () => {
+      const notificaciones = { enviar: jest.fn().mockResolvedValue(undefined) };
+      const serviceConNotif = new AniosAcademicosService(
+        repo,
+        audit as unknown as AuditService,
+        undefined,
+        notificaciones as unknown as NotificacionesService,
+      );
+
+      const bimEnCurso = bimestre(2, "en_curso", ["2027-05-10", "2027-07-16"]);
+      repo.findEnCurso.mockResolvedValue(
+        anio({
+          estado: "en_curso",
+          bimestres: [bimestre(1, "cerrado"), bimEnCurso, bimestre(3), bimestre(4)],
+        }),
+      );
+      repo.findDocentesUsuariosConCarga.mockResolvedValue(["usr-doc-1", "usr-doc-2"]);
+
+      // Hoy es 2027-07-11 -> exactamente 5 días antes de 2027-07-16
+      const resultado = await serviceConNotif.verificarYNotificarFinBimestre("2027-07-11");
+
+      expect(resultado.docentesNotificados).toBe(2);
+      expect(notificaciones.enviar).toHaveBeenCalledTimes(2);
+      const [[llamado1]] = notificaciones.enviar.mock.calls as Array<
+        [{ usuarioId: string; tipo: string; titulo: string }]
+      >;
+      expect(llamado1.usuarioId).toBe("usr-doc-1");
+      expect(llamado1.tipo).toBe("recordatorio");
+      expect(llamado1.titulo).toContain("5 días");
+    });
+
+    it("envía alerta a directivos cuando hoy es la fecha fin del bimestre", async () => {
+      const notificaciones = { enviar: jest.fn().mockResolvedValue(undefined) };
+      const serviceConNotif = new AniosAcademicosService(
+        repo,
+        audit as unknown as AuditService,
+        undefined,
+        notificaciones as unknown as NotificacionesService,
+      );
+
+      const bimEnCurso = bimestre(2, "en_curso", ["2027-05-10", "2027-07-16"]);
+      repo.findEnCurso.mockResolvedValue(
+        anio({
+          estado: "en_curso",
+          bimestres: [bimestre(1, "cerrado"), bimEnCurso, bimestre(3), bimestre(4)],
+        }),
+      );
+      repo.findDirectivosUsuarios.mockResolvedValue(["usr-dir-1"]);
+
+      // Hoy es 2027-07-16 -> día de fin del bimestre
+      const resultado = await serviceConNotif.verificarYNotificarFinBimestre("2027-07-16");
+
+      expect(resultado.directivosNotificados).toBe(1);
+      expect(notificaciones.enviar).toHaveBeenCalledTimes(1);
+      const [[llamadoDir]] = notificaciones.enviar.mock.calls as Array<
+        [{ usuarioId: string; tipo: string; titulo: string }]
+      >;
+      expect(llamadoDir.usuarioId).toBe("usr-dir-1");
+      expect(llamadoDir.tipo).toBe("alerta");
+      expect(llamadoDir.titulo).toContain("culminado");
+    });
+
+    it("no envía avisos si la fecha actual no coincide con 5, 2 ni 0 días restantes", async () => {
+      const notificaciones = { enviar: jest.fn().mockResolvedValue(undefined) };
+      const serviceConNotif = new AniosAcademicosService(
+        repo,
+        audit as unknown as AuditService,
+        undefined,
+        notificaciones as unknown as NotificacionesService,
+      );
+
+      const bimEnCurso = bimestre(2, "en_curso", ["2027-05-10", "2027-07-16"]);
+      repo.findEnCurso.mockResolvedValue(
+        anio({
+          estado: "en_curso",
+          bimestres: [bimestre(1, "cerrado"), bimEnCurso, bimestre(3), bimestre(4)],
+        }),
+      );
+
+      // Hoy es 2027-07-01 -> faltan 15 días
+      const resultado = await serviceConNotif.verificarYNotificarFinBimestre("2027-07-01");
+
+      expect(resultado.docentesNotificados).toBe(0);
+      expect(resultado.directivosNotificados).toBe(0);
+      expect(notificaciones.enviar).not.toHaveBeenCalled();
     });
   });
 });
