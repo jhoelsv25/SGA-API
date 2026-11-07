@@ -363,28 +363,6 @@ async function seed() {
       valorMaximo: 120,
     },
     {
-      codigo: "biometrico.desfase_maximo_min",
-      descripcion:
-        "Diferencia máxima entre la hora del reloj biométrico y la del servidor antes de ponerlo en hora y avisar",
-      modulo: "asistencia",
-      tipo: "entero",
-      valor: "2",
-      unidad: "minutos",
-      valorMinimo: 0,
-      valorMaximo: 60,
-    },
-    {
-      codigo: "biometrico.minutos_sin_comunicacion",
-      descripcion:
-        "Minutos sin avisos de la app puente (o sin respuesta del reloj) en horario de marcación antes de alertar",
-      modulo: "asistencia",
-      tipo: "entero",
-      valor: "10",
-      unidad: "minutos",
-      valorMinimo: 1,
-      valorMaximo: 120,
-    },
-    {
       codigo: "ausencia.plazo_descargo_dias",
       descripcion: "Días calendario para presentar el descargo",
       modulo: "supervision",

@@ -1,6 +1,6 @@
 /**
- * E2E de las vías de marcación: kiosko (código del QR y DNI escrito), manual, reloj biométrico por la
- * app puente (`POST /biometrico/lote`) y reloj biométrico por la tabla cruda (`marcaciones_biometricas`).
+ * E2E de las vías de marcación: kiosko (código del QR y DNI escrito), manual y reloj biométrico por la
+ * tabla cruda (`marcaciones_biometricas`, que llena SGA-NET).
  *
  * Corre contra la base REAL del `.env` (no hay base de pruebas), por eso:
  *  - solo se ejecuta con `E2E_BD_REAL=si`;
@@ -26,11 +26,9 @@ import {
   equiposAutorizados,
   marcaciones,
   marcacionesBiometricas,
-  marcacionesBiometricoPendientes,
   personas,
   usuarios,
 } from "../src/core/database/schema";
-import type { LoteResponseDto } from "../src/features/biometrico/dto";
 import { MarcacionesService } from "../src/features/marcaciones/marcaciones.service";
 import { MarcacionesBiometricasService } from "../src/features/marcaciones/marcaciones-biometricas.service";
 import { ahoraEnColegio } from "../src/features/marcaciones/utils/marcacion-reglas.util";
@@ -66,14 +64,12 @@ describeSiHabilitado("Vías de marcación (e2e, base real)", () => {
 
   const tag = randomBytes(3).toString("hex"); // 6 caracteres
   const tokenKiosko = `e2e-kiosko-${randomBytes(12).toString("hex")}`;
-  const tokenReloj = `e2e-reloj-${randomBytes(12).toString("hex")}`;
   const serieReloj = `E2E-${tag}`;
 
   let equipoKioskoId: string;
-  let equipoRelojId: string;
   let actorId: string;
   const docentesCreados: Record<
-    "qr" | "manual" | "puente" | "cruda" | "kioskoLuegoReloj" | "relojLuegoKiosko" | "atrasado",
+    "qr" | "manual" | "cruda" | "kioskoLuegoReloj" | "relojLuegoKiosko" | "atrasado",
     Docente
   > = {} as never;
   const idsPersonas: string[] = [];
@@ -148,24 +144,8 @@ describeSiHabilitado("Vías de marcación (e2e, base real)", () => {
       .returning({ id: equiposAutorizados.id });
     equipoKioskoId = kiosko.id;
 
-    const [reloj] = await db
-      .insert(equiposAutorizados)
-      .values({
-        nombre: `E2E reloj ${tag}`,
-        ubicacion: "E2E",
-        tipo: "biometrico",
-        proposito: "marcacion",
-        usuariosPermitidos: "docentes",
-        numeroSerie: serieReloj,
-        tokenAutorizacion: sha256(tokenReloj),
-        autorizado: true,
-      })
-      .returning({ id: equiposAutorizados.id });
-    equipoRelojId = reloj.id;
-
     docentesCreados.qr = await crearDocente("kiosko", 1);
     docentesCreados.manual = await crearDocente("manual", 2);
-    docentesCreados.puente = await crearDocente("puente", 3);
     docentesCreados.cruda = await crearDocente("cruda", 4);
     docentesCreados.kioskoLuegoReloj = await crearDocente("kiosko→reloj", 5);
     docentesCreados.relojLuegoKiosko = await crearDocente("reloj→kiosko", 6);
@@ -217,11 +197,6 @@ describeSiHabilitado("Vías de marcación (e2e, base real)", () => {
     );
     if (idsPersonas.length) {
       await intentar(() =>
-        db
-          .delete(marcacionesBiometricoPendientes)
-          .where(and(eq(marcacionesBiometricoPendientes.equipoId, equipoRelojId))),
-      );
-      await intentar(() =>
         db.delete(marcaciones).where(inArray(marcaciones.personaId, idsPersonas)),
       );
       await intentar(() =>
@@ -230,7 +205,7 @@ describeSiHabilitado("Vías de marcación (e2e, base real)", () => {
       await intentar(() => db.delete(docentes).where(inArray(docentes.personaId, idsPersonas)));
       await intentar(() => db.delete(personas).where(inArray(personas.id, idsPersonas)));
     }
-    const idsEquipos = [equipoKioskoId, equipoRelojId].filter(Boolean);
+    const idsEquipos = [equipoKioskoId].filter(Boolean);
     if (idsEquipos.length) {
       await intentar(() =>
         db.delete(equiposAutorizados).where(inArray(equiposAutorizados.id, idsEquipos)),
@@ -346,84 +321,6 @@ describeSiHabilitado("Vías de marcación (e2e, base real)", () => {
     });
   });
 
-  // ---------------------------------------------------------------- reloj por la app puente
-
-  describe("Reloj biométrico: app puente (POST /biometrico/lote)", () => {
-    const hoy = () => ahoraEnColegio().fecha;
-
-    it("registra la marca con la hora del reloj (origen biometrico)", async () => {
-      const d = docentesCreados.puente;
-      const res = await request(app.getHttpServer())
-        .post("/api/biometrico/lote")
-        .set("x-puente-token", tokenReloj)
-        .send({ marcaciones: [{ codigo: d.codigoBiometrico, fechaHora: `${hoy()} 07:30:00` }] })
-        .expect(200);
-
-      expect(cuerpo<LoteResponseDto>(res)).toMatchObject({
-        recibidas: 1,
-        registradas: 1,
-        pendientes: 0,
-      });
-      const [fila] = await marcasDe(d.personaId);
-      expect(fila).toMatchObject({
-        origen: "biometrico",
-        tipo: "entrada",
-        equipoId: equipoRelojId,
-      });
-      expect(fila.fechaHora.slice(11, 19)).toBe("07:30:00");
-    });
-
-    it("el reenvío del mismo lote no duplica", async () => {
-      const d = docentesCreados.puente;
-      const res = await request(app.getHttpServer())
-        .post("/api/biometrico/lote")
-        .set("x-puente-token", tokenReloj)
-        .send({ marcaciones: [{ codigo: d.codigoBiometrico, fechaHora: `${hoy()} 07:30:00` }] })
-        .expect(200);
-
-      const lote = cuerpo<LoteResponseDto>(res);
-      expect(lote.registradas).toBe(0);
-      expect(lote.duplicadas + lote.ignoradas).toBe(1);
-      expect(await marcasDe(d.personaId)).toHaveLength(1);
-    });
-
-    it("ignora el rebote (segunda marca a los pocos segundos)", async () => {
-      const d = docentesCreados.puente;
-      const res = await request(app.getHttpServer())
-        .post("/api/biometrico/lote")
-        .set("x-puente-token", tokenReloj)
-        .send({ marcaciones: [{ codigo: d.codigoBiometrico, fechaHora: `${hoy()} 07:30:20` }] })
-        .expect(200);
-
-      expect(cuerpo<LoteResponseDto>(res).ignoradas).toBe(1);
-      expect(await marcasDe(d.personaId)).toHaveLength(1);
-    });
-
-    it("un código desconocido va a la bandeja de pendientes", async () => {
-      const res = await request(app.getHttpServer())
-        .post("/api/biometrico/lote")
-        .set("x-puente-token", tokenReloj)
-        .send({ marcaciones: [{ codigo: `X${tag}`, fechaHora: `${hoy()} 07:40:00` }] })
-        .expect(200);
-
-      expect(cuerpo<LoteResponseDto>(res).pendientes).toBe(1);
-      const pendientes = await db
-        .select()
-        .from(marcacionesBiometricoPendientes)
-        .where(eq(marcacionesBiometricoPendientes.equipoId, equipoRelojId));
-      expect(pendientes).toHaveLength(1);
-      expect(pendientes[0]).toMatchObject({ estado: "pendiente", motivo: "codigo_desconocido" });
-    });
-
-    it("rechaza una clave de la app puente inválida", async () => {
-      await request(app.getHttpServer())
-        .post("/api/biometrico/lote")
-        .set("x-puente-token", "clave-invalida")
-        .send({ marcaciones: [{ codigo: "1", fechaHora: `${hoy()} 07:30:00` }] })
-        .expect(401);
-    });
-  });
-
   // ---------------------------------------------------------------- reloj por la tabla cruda
 
   describe("Reloj biométrico: tabla cruda (marcaciones_biometricas)", () => {
@@ -461,12 +358,19 @@ describeSiHabilitado("Vías de marcación (e2e, base real)", () => {
   // ---------------------------------------------------------------- misma asistencia por dos vías
 
   describe("Entre vías: la misma asistencia por dos medios", () => {
-    const loteDelReloj = (codigo: string, fechaHora: string) =>
-      request(app.getHttpServer())
-        .post("/api/biometrico/lote")
-        .set("x-puente-token", tokenReloj)
-        .send({ marcaciones: [{ codigo, fechaHora }] })
-        .expect(200);
+    /** Inserta la marca cruda como lo hace SGA-NET, la procesa y devuelve su estado. */
+    const marcaDelReloj = async (codigo: string, fechaHora: string) => {
+      const [cruda] = await db
+        .insert(marcacionesBiometricas)
+        .values({ relojSerie: serieReloj, codigoUsuario: codigo, fechaHora })
+        .returning({ id: marcacionesBiometricas.id });
+      await biometricasService.procesarPendientes();
+      const [fila] = await db
+        .select({ estado: marcacionesBiometricas.estado })
+        .from(marcacionesBiometricas)
+        .where(eq(marcacionesBiometricas.id, cruda.id));
+      return fila.estado;
+    };
 
     it("marcó en el kiosko y minutos después el reloj: la del reloj no se guarda", async () => {
       const d = docentesCreados.kioskoLuegoReloj;
@@ -477,9 +381,9 @@ describeSiHabilitado("Vías de marcación (e2e, base real)", () => {
         .expect(200);
       const [entrada] = await marcasDe(d.personaId);
 
-      const res = await loteDelReloj(d.codigoBiometrico, sumarMinutos(entrada.fechaHora, 10));
-
-      expect(cuerpo<LoteResponseDto>(res)).toMatchObject({ registradas: 0, ignoradas: 1 });
+      expect(await marcaDelReloj(d.codigoBiometrico, sumarMinutos(entrada.fechaHora, 10))).toBe(
+        "rechazada",
+      );
       const filas = await marcasDe(d.personaId);
       expect(filas).toHaveLength(1);
       expect(filas[0]).toMatchObject({ origen: "kiosko", tipo: "entrada" });
@@ -488,9 +392,7 @@ describeSiHabilitado("Vías de marcación (e2e, base real)", () => {
     it("marcó el reloj y minutos después el kiosko: no se genera una salida falsa", async () => {
       const d = docentesCreados.relojLuegoKiosko;
       const ahora = ahoraEnColegio().fechaHora;
-      await loteDelReloj(d.codigoBiometrico, sumarMinutos(ahora, -10)).then((res) =>
-        expect(cuerpo<LoteResponseDto>(res).registradas).toBe(1),
-      );
+      expect(await marcaDelReloj(d.codigoBiometrico, sumarMinutos(ahora, -10))).toBe("procesada");
 
       const res = await request(app.getHttpServer())
         .post("/api/marcaciones/kiosko")
@@ -517,8 +419,9 @@ describeSiHabilitado("Vías de marcación (e2e, base real)", () => {
       // 90 min antes del kiosko cae fuera de la ventana; en la madrugada cruzaría de día y no aplica.
       if (delKiosko.fechaHora.slice(11, 13) < "02") return;
 
-      const res = await loteDelReloj(d.codigoBiometrico, sumarMinutos(delKiosko.fechaHora, -90));
-      expect(cuerpo<LoteResponseDto>(res).registradas).toBe(1);
+      expect(await marcaDelReloj(d.codigoBiometrico, sumarMinutos(delKiosko.fechaHora, -90))).toBe(
+        "procesada",
+      );
 
       const filas = (await marcasDe(d.personaId)).sort((a, b) =>
         a.fechaHora.localeCompare(b.fechaHora),
@@ -541,7 +444,7 @@ describeSiHabilitado("Vías de marcación (e2e, base real)", () => {
       acc[m.origen] = (acc[m.origen] ?? 0) + 1;
       return acc;
     }, {});
-    // kiosko: 2 (QR y DNI) + 1 + 1 (entrada y salida reetiquetada); biometrico: 2 + 1 (reloj→kiosko) + 1 (atrasado)
-    expect(conteo).toEqual({ kiosko: 4, manual: 1, biometrico: 4 });
+    // kiosko: 2 (QR y DNI) + 1 + 1 (entrada y salida reetiquetada); biometrico: 1 + 1 (reloj→kiosko) + 1 (atrasado)
+    expect(conteo).toEqual({ kiosko: 4, manual: 1, biometrico: 3 });
   });
 });

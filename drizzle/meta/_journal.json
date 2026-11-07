@@ -162,6 +162,13 @@
       "when": 1792900000000,
       "tag": "0023_menus_aplicaciones",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1793000000000,
+      "tag": "0024_quitar_app_puente",
+      "breakpoints": true
     }
   ]
 }

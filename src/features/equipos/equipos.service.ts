@@ -62,14 +62,9 @@ export class EquiposService {
       }
     }
 
-    // 4. Regla de biométricos
-    if (dto.tipo === "biometrico" && (!dto.numeroSerie || dto.numeroSerie.trim().length === 0)) {
-      throw new BadRequestException("Debe ingresar el número de serie para equipos biométricos.");
-    }
-
     const created = await this.equiposRepository.create(dto);
 
-    // 5. Auditoría
+    // 4. Auditoría
     await this.auditService.log({
       usuarioId: actorId,
       accion: "crear",
@@ -187,10 +182,7 @@ export class EquiposService {
     });
 
     return {
-      message:
-        current.tipo === "biometrico"
-          ? "Reloj biométrico autorizado. Copie la clave de la app puente: no se volverá a mostrar."
-          : "Equipo autorizado. Ya puede usarse como kiosko.",
+      message: "Equipo autorizado. Ya puede usarse como kiosko.",
       tokenAutorizacion: rawToken,
       equipo: updated,
     };

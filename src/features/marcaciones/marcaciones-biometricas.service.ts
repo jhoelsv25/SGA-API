@@ -29,7 +29,7 @@ export interface ResumenProcesamiento {
 
 /**
  * Convierte las marcaciones crudas del reloj (que inserta SGA-NET) en `marcaciones`: identifica a la persona y
- * aplica EXACTAMENTE las mismas reglas que la app puente (`MarcacionesService.registrarDesdeReloj`): entrada o
+ * aplica EXACTAMENTE las reglas de `MarcacionesService.registrarDesdeReloj`: entrada o
  * salida por la hora de la marca, rebote, coincidencia con otras vías, turno, resultado y tardanza.
  * El tipo que informa el reloj es solo informativo.
  */

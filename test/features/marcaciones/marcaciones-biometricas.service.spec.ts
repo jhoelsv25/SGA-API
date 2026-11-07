@@ -66,7 +66,7 @@ function construir(opciones: {
     suspendeClasesEn: jest.fn().mockResolvedValue(opciones.suspendido ?? false),
   };
   const variables = { getValor: jest.fn().mockResolvedValue("5") };
-  // Las reglas son las de la app puente: se usa el servicio real sobre repositorios simulados.
+  // Las reglas son las del servicio de marcaciones: se usa el servicio real sobre repositorios simulados.
   const marcacionesService = new MarcacionesService(
     marcaciones as never,
     {} as never,

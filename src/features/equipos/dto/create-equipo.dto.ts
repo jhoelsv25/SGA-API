@@ -16,7 +16,7 @@ export class CreateEquipoDto {
   ubicacion!: string;
 
   @ApiProperty({ description: "Tipo de equipo", enum: EQUIPO_TIPOS, example: "kiosko" })
-  @IsIn(EQUIPO_TIPOS, { message: "El tipo debe ser kiosko o biometrico." })
+  @IsIn(EQUIPO_TIPOS, { message: "El tipo debe ser kiosko." })
   tipo!: EquipoTipo;
 
   @ApiProperty({
