@@ -296,6 +296,9 @@ export class AulaVirtualRepository implements IAulaVirtualRepository {
         cursoNombre: cursos.nombre,
         seccionNombre: seccionNombreSql,
         docenteNombre: nombreSql(personas),
+        colorHex: cursos.colorHex,
+        areaCurricular: cursos.areaCurricular,
+        gradoNombre: grados.nombre,
       })
       .from(cursosSeccion)
       .innerJoin(cursos, eq(cursos.id, cursosSeccion.cursoId))
@@ -323,6 +326,9 @@ export class AulaVirtualRepository implements IAulaVirtualRepository {
         cursoNombre: cursos.nombre,
         seccionNombre: seccionNombreSql,
         docenteNombre: docentePersona,
+        colorHex: cursos.colorHex,
+        areaCurricular: cursos.areaCurricular,
+        gradoNombre: grados.nombre,
       })
       .from(matriculas)
       .innerJoin(estudiantes, eq(estudiantes.id, matriculas.estudianteId))
@@ -367,6 +373,9 @@ export class AulaVirtualRepository implements IAulaVirtualRepository {
         cursoNombre: cursos.nombre,
         seccionNombre: seccionNombreSql,
         docenteNombre: docentePersona,
+        colorHex: cursos.colorHex,
+        areaCurricular: cursos.areaCurricular,
+        gradoNombre: grados.nombre,
       })
       .from(cursosSeccion)
       .innerJoin(cursos, eq(cursos.id, cursosSeccion.cursoId))
@@ -390,6 +399,9 @@ export class AulaVirtualRepository implements IAulaVirtualRepository {
         cursoNombre: cursos.nombre,
         seccionNombre: seccionNombreSql,
         docenteNombre: docentePersona,
+        colorHex: cursos.colorHex,
+        areaCurricular: cursos.areaCurricular,
+        gradoNombre: grados.nombre,
       })
       .from(estudianteApoderados)
       .innerJoin(apoderados, eq(apoderados.id, estudianteApoderados.apoderadoId))

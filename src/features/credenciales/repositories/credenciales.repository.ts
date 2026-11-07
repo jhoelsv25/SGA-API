@@ -5,8 +5,11 @@ import {
   credenciales,
   docentes,
   estudiantes,
+  grados,
   institucion,
+  matriculas,
   personas,
+  secciones,
 } from "../../../core/database/schema";
 import type { CarneDatosDto } from "../dto";
 
@@ -200,5 +203,153 @@ export class CredencialesRepository {
       .update(credenciales)
       .set({ pinHash: nuevoPinHash })
       .where(eq(credenciales.id, id));
+  }
+
+  async findSeccionInfo(
+    seccionId: string,
+  ): Promise<{ id: string; nombre: string; gradoNombre: string } | null> {
+    const rows = await this.db
+      .select({
+        id: secciones.id,
+        nombre: secciones.nombre,
+        gradoNombre: grados.nombre,
+      })
+      .from(secciones)
+      .innerJoin(grados, eq(secciones.gradoId, grados.id))
+      .where(eq(secciones.id, seccionId))
+      .limit(1);
+
+    return rows[0] ?? null;
+  }
+
+  async findCarnesPorSeccion(seccionId: string): Promise<CarneDatosDto[]> {
+    const [inst] = await this.db
+      .select({
+        nombre: institucion.nombre,
+        codigoModular: institucion.codigoModular,
+        distrito: institucion.distrito,
+        provincia: institucion.provincia,
+        departamento: institucion.departamento,
+        ugel: institucion.ugel,
+        dre: institucion.dre,
+        logoUrl: institucion.logoUrl,
+      })
+      .from(institucion)
+      .limit(1);
+
+    const institucionData = {
+      nombre: inst?.nombre || "I.E. De Mujeres Nuestra Señora del Carmen",
+      codigoModular: inst?.codigoModular || null,
+      distrito: inst?.distrito || "Lircay",
+      provincia: inst?.provincia || "Angaraes",
+      departamento: inst?.departamento || "Huancavelica",
+      ugel: inst?.ugel || null,
+      dre: inst?.dre || null,
+      logoUrl: inst?.logoUrl || null,
+    };
+
+    const rows = await this.db
+      .select({
+        personaId: personas.id,
+        nombres: personas.nombres,
+        apellidoPaterno: personas.apellidoPaterno,
+        apellidoMaterno: personas.apellidoMaterno,
+        tipoDocumento: personas.tipoDocumento,
+        numeroDocumento: personas.numeroDocumento,
+        fotoUrl: personas.fotoUrl,
+        codigoSiagie: estudiantes.codigo,
+        codigoCredencial: credenciales.codigo,
+        emitidaEn: credenciales.emitidaEn,
+      })
+      .from(matriculas)
+      .innerJoin(estudiantes, eq(matriculas.estudianteId, estudiantes.id))
+      .innerJoin(personas, eq(estudiantes.personaId, personas.id))
+      .innerJoin(
+        credenciales,
+        and(eq(credenciales.personaId, personas.id), eq(credenciales.activa, true)),
+      )
+      .where(
+        and(
+          eq(matriculas.seccionId, seccionId),
+          eq(matriculas.estado, "matriculado"),
+          eq(estudiantes.estado, "activo"),
+        ),
+      )
+      .orderBy(personas.apellidoPaterno, personas.apellidoMaterno, personas.nombres);
+
+    return rows.map((r) => ({
+      personaId: r.personaId,
+      nombreCompleto: [r.nombres, r.apellidoPaterno, r.apellidoMaterno].filter(Boolean).join(" "),
+      tipoDocumento: r.tipoDocumento,
+      numeroDocumento: r.numeroDocumento,
+      fotoUrl: r.fotoUrl,
+      tipoRol: "Estudiante",
+      codigoCredencial: r.codigoCredencial,
+      codigoInstitucional: r.codigoSiagie,
+      emitidaEn: r.emitidaEn,
+      institucion: institucionData,
+    }));
+  }
+
+  async findCarnesDocentes(): Promise<CarneDatosDto[]> {
+    const [inst] = await this.db
+      .select({
+        nombre: institucion.nombre,
+        codigoModular: institucion.codigoModular,
+        distrito: institucion.distrito,
+        provincia: institucion.provincia,
+        departamento: institucion.departamento,
+        ugel: institucion.ugel,
+        dre: institucion.dre,
+        logoUrl: institucion.logoUrl,
+      })
+      .from(institucion)
+      .limit(1);
+
+    const institucionData = {
+      nombre: inst?.nombre || "I.E. De Mujeres Nuestra Señora del Carmen",
+      codigoModular: inst?.codigoModular || null,
+      distrito: inst?.distrito || "Lircay",
+      provincia: inst?.provincia || "Angaraes",
+      departamento: inst?.departamento || "Huancavelica",
+      ugel: inst?.ugel || null,
+      dre: inst?.dre || null,
+      logoUrl: inst?.logoUrl || null,
+    };
+
+    const rows = await this.db
+      .select({
+        personaId: personas.id,
+        nombres: personas.nombres,
+        apellidoPaterno: personas.apellidoPaterno,
+        apellidoMaterno: personas.apellidoMaterno,
+        tipoDocumento: personas.tipoDocumento,
+        numeroDocumento: personas.numeroDocumento,
+        fotoUrl: personas.fotoUrl,
+        codigoDocente: docentes.codigo,
+        codigoCredencial: credenciales.codigo,
+        emitidaEn: credenciales.emitidaEn,
+      })
+      .from(docentes)
+      .innerJoin(personas, eq(docentes.personaId, personas.id))
+      .innerJoin(
+        credenciales,
+        and(eq(credenciales.personaId, personas.id), eq(credenciales.activa, true)),
+      )
+      .where(eq(docentes.estado, "activo"))
+      .orderBy(personas.apellidoPaterno, personas.apellidoMaterno, personas.nombres);
+
+    return rows.map((r) => ({
+      personaId: r.personaId,
+      nombreCompleto: [r.nombres, r.apellidoPaterno, r.apellidoMaterno].filter(Boolean).join(" "),
+      tipoDocumento: r.tipoDocumento,
+      numeroDocumento: r.numeroDocumento,
+      fotoUrl: r.fotoUrl,
+      tipoRol: "Docente",
+      codigoCredencial: r.codigoCredencial,
+      codigoInstitucional: r.codigoDocente,
+      emitidaEn: r.emitidaEn,
+      institucion: institucionData,
+    }));
   }
 }

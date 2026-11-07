@@ -150,11 +150,11 @@ describe("AuthService (RF-001: Acceso al Sistema)", () => {
         expect(authRepository.findUserByUsername).toHaveBeenCalledWith("jdoe");
         expect(authRepository.resetLoginAttempts).toHaveBeenCalledWith(mockUser.id);
         expect(sessionService.generateAccessToken).toHaveBeenCalledWith(
-          // RF-001 V3: el token del paso 1 deja el rol pendiente de elegir
+          // Si el usuario tiene un solo rol, no tiene rol pendiente de elegir (ingresa directo)
           expect.objectContaining({
             sub: mockUser.id,
             username: mockUser.nombreUsuario,
-            rolPendiente: true,
+            rolPendiente: false,
             recordar: true,
           }),
           true,
@@ -462,7 +462,7 @@ describe("AuthService (RF-001: Acceso al Sistema)", () => {
       });
 
       expect(sessionService.generateAccessToken).toHaveBeenCalledWith(
-        expect.objectContaining({ roleId: "rol-docente", role: "Docente" }),
+        expect.objectContaining({ roleId: "rol-docente", role: "Docente", rolPendiente: true }),
         false,
       );
       expect(authRepository.getUserModules).toHaveBeenCalledWith("rol-docente", false);

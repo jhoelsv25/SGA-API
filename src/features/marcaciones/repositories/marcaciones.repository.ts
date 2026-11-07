@@ -4,9 +4,11 @@ import dayjs from "dayjs";
 import { decodeCursor, encodeCursor } from "../../../common/utils";
 import { Database, DRIZZLE } from "../../../core/database";
 import {
+  apoderados,
   cargos,
   credenciales,
   docentes,
+  estudianteApoderados,
   estudiantes,
   grados,
   marcaciones,
@@ -14,6 +16,7 @@ import {
   personaCargos,
   personas,
   secciones,
+  usuarios,
 } from "../../../core/database/schema";
 import type {
   OrigenMarcacion,
@@ -392,5 +395,30 @@ export class MarcacionesRepository implements IMarcacionesRepository {
       hasMore: hayMas,
       limit: limite,
     };
+  }
+
+  async findApoderadosDePersonaEstudiante(personaId: string): Promise<
+    Array<{
+      usuarioId: string;
+      apoderadoNombre: string;
+    }>
+  > {
+    const rows = await this.db
+      .select({
+        usuarioId: usuarios.id,
+        nombres: personas.nombres,
+        apellidoPaterno: personas.apellidoPaterno,
+      })
+      .from(estudiantes)
+      .innerJoin(estudianteApoderados, eq(estudianteApoderados.estudianteId, estudiantes.id))
+      .innerJoin(apoderados, eq(apoderados.id, estudianteApoderados.apoderadoId))
+      .innerJoin(personas, eq(personas.id, apoderados.personaId))
+      .innerJoin(usuarios, eq(usuarios.personaId, apoderados.personaId))
+      .where(and(eq(estudiantes.personaId, personaId), eq(usuarios.estado, "activo")));
+
+    return rows.map((r) => ({
+      usuarioId: r.usuarioId,
+      apoderadoNombre: `${r.nombres} ${r.apellidoPaterno}`.trim(),
+    }));
   }
 }

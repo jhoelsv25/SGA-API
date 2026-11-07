@@ -487,6 +487,7 @@ export class AsistenciaClaseService {
           mensaje: `El estudiante ${dest.estudianteNombre} ha registrado falta el día ${sesion.fecha} en la clase de ${sesion.cursoNombre}.`,
           tipo: "alerta",
           enlaceUrl: "/admin/mi-asistencia",
+          canales: ["in_app", "push", "email", "webhook"],
         });
       }
     } catch {

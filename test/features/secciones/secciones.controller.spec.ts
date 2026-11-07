@@ -93,6 +93,11 @@ describe("SeccionesController (RF-008: Seguridad y Endpoints de Secciones)", () 
       expect(rutaPermitida).toBe(MENU_SECCIONES);
     });
 
+    it("debe exigir el permiso de organización escolar (@MenuAccess('/admin/secciones')) al clonar secciones", () => {
+      const rutaPermitida = reflector.get<string>(MENU_ACCESS_KEY, controller.clonar);
+      expect(rutaPermitida).toBe(MENU_SECCIONES);
+    });
+
     it("no debe exigir restricción de @MenuAccess en endpoints de consulta abierta (findAll y findById)", () => {
       // Dado los endpoints de lectura
       // Cuando verifico la metadata de acceso a menú
@@ -149,6 +154,22 @@ describe("SeccionesController (RF-008: Seguridad y Endpoints de Secciones)", () 
 
       expect(resultado).toEqual([mockSeccionResponse]);
       expect(service.findAll).toHaveBeenCalledWith(query);
+    });
+
+    it("clonar() debe delegar al servicio con dto, usuario autenticado e IP", async () => {
+      service.clonar = jest.fn().mockResolvedValue({
+        mensaje: "Se clonaron 2 secciones",
+        totalClonadas: 2,
+        totalOmitidas: 0,
+        clonadas: [],
+        omitidas: [],
+      });
+
+      const dto = { anioOrigenId: "anio-2026", copiarAulas: true };
+      const resultado = await controller.clonar(dto, mockUsuarioAdmin, mockClientInfo);
+
+      expect(resultado.totalClonadas).toBe(2);
+      expect(service.clonar).toHaveBeenCalledWith(dto, mockUsuarioAdmin.id, mockClientInfo.ip);
     });
 
     it("findById() debe delegar la obtención por id al servicio", async () => {

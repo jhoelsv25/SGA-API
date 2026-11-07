@@ -1,5 +1,5 @@
 export type TipoNotificacion = "informacion" | "alerta" | "recordatorio";
-export type CanalNotificacion = "in_app" | "email" | "sms" | "push";
+export type CanalNotificacion = "in_app" | "email" | "sms" | "push" | "webhook";
 
 export interface EnviarNotificacionParams {
   usuarioId: string;

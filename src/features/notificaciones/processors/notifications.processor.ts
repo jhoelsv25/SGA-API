@@ -8,6 +8,7 @@ import {
   EmailNotificationStrategy,
   InAppNotificationStrategy,
   PushNotificationStrategy,
+  WebhookNotificationStrategy,
 } from "../strategies";
 
 @Processor(QUEUES.NOTIFICATIONS)
@@ -18,6 +19,7 @@ export class NotificationsProcessor extends WorkerHost {
     private readonly inAppStrategy: InAppNotificationStrategy,
     private readonly emailStrategy: EmailNotificationStrategy,
     private readonly pushStrategy: PushNotificationStrategy,
+    private readonly webhookStrategy: WebhookNotificationStrategy,
   ) {
     super();
   }
@@ -39,6 +41,8 @@ export class NotificationsProcessor extends WorkerHost {
           await this.pushStrategy.enviar(params);
         } else if (canal === "email") {
           await this.emailStrategy.enviar(params);
+        } else if (canal === "webhook") {
+          await this.webhookStrategy.enviar(params);
         }
       } catch (error) {
         this.logger.error(

@@ -403,4 +403,94 @@ describe("RF-008: Secciones (HU1)", () => {
       expect(mockSeccionesRepo.update).not.toHaveBeenCalled();
     });
   });
+
+  describe("Clonación automática de secciones (P-25)", () => {
+    it("debe rechazar si el año de origen es el mismo que el año de destino", async () => {
+      await expect(service.clonar({ anioOrigenId: "anio-2027" }, "user-admin")).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it("debe rechazar si el año de origen no existe", async () => {
+      mockAniosService.findById = jest.fn().mockImplementation((id: string) => {
+        if (id === "anio-2027") return Promise.resolve(mockAnio2027);
+        return Promise.resolve(null);
+      });
+
+      await expect(
+        service.clonar({ anioOrigenId: "anio-inexistente" }, "user-admin"),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it("debe rechazar si el año de origen no tiene secciones activas", async () => {
+      mockAniosService.findById = jest.fn().mockResolvedValue(mockAnio2027);
+      mockSeccionesRepo.findAll = jest.fn().mockResolvedValue([]);
+
+      await expect(service.clonar({ anioOrigenId: "anio-2026" }, "user-admin")).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it("debe clonar secciones omitiendo duplicadas y asignando tutores si se solicita", async () => {
+      const mockSeccion2026A: SeccionResponseDto = {
+        ...mockSeccion5A,
+        id: "sec-orig-a",
+        anioAcademicoId: "anio-2026",
+        nombre: "A",
+        aula: "Aula 101",
+        tutor: { id: "doc-perez", codigo: "DOC001", nombreCompleto: "Prof. Pérez" },
+      };
+      const mockSeccion2026B: SeccionResponseDto = {
+        ...mockSeccion5A,
+        id: "sec-orig-b",
+        anioAcademicoId: "anio-2026",
+        nombre: "B",
+        aula: "Aula 102",
+        tutor: null,
+      };
+
+      mockAniosService.findById = jest.fn().mockImplementation((id: string) => {
+        if (id === "anio-2026")
+          return Promise.resolve({ ...mockAnio2027, id: "anio-2026", anio: 2026 });
+        return Promise.resolve(mockAnio2027);
+      });
+
+      // findAll para el origen retorna 2 secciones
+      mockSeccionesRepo.findAll = jest.fn().mockResolvedValue([mockSeccion2026A, mockSeccion2026B]);
+
+      // En el destino, "A" ya existe pero "B" no
+      mockSeccionesRepo.findPorNombre = jest.fn().mockImplementation((anioId, gradoId, nombre) => {
+        if (nombre === "A") return Promise.resolve(mockSeccion5A);
+        return Promise.resolve(null);
+      });
+
+      mockSeccionesRepo.createConCarga = jest.fn().mockResolvedValue({
+        ...mockSeccion2026B,
+        id: "sec-nueva-b",
+        anioAcademicoId: "anio-2027",
+      });
+
+      const resultado = await service.clonar(
+        { anioOrigenId: "anio-2026", copiarAulas: true, copiarTutores: true },
+        "user-admin",
+      );
+
+      expect(resultado.totalClonadas).toBe(1);
+      expect(resultado.totalOmitidas).toBe(1);
+      expect(resultado.clonadas[0].nombre).toBe("B");
+      expect(resultado.omitidas[0].nombre).toBe("A");
+      expect(mockAuditService.log).toHaveBeenCalledWith(
+        expect.objectContaining({
+          accion: "crear",
+          tabla: "secciones",
+        }),
+      );
+      const auditCall = (mockAuditService.log as jest.Mock).mock.calls[0] as [
+        { valorNuevo: { tipo: string; totalClonadas: number; totalOmitidas: number } },
+      ];
+      expect(auditCall[0].valorNuevo.tipo).toBe("clonacion_secciones");
+      expect(auditCall[0].valorNuevo.totalClonadas).toBe(1);
+      expect(auditCall[0].valorNuevo.totalOmitidas).toBe(1);
+    });
+  });
 });

@@ -156,6 +156,9 @@ export interface CursoAulaResumen {
   cursoNombre: string;
   seccionNombre: string;
   docenteNombre: string | null;
+  colorHex?: string | null;
+  areaCurricular?: string | null;
+  gradoNombre?: string | null;
 }
 
 export interface IAulaVirtualRepository {

@@ -52,6 +52,10 @@ export class AuthService {
     // 5. Cargar rol y menús: ingresa con su rol principal (RF-001 V2)
     const { userDto, modules, activeRole } = await this.buildUserRole(user);
 
+    // RF-001 V3: el paso 2 del login fija el rol; solo queda pendiente si el usuario tiene más de un rol
+    const roles = await this.resolveRoles(user);
+    const tieneMultiplesRoles = roles.length > 1;
+
     // 6. Generar token y persistir sesión mediante SessionService
     const payload: JwtPayload = {
       sub: user.id,
@@ -59,8 +63,7 @@ export class AuthService {
       roleId: activeRole.rolId,
       role: activeRole.nombre,
       personaId: user.personaId,
-      // RF-001 V3: el paso 2 del login fija el rol; hasta entonces el rol queda pendiente
-      rolPendiente: true,
+      rolPendiente: tieneMultiplesRoles,
       recordar: dto.rememberMe === true,
     };
 
