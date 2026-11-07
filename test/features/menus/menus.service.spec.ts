@@ -124,6 +124,7 @@ describe("MenusService (RF-002: HU 3)", () => {
         orden: 1,
         esContenedor: true,
         vigente: true,
+        aplicaciones: ["web"],
         creadoEn: "2026-10-05T00:00:00Z",
       });
 
@@ -170,6 +171,7 @@ describe("MenusService (RF-002: HU 3)", () => {
         orden: 1,
         esContenedor: true,
         vigente: true,
+        aplicaciones: ["web"],
         creadoEn: "2026-10-05T00:00:00Z",
       });
 
@@ -183,6 +185,7 @@ describe("MenusService (RF-002: HU 3)", () => {
         orden: 1,
         esContenedor: false,
         vigente: true,
+        aplicaciones: ["web"],
         creadoEn: "2026-10-05T00:00:00Z",
       });
 

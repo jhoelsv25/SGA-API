@@ -70,6 +70,11 @@ export const menus = pgTable(
     orden: smallint().notNull(),
     esContenedor: boolean("es_contenedor").default(false).notNull(),
     vigente: boolean().default(true).notNull(),
+    /** Aplicaciones donde se muestra la opción: web, escritorio, app. */
+    aplicaciones: text()
+      .array()
+      .default(sql`ARRAY['web']::text[]`)
+      .notNull(),
     creadoEn: timestamp("creado_en", { precision: 0, mode: "string" })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
@@ -91,6 +96,10 @@ export const menus = pgTable(
       foreignColumns: [table.id],
       name: "fk_menus_padre",
     }),
+    check(
+      "ck_menus_aplicaciones",
+      sql`cardinality(aplicaciones) > 0 AND aplicaciones <@ ARRAY['web', 'escritorio', 'app']::text[]`,
+    ),
     check(
       "ck_menus_tipo",
       sql`(es_contenedor AND (ruta IS NULL) AND (menu_padre_id IS NULL)) OR ((NOT es_contenedor) AND (ruta IS NOT NULL) AND (menu_padre_id IS NOT NULL))`,

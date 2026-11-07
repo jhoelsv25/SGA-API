@@ -29,6 +29,7 @@ export interface CreateMenuData {
   orden: number;
   esContenedor: boolean;
   vigente?: boolean;
+  aplicaciones?: string[];
 }
 
 export interface UpdateMenuData {
@@ -38,6 +39,7 @@ export interface UpdateMenuData {
   icono?: string | null;
   orden?: number;
   vigente?: boolean;
+  aplicaciones?: string[];
 }
 
 export interface IMenusRepository {

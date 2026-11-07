@@ -1,5 +1,21 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { IsInt, IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength, Min } from "class-validator";
+import {
+  ArrayMinSize,
+  ArrayUnique,
+  IsArray,
+  IsIn,
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+  Min,
+} from "class-validator";
+import {
+  APLICACIONES_MENU,
+  type AplicacionMenu,
+} from "../../../common/constants/aplicaciones-menu.constants";
 
 export class CreateMenuOptionDto {
   @ApiProperty({
@@ -56,4 +72,17 @@ export class CreateMenuOptionDto {
   @IsInt({ message: "El orden debe ser un número entero" })
   @Min(1, { message: "El orden debe ser mayor o igual a 1" })
   orden!: number;
+
+  @ApiPropertyOptional({
+    description: "Aplicaciones donde se muestra la opción (por defecto solo web)",
+    enum: APLICACIONES_MENU,
+    isArray: true,
+    example: ["web", "escritorio"],
+  })
+  @IsOptional()
+  @IsArray({ message: "Las aplicaciones deben ser una lista" })
+  @ArrayMinSize(1, { message: "Indica al menos una aplicación" })
+  @ArrayUnique({ message: "Las aplicaciones no pueden repetirse" })
+  @IsIn(APLICACIONES_MENU, { each: true, message: "Aplicación no válida (web, escritorio o app)" })
+  aplicaciones?: AplicacionMenu[];
 }

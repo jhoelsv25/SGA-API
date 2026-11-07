@@ -2,6 +2,7 @@ import { Pool } from "pg";
 import * as bcrypt from "bcryptjs";
 import {
   MENU_CORREGIR_DATOS_CRITICOS,
+  MENU_ESCRITORIO_BIOMETRICOS,
   MENU_HORARIOS,
   MENU_SECCIONES,
   MENU_MI_HORARIO,
@@ -1301,6 +1302,33 @@ async function seed() {
     );
   }
   console.log("✔ Opciones de Libretas registradas.");
+
+  // Aplicación de escritorio: configuración del reloj biométrico (solo escritorio; el portal web no la muestra)
+  await pool.query(
+    `INSERT INTO menus (modulo_id, nombre, orden, es_contenedor)
+     SELECT m.id, 'Dispositivos', 90, true FROM modulos m
+     WHERE m.codigo = 'seguridad'
+       AND NOT EXISTS (
+         SELECT 1 FROM menus x
+         WHERE x.modulo_id = m.id AND x.es_contenedor AND x.nombre = 'Dispositivos'
+       );`,
+  );
+  await pool.query(
+    `INSERT INTO menus (modulo_id, menu_padre_id, nombre, ruta, icono, orden, es_contenedor, aplicaciones)
+     SELECT c.modulo_id, c.id, 'Biométricos', $1::varchar, 'biometrico', 1, false, ARRAY['escritorio']::text[]
+     FROM menus c JOIN modulos m ON m.id = c.modulo_id
+     WHERE m.codigo = 'seguridad' AND c.es_contenedor AND c.nombre = 'Dispositivos'
+       AND NOT EXISTS (SELECT 1 FROM menus x WHERE x.ruta = $1::varchar);`,
+    [MENU_ESCRITORIO_BIOMETRICOS],
+  );
+  await pool.query(
+    `INSERT INTO rol_menus (rol_id, menu_id)
+     SELECT r.id, m.id FROM roles r, menus m
+     WHERE r.nombre = 'Administrador' AND m.ruta = $1
+     ON CONFLICT DO NOTHING;`,
+    [MENU_ESCRITORIO_BIOMETRICOS],
+  );
+  console.log("✔ Opción 'Biométricos' del escritorio registrada (solo Administrador).");
 
   await pool.end();
   console.log("==========================================");

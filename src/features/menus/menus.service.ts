@@ -164,6 +164,7 @@ export class MenusService {
       icono: dto.icono,
       orden: dto.orden,
       esContenedor: false,
+      aplicaciones: dto.aplicaciones,
     });
 
     await this.auditService.log({

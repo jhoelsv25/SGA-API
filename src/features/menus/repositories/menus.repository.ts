@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, eq, ilike, type SQL } from "drizzle-orm";
+import { and, eq, ilike, sql, type SQL } from "drizzle-orm";
 import { Database, DRIZZLE } from "../../../core/database";
 import { menus, modulos, rolMenus } from "../../../core/database/schema";
 import {
@@ -140,6 +140,7 @@ export class MenusRepository implements IMenusRepository {
         orden: menus.orden,
         esContenedor: menus.esContenedor,
         vigente: menus.vigente,
+        aplicaciones: menus.aplicaciones,
         creadoEn: menus.creadoEn,
       })
       .from(menus)
@@ -161,6 +162,7 @@ export class MenusRepository implements IMenusRepository {
         orden: menus.orden,
         esContenedor: menus.esContenedor,
         vigente: menus.vigente,
+        aplicaciones: menus.aplicaciones,
         creadoEn: menus.creadoEn,
       })
       .from(menus)
@@ -182,6 +184,7 @@ export class MenusRepository implements IMenusRepository {
         orden: data.orden,
         esContenedor: data.esContenedor,
         vigente: data.vigente ?? true,
+        ...(data.aplicaciones ? { aplicaciones: data.aplicaciones } : {}),
       })
       .returning();
 
@@ -208,6 +211,9 @@ export class MenusRepository implements IMenusRepository {
     }
     if (data.vigente !== undefined) {
       updateValues.vigente = data.vigente;
+    }
+    if (data.aplicaciones !== undefined) {
+      updateValues.aplicaciones = data.aplicaciones;
     }
 
     const [updated] = await this.db
@@ -266,7 +272,13 @@ export class MenusRepository implements IMenusRepository {
         vigente: menus.vigente,
       })
       .from(menus)
-      .where(and(eq(menus.esContenedor, false), eq(menus.vigente, true)))
+      .where(
+        and(
+          eq(menus.esContenedor, false),
+          eq(menus.vigente, true),
+          sql`'web' = ANY(${menus.aplicaciones})`,
+        ),
+      )
       .orderBy(menus.orden);
 
     // 4. RF-002 V2 (Roles-Menú): el rol ve solo las opciones que tiene asignadas;

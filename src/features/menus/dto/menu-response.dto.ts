@@ -117,6 +117,13 @@ export class MenuItemResponseDto {
   @ApiProperty({ description: "Vigente" })
   vigente!: boolean;
 
+  @ApiProperty({
+    description: "Aplicaciones donde se muestra la opción",
+    enum: ["web", "escritorio", "app"],
+    isArray: true,
+  })
+  aplicaciones!: string[];
+
   @ApiProperty({ description: "Fecha de creación" })
   creadoEn!: string;
 }

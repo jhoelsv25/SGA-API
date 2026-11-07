@@ -1,5 +1,21 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
-import { IsBoolean, IsInt, IsOptional, IsString, IsUUID, MaxLength, Min } from "class-validator";
+import {
+  ArrayMinSize,
+  ArrayUnique,
+  IsArray,
+  IsBoolean,
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+  Min,
+} from "class-validator";
+import {
+  APLICACIONES_MENU,
+  type AplicacionMenu,
+} from "../../../common/constants/aplicaciones-menu.constants";
 
 export class UpdateMenuDto {
   @ApiPropertyOptional({
@@ -56,4 +72,17 @@ export class UpdateMenuDto {
   @IsOptional()
   @IsBoolean({ message: "La vigencia debe ser un valor booleano" })
   vigente?: boolean;
+
+  @ApiPropertyOptional({
+    description: "Aplicaciones donde se muestra la opción (por defecto solo web)",
+    enum: APLICACIONES_MENU,
+    isArray: true,
+    example: ["web", "escritorio"],
+  })
+  @IsOptional()
+  @IsArray({ message: "Las aplicaciones deben ser una lista" })
+  @ArrayMinSize(1, { message: "Indica al menos una aplicación" })
+  @ArrayUnique({ message: "Las aplicaciones no pueden repetirse" })
+  @IsIn(APLICACIONES_MENU, { each: true, message: "Aplicación no válida (web, escritorio o app)" })
+  aplicaciones?: AplicacionMenu[];
 }

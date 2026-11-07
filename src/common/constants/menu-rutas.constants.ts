@@ -62,3 +62,9 @@ export const MENU_MI_SEGUIMIENTO = "/admin/mi-seguimiento";
  */
 export const MENU_INDICADORES = "/admin/indicadores";
 export const MENU_MIS_INDICADORES = "/admin/mis-indicadores";
+
+/**
+ * Opciones propias de la aplicación de escritorio (`menus.aplicaciones` = escritorio).
+ * La ruta es la de la página en esa aplicación; el portal web no las muestra.
+ */
+export const MENU_ESCRITORIO_BIOMETRICOS = "/biometricos";

@@ -186,7 +186,13 @@ export class AuthRepository implements IAuthRepository {
         const [firstMenu] = await this.db
           .select({ ruta: menus.ruta })
           .from(menus)
-          .where(and(eq(menus.moduloId, mod.id), eq(menus.vigente, true)))
+          .where(
+            and(
+              eq(menus.moduloId, mod.id),
+              eq(menus.vigente, true),
+              sql`'web' = ANY(${menus.aplicaciones})`,
+            ),
+          )
           .orderBy(menus.orden)
           .limit(1);
 
@@ -212,7 +218,14 @@ export class AuthRepository implements IAuthRepository {
       .from(rolMenus)
       .innerJoin(menus, eq(rolMenus.menuId, menus.id))
       .innerJoin(modulos, eq(menus.moduloId, modulos.id))
-      .where(and(eq(rolMenus.rolId, rolId), eq(menus.vigente, true), eq(modulos.vigente, true)))
+      .where(
+        and(
+          eq(rolMenus.rolId, rolId),
+          eq(menus.vigente, true),
+          eq(modulos.vigente, true),
+          sql`'web' = ANY(${menus.aplicaciones})`,
+        ),
+      )
       .orderBy(modulos.orden);
 
     const result: AuthModuleDto[] = [];
@@ -220,7 +233,13 @@ export class AuthRepository implements IAuthRepository {
       const [firstMenu] = await this.db
         .select({ ruta: menus.ruta })
         .from(menus)
-        .where(and(eq(menus.moduloId, mod.id), eq(menus.vigente, true)))
+        .where(
+          and(
+            eq(menus.moduloId, mod.id),
+            eq(menus.vigente, true),
+            sql`'web' = ANY(${menus.aplicaciones})`,
+          ),
+        )
         .orderBy(menus.orden)
         .limit(1);
 
@@ -241,7 +260,13 @@ export class AuthRepository implements IAuthRepository {
       .select({ ruta: menus.ruta })
       .from(rolMenus)
       .innerJoin(menus, eq(rolMenus.menuId, menus.id))
-      .where(and(eq(rolMenus.rolId, rolId), eq(menus.vigente, true)));
+      .where(
+        and(
+          eq(rolMenus.rolId, rolId),
+          eq(menus.vigente, true),
+          sql`'web' = ANY(${menus.aplicaciones})`,
+        ),
+      );
 
     return rows.flatMap((row) => (row.ruta ? [row.ruta] : []));
   }
