@@ -1,5 +1,9 @@
 import { Workbook } from "exceljs";
-import { generarReporteExcel } from "../../../common/excel/reporte-excel.builder";
+import {
+  COLOR_OBLIGATORIO,
+  COLOR_OPCIONAL,
+  generarReporteExcel,
+} from "../../../common/excel/reporte-excel.builder";
 import {
   IMPORTACION_MAX_FILAS,
   LISTAS_PLANTILLA,
@@ -9,8 +13,6 @@ import {
 } from "../constants";
 import type { CredencialEmitidaDto } from "../dto";
 
-const COLOR_OBLIGATORIO = "FF1E293B";
-const COLOR_OPCIONAL = "FF64748B";
 const FILAS_CON_AYUDAS = 500;
 
 function letraColumna(indice: number): string {

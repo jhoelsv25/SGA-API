@@ -1,7 +1,10 @@
 import { Workbook, type Worksheet } from "exceljs";
 
-const COLOR_OBLIGATORIO = "FF1E293B";
-const COLOR_OPCIONAL = "FF64748B";
+/** Paleta institucional (granate de la I.E. Nuestra Señora del Carmen) de todos los reportes Excel. */
+export const COLOR_OBLIGATORIO = "FF4A1220";
+export const COLOR_OPCIONAL = "FF722F37";
+const COLOR_FONDO_CAMPO = "FFF5E8EB";
+const COLOR_BORDE = "FFE5D5DA";
 
 export type TipoColumnaReporte = "texto" | "fecha" | "numero";
 
@@ -141,7 +144,16 @@ export async function generarReporteExcel(opciones: OpcionesReporteExcel): Promi
   datos.forEach(([campo, valor], i) => {
     const fila = info.getRow(i + 1);
     fila.getCell(1).value = campo;
-    fila.getCell(1).font = { bold: true };
+    fila.getCell(1).font = { bold: true, color: { argb: COLOR_OBLIGATORIO } };
+    fila.getCell(1).fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: COLOR_FONDO_CAMPO },
+    };
+    for (const col of [1, 2]) {
+      const b = { style: "thin" as const, color: { argb: COLOR_BORDE } };
+      fila.getCell(col).border = { top: b, bottom: b, left: b, right: b };
+    }
     fila.getCell(2).value = valor;
     fila.getCell(2).alignment = { horizontal: "left", wrapText: true };
   });

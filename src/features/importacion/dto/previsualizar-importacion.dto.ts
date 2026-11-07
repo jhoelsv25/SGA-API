@@ -1,4 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
+import { Type } from "class-transformer";
 import { ArrayMaxSize, ArrayMinSize, IsArray, IsIn, IsNotEmpty } from "class-validator";
 import { IMPORTACION_MAX_FILAS, TIPO_IMPORTACION, type TipoImportacion } from "../constants";
 
@@ -24,5 +25,6 @@ export class PrevisualizarImportacionDto {
   @ArrayMaxSize(IMPORTACION_MAX_FILAS, {
     message: `El archivo supera las ${IMPORTACION_MAX_FILAS} filas. Divídalo en varios archivos.`,
   })
+  @Type(() => Object)
   filas: Record<string, unknown>[];
 }
