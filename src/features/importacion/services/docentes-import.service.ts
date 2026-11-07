@@ -16,6 +16,7 @@ import {
   parsearFechaIngreso,
   parsearJornadaHorasDocente,
   parsearTipoContratoDocente,
+  validarCamposDocenteFila,
 } from "../utils";
 
 @Injectable()
@@ -61,6 +62,11 @@ export class DocentesImportService implements IEntidadImportHandler {
       };
     }
 
+    const validacion = validarCamposDocenteFila(datos);
+    if (!validacion.esValida) {
+      return { numeroFila, datos, estado: "error", accion: "omitir", mensaje: validacion.mensaje };
+    }
+
     if (personaExistente) {
       const docentePorPersona = await this.docentesRepository.findByPersonaId(personaExistente.id);
       if (docentePorPersona) {
@@ -93,6 +99,7 @@ export class DocentesImportService implements IEntidadImportHandler {
     const { datos, basePersona, personaExistente, actorId, ip } = ctx;
     const codigoDocente = getStr(datos, "codigoDocente", "codigo_docente", "codigo");
     const especialidad = getOptStr(datos, "especialidad") || "Educación Secundaria";
+    const tituloProfesional = getOptStr(datos, "tituloProfesional", "titulo_profesional");
     const tipoContrato = parsearTipoContratoDocente(datos);
     const jornadaHoras = parsearJornadaHorasDocente(datos);
     const fechaIngreso = parsearFechaIngreso(datos);
@@ -103,6 +110,7 @@ export class DocentesImportService implements IEntidadImportHandler {
         nuevaPersona: personaExistente ? undefined : basePersona,
         codigo: codigoDocente,
         especialidad,
+        tituloProfesional,
         tipoContrato,
         jornadaHoras,
         fechaIngreso,

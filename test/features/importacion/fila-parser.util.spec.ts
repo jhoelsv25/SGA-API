@@ -39,7 +39,7 @@ describe("fila-parser.util (extensiones)", () => {
 
     it("debe normalizar el parentesco proporcionado a minúsculas", () => {
       expect(parsearParentescoApoderado({ parentesco: "PADRE" })).toBe("padre");
-      expect(parsearParentescoApoderado({ parentesco: "tutor" })).toBe("tutor");
+      expect(parsearParentescoApoderado({ parentesco: "Tutor Legal" })).toBe("tutor_legal");
     });
   });
 

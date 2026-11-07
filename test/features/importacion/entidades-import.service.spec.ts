@@ -111,7 +111,7 @@ describe("EntidadesImportServices (Especializados)", () => {
 
       const res = await estudiantesImportService.analizar({
         numeroFila: 2,
-        datos: { codigoSiagie: "SIAGIE001" },
+        datos: { codigoSiagie: "SIAGIE001", fechaIngreso: "2026-03-01" },
         personaExistente: { id: "p-1" } as unknown as PersonaResponseDto,
         codigosEnLote: new Set(),
         principalesPorEstudiante: new Set(),

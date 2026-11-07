@@ -9,7 +9,14 @@ import type {
   ProcesarFilaContext,
   ProcesarFilaResult,
 } from "../interfaces";
-import { construirCredencialEmitida, getStr, parsearFechaIngreso } from "../utils";
+import {
+  construirCredencialEmitida,
+  getOptStr,
+  getStr,
+  normalizarSiNo,
+  parsearFechaIngreso,
+  validarCamposEstudianteFila,
+} from "../utils";
 
 @Injectable()
 export class EstudiantesImportService implements IEntidadImportHandler {
@@ -54,6 +61,11 @@ export class EstudiantesImportService implements IEntidadImportHandler {
       };
     }
 
+    const validacion = validarCamposEstudianteFila(datos);
+    if (!validacion.esValida) {
+      return { numeroFila, datos, estado: "error", accion: "omitir", mensaje: validacion.mensaje };
+    }
+
     if (personaExistente) {
       const estudiantePorPersona = await this.estudiantesRepository.findByPersonaId(
         personaExistente.id,
@@ -88,6 +100,7 @@ export class EstudiantesImportService implements IEntidadImportHandler {
     const { datos, basePersona, personaExistente, actorId, ip } = ctx;
     const codigoSiagie = getStr(datos, "codigoSiagie", "codigo_siagie", "codigo");
     const fechaIngreso = parsearFechaIngreso(datos);
+    const tieneDiscapacidad = normalizarSiNo(getStr(datos, "tieneDiscapacidad")) ?? false;
 
     const created = await this.estudiantesService.create(
       {
@@ -95,6 +108,12 @@ export class EstudiantesImportService implements IEntidadImportHandler {
         nuevaPersona: personaExistente ? undefined : basePersona,
         codigo: codigoSiagie,
         fechaIngreso,
+        lenguaMaterna: getOptStr(datos, "lenguaMaterna", "lengua_materna"),
+        religion: getOptStr(datos, "religion"),
+        tieneDiscapacidad,
+        detalleDiscapacidad: tieneDiscapacidad
+          ? getOptStr(datos, "detalleDiscapacidad", "detalle_discapacidad")
+          : undefined,
       },
       actorId,
       ip,

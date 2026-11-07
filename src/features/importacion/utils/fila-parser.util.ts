@@ -1,5 +1,6 @@
 import type { JornadaHoras, TipoContrato } from "../../docentes/constants";
-import type { Parentesco } from "../../apoderados/constants";
+import { PARENTESCOS, type Parentesco } from "../../apoderados/constants";
+import { normalizarOpcion } from "./fila-normalizador.util";
 import type { CredencialEmitidaDto } from "../dto";
 
 /**
@@ -79,8 +80,8 @@ export function parsearJornadaHorasDocente(datos: Record<string, unknown>): Jorn
  * Parsea el parentesco del apoderado con fallback a "madre".
  */
 export function parsearParentescoApoderado(datos: Record<string, unknown>): Parentesco {
-  const raw = getStr(datos, "parentesco").toLowerCase() as Parentesco;
-  return raw || "madre";
+  // El valor ya se validó contra la lista en el análisis de la fila
+  return (normalizarOpcion(getStr(datos, "parentesco"), PARENTESCOS) ?? "madre") as Parentesco;
 }
 
 /**

@@ -9,7 +9,13 @@ import type {
   ProcesarFilaContext,
   ProcesarFilaResult,
 } from "../interfaces";
-import { construirCredencialEmitida, getBool, getStr, parsearParentescoApoderado } from "../utils";
+import {
+  construirCredencialEmitida,
+  getBool,
+  getStr,
+  parsearParentescoApoderado,
+  validarCamposApoderadoFila,
+} from "../utils";
 
 @Injectable()
 export class ApoderadosImportService implements IEntidadImportHandler {
@@ -45,6 +51,11 @@ export class ApoderadosImportService implements IEntidadImportHandler {
         accion: "omitir",
         mensaje: IMPORTACION_MESSAGES.ESTUDIANTE_NO_EXISTE,
       };
+    }
+
+    const validacion = validarCamposApoderadoFila(datos);
+    if (!validacion.esValida) {
+      return { numeroFila, datos, estado: "error", accion: "omitir", mensaje: validacion.mensaje };
     }
 
     const esPrincipal = getBool(datos, "esPrincipal", "es_principal");
