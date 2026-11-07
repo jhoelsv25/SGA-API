@@ -73,6 +73,8 @@ describe("EstudiantesService (RF-007 Historia de Usuario 2)", () => {
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
+      contarMatriculasActivas: jest.fn().mockResolvedValue(0),
+      cambiarEstado: jest.fn(),
     } as unknown as jest.Mocked<EstudiantesRepository>;
 
     personasRepository = {
@@ -95,6 +97,9 @@ describe("EstudiantesService (RF-007 Historia de Usuario 2)", () => {
 
     docentesRepository = {
       findByPersonaId: jest.fn().mockResolvedValue(null),
+      contarCargaVigente: jest.fn().mockResolvedValue(0),
+      cesar: jest.fn().mockResolvedValue(null),
+      reactivar: jest.fn().mockResolvedValue(null),
     } as unknown as jest.Mocked<DocentesRepository>;
 
     const module: TestingModule = await Test.createTestingModule({
@@ -243,45 +248,154 @@ describe("EstudiantesService (RF-007 Historia de Usuario 2)", () => {
       personaId: "per-1",
     };
 
-    it("Escenario: Bloquear si la persona ya está registrada como docente (por personaId)", async () => {
+    const docenteActivo = {
+      id: "doc-1",
+      codigo: "DOC001",
+      estado: "activo",
+      fechaIngreso: "2020-03-01",
+      fechaCese: null,
+    } as Awaited<ReturnType<DocentesRepository["findByPersonaId"]>>;
+
+    beforeEach(() => {
       repository.findByCodigo.mockResolvedValue(null);
       personasRepository.findById.mockResolvedValue(mockPersona);
       repository.findByPersonaId.mockResolvedValue(null);
-      docentesRepository.findByPersonaId.mockResolvedValue({
-        id: "doc-1",
-      } as Awaited<ReturnType<DocentesRepository["findByPersonaId"]>>);
+      cargosRepository.findByName.mockResolvedValue({
+        id: "cargo-est",
+        nombre: "Estudiante",
+      } as CargoResponseDto);
+      rolesRepository.findByName.mockResolvedValue({
+        id: "rol-est",
+        nombre: "Estudiante",
+      } as RoleResponseDto);
+      repository.create.mockResolvedValue({
+        estudiante: mockEstudiante,
+        tempPassword: "TempPassword123*",
+        credencial: { codigo: "CR-20269999999999", pin: "1234" },
+      });
+    });
 
-      await expect(service.create(dtoPersona, "admin-1")).rejects.toThrow(
-        new ConflictException(ESTUDIANTE_MESSAGES.PERSONA_YA_DOCENTE),
+    it("rechaza con código FICHA_ACADEMICA_ACTIVA si el docente está vigente y no se pidió la baja", async () => {
+      docentesRepository.findByPersonaId.mockResolvedValue(docenteActivo);
+
+      await expect(service.create(dtoPersona, "admin-1")).rejects.toMatchObject({
+        response: { code: "FICHA_ACADEMICA_ACTIVA", fichaActiva: { tipo: "docente", id: "doc-1" } },
+      });
+      expect(repository.create).not.toHaveBeenCalled();
+      expect(docentesRepository.cesar).not.toHaveBeenCalled();
+    });
+
+    it("cesa al docente y crea el estudiante cuando se pide la baja", async () => {
+      docentesRepository.findByPersonaId.mockResolvedValue(docenteActivo);
+
+      await service.create(
+        {
+          ...dtoPersona,
+          darBajaFichaActual: { motivo: "Pasa a ser estudiante", fecha: "2026-11-07" },
+        },
+        "admin-1",
       );
+
+      expect(docentesRepository.cesar).toHaveBeenCalledWith("doc-1", "2026-11-07");
+      expect(repository.create).toHaveBeenCalled();
+    });
+
+    it("bloquea la baja si el docente tiene cursos asignados en el año vigente", async () => {
+      docentesRepository.findByPersonaId.mockResolvedValue(docenteActivo);
+      docentesRepository.contarCargaVigente.mockResolvedValue(2);
+
+      await expect(
+        service.create(
+          { ...dtoPersona, darBajaFichaActual: { motivo: "Pasa a ser estudiante" } },
+          "admin-1",
+        ),
+      ).rejects.toMatchObject({
+        response: { code: "FICHA_CON_DEPENDENCIAS" },
+      });
+      expect(docentesRepository.cesar).not.toHaveBeenCalled();
       expect(repository.create).not.toHaveBeenCalled();
     });
 
-    it("Escenario: Bloquear si el documento ya pertenece a un docente (nueva persona)", async () => {
-      repository.findByCodigo.mockResolvedValue(null);
-      personasRepository.findByDocumento.mockResolvedValue(mockPersona);
-      repository.findByPersonaId.mockResolvedValue(null);
-      docentesRepository.findByPersonaId.mockResolvedValue({
-        id: "doc-1",
-      } as Awaited<ReturnType<DocentesRepository["findByPersonaId"]>>);
+    it("reactiva al docente si la creación del estudiante falla", async () => {
+      docentesRepository.findByPersonaId.mockResolvedValue(docenteActivo);
+      repository.create.mockRejectedValue(new Error("fallo de base de datos"));
 
       await expect(
         service.create(
           {
-            codigo: "20269999999999",
-            fechaIngreso: "2026-03-01",
-            nuevaPersona: {
-              tipoDocumento: "dni",
-              numeroDocumento: "71234567",
-              nombres: "Mateo",
-              apellidoPaterno: "Quispe",
-              sexo: "M",
-              fechaNacimiento: "2010-04-12",
-            },
+            ...dtoPersona,
+            darBajaFichaActual: { motivo: "Pasa a ser estudiante", fecha: "2026-11-07" },
           },
           "admin-1",
         ),
-      ).rejects.toThrow(ESTUDIANTE_MESSAGES.PERSONA_YA_DOCENTE);
+      ).rejects.toThrow("fallo de base de datos");
+
+      expect(docentesRepository.cesar).toHaveBeenCalled();
+      expect(docentesRepository.reactivar).toHaveBeenCalledWith("doc-1");
+    });
+
+    it("permite crear estudiante sin baja si el docente ya está cesado", async () => {
+      docentesRepository.findByPersonaId.mockResolvedValue({
+        ...docenteActivo,
+        estado: "cesado",
+      } as typeof docenteActivo);
+
+      await service.create(dtoPersona, "admin-1");
+
+      expect(repository.create).toHaveBeenCalled();
+      expect(docentesRepository.cesar).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("darDeBaja / reactivar", () => {
+    it("da de baja al estudiante sin matrícula activa", async () => {
+      repository.findById.mockResolvedValue(mockEstudiante);
+      repository.cambiarEstado.mockResolvedValue({ ...mockEstudiante, estado: "retirado" });
+
+      const result = await service.darDeBaja("est-1", { motivo: "Retiro voluntario" }, "admin-1");
+
+      expect(result.estudiante.estado).toBe("retirado");
+      expect(repository.cambiarEstado).toHaveBeenCalledWith("est-1", "retirado");
+    });
+
+    it("bloquea la baja si tiene matrícula activa", async () => {
+      repository.findById.mockResolvedValue(mockEstudiante);
+      repository.contarMatriculasActivas.mockResolvedValue(1);
+
+      await expect(
+        service.darDeBaja("est-1", { motivo: "Retiro voluntario" }, "admin-1"),
+      ).rejects.toMatchObject({
+        response: { code: "FICHA_CON_DEPENDENCIAS" },
+      });
+    });
+
+    it("reactiva a un estudiante retirado", async () => {
+      repository.findById.mockResolvedValue({ ...mockEstudiante, estado: "retirado" as never });
+      repository.cambiarEstado.mockResolvedValue(mockEstudiante);
+
+      const result = await service.reactivar("est-1", "admin-1");
+
+      expect(result.estudiante.estado).toBe("activo");
+    });
+
+    it("rechaza reactivar si la persona tiene ficha de docente vigente", async () => {
+      repository.findById.mockResolvedValue({ ...mockEstudiante, estado: "retirado" as never });
+      docentesRepository.findByPersonaId.mockResolvedValue({
+        id: "doc-1",
+        codigo: "DOC001",
+        estado: "activo",
+      } as Awaited<ReturnType<DocentesRepository["findByPersonaId"]>>);
+
+      await expect(service.reactivar("est-1", "admin-1")).rejects.toMatchObject({
+        response: { code: "FICHA_ACADEMICA_ACTIVA" },
+      });
+      expect(repository.cambiarEstado).not.toHaveBeenCalled();
+    });
+
+    it("no permite reactivar a un egresado", async () => {
+      repository.findById.mockResolvedValue({ ...mockEstudiante, estado: "egresado" as never });
+
+      await expect(service.reactivar("est-1", "admin-1")).rejects.toThrow(BadRequestException);
     });
   });
 

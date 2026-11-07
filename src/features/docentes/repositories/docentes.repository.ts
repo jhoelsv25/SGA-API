@@ -398,4 +398,42 @@ export class DocentesRepository implements IDocentesRepository {
       };
     });
   }
+  /** Cursos asignados al docente en un año académico en curso o reabierto. */
+  async contarCargaVigente(docenteId: string): Promise<number> {
+    const result = (await this.db.execute(sql`
+      SELECT COUNT(*)::int AS total
+      FROM cursos_seccion cs
+      INNER JOIN secciones s ON s.id = cs.seccion_id
+      INNER JOIN anios_academicos a ON a.id = s.anio_academico_id
+      WHERE cs.docente_id = ${docenteId}
+        AND a.estado IN ('en_curso', 'reabierto')
+    `)) as unknown as { rows: { total: number }[] };
+    return Number(result.rows?.[0]?.total ?? 0);
+  }
+
+  /** Reactiva un docente cesado: vuelve a 'activo', limpia la fecha de cese y reabre su cuenta. */
+  async reactivar(id: string): Promise<DocenteResponseDto | null> {
+    return this.db.transaction(async (tx) => {
+      const [fila] = await tx
+        .update(docentes)
+        .set({ estado: "activo", fechaCese: null, actualizadoEn: sql`CURRENT_TIMESTAMP` })
+        .where(and(eq(docentes.id, id), isNull(docentes.eliminadoEn)))
+        .returning({ personaId: docentes.personaId });
+
+      if (!fila) return null;
+
+      await tx
+        .update(usuarios)
+        .set({ estado: "activo", actualizadoEn: sql`CURRENT_TIMESTAMP` })
+        .where(
+          and(
+            eq(usuarios.personaId, fila.personaId),
+            eq(usuarios.estado, "inactivo"),
+            isNull(usuarios.eliminadoEn),
+          ),
+        );
+
+      return this.findById(id);
+    });
+  }
 }

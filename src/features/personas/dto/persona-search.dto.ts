@@ -16,4 +16,11 @@ export class SearchPersonaResultDto {
     description: "True si la persona ya tiene la ficha indicada en destinoFicha",
   })
   yaTieneFicha?: boolean;
+
+  @ApiPropertyOptional({
+    example: "estudiante",
+    description:
+      "Ficha académica vigente que debe darse de baja para registrar a la persona en destinoFicha",
+  })
+  requiereBajaDe?: "docente" | "estudiante";
 }

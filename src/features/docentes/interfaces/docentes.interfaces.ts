@@ -57,4 +57,6 @@ export interface IDocentesRepository {
     docente: DocenteResponseDto;
     mantuvoCuentaActiva: boolean;
   } | null>;
+  contarCargaVigente(docenteId: string): Promise<number>;
+  reactivar(id: string): Promise<DocenteResponseDto | null>;
 }

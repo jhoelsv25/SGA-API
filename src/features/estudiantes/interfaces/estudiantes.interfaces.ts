@@ -50,4 +50,6 @@ export interface IEstudiantesRepository {
   create(data: RegistrarEstudianteTransactionData): Promise<CreateEstudianteResponseDto>;
   update(id: string, dto: UpdateEstudianteDto): Promise<EstudianteResponseDto | null>;
   delete(id: string, actorId: string): Promise<boolean>;
+  contarMatriculasActivas(estudianteId: string): Promise<number>;
+  cambiarEstado(id: string, estado: "activo" | "retirado"): Promise<EstudianteResponseDto | null>;
 }

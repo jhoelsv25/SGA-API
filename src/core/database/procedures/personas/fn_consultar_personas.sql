@@ -89,6 +89,26 @@ BEGIN
                 SELECT 1 FROM estudiantes e 
                 WHERE e.persona_id = p.id AND e.eliminado_en IS NULL
             ) AS es_estudiante,
+            (
+                SELECT d.id FROM docentes d
+                WHERE d.persona_id = p.id AND d.eliminado_en IS NULL
+                LIMIT 1
+            ) AS docente_id,
+            (
+                SELECT e.id FROM estudiantes e
+                WHERE e.persona_id = p.id AND e.eliminado_en IS NULL
+                LIMIT 1
+            ) AS estudiante_id,
+            (
+                SELECT d.estado FROM docentes d
+                WHERE d.persona_id = p.id AND d.eliminado_en IS NULL
+                LIMIT 1
+            ) AS estado_docente,
+            (
+                SELECT e.estado FROM estudiantes e
+                WHERE e.persona_id = p.id AND e.eliminado_en IS NULL
+                LIMIT 1
+            ) AS estado_estudiante,
             EXISTS (
                 SELECT 1 FROM apoderados a 
                 WHERE a.persona_id = p.id AND a.eliminado_en IS NULL
@@ -162,6 +182,10 @@ BEGIN
                     'fichas', jsonb_build_object(
                         'esDocente', f.es_docente,
                         'esEstudiante', f.es_estudiante,
+                        'docenteId', f.docente_id,
+                        'estudianteId', f.estudiante_id,
+                        'estadoDocente', f.estado_docente,
+                        'estadoEstudiante', f.estado_estudiante,
                         'esApoderado', f.es_apoderado,
                         'tieneUsuario', f.tiene_usuario
                     ),

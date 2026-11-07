@@ -12,6 +12,7 @@ import {
   ValidateIf,
   ValidateNested,
 } from "class-validator";
+import { DarBajaFichaActualDto } from "../../personas/dto/baja-ficha.dto";
 import { CreatePersonaDto } from "../../personas/dto/create-persona.dto";
 import { JORNADAS_HORAS, type JornadaHoras, TIPOS_CONTRATO, type TipoContrato } from "../constants";
 
@@ -32,6 +33,16 @@ export class CreateDocenteDto {
   @ValidateNested()
   @Type(() => CreatePersonaDto)
   nuevaPersona?: CreatePersonaDto;
+
+  @ApiPropertyOptional({
+    description:
+      "Si la persona tiene la otra ficha académica vigente, datos para darla de baja antes de crear esta.",
+    type: DarBajaFichaActualDto,
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => DarBajaFichaActualDto)
+  darBajaFichaActual?: DarBajaFichaActualDto;
 
   @ApiProperty({
     description: "Código único de identificación del docente en la institución",
