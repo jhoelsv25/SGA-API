@@ -87,7 +87,10 @@ export class ImportacionService {
     let erroresCount = 0;
 
     for (let i = 0; i < dto.filas.length; i++) {
-      const fila = dto.filas[i];
+      const filaRaw = dto.filas[i];
+      const fila: Record<string, unknown> = Array.isArray(filaRaw)
+        ? Object.assign({}, filaRaw)
+        : filaRaw;
       const numeroFila = i + 2;
 
       const analizada = await this.analizarFila(
