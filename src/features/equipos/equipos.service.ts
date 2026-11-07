@@ -187,7 +187,10 @@ export class EquiposService {
     });
 
     return {
-      message: "Equipo autorizado. Ya puede usarse como kiosko.",
+      message:
+        current.tipo === "biometrico"
+          ? "Reloj biométrico autorizado. Copie la clave de la app puente: no se volverá a mostrar."
+          : "Equipo autorizado. Ya puede usarse como kiosko.",
       tokenAutorizacion: rawToken,
       equipo: updated,
     };

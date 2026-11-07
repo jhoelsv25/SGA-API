@@ -125,6 +125,19 @@ export function horaDeFechaHora(fechaHora: string): string {
   return fechaHora.slice(11, 16);
 }
 
+/** Diferencia en minutos (b − a) entre dos "YYYY-MM-DD HH:mm:ss" de la misma zona horaria. */
+export function minutosEntre(a: string, b: string): number {
+  return Math.round(
+    (dayjs.utc(b.replace(" ", "T")).valueOf() - dayjs.utc(a.replace(" ", "T")).valueOf()) / 60000,
+  );
+}
+
+/** Violación de clave única de Postgres (la envuelve Drizzle, por eso se mira también `cause`). */
+export function esViolacionUnica(error: unknown): boolean {
+  const e = error as { code?: string; cause?: { code?: string } } | null;
+  return e?.code === "23505" || e?.cause?.code === "23505";
+}
+
 export function personaDeTipo(tipoPersona: string): "estudiantes" | "docentes" | "administrativos" {
   if (tipoPersona === "estudiante") return "estudiantes";
   if (tipoPersona === "docente") return "docentes";

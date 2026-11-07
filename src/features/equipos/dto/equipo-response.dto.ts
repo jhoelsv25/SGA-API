@@ -41,6 +41,17 @@ export class EquipoResponseDto {
   @ApiPropertyOptional({ description: "IP de registro" })
   ipRegistro?: string | null;
 
+  @ApiPropertyOptional({ description: "RF-022: último aviso de la app puente (solo biométricos)" })
+  ultimoLatidoEn?: string | null;
+
+  @ApiPropertyOptional({ description: "RF-022: última vez que el reloj respondió a la app puente" })
+  relojRespondioEn?: string | null;
+
+  @ApiPropertyOptional({
+    description: "RF-022: desfase (minutos) de la hora del reloj en el último aviso",
+  })
+  ultimoDesfaseMin?: number | null;
+
   @ApiProperty({ description: "Fecha de creación ISO-8601" })
   creadoEn!: string;
 

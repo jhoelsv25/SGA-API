@@ -43,7 +43,16 @@ export interface NuevaMarcacion {
   minutosTardanza: number;
   observacion?: string;
   registradaPorId?: string;
+  /** RF-022: reloj biométrico que originó la marcación. */
+  equipoId?: string;
 }
+
+/** Resultado de procesar una marcación leída de un reloj biométrico (RF-022). */
+export type ResultadoRegistroReloj =
+  | { estado: "registrada"; marcacion: MarcacionResponseDto }
+  | { estado: "duplicada" }
+  | { estado: "ignorada"; razon: "rebote" | "jornada_completa" }
+  | { estado: "sin_turno" };
 
 export interface MarcacionDelDia {
   id: string;

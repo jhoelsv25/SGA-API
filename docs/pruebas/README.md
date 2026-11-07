@@ -14,6 +14,7 @@ docs/pruebas/
 │   ├── roles-y-permisos.md            ← roles, permisos y alcances configurados
 │   ├── personas.md                    ← docentes, estudiantes y apoderados de prueba
 │   └── estructura-academica.md        ← año, bimestres, grados, secciones, horarios, equipos
+├── test-RF-0XX_Nombre/                ← guías de configuración y prueba de un RF con hardware (ej. RF-022)
 └── casos/
     └── RF-XXX_Nombre/
         ├── casos-de-prueba.md         ← generado desde los escenarios Gherkin del RF

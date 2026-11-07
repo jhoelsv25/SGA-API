@@ -223,6 +223,7 @@ export class MarcacionesRepository implements IMarcacionesRepository {
         minutosTardanza: data.minutosTardanza,
         observacion: data.observacion ?? null,
         registradaPorId: data.registradaPorId ?? null,
+        equipoId: data.equipoId ?? null,
       })
       .returning({ id: marcaciones.id });
     const completa = await this.findById(creada.id);

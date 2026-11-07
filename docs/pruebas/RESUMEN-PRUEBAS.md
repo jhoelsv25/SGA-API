@@ -26,5 +26,6 @@ Estado de la validación de cada RF. Se actualiza al terminar cada ejecución.
 | [RF-018](casos/RF-018_Conducta_y_Observaciones_del_Estudiante/casos-de-prueba.md)    | Conducta y Observaciones del Estudiante       | 18    | 2026-10-10       | 100 %      | Validado                                                                               |
 | [RF-019](casos/RF-019_Comunicados_y_Notificaciones/casos-de-prueba.md)               | Comunicados y Notificaciones                  | 15    | —                | —          | Sin desarrollo                                                                         |
 | [RF-020](casos/RF-020_Indicadores_de_la_Tesis_y_Panel/casos-de-prueba.md)            | Indicadores de la Tesis y Panel               | 20    | —                | —          | Sin desarrollo                                                                         |
+| [RF-022](casos/RF-022_Integracion_con_Biometrico_ZKTeco/casos-de-prueba.md)          | Integración con Biométrico ZKTeco             | 24    | —                | —          | Por validar (Back con pruebas unitarias; sin Postgres real ni biométrico)              |
 
 **Total de casos de prueba:** 464

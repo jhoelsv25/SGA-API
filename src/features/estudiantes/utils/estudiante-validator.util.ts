@@ -1,3 +1,4 @@
+import { randomInt } from "node:crypto";
 import { BadRequestException } from "@nestjs/common";
 import { ESTUDIANTE_MESSAGES } from "../constants";
 
@@ -23,7 +24,7 @@ export function validarFechaNacimiento(fechaNacimiento?: string | null): void {
 
 export function generateCredencialPin(): string {
   // PIN numérico de 4 dígitos para marcación en kiosko escolar
-  return Math.floor(1000 + Math.random() * 9000).toString();
+  return randomInt(1000, 10000).toString();
 }
 
 export function generateCodigoCredencial(codigoSiagie: string): string {

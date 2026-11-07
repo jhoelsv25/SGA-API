@@ -9,6 +9,7 @@ import { CargosModule } from "./cargos";
 import { CredencialesModule } from "./credenciales";
 import { CursosModule } from "./cursos";
 import { DocentesModule } from "./docentes";
+import { BiometricoModule } from "./biometrico";
 import { EquiposModule } from "./equipos";
 import { EstudiantesModule } from "./estudiantes";
 import { GradosModule } from "./grados";
@@ -47,6 +48,7 @@ import { DashboardModule } from "./dashboard";
     AuditModule,
     InstitucionModule,
     TurnosModule,
+    BiometricoModule,
     EquiposModule,
     VariablesSistemaModule,
     AnioEscolarModule,
@@ -86,6 +88,7 @@ import { DashboardModule } from "./dashboard";
     AuditModule,
     InstitucionModule,
     TurnosModule,
+    BiometricoModule,
     EquiposModule,
     VariablesSistemaModule,
     AnioEscolarModule,

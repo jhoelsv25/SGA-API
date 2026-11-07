@@ -9,7 +9,7 @@ export const RESULTADOS_MARCACION = [
 ] as const;
 export type ResultadoMarcacion = (typeof RESULTADOS_MARCACION)[number];
 
-export const ORIGENES_MARCACION = ["kiosko", "intranet", "manual"] as const;
+export const ORIGENES_MARCACION = ["kiosko", "intranet", "manual", "biometrico"] as const;
 export type OrigenMarcacion = (typeof ORIGENES_MARCACION)[number];
 
 export const TIPOS_PERSONA_MARCACION = ["estudiantes", "docentes", "administrativos"] as const;

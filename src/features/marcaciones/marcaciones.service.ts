@@ -34,16 +34,23 @@ import type {
   ReporteMarcacionesQueryDto,
   ReporteMarcacionesResponseDto,
 } from "./dto";
-import type { CredencialParaMarcar, PersonaAutenticada, PersonaParaMarcar } from "./interfaces";
+import type {
+  CredencialParaMarcar,
+  PersonaAutenticada,
+  PersonaParaMarcar,
+  ResultadoRegistroReloj,
+} from "./interfaces";
 import { MarcacionesRepository } from "./repositories";
 import {
   ahoraEnColegio,
   equipoPermite,
   esDiaLaborable,
+  esViolacionUnica,
   esHoraValida,
   evaluarMarcacion,
   horaCorta,
   horaDeFechaHora,
+  minutosEntre,
   siguienteTipo,
 } from "./utils";
 
@@ -120,6 +127,66 @@ export class MarcacionesService {
       minutosTardanza: creada.minutosTardanza,
       hora: horaMarcada,
     };
+  }
+
+  /**
+   * RF-022: registra una marcación leída de un reloj biométrico. Usa la hora del reloj (la que
+   * llega en `fechaHora`, hora de Lima) y las mismas reglas de RF-010: la primera del día es
+   * entrada y la siguiente salida; el botón del reloj no cuenta. Si el docente pone el dedo otra
+   * vez dentro de `minutosAntirrebote`, se ignora para no convertir un rebote en salida.
+   */
+  async registrarDesdeReloj(
+    persona: PersonaAutenticada,
+    equipoId: string,
+    fechaHora: string,
+    minutosAntirrebote: number,
+  ): Promise<ResultadoRegistroReloj> {
+    const fecha = fechaHora.slice(0, 10);
+    const hora = fechaHora.slice(11, 19);
+
+    const previas = await this.repository.marcacionesDePersonaEnFecha(persona.personaId, fecha);
+    if (previas.some((m) => m.fechaHora === fechaHora)) {
+      return { estado: "duplicada" };
+    }
+    const ultima = previas[previas.length - 1];
+    if (ultima) {
+      const minutos = minutosEntre(ultima.fechaHora, fechaHora);
+      if (minutos >= 0 && minutos < minutosAntirrebote) {
+        return { estado: "ignorada", razon: "rebote" };
+      }
+    }
+    const tipo = siguienteTipo(
+      false,
+      previas.map((m) => m.tipo),
+    );
+    if (!tipo) {
+      return { estado: "ignorada", razon: "jornada_completa" };
+    }
+
+    const turno = await this.turnosRepository.findByAplicaA(persona.tipoPersona);
+    if (!turno || !turno.activo) {
+      return { estado: "sin_turno" };
+    }
+    const diaConClases = await this.esDiaConClases(fecha, turno);
+    const evaluacion = evaluarMarcacion(tipo, turno, hora, diaConClases);
+
+    try {
+      const marcacion = await this.repository.insertar({
+        personaId: persona.personaId,
+        credencialId: null,
+        turnoId: turno.id,
+        tipo,
+        fechaHora,
+        origen: "biometrico",
+        resultado: evaluacion.resultado,
+        minutosTardanza: evaluacion.minutosTardanza,
+        equipoId,
+      });
+      return { estado: "registrada", marcacion };
+    } catch (error) {
+      if (esViolacionUnica(error)) return { estado: "duplicada" };
+      throw error;
+    }
   }
 
   /**
