@@ -8,3 +8,4 @@
 | todo el código | `**` | `.agents/rules/development-workflow.md`, `.agents/rules/idioma_español.md`, `.agents/rules/restricciones_agy.md`, `.agents/memory/decisiones.md`, `.agents/memory/errores_frecuentes.md` |
 | commits | — | `.agents/skills/conventional-commits/SKILL.md` (el commit lo ejecuta agy DEV solo tras «CONFIRMADO») |
 | backlog | `docs/00-Plan-y-Backlog-RF.md` | `.agents/skills/actualizar-backlog-rf/SKILL.md` |
+| reportes Excel | `src/**/*export*`, `src/common/excel/**` | `.agents/skills/estandar-reportes-excel/SKILL.md` (modelo único de reportes), `.agents/skills/excel-pdf-reports/SKILL.md` |

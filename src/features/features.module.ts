@@ -12,6 +12,7 @@ import { DocentesModule } from "./docentes";
 import { BiometricoModule } from "./biometrico";
 import { EquiposModule } from "./equipos";
 import { EstudiantesModule } from "./estudiantes";
+import { ExportacionModule } from "./exportacion";
 import { GradosModule } from "./grados";
 import { HorariosModule } from "./horarios";
 import { ImportacionModule } from "./importacion";
@@ -67,6 +68,7 @@ import { DashboardModule } from "./dashboard";
     ApoderadosModule,
     CredencialesModule,
     ImportacionModule,
+    ExportacionModule,
     NotificacionesModule,
     ComunicadosModule,
     MarcacionesModule,
