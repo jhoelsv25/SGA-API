@@ -24,7 +24,6 @@ export class EquiposRepository implements IEquiposRepository {
       autorizadoPorId: row.autorizadoPorId,
       activo: row.activo,
       ultimoAcceso: row.ultimoAcceso,
-      ipRegistro: row.ipRegistro,
       ultimoLatidoEn: row.ultimoLatidoEn,
       relojRespondioEn: row.relojRespondioEn,
       ultimoDesfaseMin: row.ultimoDesfaseMin,
@@ -133,12 +132,7 @@ export class EquiposRepository implements IEquiposRepository {
     return this.mapToDto(row);
   }
 
-  async authorize(
-    id: string,
-    tokenHash: string,
-    usuarioId: string,
-    ip?: string,
-  ): Promise<EquipoResponseDto> {
+  async authorize(id: string, tokenHash: string, usuarioId: string): Promise<EquipoResponseDto> {
     const [row] = await this.db
       .update(equiposAutorizados)
       .set({
@@ -146,7 +140,6 @@ export class EquiposRepository implements IEquiposRepository {
         tokenAutorizacion: tokenHash,
         autorizadoPorId: usuarioId,
         autorizadoEn: sql`CURRENT_TIMESTAMP`,
-        ipRegistro: ip ?? null,
         actualizadoEn: sql`CURRENT_TIMESTAMP`,
       })
       .where(eq(equiposAutorizados.id, id))
@@ -155,12 +148,11 @@ export class EquiposRepository implements IEquiposRepository {
     return this.mapToDto(row);
   }
 
-  async updateLastAccess(id: string, ip?: string): Promise<void> {
+  async updateLastAccess(id: string): Promise<void> {
     await this.db
       .update(equiposAutorizados)
       .set({
         ultimoAcceso: sql`CURRENT_TIMESTAMP`,
-        ipRegistro: ip ?? null,
       })
       .where(eq(equiposAutorizados.id, id));
   }

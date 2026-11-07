@@ -58,10 +58,9 @@ export class EquiposController {
   async validarKiosko(
     @Headers("x-kiosk-token") headerToken: string | undefined,
     @Query("token") queryToken: string | undefined,
-    @ClientInfo() clientInfo: ClientInfoData,
   ): Promise<ValidarEquipoResponseDto> {
     const token = headerToken || queryToken;
-    return this.equiposService.validarKiosko(token, clientInfo.ip);
+    return this.equiposService.validarKiosko(token);
   }
 
   @Get(":id")
