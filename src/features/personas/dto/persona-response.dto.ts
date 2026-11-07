@@ -8,6 +8,12 @@ export class FichasPersonaDto {
   @ApiProperty({ example: false, description: "Tiene ficha de estudiante activa" })
   esEstudiante: boolean;
 
+  @ApiPropertyOptional({ nullable: true, description: "ID de la ficha de docente, si tiene" })
+  docenteId?: string | null;
+
+  @ApiPropertyOptional({ nullable: true, description: "ID de la ficha de estudiante, si tiene" })
+  estudianteId?: string | null;
+
   @ApiPropertyOptional({
     example: "activo",
     nullable: true,
