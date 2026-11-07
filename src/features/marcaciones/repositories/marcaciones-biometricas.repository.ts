@@ -38,8 +38,18 @@ export class MarcacionesBiometricasRepository {
       .limit(limite);
   }
 
-  /** El código del reloj es el de la credencial (carné), el del docente o el documento de la persona, en ese orden. */
+  /**
+   * El código del reloj es el código biométrico asignado a la persona; si no hay, el de la credencial (carné), el del
+   * docente o el documento de la persona, en ese orden.
+   */
   async buscarPersonaId(codigo: string): Promise<string | null> {
+    const [porBiometrico] = await this.db
+      .select({ id: personas.id })
+      .from(personas)
+      .where(and(eq(personas.codigoBiometrico, codigo), isNull(personas.eliminadoEn)))
+      .limit(1);
+    if (porBiometrico) return porBiometrico.id;
+
     const [porCredencial] = await this.db
       .select({ personaId: credenciales.personaId })
       .from(credenciales)
