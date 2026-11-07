@@ -181,16 +181,25 @@ describe("RF-022: registrar una marcación leída del reloj", () => {
       const r = await service.registrarDesdeReloj(docente, "eq-1", `${HOY} 07:55:00`, 5);
       expect(r).toEqual({ estado: "ignorada", razon: "duplicada_entre_vias" });
       expect(repo.insertar).not.toHaveBeenCalled();
-      expect(audit.log).toHaveBeenCalledWith(
-        expect.objectContaining({
+      expect(audit.log).toHaveBeenCalledTimes(1);
+      expect(audit.log.mock.calls[0]).toEqual([
+        {
+          usuarioId: null,
+          accion: "crear",
           tabla: "marcaciones_duplicadas_entre_vias",
-          valorNuevo: expect.objectContaining({
+          valorNuevo: {
             personaId: "per-doc",
+            fechaHora: `${HOY} 07:55:00`,
             origen: "biometrico",
-            coincideCon: expect.objectContaining({ marcacionId: "m-07:35:00", origen: "kiosko" }),
-          }),
-        }),
-      );
+            coincideCon: {
+              marcacionId: "m-07:35:00",
+              origen: "kiosko",
+              tipo: "entrada",
+              fechaHora: `${HOY} 07:35:00`,
+            },
+          },
+        },
+      ]);
     });
 
     it("CP-RF022-31: la misma marca fuera de la ventana sí es la salida", async () => {
