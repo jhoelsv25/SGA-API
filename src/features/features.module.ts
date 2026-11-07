@@ -11,6 +11,7 @@ import { CursosModule } from "./cursos";
 import { DocentesModule } from "./docentes";
 import { BiometricoModule } from "./biometrico";
 import { EquiposModule } from "./equipos";
+import { EquiposAccesoModule } from "./equipos-acceso";
 import { EstudiantesModule } from "./estudiantes";
 import { GradosModule } from "./grados";
 import { HorariosModule } from "./horarios";
@@ -50,6 +51,7 @@ import { DashboardModule } from "./dashboard";
     TurnosModule,
     BiometricoModule,
     EquiposModule,
+    EquiposAccesoModule,
     VariablesSistemaModule,
     AnioEscolarModule,
     CalendarioModule,
@@ -90,6 +92,7 @@ import { DashboardModule } from "./dashboard";
     TurnosModule,
     BiometricoModule,
     EquiposModule,
+    EquiposAccesoModule,
     VariablesSistemaModule,
     AnioEscolarModule,
     CalendarioModule,
