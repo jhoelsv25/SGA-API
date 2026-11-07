@@ -199,9 +199,8 @@ export class SesionesClaseService implements OnModuleInit {
   async sesionesEnKiosko(
     token: string | undefined,
     dto: CredencialesKioskoDto,
-    ip?: string,
   ): Promise<SesionesKioskoResponseDto> {
-    const docente = await this.identificarEnKiosko(token, dto, ip);
+    const docente = await this.identificarEnKiosko(token, dto);
     const { fecha, hora } = ahoraEnColegio();
     await this.asegurarGeneracion(fecha);
     const sesiones = await this.repository.sesionesDeDocente(docente.docenteId, fecha, fecha);
@@ -220,7 +219,7 @@ export class SesionesClaseService implements OnModuleInit {
     dto: FirmarIngresoDto,
     ip?: string,
   ): Promise<FirmaSesionResponseDto> {
-    const docente = await this.identificarEnKiosko(token, dto, ip);
+    const docente = await this.identificarEnKiosko(token, dto);
     const sesion = await this.sesionDelDocente(sesionId, docente.docenteId);
     const { fecha, hora } = ahoraEnColegio();
     if (sesion.estado !== "pendiente") {
@@ -290,7 +289,7 @@ export class SesionesClaseService implements OnModuleInit {
     dto: CredencialesKioskoDto,
     ip?: string,
   ): Promise<FirmaSesionResponseDto> {
-    const docente = await this.identificarEnKiosko(token, dto, ip);
+    const docente = await this.identificarEnKiosko(token, dto);
     const sesion = await this.sesionDelDocente(sesionId, docente.docenteId);
     if (sesion.estado === "pendiente") {
       throw new BadRequestException(MENSAJES_SESION.SALIDA_SIN_INGRESO);
@@ -538,9 +537,8 @@ export class SesionesClaseService implements OnModuleInit {
   private async identificarEnKiosko(
     token: string | undefined,
     dto: CredencialesKioskoDto,
-    ip?: string,
   ): Promise<DocenteEnKiosko> {
-    const { equipo } = await this.equiposService.validarKiosko(token, ip);
+    const { equipo } = await this.equiposService.validarKiosko(token);
     if (!equipo || equipo.proposito !== PROPOSITO_EQUIPO_SESIONES) {
       throw new ForbiddenException(MENSAJES_SESION.EQUIPO_NO_AUTORIZADO);
     }

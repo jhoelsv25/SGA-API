@@ -59,9 +59,8 @@ export class MarcacionesController {
   async marcarEnKiosko(
     @Headers("x-kiosk-token") tokenEquipo: string | undefined,
     @Body() dto: MarcarKioskoDto,
-    @ClientInfo() clientInfo: ClientInfoData,
   ): Promise<MarcacionKioskoResponseDto> {
-    return this.service.marcarEnKiosko(tokenEquipo, dto, clientInfo.ip);
+    return this.service.marcarEnKiosko(tokenEquipo, dto);
   }
 
   @Post("manual")

@@ -73,9 +73,8 @@ export class MarcacionesService {
   async marcarEnKiosko(
     tokenEquipo: string | undefined,
     dto: MarcarKioskoDto,
-    ip?: string,
   ): Promise<MarcacionKioskoResponseDto> {
-    const { equipo } = await this.equiposService.validarKiosko(tokenEquipo, ip);
+    const { equipo } = await this.equiposService.validarKiosko(tokenEquipo);
     if (!equipo) {
       throw new ForbiddenException(MENSAJES_MARCACION.EQUIPO_NO_AUTORIZADO);
     }

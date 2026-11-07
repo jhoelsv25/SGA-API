@@ -1400,7 +1400,6 @@ export const equiposAutorizados = pgTable(
     autorizadoPorId: uuid("autorizado_por_id"),
     activo: boolean().default(true).notNull(),
     ultimoAcceso: timestamp("ultimo_acceso", { precision: 0, mode: "string" }),
-    ipRegistro: varchar("ip_registro", { length: 45 }),
     /** RF-022: último aviso de la app puente y última vez que el reloj le respondió. */
     ultimoLatidoEn: timestamp("ultimo_latido_en", { precision: 0, mode: "string" }),
     relojRespondioEn: timestamp("reloj_respondio_en", { precision: 0, mode: "string" }),

@@ -463,9 +463,6 @@ export class AdminEquipoRecienteDto {
   tipo!: string;
 
   @ApiPropertyOptional()
-  ip?: string | null;
-
-  @ApiPropertyOptional()
   ultimoAcceso?: string | null;
 
   @ApiProperty()
