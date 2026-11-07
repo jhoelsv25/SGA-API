@@ -3,6 +3,7 @@ import {
   parsearFechaIngreso,
   parsearJornadaHorasDocente,
   parsearParentescoApoderado,
+  parsearPersonaDeFila,
   parsearTipoContratoDocente,
 } from "@/features/importacion/utils";
 
@@ -74,6 +75,30 @@ describe("fila-parser.util (extensiones)", () => {
       expect(dto.tempPassword).toBe("PassWord123!");
       expect(dto.codigoCredencial).toBe("CR-44332211");
       expect(dto.pin).toBe("5678");
+    });
+  });
+
+  describe("parsearPersonaDeFila", () => {
+    it("debe mapear correctamente los datos de la fila a un CreatePersonaDto", () => {
+      const dto = parsearPersonaDeFila({
+        tipoDocumento: "DNI",
+        numeroDocumento: "12345678",
+        nombres: "Ana",
+        apellidoPaterno: "Gómez",
+        apellidoMaterno: "Ruiz",
+        sexo: "F",
+        celular: "987654321",
+        correo: "ana@colegio.edu.pe",
+      });
+
+      expect(dto.tipoDocumento).toBe("dni");
+      expect(dto.numeroDocumento).toBe("12345678");
+      expect(dto.nombres).toBe("Ana");
+      expect(dto.apellidoPaterno).toBe("Gómez");
+      expect(dto.apellidoMaterno).toBe("Ruiz");
+      expect(dto.sexo).toBe("F");
+      expect(dto.celular).toBe("987654321");
+      expect(dto.correo).toBe("ana@colegio.edu.pe");
     });
   });
 });

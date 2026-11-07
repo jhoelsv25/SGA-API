@@ -1,6 +1,13 @@
 import type { JornadaHoras, TipoContrato } from "../../docentes/constants";
 import { PARENTESCOS, type Parentesco } from "../../apoderados/constants";
-import { normalizarOpcion } from "./fila-normalizador.util";
+import type { TipoDocumento } from "../../personas/constants";
+import type { CreatePersonaDto } from "../../personas/dto";
+import type { Sexo } from "../interfaces";
+import {
+  normalizarOpcion,
+  normalizarSexo,
+  normalizarTipoDocumento,
+} from "./fila-normalizador.util";
 import type { CredencialEmitidaDto } from "../dto";
 
 /**
@@ -113,5 +120,38 @@ export function construirCredencialEmitida(params: {
     tempPassword: params.tempPassword || undefined,
     codigoCredencial: params.codigoCredencial,
     pin: params.pin,
+  };
+}
+
+/**
+ * Extrae y mapea un CreatePersonaDto normalizado a partir de los datos sin procesar de la fila.
+ */
+export function parsearPersonaDeFila(datos: Record<string, unknown>): CreatePersonaDto {
+  const tipoDocumento = (normalizarTipoDocumento(
+    getStr(datos, "tipoDocumento", "tipo_documento"),
+  ) ?? "dni") as TipoDocumento;
+  const numeroDocumento = getStr(datos, "numeroDocumento", "numero_documento");
+  const nombres = getStr(datos, "nombres");
+  const apellidoPaterno = getStr(datos, "apellidoPaterno", "apellido_paterno");
+  const apellidoMaterno = getOptStr(datos, "apellidoMaterno", "apellido_materno");
+  const sexo: Sexo = normalizarSexo(getStr(datos, "sexo")) ?? "M";
+  const fechaNacimiento = getOptStr(datos, "fechaNacimiento", "fecha_nacimiento");
+  const celular = getOptStr(datos, "celular");
+  const correo = getOptStr(datos, "correo");
+  const direccion = getOptStr(datos, "direccion");
+  const distrito = getOptStr(datos, "distrito");
+
+  return {
+    tipoDocumento,
+    numeroDocumento,
+    nombres,
+    apellidoPaterno,
+    apellidoMaterno,
+    sexo,
+    fechaNacimiento,
+    celular,
+    correo,
+    direccion,
+    distrito,
   };
 }
