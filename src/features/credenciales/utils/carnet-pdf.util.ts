@@ -210,19 +210,19 @@ function dibujarCarneEnDoc(
   // Columna Central: Datos Personales
   const dataX = fotoX + fotoSize + 6;
   const dataWidth = 115;
-  let curY = bodyTop + 1;
+  const startY = bodyTop + 1;
 
   doc
     .fontSize(7.5)
     .font("Helvetica-Bold")
     .fillColor(COLOR_TEXT_MAIN)
-    .text(datos.nombreCompleto, dataX, curY, {
+    .text(datos.nombreCompleto, dataX, startY, {
       width: dataWidth,
-      lineGap: 1,
+      lineGap: 0.5,
       ellipsis: true,
     });
 
-  curY = bodyTop + 13;
+  let curY = doc.y + 2.5;
 
   doc
     .fontSize(5.5)
@@ -231,7 +231,7 @@ function dibujarCarneEnDoc(
     .text(`${datos.tipoDocumento.toUpperCase()}: `, dataX, curY, { continued: true });
   doc.font("Helvetica-Bold").fillColor(COLOR_TEXT_MAIN).text(datos.numeroDocumento);
 
-  curY += 8;
+  curY = doc.y + 2;
 
   if (datos.codigoInstitucional) {
     const labelId = isEstudiante ? "SIAGIE: " : "CÓDIGO: ";
@@ -241,7 +241,9 @@ function dibujarCarneEnDoc(
       .fillColor(COLOR_TEXT_MUTED)
       .text(labelId, dataX, curY, { continued: true });
     doc.font("Helvetica").fillColor(COLOR_TEXT_MAIN).text(datos.codigoInstitucional);
-    curY += 8;
+    curY = doc.y + 2.5;
+  } else {
+    curY = doc.y + 3;
   }
 
   // Código de Marcación
@@ -251,7 +253,7 @@ function dibujarCarneEnDoc(
     .fillColor(COLOR_TEXT_MUTED)
     .text("CÓDIGO DE MARCACIÓN", dataX, curY);
 
-  curY += 6;
+  curY = doc.y + 1;
 
   doc
     .fontSize(7.5)
