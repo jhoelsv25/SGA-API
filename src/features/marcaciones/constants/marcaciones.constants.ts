@@ -19,6 +19,16 @@ export const PROPOSITO_EQUIPO_MARCACION = "marcacion";
 export const LIMITE_REPORTE_POR_DEFECTO = 50;
 export const LIMITE_REPORTE_MAXIMO = 200;
 
+/**
+ * Variable del sistema: minutos en los que una marcación de otra vía (kiosko, manual o reloj) se toma como la
+ * misma asistencia ya registrada y no como una entrada o salida nueva. 0 la desactiva. El valor por defecto
+ * se confirma con el colegio (P-44).
+ */
+export const VARIABLE_MINUTOS_ENTRE_VIAS = {
+  codigo: "marcacion.minutos_duplicado_entre_vias",
+  porDefecto: 30,
+} as const;
+
 export const MENSAJES_MARCACION = {
   CODIGO_O_PIN_INCORRECTO: "Código o PIN incorrecto.",
   CREDENCIAL_INACTIVA: "Su credencial no está activa. Acérquese a secretaría.",
@@ -39,7 +49,12 @@ export const MENSAJES_MARCACION = {
   FECHA_FUTURA: "No se puede registrar una marcación en una fecha futura.",
   YA_MARCO_ENTRADA_Y_SALIDA: "Ya registró su entrada y su salida hoy.",
   YA_MARCO_SALIDA: "Ya registró su salida.",
+  DUPLICADA_ENTRE_VIAS:
+    "Ya existe una marcación de esta persona en esa franja, hecha por otra vía.",
 } as const;
+
+export const mensajeYaMarcoReciente = (hora: string): string =>
+  `Ya tiene una marcación registrada a las ${hora}.`;
 
 export const mensajeEntrada = (nombre: string, hora: string): string =>
   `Bienvenido(a), ${nombre}. Entrada registrada a las ${hora}.`;

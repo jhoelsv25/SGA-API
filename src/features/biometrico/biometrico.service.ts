@@ -9,6 +9,7 @@ import { AuditService } from "../../common/services/audit.service";
 import type { EquipoResponseDto } from "../equipos/dto";
 import { EquiposService } from "../equipos/equipos.service";
 import { esViolacionUnica } from "../marcaciones/utils";
+import { MENSAJES_MARCACION } from "../marcaciones/constants";
 import { MarcacionesService } from "../marcaciones/marcaciones.service";
 import { MarcacionesRepository } from "../marcaciones/repositories";
 import { TurnosRepository } from "../turnos/repositories/turnos.repository";
@@ -262,7 +263,11 @@ export class BiometricoService {
       antirrebote,
     );
     if (resultado.estado === "ignorada") {
-      throw new BadRequestException(MENSAJES_BIOMETRICO.YA_COMPLETO);
+      throw new BadRequestException(
+        resultado.razon === "duplicada_entre_vias"
+          ? MENSAJES_MARCACION.DUPLICADA_ENTRE_VIAS
+          : MENSAJES_BIOMETRICO.YA_COMPLETO,
+      );
     }
     if (resultado.estado === "sin_turno") {
       throw new BadRequestException(MENSAJES_BIOMETRICO.SIN_TURNO);

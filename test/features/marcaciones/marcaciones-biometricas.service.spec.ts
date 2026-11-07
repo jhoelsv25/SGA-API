@@ -1,4 +1,5 @@
 import { MarcacionesBiometricasService } from "@/features/marcaciones/marcaciones-biometricas.service";
+import { MarcacionesService } from "@/features/marcaciones/marcaciones.service";
 import type { MarcacionCruda } from "@/features/marcaciones/repositories/marcaciones-biometricas.repository";
 
 const turnoDocentes = {
@@ -28,7 +29,11 @@ function construir(opciones: {
   personaId?: string | null;
   tipoPersona?: "docentes" | "administrativos" | "estudiantes" | null;
   vigente?: boolean;
-  previas?: { tipo: "entrada" | "salida" }[];
+  previas?: {
+    tipo: "entrada" | "salida";
+    fechaHora?: string;
+    origen?: "kiosko" | "manual" | "biometrico";
+  }[];
   suspendido?: boolean;
 }) {
   const crudas = {
@@ -45,18 +50,37 @@ function construir(opciones: {
       tipoPersona: opciones.tipoPersona === undefined ? "docentes" : opciones.tipoPersona,
       vigente: opciones.vigente ?? true,
     }),
-    marcacionesDePersonaEnFecha: jest.fn().mockResolvedValue(opciones.previas ?? []),
+    marcacionesDePersonaEnFecha: jest.fn().mockResolvedValue(
+      (opciones.previas ?? []).map((p, i) => ({
+        id: `previa-${i}`,
+        fechaHora: "2026-11-06 07:35:00",
+        origen: "biometrico",
+        ...p,
+      })),
+    ),
+    reetiquetar: jest.fn().mockResolvedValue(undefined),
     insertar: jest.fn().mockResolvedValue({ id: "m1" }),
   };
   const turnos = { findByAplicaA: jest.fn().mockResolvedValue(turnoDocentes) };
   const calendario = {
     suspendeClasesEn: jest.fn().mockResolvedValue(opciones.suspendido ?? false),
   };
+  const variables = { getValor: jest.fn().mockResolvedValue("5") };
+  // Las reglas son las de la app puente: se usa el servicio real sobre repositorios simulados.
+  const marcacionesService = new MarcacionesService(
+    marcaciones as never,
+    {} as never,
+    turnos as never,
+    calendario as never,
+    {} as never,
+    { log: jest.fn() } as never,
+    { getValor: jest.fn().mockResolvedValue("30") } as never,
+  );
   const servicio = new MarcacionesBiometricasService(
     crudas as never,
     marcaciones as never,
-    turnos as never,
-    calendario as never,
+    marcacionesService,
+    variables as never,
   );
   return { servicio, crudas, marcaciones };
 }
@@ -129,7 +153,12 @@ describe("Marcaciones del reloj biométrico", () => {
     ],
     [
       "entrada y salida ya marcadas",
-      { previas: [{ tipo: "entrada" as const }, { tipo: "salida" as const }] },
+      {
+        previas: [
+          { tipo: "entrada" as const, fechaHora: "2026-11-06 07:20:00" },
+          { tipo: "salida" as const, fechaHora: "2026-11-06 14:03:00" },
+        ],
+      },
       "Ya registró su entrada y su salida hoy.",
     ],
   ])("rechaza con motivo: %s", async (_nombre, extra, motivo) => {

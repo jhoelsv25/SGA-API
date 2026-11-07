@@ -1,20 +1,22 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { CalendarioService } from "../calendario/calendario.service";
-import { TurnosRepository } from "../turnos/repositories/turnos.repository";
-import type { TurnoResponseDto } from "../turnos/dto";
-import { MENSAJES_MARCACION, type TipoPersonaMarcacion } from "./constants";
+import { VARIABLES_BIOMETRICO } from "../biometrico/constants";
+import { VariablesSistemaService } from "../variables-sistema/variables-sistema.service";
+import { MENSAJES_MARCACION } from "./constants";
+import { MarcacionesService } from "./marcaciones.service";
 import { MarcacionesRepository } from "./repositories";
 import {
   MarcacionesBiometricasRepository,
   type MarcacionCruda,
 } from "./repositories/marcaciones-biometricas.repository";
-import { esDiaLaborable, evaluarMarcacion, siguienteTipo } from "./utils";
 
 export const MOTIVOS_RECHAZO_BIOMETRICO = {
   SIN_PERSONA: "El código del reloj no corresponde a ninguna persona.",
   NO_VIGENTE: "La persona no está vigente como docente o personal administrativo.",
   SOLO_PERSONAL: "El reloj biométrico solo registra personal (docentes y administrativos).",
   YA_MARCO: MENSAJES_MARCACION.YA_MARCO_ENTRADA_Y_SALIDA,
+  REBOTE: "Se ignoró: segunda marca seguida del mismo dedo (rebote).",
+  DUPLICADA: "Ya existe una marcación de esta persona a esa misma hora.",
+  DUPLICADA_ENTRE_VIAS: MENSAJES_MARCACION.DUPLICADA_ENTRE_VIAS,
 } as const;
 
 /** Una marca que no se puede convertir en asistencia: queda rechazada con su motivo, sin detener el lote. */
@@ -26,9 +28,10 @@ export interface ResumenProcesamiento {
 }
 
 /**
- * Convierte las marcaciones crudas del reloj (que inserta SGA-NET) en `marcaciones`: identifica a la persona,
- * decide si es entrada o salida según lo ya marcado ese día, y calcula turno, resultado y tardanza con las mismas
- * reglas del kiosko. El tipo que informa el reloj es solo informativo.
+ * Convierte las marcaciones crudas del reloj (que inserta SGA-NET) en `marcaciones`: identifica a la persona y
+ * aplica EXACTAMENTE las mismas reglas que la app puente (`MarcacionesService.registrarDesdeReloj`): entrada o
+ * salida por la hora de la marca, rebote, coincidencia con otras vías, turno, resultado y tardanza.
+ * El tipo que informa el reloj es solo informativo.
  */
 @Injectable()
 export class MarcacionesBiometricasService {
@@ -37,8 +40,8 @@ export class MarcacionesBiometricasService {
   constructor(
     private readonly crudas: MarcacionesBiometricasRepository,
     private readonly marcaciones: MarcacionesRepository,
-    private readonly turnosRepository: TurnosRepository,
-    private readonly calendarioService: CalendarioService,
+    private readonly marcacionesService: MarcacionesService,
+    private readonly variablesService: VariablesSistemaService,
   ) {}
 
   async procesarPendientes(limite = 200): Promise<ResumenProcesamiento> {
@@ -74,40 +77,34 @@ export class MarcacionesBiometricasService {
       throw new RechazoBiometrico(MOTIVOS_RECHAZO_BIOMETRICO.SOLO_PERSONAL);
     }
 
-    const fecha = cruda.fechaHora.slice(0, 10);
-    const hora = cruda.fechaHora.slice(11, 19);
-    const previas = await this.marcaciones.marcacionesDePersonaEnFecha(personaId, fecha);
-    const tipo = siguienteTipo(
-      false,
-      previas.map((m) => m.tipo),
+    const resultado = await this.marcacionesService.registrarDesdeReloj(
+      { ...persona, tipoPersona: persona.tipoPersona },
+      undefined,
+      cruda.fechaHora,
+      await this.minutosAntirrebote(),
     );
-    if (!tipo) throw new RechazoBiometrico(MOTIVOS_RECHAZO_BIOMETRICO.YA_MARCO);
-
-    const turno = await this.turnoDe(persona.tipoPersona);
-    const diaConClases = await this.esDiaConClases(fecha, turno);
-    const evaluacion = evaluarMarcacion(tipo, turno, hora, diaConClases);
-
-    const creada = await this.marcaciones.insertar({
-      personaId,
-      credencialId: null,
-      turnoId: turno.id,
-      tipo,
-      fechaHora: cruda.fechaHora,
-      origen: "biometrico",
-      resultado: evaluacion.resultado,
-      minutosTardanza: evaluacion.minutosTardanza,
-    });
-    return creada.id;
+    switch (resultado.estado) {
+      case "registrada":
+        return resultado.marcacion.id;
+      case "duplicada":
+        throw new RechazoBiometrico(MOTIVOS_RECHAZO_BIOMETRICO.DUPLICADA);
+      case "ignorada":
+        throw new RechazoBiometrico(
+          resultado.razon === "rebote"
+            ? MOTIVOS_RECHAZO_BIOMETRICO.REBOTE
+            : resultado.razon === "duplicada_entre_vias"
+              ? MOTIVOS_RECHAZO_BIOMETRICO.DUPLICADA_ENTRE_VIAS
+              : MOTIVOS_RECHAZO_BIOMETRICO.YA_MARCO,
+        );
+      case "sin_turno":
+        // Falla de configuración, no de la marca: queda pendiente hasta que exista el turno.
+        throw new Error(MENSAJES_MARCACION.SIN_TURNO);
+    }
   }
 
-  private async turnoDe(tipoPersona: TipoPersonaMarcacion): Promise<TurnoResponseDto> {
-    const turno = await this.turnosRepository.findByAplicaA(tipoPersona);
-    if (!turno || !turno.activo) throw new Error(MENSAJES_MARCACION.SIN_TURNO);
-    return turno;
-  }
-
-  private async esDiaConClases(fecha: string, turno: TurnoResponseDto): Promise<boolean> {
-    if (!esDiaLaborable(fecha, turno.diasLaborables)) return false;
-    return !(await this.calendarioService.suspendeClasesEn(fecha));
+  private async minutosAntirrebote(): Promise<number> {
+    const { codigo, porDefecto } = VARIABLES_BIOMETRICO.MINUTOS_ANTIRREBOTE;
+    const valor = Number(await this.variablesService.getValor(codigo, String(porDefecto)));
+    return Number.isFinite(valor) && valor >= 0 ? valor : porDefecto;
   }
 }
