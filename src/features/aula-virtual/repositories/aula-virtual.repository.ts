@@ -1072,6 +1072,7 @@ export class AulaVirtualRepository implements IAulaVirtualRepository {
         revelarRespuestas: datos.revelarRespuestas ?? "al_terminar_intentos",
         tiposArchivo: datos.tiposArchivo ?? null,
         estado: datos.estado ?? "borrador",
+        publicadaEn: datos.estado === "publicada" ? sql`CURRENT_TIMESTAMP` : null,
       })
       .returning(columnasTarea);
 
