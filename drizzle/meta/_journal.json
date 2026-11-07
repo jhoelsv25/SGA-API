@@ -120,6 +120,13 @@
       "when": 1792236400000,
       "tag": "0017_marcaciones_biometricas_equipos_acceso",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1792322800000,
+      "tag": "0018_quitar_esquema_sga",
+      "breakpoints": true
     }
   ]
 }
