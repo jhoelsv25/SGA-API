@@ -152,7 +152,7 @@ describe("RF-010: Marcaciones (HU1 y HU2)", () => {
 
   afterEach(() => jest.useRealTimers());
 
-  it("CP-RF010-30: si ya marcó el reloj hace pocos minutos, el kiosko no genera una salida falsa", async () => {
+  it("CP-RF010-26: si ya marcó el reloj hace pocos minutos, el kiosko no genera una salida falsa", async () => {
     horaServidor("07:40:00");
     repo.findCredencialPorCodigo!.mockResolvedValue(credencial("1234", { personaId: "per-doc" }));
     repo.findPersonaParaMarcar!.mockResolvedValue({

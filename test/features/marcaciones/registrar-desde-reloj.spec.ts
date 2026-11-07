@@ -174,7 +174,7 @@ describe("RF-022: registrar una marcación leída del reloj", () => {
       origen,
     });
 
-    it("CP-RF022-30: una marca a pocos minutos de otra vía no se guarda y deja rastro", async () => {
+    it("CP-RF022-29: una marca a pocos minutos de otra vía no se guarda y deja rastro", async () => {
       repo.marcacionesDePersonaEnFecha!.mockResolvedValue([
         previa("entrada", "07:35:00", "kiosko"),
       ]);
@@ -202,7 +202,7 @@ describe("RF-022: registrar una marcación leída del reloj", () => {
       ]);
     });
 
-    it("CP-RF022-31: la misma marca fuera de la ventana sí es la salida", async () => {
+    it("CP-RF022-29b: la misma marca fuera de la ventana sí es la salida", async () => {
       repo.marcacionesDePersonaEnFecha!.mockResolvedValue([
         previa("entrada", "07:35:00", "kiosko"),
       ]);
@@ -213,7 +213,7 @@ describe("RF-022: registrar una marcación leída del reloj", () => {
       expect(audit.log).not.toHaveBeenCalled();
     });
 
-    it("CP-RF022-32: si la ventana del sistema es 0 minutos, se desactiva", async () => {
+    it("CP-RF022-29c: si la ventana del sistema es 0 minutos, se desactiva", async () => {
       variables.getValor.mockResolvedValue("0");
       repo.marcacionesDePersonaEnFecha!.mockResolvedValue([
         previa("entrada", "07:35:00", "manual"),
@@ -222,7 +222,7 @@ describe("RF-022: registrar una marcación leída del reloj", () => {
       expect(repo.insertar).toHaveBeenCalledWith(expect.objectContaining({ tipo: "salida" }));
     });
 
-    it("CP-RF022-33: un valor inválido de la variable usa el valor por defecto (30 min)", async () => {
+    it("CP-RF022-29d: un valor inválido de la variable usa el valor por defecto (30 min)", async () => {
       variables.getValor.mockResolvedValue("abc");
       repo.marcacionesDePersonaEnFecha!.mockResolvedValue([
         previa("entrada", "07:35:00", "kiosko"),
@@ -233,7 +233,7 @@ describe("RF-022: registrar una marcación leída del reloj", () => {
   });
 
   describe("entrada y salida por la hora real de la marca", () => {
-    it("CP-RF022-34: llega un lote atrasado con una marca anterior a la entrada del kiosko", async () => {
+    it("CP-RF022-30: llega un lote atrasado con una marca anterior a la entrada del kiosko", async () => {
       repo.marcacionesDePersonaEnFecha!.mockResolvedValue([
         { id: "m-kiosko", tipo: "entrada", fechaHora: `${HOY} 09:10:00`, origen: "kiosko" },
       ]);
@@ -264,7 +264,7 @@ describe("RF-022: registrar una marcación leída del reloj", () => {
       );
     });
 
-    it("CP-RF022-35: sin marca anterior no se toca ninguna marcación guardada", async () => {
+    it("CP-RF022-30b: sin marca anterior no se toca ninguna marcación guardada", async () => {
       repo.marcacionesDePersonaEnFecha!.mockResolvedValue([
         { id: "m1", tipo: "entrada", fechaHora: `${HOY} 07:35:12`, origen: "biometrico" },
       ]);
