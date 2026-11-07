@@ -127,6 +127,20 @@
       "when": 1792400000000,
       "tag": "0018_biometrico_config_remota",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1792500000000,
+      "tag": "0019_marcaciones_biometricas_equipos_acceso",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1792600000000,
+      "tag": "0020_quitar_esquema_sga",
+      "breakpoints": true
     }
   ]
 }
