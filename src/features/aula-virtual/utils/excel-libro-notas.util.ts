@@ -1,4 +1,7 @@
-import { Workbook } from "exceljs";
+import {
+  generarReporteExcel,
+  type ColumnaReporte,
+} from "../../../common/excel/reporte-excel.builder";
 
 export interface EstudianteLibroNotasExcel {
   codigo: string;
@@ -23,105 +26,58 @@ export interface DatosLibroNotasExcel {
   estudiantes: EstudianteLibroNotasExcel[];
 }
 
+export interface ContextoLibroNotas {
+  institucion: string;
+  generadoPor: string;
+}
+
 /**
- * Genera el archivo Excel (.xlsx) con el libro de notas del aula virtual (CP-RF016-27).
- * Incluye por estudiante la nota de cada tarea, promedios por tipo, nota final numérica y literal (AD, A, B, C).
+ * Reporte Excel estándar (skill `estandar-reportes-excel`) del libro de notas del aula virtual (CP-RF016-27).
+ * Por estudiante: nota de cada tarea, nota final numérica y literal (AD, A, B, C). La nota que falta queda vacía.
  */
-export async function generarExcelLibroNotas(datos: DatosLibroNotasExcel): Promise<Buffer> {
-  const workbook = new Workbook();
-  workbook.creator = "SGA Colegio";
-  workbook.created = new Date();
+export async function generarExcelLibroNotas(
+  datos: DatosLibroNotasExcel,
+  contexto: ContextoLibroNotas,
+): Promise<Buffer> {
+  const columnas: ColumnaReporte[] = [
+    { header: "N.°", key: "numero", ancho: 8, tipo: "numero" },
+    { header: "Código", key: "codigo", ancho: 16 },
+    { header: "Estudiante", key: "estudiante", ancho: 34, requerido: true },
+    ...datos.tareas.map((t) => ({
+      header: `${t.titulo} (${t.tipo})`,
+      key: `tarea_${t.id}`,
+      ancho: 16,
+      tipo: "numero" as const,
+    })),
+    { header: "Nota final (0-20)", key: "notaFinal", ancho: 16, tipo: "numero", requerido: true },
+    { header: "Literal", key: "notaLiteral", ancho: 10, requerido: true },
+  ];
 
-  const worksheet = workbook.addWorksheet("Libro de Notas", {
-    views: [{ showGridLines: true }],
-  });
-
-  // Título e información institucional
-  worksheet.mergeCells("A1:H1");
-  const cellTitulo = worksheet.getCell("A1");
-  cellTitulo.value = `LIBRO DE NOTAS - ${datos.cursoNombre.toUpperCase()} (${datos.seccionNombre})`;
-  cellTitulo.font = { bold: true, size: 14, color: { argb: "FF1E293B" } };
-  cellTitulo.alignment = { vertical: "middle", horizontal: "left" };
-
-  worksheet.mergeCells("A2:H2");
-  const cellPeriodo = worksheet.getCell("A2");
-  cellPeriodo.value = `Periodo: ${datos.periodoNombre} · Fecha de reporte: ${new Date().toLocaleDateString("es-PE")}`;
-  cellPeriodo.font = { italic: true, size: 10, color: { argb: "FF64748B" } };
-
-  worksheet.addRow([]); // Fila 3 en blanco
-
-  // Cabeceras de columnas (Fila 4)
-  const headers = ["N.°", "Código", "Estudiante"];
-  for (const t of datos.tareas) {
-    headers.push(`${t.titulo} (${t.tipo})`);
-  }
-  headers.push("Nota Final (0-20)", "Literal");
-
-  const headerRow = worksheet.addRow(headers);
-  headerRow.eachCell((cell) => {
-    cell.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 11 };
-    cell.fill = {
-      type: "pattern",
-      pattern: "solid",
-      fgColor: { argb: "FF1E40AF" }, // Azul institucional
+  const filas = datos.estudiantes.map((est, i) => {
+    const fila: Record<string, string | number | null> = {
+      numero: i + 1,
+      codigo: est.codigo,
+      estudiante: est.nombreCompleto,
+      notaFinal: Number(est.notaFinal.toFixed(2)),
+      notaLiteral: est.notaLiteral,
     };
-    cell.alignment = { vertical: "middle", horizontal: "center" };
-    cell.border = {
-      top: { style: "thin" },
-      left: { style: "thin" },
-      bottom: { style: "thin" },
-      right: { style: "thin" },
-    };
-  });
-
-  // Filas por cada estudiante
-  datos.estudiantes.forEach((est, index) => {
-    const filaValores: Array<string | number> = [index + 1, est.codigo, est.nombreCompleto];
-
     for (const t of datos.tareas) {
       const nota = est.notasPorTarea[t.id];
-      filaValores.push(nota !== null && nota !== undefined ? Number(nota.toFixed(2)) : "—");
+      fila[`tarea_${t.id}`] = nota === null || nota === undefined ? null : Number(nota.toFixed(2));
     }
-
-    filaValores.push(Number(est.notaFinal.toFixed(2)));
-    filaValores.push(est.notaLiteral);
-
-    const row = worksheet.addRow(filaValores);
-    row.eachCell((cell, colNumber) => {
-      cell.border = {
-        top: { style: "thin" },
-        left: { style: "thin" },
-        bottom: { style: "thin" },
-        right: { style: "thin" },
-      };
-      // Alinear texto a la izquierda para nombre; centrar los números
-      if (colNumber === 3) {
-        cell.alignment = { vertical: "middle", horizontal: "left" };
-      } else {
-        cell.alignment = { vertical: "middle", horizontal: "center" };
-      }
-      // Resaltar columna final
-      if (colNumber === headers.length - 1 || colNumber === headers.length) {
-        cell.font = { bold: true };
-      }
-    });
+    return fila;
   });
 
-  // Ajuste automático de anchos de columna
-  worksheet.columns.forEach((column) => {
-    let maxLength = 0;
-    column.eachCell?.({ includeEmpty: true }, (cell) => {
-      const val = cell.value;
-      const columnLength =
-        val === null || val === undefined ? 0 : typeof val === "object" ? 12 : String(val).length;
-      if (columnLength > maxLength) {
-        maxLength = columnLength;
-      }
-    });
-    column.width = Math.max(maxLength + 3, 12);
+  return generarReporteExcel({
+    titulo: `Libro de notas — ${datos.cursoNombre} (${datos.seccionNombre})`,
+    modulo: "libro-notas",
+    columnas,
+    filas,
+    filtros: {
+      Curso: datos.cursoNombre,
+      Sección: datos.seccionNombre,
+      Periodo: datos.periodoNombre,
+    },
+    ...contexto,
   });
-  if (worksheet.getColumn(3)) worksheet.getColumn(3).width = 32; // Estudiante
-
-  const arrayBuffer = await workbook.xlsx.writeBuffer();
-  return Buffer.from(arrayBuffer);
 }

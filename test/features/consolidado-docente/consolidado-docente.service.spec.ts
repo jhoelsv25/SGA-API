@@ -117,6 +117,7 @@ describe("RF-013: Consolidado y Ficha de Seguimiento Docente (CP-RF013-01 a CP-R
       repo as unknown as ConsolidadoDocenteRepository,
       audit as unknown as AuditService,
       notificaciones as unknown as NotificacionesService,
+      { get: jest.fn().mockResolvedValue({ nombre: "Colegio" }) } as never,
     );
   });
 

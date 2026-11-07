@@ -30,6 +30,7 @@ export class ExportacionService {
   async exportarExcel(
     query: ExportarIndicadoresQueryDto,
     actorId: string,
+    actorNombre: string,
     ip?: string,
   ): Promise<{ buffer: Buffer; nombreArchivo: string }> {
     if (!query.periodoId) {
@@ -58,6 +59,7 @@ export class ExportacionService {
       tablero,
       filtroIndicador: query.indicador,
       filtroDocenteId: query.docenteId,
+      generadoPor: actorNombre,
     });
 
     const slugPeriodo = (tablero.periodoNombre || query.periodoId || "general")

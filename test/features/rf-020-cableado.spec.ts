@@ -298,9 +298,9 @@ describe("Cableado de dependencias RF-020 (Indicadores de la Tesis y Panel)", ()
         .spyOn(exportacionService, "exportarExcel")
         .mockResolvedValueOnce(respuestaEsperada);
 
-      const resultado = await fachada.exportarExcel(query, "user-id", "127.0.0.1");
+      const resultado = await fachada.exportarExcel(query, "user-id", "admin", "127.0.0.1");
 
-      expect(spy).toHaveBeenCalledWith(query, "user-id", "127.0.0.1");
+      expect(spy).toHaveBeenCalledWith(query, "user-id", "admin", "127.0.0.1");
       expect(resultado).toBe(respuestaEsperada);
     });
 

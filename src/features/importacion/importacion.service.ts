@@ -31,9 +31,12 @@ import {
 } from "./services";
 import {
   construirExcelCredenciales,
+  type ContextoReporteCredenciales,
   generarPlantillaExcel as construirPlantillaExcel,
   getOptStr,
   getStr,
+  normalizarSexo,
+  normalizarTipoDocumento,
   validarEstructuraPersonaFila,
 } from "./utils";
 
@@ -146,12 +149,30 @@ export class ImportacionService {
     principalesPorEstudiante: Set<string>,
     cachePersonas?: Map<string, PersonaResponseDto | null>,
   ): Promise<FilaPrevisualizadaDto> {
-    const rawTipoDoc = getStr(datos, "tipoDocumento", "tipo_documento") || "dni";
-    const tipoDocumento = rawTipoDoc.toLowerCase();
+    const tipoDocumento = normalizarTipoDocumento(getStr(datos, "tipoDocumento", "tipo_documento"));
+    if (!tipoDocumento) {
+      return {
+        numeroFila,
+        datos,
+        estado: "error",
+        accion: "omitir",
+        mensaje: IMPORTACION_MESSAGES.TIPO_DOCUMENTO_INVALIDO,
+      };
+    }
     const numeroDocumento = getStr(datos, "numeroDocumento", "numero_documento");
     const nombres = getStr(datos, "nombres");
     const apellidoPaterno = getStr(datos, "apellidoPaterno", "apellido_paterno");
     const fechaNacimiento = getOptStr(datos, "fechaNacimiento", "fecha_nacimiento");
+
+    if (!normalizarSexo(getStr(datos, "sexo"))) {
+      return {
+        numeroFila,
+        datos,
+        estado: "error",
+        accion: "omitir",
+        mensaje: IMPORTACION_MESSAGES.SEXO_INVALIDO,
+      };
+    }
 
     const validacion = validarEstructuraPersonaFila(
       tipoDocumento,
@@ -321,17 +342,19 @@ export class ImportacionService {
     actorId: string,
     ip?: string,
   ): Promise<ProcesarFilaResult | null> {
-    const rawTipoDoc = getStr(datos, "tipoDocumento", "tipo_documento") || "dni";
-    const tipoDocumento = rawTipoDoc.toLowerCase() as TipoDocumento;
+    const tipoDocumento = (normalizarTipoDocumento(
+      getStr(datos, "tipoDocumento", "tipo_documento"),
+    ) ?? "dni") as TipoDocumento;
     const numeroDocumento = getStr(datos, "numeroDocumento", "numero_documento");
     const nombres = getStr(datos, "nombres");
     const apellidoPaterno = getStr(datos, "apellidoPaterno", "apellido_paterno");
     const apellidoMaterno = getOptStr(datos, "apellidoMaterno", "apellido_materno");
-    const rawSexo = getStr(datos, "sexo").toUpperCase();
-    const sexo: Sexo = rawSexo === "F" ? "F" : "M";
+    const sexo: Sexo = normalizarSexo(getStr(datos, "sexo")) ?? "M";
     const fechaNacimiento = getOptStr(datos, "fechaNacimiento", "fecha_nacimiento");
     const celular = getOptStr(datos, "celular");
     const correo = getOptStr(datos, "correo");
+    const direccion = getOptStr(datos, "direccion");
+    const distrito = getOptStr(datos, "distrito");
 
     const personaExistente = await this.personasRepository.findByDocumento(
       tipoDocumento,
@@ -348,6 +371,8 @@ export class ImportacionService {
       fechaNacimiento,
       celular,
       correo,
+      direccion,
+      distrito,
     };
 
     return handler.procesar({
@@ -363,7 +388,10 @@ export class ImportacionService {
     return construirPlantillaExcel(tipo);
   }
 
-  async generarReporteCredencialesExcel(jobId: string): Promise<Buffer> {
+  async generarReporteCredencialesExcel(
+    jobId: string,
+    contexto: ContextoReporteCredenciales,
+  ): Promise<Buffer> {
     const job = await this.importacionQueue.getJob(jobId);
     if (!job) {
       throw new NotFoundException(`Trabajo de importación con ID ${jobId} no encontrado.`);
@@ -379,6 +407,6 @@ export class ImportacionService {
     const returnvalue = job.returnvalue as EjecutarImportacionResponseDto | undefined;
     const credenciales = returnvalue?.credenciales || [];
 
-    return construirExcelCredenciales(credenciales);
+    return construirExcelCredenciales(credenciales, contexto);
   }
 }

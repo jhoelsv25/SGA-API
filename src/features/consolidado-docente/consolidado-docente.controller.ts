@@ -1,3 +1,4 @@
+import { nombreArchivoReporte } from "../../common/excel/reporte-excel.builder";
 import {
   Body,
   Controller,
@@ -60,10 +61,10 @@ export class ConsolidadoDocenteController {
     @CurrentUser() usuario: AuthenticatedUser,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const buffer = await this.service.exportarExcel(periodoId, actorDe(usuario));
+    const buffer = await this.service.exportarExcel(periodoId, actorDe(usuario), usuario.username);
     res.set({
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename="consolidados-docentes.xlsx"`,
+      "Content-Disposition": `attachment; filename="${nombreArchivoReporte("consolidado-docente")}"`,
       "Content-Length": buffer.length,
     });
     return new StreamableFile(buffer);

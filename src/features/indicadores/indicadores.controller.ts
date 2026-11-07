@@ -188,6 +188,7 @@ export class IndicadoresController {
     const { buffer, nombreArchivo } = await this.service.exportarExcel(
       query,
       usuario.id,
+      usuario.username,
       clientInfo.ip,
     );
     res.setHeader(

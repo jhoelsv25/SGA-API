@@ -305,7 +305,7 @@ describe("ExportacionService (RF-020: Exportación oficial a Excel y PDF)", () =
       };
 
       // Cuando se ejecuta la exportación a Excel
-      const resultado = await service.exportarExcel(query, idActorMock, ipClienteMock);
+      const resultado = await service.exportarExcel(query, idActorMock, "admin", ipClienteMock);
 
       // Entonces el resultado contiene un buffer binario y el nombre del archivo con extensión .xlsx
       expect(resultado).toBeDefined();
@@ -338,7 +338,7 @@ describe("ExportacionService (RF-020: Exportación oficial a Excel y PDF)", () =
       };
 
       // Cuando se genera el Excel
-      const resultado = await service.exportarExcel(query, idActorMock, ipClienteMock);
+      const resultado = await service.exportarExcel(query, idActorMock, "admin", ipClienteMock);
 
       // Entonces el archivo se genera correctamente y se delega el filtro al servicio de cálculo
       expect(Buffer.isBuffer(resultado.buffer)).toBe(true);
@@ -362,7 +362,7 @@ describe("ExportacionService (RF-020: Exportación oficial a Excel y PDF)", () =
       };
 
       // Cuando se procesa la solicitud
-      const resultado = await service.exportarExcel(query, idActorMock, ipClienteMock);
+      const resultado = await service.exportarExcel(query, idActorMock, "admin", ipClienteMock);
 
       // Entonces el buffer es generado y auditado
       expect(resultado.buffer).toBeInstanceOf(Buffer);
@@ -382,7 +382,7 @@ describe("ExportacionService (RF-020: Exportación oficial a Excel y PDF)", () =
       };
 
       // Cuando se exporta sin IP
-      await service.exportarExcel(query, idActorMock, undefined);
+      await service.exportarExcel(query, idActorMock, "admin", undefined);
 
       // Entonces la auditoría se guarda con direccionIp undefined
       expect(auditService.log).toHaveBeenCalledWith(
@@ -453,7 +453,7 @@ describe("ExportacionService (RF-020: Exportación oficial a Excel y PDF)", () =
       const query: ExportarIndicadoresQueryDto = {};
 
       // Cuando se solicita la exportación a Excel
-      await service.exportarExcel(query, idActorMock, ipClienteMock);
+      await service.exportarExcel(query, idActorMock, "admin", ipClienteMock);
 
       // Entonces el servicio recurre a AnioLectivoCls para el contexto académico
       expect(anioLectivoCls.id).toHaveBeenCalled();

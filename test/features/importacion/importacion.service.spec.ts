@@ -150,12 +150,14 @@ describe("ImportacionService", () => {
           sexo: "M",
           fechaNacimiento: "2010-05-10",
           codigoSiagie: "SIAGIE001",
+          fechaIngreso: "2026-03-01",
         },
         {
           tipoDocumento: "dni",
           numeroDocumento: "123",
           apellidoPaterno: "Soto",
           nombres: "Ana",
+          sexo: "F",
           codigoSiagie: "SIAGIE002",
         },
         {
@@ -163,6 +165,7 @@ describe("ImportacionService", () => {
           numeroDocumento: "87654321",
           apellidoPaterno: "Torres",
           nombres: "Carlos",
+          sexo: "M",
           codigoSiagie: "SIAGIE001",
         },
       ];
@@ -193,6 +196,7 @@ describe("ImportacionService", () => {
           numeroDocumento: "70123456",
           apellidoPaterno: "Luna",
           nombres: "Raúl",
+          sexo: "M",
           codigoSiagie: "SIAGIE999",
         },
       ];
@@ -218,6 +222,7 @@ describe("ImportacionService", () => {
           numeroDocumento: "40123456",
           apellidoPaterno: "Ramos",
           nombres: "Luis",
+          sexo: "M",
           codigoDocente: "DOC-99",
         },
       ];
@@ -243,6 +248,7 @@ describe("ImportacionService", () => {
           numeroDocumento: "45678912",
           apellidoPaterno: "Mamani",
           nombres: "Rosa",
+          sexo: "F",
         },
       ];
 
@@ -430,10 +436,11 @@ describe("ImportacionService", () => {
   });
 
   describe("generarReporteCredencialesExcel", () => {
+    const ctx = { institucion: "Colegio", generadoPor: "admin" };
     it("debe lanzar NotFoundException si el trabajo no existe", async () => {
       mockQueue.getJob.mockResolvedValueOnce(null);
 
-      await expect(service.generarReporteCredencialesExcel("job-inexistente")).rejects.toThrow(
+      await expect(service.generarReporteCredencialesExcel("job-inexistente", ctx)).rejects.toThrow(
         NotFoundException,
       );
     });
@@ -444,7 +451,7 @@ describe("ImportacionService", () => {
         getState: jest.fn().mockResolvedValue("active"),
       });
 
-      await expect(service.generarReporteCredencialesExcel("job-101")).rejects.toThrow(
+      await expect(service.generarReporteCredencialesExcel("job-101", ctx)).rejects.toThrow(
         BadRequestException,
       );
     });
@@ -471,7 +478,7 @@ describe("ImportacionService", () => {
         },
       });
 
-      const buffer = await service.generarReporteCredencialesExcel("job-101");
+      const buffer = await service.generarReporteCredencialesExcel("job-101", ctx);
       expect(Buffer.isBuffer(buffer)).toBe(true);
       expect(buffer.length).toBeGreaterThan(100);
     });

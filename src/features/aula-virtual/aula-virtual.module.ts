@@ -7,6 +7,7 @@ import { AnioEscolarModule } from "../anio-escolar/anio-escolar.module";
 import { AuthModule } from "../auth/auth.module";
 import { NotificacionesModule } from "../notificaciones/notificaciones.module";
 import { AulaVirtualController } from "./aula-virtual.controller";
+import { InstitucionModule } from "../institucion/institucion.module";
 import { AulaVirtualService } from "./aula-virtual.service";
 import { ChatAulaGateway } from "./gateways/chat-aula.gateway";
 import { RecordatorioTareasProcessor } from "./processors";
@@ -19,6 +20,7 @@ import { AulaVirtualRepository } from "./repositories";
     AnioEscolarModule,
     AuthModule,
     NotificacionesModule,
+    InstitucionModule,
   ],
   controllers: [AulaVirtualController],
   providers: [

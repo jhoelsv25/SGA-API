@@ -519,6 +519,7 @@ describe("IndicadoresController (RF-020: Controlador, @MenuAccess, Roles y Deleg
       expect(service.exportarExcel).toHaveBeenCalledWith(
         query,
         mockUsuarioDirector.id,
+        mockUsuarioDirector.username,
         mockClientInfo.ip,
       );
       expect(res.setHeader).toHaveBeenCalledWith(
