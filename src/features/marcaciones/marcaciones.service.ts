@@ -13,6 +13,7 @@ import { CalendarioService } from "../calendario/calendario.service";
 import { EquiposService } from "../equipos/equipos.service";
 import { NotificacionesService } from "../notificaciones/notificaciones.service";
 import { TurnosRepository } from "../turnos/repositories/turnos.repository";
+import { VariablesSistemaService } from "../variables-sistema/variables-sistema.service";
 import type { TurnoResponseDto } from "../turnos/dto";
 import {
   LIMITE_REPORTE_MAXIMO,
@@ -23,6 +24,8 @@ import {
   mensajeSalida,
   mensajeTardanza,
   mensajeYaMarcoEntrada,
+  mensajeYaMarcoReciente,
+  VARIABLE_MINUTOS_ENTRE_VIAS,
   type TipoMarcacion,
   type TipoPersonaMarcacion,
 } from "./constants";
@@ -38,6 +41,7 @@ import type {
 } from "./dto";
 import type {
   CredencialParaMarcar,
+  MarcacionDelDia,
   PersonaAutenticada,
   PersonaParaMarcar,
   ResultadoRegistroReloj,
@@ -45,6 +49,7 @@ import type {
 import { MarcacionesRepository } from "./repositories";
 import {
   ahoraEnColegio,
+  decidirMarca,
   equipoPermite,
   esDiaLaborable,
   esViolacionUnica,
@@ -53,7 +58,7 @@ import {
   horaCorta,
   horaDeFechaHora,
   minutosEntre,
-  siguienteTipo,
+  type DecisionMarca,
 } from "./utils";
 
 @Injectable()
@@ -65,6 +70,7 @@ export class MarcacionesService {
     private readonly calendarioService: CalendarioService,
     private readonly aniosService: AniosAcademicosService,
     private readonly auditService: AuditService,
+    private readonly variablesService: VariablesSistemaService,
     @Optional()
     private readonly notificacionesService?: NotificacionesService,
   ) {}
@@ -91,17 +97,25 @@ export class MarcacionesService {
     await this.exigirMatriculaSiEstudiante(persona);
 
     const previas = await this.repository.marcacionesDePersonaEnFecha(persona.personaId, fecha);
-    const tipo = siguienteTipo(
-      persona.tipoPersona === "estudiantes",
-      previas.map((m) => m.tipo),
-    );
-    if (!tipo) {
-      return this.respuestaYaMarco(persona, previas);
+    const decision = decidirMarca({
+      esEstudiante: persona.tipoPersona === "estudiantes",
+      previas,
+      fechaHora,
+      origen: "kiosko",
+      minutosEntreVias: await this.minutosEntreVias(),
+    });
+    if (decision.accion === "ignorar") {
+      await this.dejarRastroDeIgnorada(persona.personaId, fechaHora, "kiosko", decision);
+      return this.respuestaIgnorada(persona, previas, decision);
     }
+    const tipo = decision.tipo;
 
     const turno = await this.turnoDe(persona.tipoPersona);
     const diaConClases = await this.esDiaConClases(fecha, turno);
     const evaluacion = evaluarMarcacion(tipo, turno, hora, diaConClases);
+    if (decision.reetiquetar) {
+      await this.reetiquetarEntradaComoSalida(decision.reetiquetar, turno, diaConClases);
+    }
 
     const creada = await this.repository.insertar({
       personaId: persona.personaId,
@@ -150,7 +164,7 @@ export class MarcacionesService {
    */
   async registrarDesdeReloj(
     persona: PersonaAutenticada,
-    equipoId: string,
+    equipoId: string | undefined,
     fechaHora: string,
     minutosAntirrebote: number,
   ): Promise<ResultadoRegistroReloj> {
@@ -168,13 +182,18 @@ export class MarcacionesService {
         return { estado: "ignorada", razon: "rebote" };
       }
     }
-    const tipo = siguienteTipo(
-      false,
-      previas.map((m) => m.tipo),
-    );
-    if (!tipo) {
-      return { estado: "ignorada", razon: "jornada_completa" };
+    const decision = decidirMarca({
+      esEstudiante: false,
+      previas,
+      fechaHora,
+      origen: "biometrico",
+      minutosEntreVias: await this.minutosEntreVias(),
+    });
+    if (decision.accion === "ignorar") {
+      await this.dejarRastroDeIgnorada(persona.personaId, fechaHora, "biometrico", decision);
+      return { estado: "ignorada", razon: decision.razon };
     }
+    const tipo = decision.tipo;
 
     const turno = await this.turnosRepository.findByAplicaA(persona.tipoPersona);
     if (!turno || !turno.activo) {
@@ -182,6 +201,9 @@ export class MarcacionesService {
     }
     const diaConClases = await this.esDiaConClases(fecha, turno);
     const evaluacion = evaluarMarcacion(tipo, turno, hora, diaConClases);
+    if (decision.reetiquetar) {
+      await this.reetiquetarEntradaComoSalida(decision.reetiquetar, turno, diaConClases);
+    }
 
     try {
       const marcacion = await this.repository.insertar({
@@ -377,6 +399,92 @@ export class MarcacionesService {
   private async esDiaConClases(fecha: string, turno: TurnoResponseDto): Promise<boolean> {
     if (!esDiaLaborable(fecha, turno.diasLaborables)) return false;
     return !(await this.calendarioService.suspendeClasesEn(fecha));
+  }
+
+  /** Minutos en los que una marca de otra vía se toma como la misma asistencia (variable del sistema). */
+  private async minutosEntreVias(): Promise<number> {
+    const valor = Number(
+      await this.variablesService.getValor(
+        VARIABLE_MINUTOS_ENTRE_VIAS.codigo,
+        String(VARIABLE_MINUTOS_ENTRE_VIAS.porDefecto),
+      ),
+    );
+    return Number.isFinite(valor) && valor >= 0 ? valor : VARIABLE_MINUTOS_ENTRE_VIAS.porDefecto;
+  }
+
+  /**
+   * Llegó una marca anterior a la entrada ya guardada (p. ej. un lote atrasado del reloj): la anterior pasa a ser
+   * la entrada y la guardada se convierte en salida, con su resultado recalculado. Queda auditado.
+   */
+  private async reetiquetarEntradaComoSalida(
+    entrada: MarcacionDelDia,
+    turno: TurnoResponseDto,
+    diaConClases: boolean,
+  ): Promise<void> {
+    const evaluacion = evaluarMarcacion(
+      "salida",
+      turno,
+      entrada.fechaHora.slice(11, 19),
+      diaConClases,
+    );
+    await this.repository.reetiquetar(entrada.id, {
+      tipo: "salida",
+      resultado: evaluacion.resultado,
+      minutosTardanza: evaluacion.minutosTardanza,
+    });
+    await this.auditService.log({
+      usuarioId: null,
+      accion: "actualizar",
+      tabla: "marcaciones",
+      registroId: entrada.id,
+      valorAnterior: { tipo: "entrada" },
+      valorNuevo: {
+        tipo: "salida",
+        motivo: "Llegó una marcación anterior: la entrada pasa a ser la salida.",
+      },
+    });
+  }
+
+  /** Una marca descartada por coincidir con otra vía no se guarda como asistencia, pero queda a la vista. */
+  private async dejarRastroDeIgnorada(
+    personaId: string,
+    fechaHora: string,
+    origen: "kiosko" | "biometrico",
+    decision: Extract<DecisionMarca, { accion: "ignorar" }>,
+  ): Promise<void> {
+    if (decision.razon !== "duplicada_entre_vias") return;
+    await this.auditService.log({
+      usuarioId: null,
+      accion: "crear",
+      tabla: "marcaciones_duplicadas_entre_vias",
+      valorNuevo: {
+        personaId,
+        fechaHora,
+        origen,
+        coincideCon: {
+          marcacionId: decision.con.id,
+          origen: decision.con.origen,
+          tipo: decision.con.tipo,
+          fechaHora: decision.con.fechaHora,
+        },
+      },
+    });
+  }
+
+  private respuestaIgnorada(
+    persona: PersonaParaMarcar,
+    previas: MarcacionDelDia[],
+    decision: Extract<DecisionMarca, { accion: "ignorar" }>,
+  ): MarcacionKioskoResponseDto {
+    if (decision.razon === "duplicada_entre_vias") {
+      return {
+        registrada: false,
+        mensaje: mensajeYaMarcoReciente(horaDeFechaHora(decision.con.fechaHora)),
+        nombreCompleto: persona.nombreCompleto,
+        fotoUrl: persona.fotoUrl,
+      };
+    }
+    return this.respuestaYaMarco(persona, previas);
   }
 
   private respuestaYaMarco(

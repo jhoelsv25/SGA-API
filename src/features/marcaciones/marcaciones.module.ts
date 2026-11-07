@@ -5,6 +5,7 @@ import { CalendarioModule } from "../calendario/calendario.module";
 import { EquiposModule } from "../equipos/equipos.module";
 import { NotificacionesModule } from "../notificaciones/notificaciones.module";
 import { TurnosModule } from "../turnos/turnos.module";
+import { VariablesSistemaModule } from "../variables-sistema/variables-sistema.module";
 import { MarcacionesBiometricasProcesador } from "./marcaciones-biometricas.procesador";
 import { MarcacionesBiometricasService } from "./marcaciones-biometricas.service";
 import { MarcacionesController } from "./marcaciones.controller";
@@ -12,7 +13,14 @@ import { MarcacionesService } from "./marcaciones.service";
 import { MarcacionesBiometricasRepository, MarcacionesRepository } from "./repositories";
 
 @Module({
-  imports: [EquiposModule, TurnosModule, CalendarioModule, AnioEscolarModule, NotificacionesModule],
+  imports: [
+    EquiposModule,
+    TurnosModule,
+    CalendarioModule,
+    AnioEscolarModule,
+    NotificacionesModule,
+    VariablesSistemaModule,
+  ],
   controllers: [MarcacionesController],
   providers: [
     MarcacionesService,

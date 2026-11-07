@@ -17,6 +17,7 @@ import {
   type PersonaParaMarcar,
 } from "@/features/marcaciones";
 import { TurnosRepository } from "@/features/turnos/repositories/turnos.repository";
+import { VariablesSistemaService } from "@/features/variables-sistema/variables-sistema.service";
 
 type Mocks<T> = { [K in keyof T]?: jest.Mock };
 
@@ -91,6 +92,7 @@ describe("RF-010: Marcaciones (HU1 y HU2)", () => {
   let calendario: Mocks<CalendarioService>;
   let anios: Mocks<AniosAcademicosService>;
   let audit: Mocks<AuditService>;
+  let variables: Mocks<VariablesSistemaService>;
 
   const credencial = (pin = "1234", extra = {}) => ({
     id: "cred-1",
@@ -136,6 +138,7 @@ describe("RF-010: Marcaciones (HU1 y HU2)", () => {
     calendario = { suspendeClasesEn: jest.fn().mockResolvedValue(false) };
     anios = { anioVigente: jest.fn().mockResolvedValue({ id: "anio-2027" }) };
     audit = { log: jest.fn().mockResolvedValue(undefined) };
+    variables = { getValor: jest.fn().mockResolvedValue("30") };
     service = new MarcacionesService(
       repo as unknown as MarcacionesRepository,
       equipos as unknown as EquiposService,
@@ -143,10 +146,42 @@ describe("RF-010: Marcaciones (HU1 y HU2)", () => {
       calendario as unknown as CalendarioService,
       anios as unknown as AniosAcademicosService,
       audit as unknown as AuditService,
+      variables as unknown as VariablesSistemaService,
     );
   });
 
   afterEach(() => jest.useRealTimers());
+
+  it("CP-RF010-30: si ya marcó el reloj hace pocos minutos, el kiosko no genera una salida falsa", async () => {
+    horaServidor("07:40:00");
+    repo.findCredencialPorCodigo!.mockResolvedValue(credencial("1234", { personaId: "per-doc" }));
+    repo.findPersonaParaMarcar!.mockResolvedValue({
+      personaId: "per-doc",
+      nombres: "Luis",
+      nombreCompleto: "Rojas, Luis",
+      fotoUrl: null,
+      tipoPersona: "docentes",
+      estudianteId: null,
+      vigente: true,
+    });
+    equipos.validarKiosko!.mockResolvedValue({
+      valido: true,
+      message: "ok",
+      equipo: { proposito: "marcacion", usuariosPermitidos: "docentes" },
+    });
+    repo.marcacionesDePersonaEnFecha!.mockResolvedValue([
+      { id: "m-reloj", tipo: "entrada", fechaHora: `${HOY} 07:30:00`, origen: "biometrico" },
+    ]);
+
+    const r = await service.marcarEnKiosko("tok", { codigo: "CR-1", pin: "1234" });
+
+    expect(r.registrada).toBe(false);
+    expect(r.mensaje).toBe("Ya tiene una marcación registrada a las 07:30.");
+    expect(repo.insertar).not.toHaveBeenCalled();
+    expect(audit.log).toHaveBeenCalledWith(
+      expect.objectContaining({ tabla: "marcaciones_duplicadas_entre_vias" }),
+    );
+  });
 
   it("CP-RF010-01: estudiante marca a tiempo", async () => {
     horaServidor("07:52:00");
@@ -168,6 +203,7 @@ describe("RF-010: Marcaciones (HU1 y HU2)", () => {
       calendario as unknown as CalendarioService,
       anios as unknown as AniosAcademicosService,
       audit as unknown as AuditService,
+      variables as unknown as VariablesSistemaService,
       notificaciones as unknown as NotificacionesService,
     );
     repo.findApoderadosDePersonaEstudiante = jest
@@ -194,7 +230,7 @@ describe("RF-010: Marcaciones (HU1 y HU2)", () => {
   it("CP-RF010-03: segunda marcación no registra nada", async () => {
     horaServidor("09:00:00");
     repo.marcacionesDePersonaEnFecha!.mockResolvedValue([
-      { id: "m", tipo: "entrada", fechaHora: `${HOY} 07:52:00` },
+      { id: "m", tipo: "entrada", fechaHora: `${HOY} 07:52:00`, origen: "kiosko" },
     ]);
     const r = await service.marcarEnKiosko("tok", { codigo: "CR-1", pin: "1234" });
     expect(r.registrada).toBe(false);
@@ -211,7 +247,7 @@ describe("RF-010: Marcaciones (HU1 y HU2)", () => {
     });
     repo.findPersonaParaMarcar!.mockResolvedValue(docente);
     repo.marcacionesDePersonaEnFecha!.mockResolvedValue([
-      { id: "m", tipo: "entrada", fechaHora: `${HOY} 07:20:00` },
+      { id: "m", tipo: "entrada", fechaHora: `${HOY} 07:20:00`, origen: "kiosko" },
     ]);
     const r = await service.marcarEnKiosko("tok", { codigo: "CR-1", pin: "1234" });
     expect(r.tipo).toBe("salida");
@@ -227,8 +263,8 @@ describe("RF-010: Marcaciones (HU1 y HU2)", () => {
     });
     repo.findPersonaParaMarcar!.mockResolvedValue(docente);
     repo.marcacionesDePersonaEnFecha!.mockResolvedValue([
-      { id: "a", tipo: "entrada", fechaHora: `${HOY} 07:20:00` },
-      { id: "b", tipo: "salida", fechaHora: `${HOY} 14:03:00` },
+      { id: "a", tipo: "entrada", fechaHora: `${HOY} 07:20:00`, origen: "kiosko" },
+      { id: "b", tipo: "salida", fechaHora: `${HOY} 14:03:00`, origen: "kiosko" },
     ]);
     const r = await service.marcarEnKiosko("tok", { codigo: "CR-1", pin: "1234" });
     expect(r.registrada).toBe(false);
@@ -364,7 +400,7 @@ describe("RF-010: Marcaciones (HU1 y HU2)", () => {
 
     it("no duplica una entrada ya registrada", async () => {
       repo.marcacionesDePersonaEnFecha!.mockResolvedValue([
-        { id: "m", tipo: "entrada", fechaHora: `${HOY} 07:52:00` },
+        { id: "m", tipo: "entrada", fechaHora: `${HOY} 07:52:00`, origen: "kiosko" },
       ]);
       await expect(
         service.registrarManual(

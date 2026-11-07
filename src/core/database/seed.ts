@@ -338,6 +338,17 @@ async function seed() {
       valorMaximo: 60,
     },
     {
+      codigo: "marcacion.minutos_duplicado_entre_vias",
+      descripcion:
+        "Minutos en los que una marcación de otra vía (kiosko, manual o reloj biométrico) se toma como la misma asistencia ya registrada y no se guarda de nuevo. 0 lo desactiva",
+      modulo: "asistencia",
+      tipo: "entero",
+      valor: "30",
+      unidad: "minutos",
+      valorMinimo: 0,
+      valorMaximo: 120,
+    },
+    {
       codigo: "biometrico.desfase_maximo_min",
       descripcion:
         "Diferencia máxima entre la hora del reloj biométrico y la del servidor antes de ponerlo en hora y avisar",

@@ -10,9 +10,11 @@
  *   E2E_BD_REAL=si npm run test:e2e -- marcaciones-vias
  */
 import { createHash, randomBytes } from "node:crypto";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
 import { INestApplication, ValidationPipe } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import request from "supertest";
 import { App } from "supertest/types";
 import { AppModule } from "../src/app.module";
@@ -35,6 +37,12 @@ import { ahoraEnColegio } from "../src/features/marcaciones/utils/marcacion-regl
 
 const habilitado = process.env.E2E_BD_REAL === "si";
 const describeSiHabilitado = habilitado ? describe : describe.skip;
+
+dayjs.extend(utc);
+
+/** "YYYY-MM-DD HH:mm:ss" ± minutos (sin zona: el reloj y la base usan hora de Lima). */
+const sumarMinutos = (fechaHora: string, minutos: number): string =>
+  dayjs.utc(fechaHora.replace(" ", "T")).add(minutos, "minute").format("YYYY-MM-DD HH:mm:ss");
 
 const sha256 = (texto: string): string => createHash("sha256").update(texto).digest("hex");
 const PIN = "4321";
@@ -64,7 +72,10 @@ describeSiHabilitado("Vías de marcación (e2e, base real)", () => {
   let equipoKioskoId: string;
   let equipoRelojId: string;
   let actorId: string;
-  const docentesCreados: Record<"qr" | "manual" | "puente" | "cruda", Docente> = {} as never;
+  const docentesCreados: Record<
+    "qr" | "manual" | "puente" | "cruda" | "kioskoLuegoReloj" | "relojLuegoKiosko" | "atrasado",
+    Docente
+  > = {} as never;
   const idsPersonas: string[] = [];
 
   async function crearDocente(clave: string, n: number): Promise<Docente> {
@@ -156,6 +167,9 @@ describeSiHabilitado("Vías de marcación (e2e, base real)", () => {
     docentesCreados.manual = await crearDocente("manual", 2);
     docentesCreados.puente = await crearDocente("puente", 3);
     docentesCreados.cruda = await crearDocente("cruda", 4);
+    docentesCreados.kioskoLuegoReloj = await crearDocente("kiosko→reloj", 5);
+    docentesCreados.relojLuegoKiosko = await crearDocente("reloj→kiosko", 6);
+    docentesCreados.atrasado = await crearDocente("lote atrasado", 7);
   }, 60_000);
 
   afterAll(async () => {
@@ -179,6 +193,19 @@ describeSiHabilitado("Vías de marcación (e2e, base real)", () => {
 
     // La auditoría de la marcación manual se escribe en segundo plano: se espera un instante.
     await new Promise((r) => setTimeout(r, 1500));
+    // Rastro de las marcas descartadas por duplicadas entre vías (se identifican por la persona de prueba).
+    if (idsPersonas.length) {
+      await intentar(() =>
+        db
+          .delete(bitacoraAuditoria)
+          .where(
+            and(
+              eq(bitacoraAuditoria.tabla, "marcaciones_duplicadas_entre_vias"),
+              inArray(sql`${bitacoraAuditoria.valorNuevo}->>'personaId'`, idsPersonas),
+            ),
+          ),
+      );
+    }
     if (idsMarcaciones.length) {
       await intentar(() =>
         db.delete(bitacoraAuditoria).where(inArray(bitacoraAuditoria.registroId, idsMarcaciones)),
@@ -431,9 +458,81 @@ describeSiHabilitado("Vías de marcación (e2e, base real)", () => {
     });
   });
 
+  // ---------------------------------------------------------------- misma asistencia por dos vías
+
+  describe("Entre vías: la misma asistencia por dos medios", () => {
+    const loteDelReloj = (codigo: string, fechaHora: string) =>
+      request(app.getHttpServer())
+        .post("/api/biometrico/lote")
+        .set("x-puente-token", tokenReloj)
+        .send({ marcaciones: [{ codigo, fechaHora }] })
+        .expect(200);
+
+    it("marcó en el kiosko y minutos después el reloj: la del reloj no se guarda", async () => {
+      const d = docentesCreados.kioskoLuegoReloj;
+      await request(app.getHttpServer())
+        .post("/api/marcaciones/kiosko")
+        .set("x-kiosk-token", tokenKiosko)
+        .send({ codigo: d.codigoCredencial, pin: PIN })
+        .expect(200);
+      const [entrada] = await marcasDe(d.personaId);
+
+      const res = await loteDelReloj(d.codigoBiometrico, sumarMinutos(entrada.fechaHora, 10));
+
+      expect(cuerpo<LoteResponseDto>(res)).toMatchObject({ registradas: 0, ignoradas: 1 });
+      const filas = await marcasDe(d.personaId);
+      expect(filas).toHaveLength(1);
+      expect(filas[0]).toMatchObject({ origen: "kiosko", tipo: "entrada" });
+    });
+
+    it("marcó el reloj y minutos después el kiosko: no se genera una salida falsa", async () => {
+      const d = docentesCreados.relojLuegoKiosko;
+      const ahora = ahoraEnColegio().fechaHora;
+      await loteDelReloj(d.codigoBiometrico, sumarMinutos(ahora, -10)).then((res) =>
+        expect(cuerpo<LoteResponseDto>(res).registradas).toBe(1),
+      );
+
+      const res = await request(app.getHttpServer())
+        .post("/api/marcaciones/kiosko")
+        .set("x-kiosk-token", tokenKiosko)
+        .send({ codigo: d.codigoCredencial, pin: PIN })
+        .expect(200);
+
+      const cuerpoKiosko = cuerpo<{ registrada: boolean; mensaje: string }>(res);
+      expect(cuerpoKiosko.registrada).toBe(false);
+      expect(cuerpoKiosko.mensaje).toMatch(/Ya tiene una marcación registrada a las \d{2}:\d{2}\./);
+      const filas = await marcasDe(d.personaId);
+      expect(filas).toHaveLength(1);
+      expect(filas[0]).toMatchObject({ origen: "biometrico", tipo: "entrada" });
+    });
+
+    it("lote atrasado con una marca anterior a la entrada del kiosko: se reordenan por hora", async () => {
+      const d = docentesCreados.atrasado;
+      await request(app.getHttpServer())
+        .post("/api/marcaciones/kiosko")
+        .set("x-kiosk-token", tokenKiosko)
+        .send({ codigo: d.codigoCredencial, pin: PIN })
+        .expect(200);
+      const [delKiosko] = await marcasDe(d.personaId);
+      // 90 min antes del kiosko cae fuera de la ventana; en la madrugada cruzaría de día y no aplica.
+      if (delKiosko.fechaHora.slice(11, 13) < "02") return;
+
+      const res = await loteDelReloj(d.codigoBiometrico, sumarMinutos(delKiosko.fechaHora, -90));
+      expect(cuerpo<LoteResponseDto>(res).registradas).toBe(1);
+
+      const filas = (await marcasDe(d.personaId)).sort((a, b) =>
+        a.fechaHora.localeCompare(b.fechaHora),
+      );
+      expect(filas.map((f) => [f.tipo, f.origen])).toEqual([
+        ["entrada", "biometrico"],
+        ["salida", "kiosko"],
+      ]);
+    });
+  });
+
   // ---------------------------------------------------------------- resumen
 
-  it("cada vía dejó su origen: kiosko 2, manual 1, biometrico 2", async () => {
+  it("cada vía dejó su origen y lo descartado no se guardó", async () => {
     const todas = await db
       .select({ origen: marcaciones.origen })
       .from(marcaciones)
@@ -442,6 +541,7 @@ describeSiHabilitado("Vías de marcación (e2e, base real)", () => {
       acc[m.origen] = (acc[m.origen] ?? 0) + 1;
       return acc;
     }, {});
-    expect(conteo).toEqual({ kiosko: 2, manual: 1, biometrico: 2 });
+    // kiosko: 2 (QR y DNI) + 1 + 1 (entrada y salida reetiquetada); biometrico: 2 + 1 (reloj→kiosko) + 1 (atrasado)
+    expect(conteo).toEqual({ kiosko: 4, manual: 1, biometrico: 4 });
   });
 });

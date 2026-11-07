@@ -32,6 +32,7 @@ import type {
   ReporteMarcacionesResponseDto,
 } from "../dto";
 import type {
+  CambioDeTipo,
   CredencialParaMarcar,
   IMarcacionesRepository,
   MarcacionDelDia,
@@ -199,7 +200,12 @@ export class MarcacionesRepository implements IMarcacionesRepository {
 
   async marcacionesDePersonaEnFecha(personaId: string, fecha: string): Promise<MarcacionDelDia[]> {
     const filas = await this.db
-      .select({ id: marcaciones.id, tipo: marcaciones.tipo, fechaHora: marcaciones.fechaHora })
+      .select({
+        id: marcaciones.id,
+        tipo: marcaciones.tipo,
+        fechaHora: marcaciones.fechaHora,
+        origen: marcaciones.origen,
+      })
       .from(marcaciones)
       .where(
         and(
@@ -209,7 +215,11 @@ export class MarcacionesRepository implements IMarcacionesRepository {
         ),
       )
       .orderBy(marcaciones.fechaHora);
-    return filas.map((f) => ({ ...f, tipo: f.tipo as TipoMarcacion }));
+    return filas.map((f) => ({
+      ...f,
+      tipo: f.tipo as TipoMarcacion,
+      origen: f.origen as OrigenMarcacion,
+    }));
   }
 
   async insertar(data: NuevaMarcacion): Promise<MarcacionResponseDto> {
@@ -232,6 +242,17 @@ export class MarcacionesRepository implements IMarcacionesRepository {
     const completa = await this.findById(creada.id);
     if (!completa) throw new Error("La marcación recién creada no se pudo leer.");
     return completa;
+  }
+
+  async reetiquetar(id: string, cambio: CambioDeTipo): Promise<void> {
+    await this.db
+      .update(marcaciones)
+      .set({
+        tipo: cambio.tipo,
+        resultado: cambio.resultado,
+        minutosTardanza: cambio.minutosTardanza,
+      })
+      .where(eq(marcaciones.id, id));
   }
 
   async findById(id: string): Promise<MarcacionResponseDto | null> {
