@@ -110,12 +110,12 @@ function dibujarCarneEnDoc(
   const titleWidth = CARD_WIDTH - (titleLeft - originX) - 48;
 
   doc
-    .fontSize(6.5)
+    .fontSize(6)
     .font("Helvetica-Bold")
     .fillColor(COLOR_PRIMARY)
     .text(datos.institucion.nombre.toUpperCase(), titleLeft, headerTop + 1, {
       width: titleWidth,
-      ellipsis: true,
+      lineGap: 0.5,
     });
 
   const subtitulo = [
@@ -123,11 +123,13 @@ function dibujarCarneEnDoc(
     datos.institucion.ugel ? datos.institucion.ugel.split("/")[0].trim() : "UGEL Angaraes",
   ].join(" · ");
 
+  const subtituloY = doc.y + 1;
+
   doc
-    .fontSize(5)
+    .fontSize(4.5)
     .font("Helvetica")
     .fillColor(COLOR_TEXT_MUTED)
-    .text(subtitulo, titleLeft, headerTop + 10, {
+    .text(subtitulo, titleLeft, subtituloY, {
       width: titleWidth,
       ellipsis: true,
     });
@@ -205,15 +207,6 @@ function dibujarCarneEnDoc(
       });
   }
 
-  doc
-    .fontSize(4)
-    .font("Helvetica-Bold")
-    .fillColor(COLOR_TEXT_MUTED)
-    .text("OFICIAL", fotoX, fotoY + fotoSize + 7.5, {
-      width: fotoSize,
-      align: "center",
-    });
-
   // Columna Central: Datos Personales
   const dataX = fotoX + fotoSize + 6;
   const dataWidth = 115;
@@ -274,15 +267,6 @@ function dibujarCarneEnDoc(
   doc.image(qrBuffer, qrX, qrY, {
     fit: [qrSize, qrSize],
   });
-
-  doc
-    .fontSize(4.5)
-    .font("Helvetica-Bold")
-    .fillColor(COLOR_TEXT_MUTED)
-    .text("ESCANEABLE", qrX, qrY + qrSize + 2, {
-      width: qrSize,
-      align: "center",
-    });
 
   // ── 4. Pie Institucional ──
   const footerY = originY + CARD_HEIGHT - 12;
