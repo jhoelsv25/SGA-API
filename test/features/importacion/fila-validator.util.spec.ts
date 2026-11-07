@@ -3,6 +3,7 @@ import {
   validarEstructuraPersonaFila,
   validarFechaNacimientoNoFutura,
   validarFormatoDni,
+  validarPersonaFila,
 } from "@/features/importacion/utils";
 
 describe("fila-validator.util", () => {
@@ -61,6 +62,43 @@ describe("fila-validator.util", () => {
 
       const invalido = validarEstructuraPersonaFila("dni", "123", "Carlos", "Mendoza");
       expect(invalido.esValida).toBe(false);
+    });
+  });
+
+  describe("validarPersonaFila", () => {
+    it("debe validar integralmente una fila de persona correcta", () => {
+      const resultado = validarPersonaFila({
+        tipoDocumento: "DNI",
+        numeroDocumento: "76543210",
+        nombres: "Carlos Alberto",
+        apellidoPaterno: "Mendoza",
+        sexo: "M",
+      });
+      expect(resultado.esValida).toBe(true);
+      expect(resultado.tipoDocumento).toBe("dni");
+      expect(resultado.numeroDocumento).toBe("76543210");
+    });
+
+    it("debe fallar si el tipo de documento es inválido", () => {
+      const resultado = validarPersonaFila({
+        tipoDocumento: "INVALIDO",
+        numeroDocumento: "76543210",
+        nombres: "Carlos",
+        apellidoPaterno: "Mendoza",
+        sexo: "M",
+      });
+      expect(resultado.esValida).toBe(false);
+    });
+
+    it("debe fallar si el sexo es inválido", () => {
+      const resultado = validarPersonaFila({
+        tipoDocumento: "DNI",
+        numeroDocumento: "76543210",
+        nombres: "Carlos",
+        apellidoPaterno: "Mendoza",
+        sexo: "X",
+      });
+      expect(resultado.esValida).toBe(false);
     });
   });
 });

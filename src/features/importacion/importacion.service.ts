@@ -3,8 +3,7 @@ import { InjectQueue } from "@nestjs/bullmq";
 import type { Queue, Job } from "bullmq";
 import { AuditService } from "../../common/services/audit.service";
 import { QUEUES } from "../../core/queues/queues.constants";
-import type { TipoDocumento } from "../personas/constants";
-import type { CreatePersonaDto, PersonaResponseDto } from "../personas/dto";
+import type { PersonaResponseDto } from "../personas/dto";
 import { PersonasRepository } from "../personas/repositories/personas.repository";
 import {
   IMPORTACION_MAX_FILAS,
@@ -22,7 +21,7 @@ import type {
   PrevisualizarImportacionDto,
   VistaPreviaResponseDto,
 } from "./dto";
-import type { IEntidadImportHandler, ProcesarFilaResult, Sexo } from "./interfaces";
+import type { IEntidadImportHandler, ProcesarFilaResult } from "./interfaces";
 import {
   ApoderadosImportService,
   DocentesImportService,
@@ -33,11 +32,9 @@ import {
   construirExcelCredenciales,
   type ContextoReporteCredenciales,
   generarPlantillaExcel as construirPlantillaExcel,
-  getOptStr,
-  getStr,
-  normalizarSexo,
-  normalizarTipoDocumento,
-  validarEstructuraPersonaFila,
+  parsearPersonaDeFila,
+  validarPersonaFila,
+  type ValidacionFilaPersonaResultado,
 } from "./utils";
 
 @Injectable()
@@ -152,39 +149,7 @@ export class ImportacionService {
     principalesPorEstudiante: Set<string>,
     cachePersonas?: Map<string, PersonaResponseDto | null>,
   ): Promise<FilaPrevisualizadaDto> {
-    const tipoDocumento = normalizarTipoDocumento(getStr(datos, "tipoDocumento", "tipo_documento"));
-    if (!tipoDocumento) {
-      return {
-        numeroFila,
-        datos,
-        estado: "error",
-        accion: "omitir",
-        mensaje: IMPORTACION_MESSAGES.TIPO_DOCUMENTO_INVALIDO,
-      };
-    }
-    const numeroDocumento = getStr(datos, "numeroDocumento", "numero_documento");
-    const nombres = getStr(datos, "nombres");
-    const apellidoPaterno = getStr(datos, "apellidoPaterno", "apellido_paterno");
-    const fechaNacimiento = getOptStr(datos, "fechaNacimiento", "fecha_nacimiento");
-
-    if (!normalizarSexo(getStr(datos, "sexo"))) {
-      return {
-        numeroFila,
-        datos,
-        estado: "error",
-        accion: "omitir",
-        mensaje: IMPORTACION_MESSAGES.SEXO_INVALIDO,
-      };
-    }
-
-    const validacion = validarEstructuraPersonaFila(
-      tipoDocumento,
-      numeroDocumento,
-      nombres,
-      apellidoPaterno,
-      fechaNacimiento,
-    );
-
+    const validacion: ValidacionFilaPersonaResultado = validarPersonaFila(datos);
     if (!validacion.esValida) {
       return {
         numeroFila,
@@ -196,8 +161,8 @@ export class ImportacionService {
     }
 
     const personaExistente = await this.buscarPersonaCacheada(
-      tipoDocumento,
-      numeroDocumento,
+      validacion.tipoDocumento,
+      validacion.numeroDocumento,
       cachePersonas,
     );
 
@@ -345,38 +310,12 @@ export class ImportacionService {
     actorId: string,
     ip?: string,
   ): Promise<ProcesarFilaResult | null> {
-    const tipoDocumento = (normalizarTipoDocumento(
-      getStr(datos, "tipoDocumento", "tipo_documento"),
-    ) ?? "dni") as TipoDocumento;
-    const numeroDocumento = getStr(datos, "numeroDocumento", "numero_documento");
-    const nombres = getStr(datos, "nombres");
-    const apellidoPaterno = getStr(datos, "apellidoPaterno", "apellido_paterno");
-    const apellidoMaterno = getOptStr(datos, "apellidoMaterno", "apellido_materno");
-    const sexo: Sexo = normalizarSexo(getStr(datos, "sexo")) ?? "M";
-    const fechaNacimiento = getOptStr(datos, "fechaNacimiento", "fecha_nacimiento");
-    const celular = getOptStr(datos, "celular");
-    const correo = getOptStr(datos, "correo");
-    const direccion = getOptStr(datos, "direccion");
-    const distrito = getOptStr(datos, "distrito");
+    const basePersona = parsearPersonaDeFila(datos);
 
     const personaExistente = await this.personasRepository.findByDocumento(
-      tipoDocumento,
-      numeroDocumento,
+      basePersona.tipoDocumento,
+      basePersona.numeroDocumento,
     );
-
-    const basePersona: CreatePersonaDto = {
-      tipoDocumento,
-      numeroDocumento,
-      nombres,
-      apellidoPaterno,
-      apellidoMaterno,
-      sexo,
-      fechaNacimiento,
-      celular,
-      correo,
-      direccion,
-      distrito,
-    };
 
     return handler.procesar({
       datos,
