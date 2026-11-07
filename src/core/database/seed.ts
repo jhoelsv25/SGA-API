@@ -29,9 +29,21 @@ import {
   MENU_MIS_INDICADORES,
 } from "../../common/constants";
 
+// La conexión sale del entorno (.env), nunca del código: este usuario es el administrador de la base.
+try {
+  process.loadEnvFile();
+} catch {
+  // sin archivo .env: se usan las variables que ya tenga el entorno
+}
+const cadenaConexion = process.env.DATABASE_URL_DIRECT ?? process.env.DATABASE_URL;
+if (!cadenaConexion) {
+  throw new Error(
+    "Falta DATABASE_URL_DIRECT (o DATABASE_URL) en el entorno. Revise el archivo .env.",
+  );
+}
+
 const pool = new Pool({
-  connectionString:
-    "postgresql://postgres.pnevrdipvbewpswgxvyz:PrmYs7UfvYDsVEwV@aws-0-us-east-2.pooler.supabase.com:6543/postgres",
+  connectionString: cadenaConexion,
   ssl: { rejectUnauthorized: false },
 });
 
