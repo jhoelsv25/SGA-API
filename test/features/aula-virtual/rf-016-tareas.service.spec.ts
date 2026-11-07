@@ -147,16 +147,14 @@ describe("RF-016: Aula Virtual - Tareas, Entregas y Calificación", () => {
           retroalimentacion: motivo,
         } as unknown as EntregaFila),
       ),
-      listarEstudiantesDeSeccion: jest
-        .fn()
-        .mockResolvedValue([
-          {
-            matriculaId: "mat-1",
-            estudianteId: "est-1",
-            codigo: "EST001",
-            nombreCompleto: "Perez Juan",
-          },
-        ]),
+      listarEstudiantesDeSeccion: jest.fn().mockResolvedValue([
+        {
+          matriculaId: "mat-1",
+          estudianteId: "est-1",
+          codigo: "EST001",
+          nombreCompleto: "Perez Juan",
+        },
+      ]),
       obtenerPesosVariables: jest.fn().mockResolvedValue({
         examen: 35,
         cuestionario: 25,
@@ -447,7 +445,10 @@ describe("RF-016: Aula Virtual - Tareas, Entregas y Calificación", () => {
     });
 
     it("exporta el libro de notas en buffer Excel .xlsx (CP-RF016-27)", async () => {
-      const buffer = await service.exportarExcelLibroNotas(docente, "cs-mate", "per-2");
+      const buffer = await service.exportarExcelLibroNotas(docente, "cs-mate", "per-2", {
+        institucion: "Colegio",
+        generadoPor: "docente",
+      });
       expect(Buffer.isBuffer(buffer)).toBe(true);
       expect(buffer.length).toBeGreaterThan(100);
     });

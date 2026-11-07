@@ -30,6 +30,10 @@ Todo reporte Excel se genera **en el backend** con `exceljs`, usando el construc
 5. En el frontend: el botón «Exportar Excel» llama al endpoint con los filtros actuales y descarga el blob. No usar `useExportExcel` sobre filas cargadas.
 6. Pruebas: una prueba por reporte que verifique hojas, encabezados, fecha real, texto en documento y hoja «Información».
 
+## Reportes con varias hojas
+
+Usa `hojasExtra` (desglose, detalle crudo) para hojas adicionales con el mismo estilo; quedan entre «Reporte» e «Información». `datosInstitucion` suma datos (UGEL, DRE…) a «Información». Ejemplos: indicadores, libro de notas, consolidado docente, credenciales emitidas.
+
 ## No hacer
 
 - Títulos o logos arriba de la tabla en la hoja «Reporte».

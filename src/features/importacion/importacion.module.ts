@@ -1,3 +1,4 @@
+import { InstitucionModule } from "../institucion/institucion.module";
 import { Module } from "@nestjs/common";
 import { BullModule } from "@nestjs/bullmq";
 import { AuditService } from "../../common/services/audit.service";
@@ -24,6 +25,7 @@ import {
     DocentesModule,
     ApoderadosModule,
     QueuesModule,
+    InstitucionModule,
     BullModule.registerQueue({ name: QUEUES.IMPORTACION }),
   ],
   controllers: [ImportacionController],

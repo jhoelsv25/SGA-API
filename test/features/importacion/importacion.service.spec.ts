@@ -436,10 +436,11 @@ describe("ImportacionService", () => {
   });
 
   describe("generarReporteCredencialesExcel", () => {
+    const ctx = { institucion: "Colegio", generadoPor: "admin" };
     it("debe lanzar NotFoundException si el trabajo no existe", async () => {
       mockQueue.getJob.mockResolvedValueOnce(null);
 
-      await expect(service.generarReporteCredencialesExcel("job-inexistente")).rejects.toThrow(
+      await expect(service.generarReporteCredencialesExcel("job-inexistente", ctx)).rejects.toThrow(
         NotFoundException,
       );
     });
@@ -450,7 +451,7 @@ describe("ImportacionService", () => {
         getState: jest.fn().mockResolvedValue("active"),
       });
 
-      await expect(service.generarReporteCredencialesExcel("job-101")).rejects.toThrow(
+      await expect(service.generarReporteCredencialesExcel("job-101", ctx)).rejects.toThrow(
         BadRequestException,
       );
     });
@@ -477,7 +478,7 @@ describe("ImportacionService", () => {
         },
       });
 
-      const buffer = await service.generarReporteCredencialesExcel("job-101");
+      const buffer = await service.generarReporteCredencialesExcel("job-101", ctx);
       expect(Buffer.isBuffer(buffer)).toBe(true);
       expect(buffer.length).toBeGreaterThan(100);
     });

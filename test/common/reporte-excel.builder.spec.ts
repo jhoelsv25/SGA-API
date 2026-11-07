@@ -39,6 +39,32 @@ describe("reporte-excel.builder", () => {
     expect(textos).toContain("Búsqueda: Quispe");
   });
 
+  it("agrega hojas de detalle entre «Reporte» e «Información»", async () => {
+    const buffer = await generarReporteExcel({
+      titulo: "Indicadores",
+      modulo: "indicadores",
+      columnas: [{ header: "Indicador", key: "i", ancho: 20 }],
+      filas: [{ i: "CSP" }],
+      hojasExtra: [
+        {
+          nombre: "Desglose",
+          columnas: [{ header: "Valor", key: "v", ancho: 10, tipo: "numero" }],
+          filas: [{ v: 3 }],
+        },
+      ],
+      datosInstitucion: { UGEL: "UGEL 01" },
+      generadoPor: "admin",
+      institucion: "Colegio X",
+    });
+    const wb = new Workbook();
+    await wb.xlsx.load(buffer as unknown as ArrayBuffer);
+    expect(wb.worksheets.map((w) => w.name)).toEqual(["Reporte", "Desglose", "Información"]);
+    expect(wb.getWorksheet("Desglose")!.getCell("A2").value).toBe(3);
+    expect(wb.getWorksheet("Información")!.getSheetValues().flat().map(String)).toContain(
+      "UGEL 01",
+    );
+  });
+
   it("arma el nombre del archivo sga_<modulo>_<fecha>.xlsx", () => {
     expect(nombreArchivoReporte("Matrículas", new Date("2026-11-07T10:00:00Z"))).toBe(
       "sga_matriculas_2026-11-07.xlsx",

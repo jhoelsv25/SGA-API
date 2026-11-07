@@ -31,6 +31,7 @@ import {
 } from "./services";
 import {
   construirExcelCredenciales,
+  type ContextoReporteCredenciales,
   generarPlantillaExcel as construirPlantillaExcel,
   getOptStr,
   getStr,
@@ -387,7 +388,10 @@ export class ImportacionService {
     return construirPlantillaExcel(tipo);
   }
 
-  async generarReporteCredencialesExcel(jobId: string): Promise<Buffer> {
+  async generarReporteCredencialesExcel(
+    jobId: string,
+    contexto: ContextoReporteCredenciales,
+  ): Promise<Buffer> {
     const job = await this.importacionQueue.getJob(jobId);
     if (!job) {
       throw new NotFoundException(`Trabajo de importación con ID ${jobId} no encontrado.`);
@@ -403,6 +407,6 @@ export class ImportacionService {
     const returnvalue = job.returnvalue as EjecutarImportacionResponseDto | undefined;
     const credenciales = returnvalue?.credenciales || [];
 
-    return construirExcelCredenciales(credenciales);
+    return construirExcelCredenciales(credenciales, contexto);
   }
 }

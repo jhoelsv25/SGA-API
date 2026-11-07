@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { AuditService } from "../../common/services/audit.service";
+import { InstitucionService } from "../institucion/institucion.service";
 import { NotificacionesService } from "../notificaciones/notificaciones.service";
 import {
   MENSAJES_CONSOLIDADO,
@@ -35,6 +36,7 @@ export class ConsolidadoDocenteService {
     private readonly repository: ConsolidadoDocenteRepository,
     private readonly auditService: AuditService,
     private readonly notificacionesService: NotificacionesService,
+    private readonly institucionService: InstitucionService,
   ) {}
 
   private exigirDirectorOAdmin(actor: ActorConsolidado) {
@@ -498,7 +500,7 @@ export class ConsolidadoDocenteService {
     };
   }
 
-  async exportarExcel(periodoId: string, actor: ActorConsolidado) {
+  async exportarExcel(periodoId: string, actor: ActorConsolidado, generadoPor: string) {
     this.exigirAccesoGeneral(actor);
 
     const periodo = await this.repository.obtenerPeriodo(periodoId);
@@ -508,7 +510,11 @@ export class ConsolidadoDocenteService {
 
     const consolidados = await this.repository.obtenerConsolidadosVigentesPeriodo(periodoId);
 
-    return await generarExcelConsolidados(periodo.nombre, consolidados);
+    const institucion = await this.institucionService.get().catch(() => null);
+    return await generarExcelConsolidados(periodo.nombre, consolidados, {
+      institucion: institucion?.nombre ?? "SGA Colegio",
+      generadoPor,
+    });
   }
 
   async descargarFichaPdf(consolidadoId: string, actor: ActorConsolidado) {

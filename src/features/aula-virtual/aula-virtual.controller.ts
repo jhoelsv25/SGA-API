@@ -13,6 +13,8 @@ import {
   UploadedFile,
   UseInterceptors,
 } from "@nestjs/common";
+import { nombreArchivoReporte } from "../../common/excel/reporte-excel.builder";
+import { InstitucionService } from "../institucion/institucion.service";
 import { FileInterceptor } from "@nestjs/platform-express";
 import type { Response } from "express";
 import {
@@ -91,6 +93,7 @@ export class AulaVirtualController {
   constructor(
     private readonly service: AulaVirtualService,
     private readonly chatGateway: ChatAulaGateway,
+    private readonly institucionService: InstitucionService,
   ) {}
 
   @Get("mis-cursos")
@@ -436,15 +439,17 @@ export class AulaVirtualController {
     @CurrentUser() usuario: AuthenticatedUser,
     @Res({ passthrough: true }) res: Response,
   ): Promise<StreamableFile> {
+    const institucion = await this.institucionService.get().catch(() => null);
     const buffer = await this.service.exportarExcelLibroNotas(
       usuario,
       cursoSeccionId,
       query.periodoId,
+      { institucion: institucion?.nombre ?? "SGA Colegio", generadoPor: usuario.username },
     );
 
     res.set({
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename="libro_notas_${cursoSeccionId}.xlsx"`,
+      "Content-Disposition": `attachment; filename="${nombreArchivoReporte("libro-notas")}"`,
       "Content-Length": buffer.length,
     });
 

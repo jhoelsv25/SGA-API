@@ -105,6 +105,7 @@ import {
   formatearFecha,
   formatoPermitido,
   generarExcelLibroNotas,
+  type ContextoLibroNotas,
   porcentajeATiempo,
   puedenRevelarseRespuestas,
   validarAnioParaInteraccion,
@@ -1916,25 +1917,29 @@ export class AulaVirtualService implements OnModuleInit {
   async exportarExcelLibroNotas(
     usuario: AuthenticatedUser,
     cursoSeccionId: string,
-    periodoId?: string,
+    periodoId: string | undefined,
+    contexto: ContextoLibroNotas,
   ): Promise<Buffer> {
     const libro = await this.obtenerLibroNotas(usuario, cursoSeccionId, periodoId);
-    return generarExcelLibroNotas({
-      cursoNombre: libro.cursoNombre,
-      seccionNombre: libro.seccionNombre,
-      periodoNombre: libro.periodoNombre,
-      tareas: libro.tareas,
-      estudiantes: libro.estudiantes.map((e) => ({
-        codigo: e.codigo,
-        nombreCompleto: e.estudianteNombre,
-        notasPorTarea: Object.fromEntries(
-          Object.entries(e.notasPorTarea).map(([tId, info]) => [tId, info.nota]),
-        ),
-        promediosPorTipo: e.promediosPorTipo,
-        notaFinal: e.notaFinal,
-        notaLiteral: e.notaLiteral,
-      })),
-    });
+    return generarExcelLibroNotas(
+      {
+        cursoNombre: libro.cursoNombre,
+        seccionNombre: libro.seccionNombre,
+        periodoNombre: libro.periodoNombre,
+        tareas: libro.tareas,
+        estudiantes: libro.estudiantes.map((e) => ({
+          codigo: e.codigo,
+          nombreCompleto: e.estudianteNombre,
+          notasPorTarea: Object.fromEntries(
+            Object.entries(e.notasPorTarea).map(([tId, info]) => [tId, info.nota]),
+          ),
+          promediosPorTipo: e.promediosPorTipo,
+          notaFinal: e.notaFinal,
+          notaLiteral: e.notaLiteral,
+        })),
+      },
+      contexto,
+    );
   }
 
   async obtenerNotasEstudiante(

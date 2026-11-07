@@ -11,6 +11,7 @@ import {
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from "@nestjs/swagger";
 import type { Response } from "express";
+import { nombreArchivoReporte } from "../../common/excel/reporte-excel.builder";
 import { ClientInfo, type ClientInfoData, CurrentUser, Roles } from "../../common/decorators";
 import type { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface";
 import { TIPO_IMPORTACION, type TipoImportacion } from "./constants";
@@ -21,13 +22,17 @@ import {
   PrevisualizarImportacionDto,
   VistaPreviaResponseDto,
 } from "./dto";
+import { InstitucionService } from "../institucion/institucion.service";
 import { ImportacionService } from "./importacion.service";
 
 @ApiTags("Comunidad - Importación Masiva")
 @ApiBearerAuth()
 @Controller("importacion")
 export class ImportacionController {
-  constructor(private readonly importacionService: ImportacionService) {}
+  constructor(
+    private readonly importacionService: ImportacionService,
+    private readonly institucionService: InstitucionService,
+  ) {}
 
   @Get("plantilla/:tipo")
   @Roles("Administrador", "Secretaria")
@@ -107,16 +112,23 @@ export class ImportacionController {
       "Genera y envía el buffer binario del archivo Excel con los usuarios, contraseñas temporales y PINs almacenados en Redis.",
   })
   @ApiParam({ name: "id", description: "ID del trabajo en BullMQ" })
-  async descargarCredencialesExcel(@Param("id") id: string, @Res() res: Response): Promise<void> {
-    const buffer = await this.importacionService.generarReporteCredencialesExcel(id);
-    const fecha = new Date().toISOString().split("T")[0];
+  async descargarCredencialesExcel(
+    @Param("id") id: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Res() res: Response,
+  ): Promise<void> {
+    const institucion = await this.institucionService.get().catch(() => null);
+    const buffer = await this.importacionService.generarReporteCredencialesExcel(id, {
+      institucion: institucion?.nombre ?? "SGA Colegio",
+      generadoPor: user.username,
+    });
     res.setHeader(
       "Content-Type",
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     );
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename=Reporte_Credenciales_${id}_${fecha}.xlsx`,
+      `attachment; filename="${nombreArchivoReporte("credenciales")}"`,
     );
     res.send(buffer);
   }

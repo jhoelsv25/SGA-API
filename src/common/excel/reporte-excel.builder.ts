@@ -1,4 +1,4 @@
-import { Workbook } from "exceljs";
+import { Workbook, type Worksheet } from "exceljs";
 
 const COLOR_OBLIGATORIO = "FF1E293B";
 const COLOR_OPCIONAL = "FF64748B";
@@ -16,6 +16,12 @@ export interface ColumnaReporte {
 
 export type ValorCelda = string | number | Date | null | undefined;
 
+export interface HojaReporteExtra {
+  nombre: string;
+  columnas: ColumnaReporte[];
+  filas: Record<string, ValorCelda>[];
+}
+
 export interface OpcionesReporteExcel {
   /** Título visible en la hoja «Información». */
   titulo: string;
@@ -28,6 +34,10 @@ export interface OpcionesReporteExcel {
   generadoPor: string;
   institucion: string;
   anioAcademico?: string;
+  /** Hojas de detalle adicionales (mismo estilo), entre «Reporte» e «Información». */
+  hojasExtra?: HojaReporteExtra[];
+  /** Datos adicionales de la institución para la hoja «Información» (UGEL, DRE, etc.). */
+  datosInstitucion?: Record<string, string | null | undefined>;
 }
 
 function sinTildes(texto: string): string {
@@ -43,30 +53,22 @@ export function nombreArchivoReporte(modulo: string, fecha: Date = new Date()): 
   return `sga_${slug}_${fecha.toISOString().slice(0, 10)}.xlsx`;
 }
 
-/** Construye el Excel estándar: hoja «Reporte» (tabla desde la fila 1) + hoja «Información». */
-export async function generarReporteExcel(opciones: OpcionesReporteExcel): Promise<Buffer> {
-  const { columnas, filas } = opciones;
-  const ahora = new Date();
-
-  const workbook = new Workbook();
-  workbook.creator = "SGA Colegio";
-  workbook.created = ahora;
-
-  const reporte = workbook.addWorksheet("Reporte");
-  const info = workbook.addWorksheet("Información");
-
-  reporte.columns = columnas.map((c) => ({
+function escribirTabla(
+  hoja: Worksheet,
+  columnas: ColumnaReporte[],
+  filas: Record<string, ValorCelda>[],
+): void {
+  hoja.columns = columnas.map((c) => ({
     header: c.header,
     key: c.key,
     width: Math.max(c.ancho, c.header.length + 4),
   }));
   columnas.forEach((c, i) => {
     const tipo = c.tipo ?? "texto";
-    reporte.getColumn(i + 1).numFmt =
-      tipo === "fecha" ? "dd/mm/yyyy" : tipo === "numero" ? "0" : "@";
+    hoja.getColumn(i + 1).numFmt = tipo === "fecha" ? "dd/mm/yyyy" : tipo === "numero" ? "0" : "@";
   });
 
-  const encabezado = reporte.getRow(1);
+  const encabezado = hoja.getRow(1);
   encabezado.font = { bold: true, color: { argb: "FFFFFFFF" } };
   encabezado.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
   encabezado.height = 30;
@@ -88,14 +90,31 @@ export async function generarReporteExcel(opciones: OpcionesReporteExcel): Promi
       }
       return v;
     });
-    reporte.addRow(valores);
+    hoja.addRow(valores);
   }
 
-  reporte.views = [{ state: "frozen", ySplit: 1 }];
-  reporte.autoFilter = {
+  hoja.views = [{ state: "frozen", ySplit: 1 }];
+  hoja.autoFilter = {
     from: { row: 1, column: 1 },
     to: { row: 1, column: Math.max(columnas.length, 1) },
   };
+}
+
+/** Construye el Excel estándar: hoja «Reporte» (tabla desde la fila 1) + hoja «Información». */
+export async function generarReporteExcel(opciones: OpcionesReporteExcel): Promise<Buffer> {
+  const { columnas, filas } = opciones;
+  const ahora = new Date();
+
+  const workbook = new Workbook();
+  workbook.creator = "SGA Colegio";
+  workbook.created = ahora;
+
+  const reporte = workbook.addWorksheet("Reporte");
+  escribirTabla(reporte, columnas, filas);
+  for (const extra of opciones.hojasExtra ?? []) {
+    escribirTabla(workbook.addWorksheet(extra.nombre), extra.columnas, extra.filas);
+  }
+  const info = workbook.addWorksheet("Información");
 
   info.columns = [
     { key: "campo", width: 24 },
@@ -112,6 +131,9 @@ export async function generarReporteExcel(opciones: OpcionesReporteExcel): Promi
       "Filtros aplicados",
       filtros.length ? filtros.map(([k, v]) => `${k}: ${v}`).join("; ") : "Sin filtros",
     ],
+    ...Object.entries(opciones.datosInstitucion ?? {})
+      .filter(([, v]) => v)
+      .map(([k, v]) => [k, String(v)] as [string, string]),
     ["Generado por", opciones.generadoPor],
     ["Fecha y hora", ahora.toLocaleString("es-PE", { timeZone: "America/Lima" })],
     ["Total de filas", filas.length],

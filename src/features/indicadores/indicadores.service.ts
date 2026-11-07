@@ -139,9 +139,10 @@ export class IndicadoresService {
   async exportarExcel(
     query: ExportarIndicadoresQueryDto,
     actorId: string,
+    actorNombre: string,
     ip?: string,
   ): Promise<{ buffer: Buffer; nombreArchivo: string }> {
-    return this.exportacionService.exportarExcel(query, actorId, ip);
+    return this.exportacionService.exportarExcel(query, actorId, actorNombre, ip);
   }
 
   /**

@@ -1,4 +1,5 @@
 import { Workbook } from "exceljs";
+import { generarReporteExcel } from "../../../common/excel/reporte-excel.builder";
 import {
   IMPORTACION_MAX_FILAS,
   LISTAS_PLANTILLA,
@@ -156,54 +157,40 @@ export async function generarPlantillaExcel(tipo: TipoImportacion): Promise<Buff
   return Buffer.from(buffer);
 }
 
+export interface ContextoReporteCredenciales {
+  institucion: string;
+  generadoPor: string;
+}
+
 /**
- * Genera el Buffer de un archivo Excel institucional con las credenciales y PINs generados.
+ * Reporte Excel estándar (skill `estandar-reportes-excel`) de las credenciales y PINs generados.
+ * Contiene datos sensibles: solo se entrega a quien ejecutó la importación.
  */
 export async function construirExcelCredenciales(
   credenciales: CredencialEmitidaDto[],
+  contexto: ContextoReporteCredenciales,
 ): Promise<Buffer> {
-  const workbook = new Workbook();
-  workbook.creator = "SGA Colegio";
-  workbook.created = new Date();
-
-  const sheet = workbook.addWorksheet("Credenciales Emitidas");
-
-  sheet.columns = [
-    { header: "Apellidos y Nombres", key: "nombreCompleto", width: 34 },
-    { header: "N° Documento", key: "numeroDocumento", width: 16 },
-    { header: "Rol", key: "tipoRol", width: 16 },
-    { header: "Usuario de Acceso", key: "nombreUsuario", width: 22 },
-    { header: "Contraseña Temporal", key: "tempPassword", width: 22 },
-    { header: "Código Credencial", key: "codigoCredencial", width: 22 },
-    { header: "PIN de Marcación", key: "pin", width: 16 },
-  ];
-
-  const headerRow = sheet.getRow(1);
-  headerRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
-  headerRow.fill = {
-    type: "pattern",
-    pattern: "solid",
-    fgColor: { argb: "FF0F172A" },
-  };
-  headerRow.alignment = { vertical: "middle", horizontal: "center" };
-  headerRow.height = 28;
-
-  for (const c of credenciales) {
-    const row = sheet.addRow({
+  return generarReporteExcel({
+    titulo: "Credenciales emitidas",
+    modulo: "credenciales",
+    columnas: [
+      { header: "Apellidos y nombres", key: "nombreCompleto", ancho: 34, requerido: true },
+      { header: "Número de documento", key: "numeroDocumento", ancho: 20 },
+      { header: "Rol", key: "tipoRol", ancho: 16 },
+      { header: "Usuario de acceso", key: "nombreUsuario", ancho: 22 },
+      { header: "Contraseña temporal", key: "tempPassword", ancho: 22 },
+      { header: "Código de credencial", key: "codigoCredencial", ancho: 22 },
+      { header: "PIN de marcación", key: "pin", ancho: 16 },
+    ],
+    filas: credenciales.map((c) => ({
       nombreCompleto: c.nombreCompleto,
       numeroDocumento: c.numeroDocumento,
       tipoRol: c.tipoRol,
-      nombreUsuario: c.nombreUsuario || "—",
-      tempPassword: c.tempPassword || "—",
-      codigoCredencial: c.codigoCredencial || "—",
-      pin: c.pin || "—",
-    });
-    row.alignment = { vertical: "middle" };
-    row.getCell("numeroDocumento").alignment = { horizontal: "center", vertical: "middle" };
-    row.getCell("tipoRol").alignment = { horizontal: "center", vertical: "middle" };
-    row.getCell("pin").alignment = { horizontal: "center", vertical: "middle" };
-  }
-
-  const buffer = await workbook.xlsx.writeBuffer();
-  return Buffer.from(buffer);
+      nombreUsuario: c.nombreUsuario,
+      tempPassword: c.tempPassword,
+      codigoCredencial: c.codigoCredencial,
+      pin: c.pin,
+    })),
+    ...contexto,
+  });
 }
