@@ -27,7 +27,15 @@ export class DocentesImportService implements IEntidadImportHandler {
 
   async analizar(ctx: AnalizarFilaContext): Promise<FilaPrevisualizadaDto> {
     const { numeroFila, datos, personaExistente, codigosEnLote } = ctx;
-    const codigoDocente = getStr(datos, "codigoDocente", "codigo_docente", "codigo");
+    const codigoDocente = getStr(
+      datos,
+      "codigoDocente",
+      "codigo_docente",
+      "codigo",
+      "codDocente",
+      "cod_docente",
+      "cod",
+    );
 
     if (!codigoDocente) {
       return {
@@ -91,7 +99,15 @@ export class DocentesImportService implements IEntidadImportHandler {
 
   async procesar(ctx: ProcesarFilaContext): Promise<ProcesarFilaResult | null> {
     const { datos, basePersona, personaExistente, actorId, ip } = ctx;
-    const codigoDocente = getStr(datos, "codigoDocente", "codigo_docente", "codigo");
+    const codigoDocente = getStr(
+      datos,
+      "codigoDocente",
+      "codigo_docente",
+      "codigo",
+      "codDocente",
+      "cod_docente",
+      "cod",
+    );
     const especialidad = getOptStr(datos, "especialidad") || "Educación Secundaria";
     const tipoContrato = parsearTipoContratoDocente(datos);
     const jornadaHoras = parsearJornadaHorasDocente(datos);
