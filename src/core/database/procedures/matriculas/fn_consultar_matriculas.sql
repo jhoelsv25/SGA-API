@@ -166,17 +166,15 @@ BEGIN
                 )
             ) FILTER (WHERE f.rn <= v_limit),
             '[]'::jsonb
-        )
-    INTO v_has_more, v_items
+        ),
+        MAX(CASE WHEN f.rn = v_limit THEN f.creado_en::text END),
+        MAX(CASE WHEN f.rn = v_limit THEN f.id::text END)::uuid
+    INTO v_has_more, v_items, v_next_creado_en, v_next_id
     FROM con_numero f;
 
-    IF v_has_more THEN
-        SELECT 
-            creado_en::TEXT,
-            id
-        INTO v_next_creado_en, v_next_id
-        FROM con_numero
-        WHERE rn = v_limit;
+    IF NOT v_has_more THEN
+        v_next_creado_en := NULL;
+        v_next_id        := NULL;
     END IF;
 
     RETURN jsonb_build_object(

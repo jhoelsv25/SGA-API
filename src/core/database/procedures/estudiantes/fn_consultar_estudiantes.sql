@@ -218,19 +218,19 @@ BEGIN
                 )
             ) FILTER (WHERE f.rn <= v_limit),
             '[]'::jsonb
-        )
-    INTO v_has_more, v_items
+        ),
+        MAX(CASE WHEN f.rn = v_limit THEN f.apellido_paterno END),
+        MAX(CASE WHEN f.rn = v_limit THEN COALESCE(f.apellido_materno, '') END),
+        MAX(CASE WHEN f.rn = v_limit THEN f.nombres END),
+        MAX(CASE WHEN f.rn = v_limit THEN f.id::text END)::uuid
+    INTO v_has_more, v_items, v_next_paterno, v_next_materno, v_next_nombres, v_next_id
     FROM con_numero f;
 
-    IF v_has_more THEN
-        SELECT 
-            apellido_paterno,
-            COALESCE(apellido_materno, ''),
-            nombres,
-            id
-        INTO v_next_paterno, v_next_materno, v_next_nombres, v_next_id
-        FROM con_numero
-        WHERE rn = v_limit;
+    IF NOT v_has_more THEN
+        v_next_paterno := NULL;
+        v_next_materno := NULL;
+        v_next_nombres := NULL;
+        v_next_id      := NULL;
     END IF;
 
     RETURN jsonb_build_object(
