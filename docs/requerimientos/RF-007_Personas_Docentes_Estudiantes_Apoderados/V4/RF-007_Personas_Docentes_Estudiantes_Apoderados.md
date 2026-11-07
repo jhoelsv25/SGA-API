@@ -15,6 +15,7 @@
 > - **Reactivación:** una ficha dada de baja puede reactivarse si la persona no tiene la otra ficha vigente.
 > - **Padrón:** las fichas dadas de baja se muestran distintas (p. ej. "Docente (baja)") y la acción "Dar de baja ficha" está disponible desde la fila de la persona.
 > - Historia de Usuario nueva: **HU7 Cambio de condición docente ↔ estudiante**.
+> - **Plantillas Excel estándar:** hojas Datos, Instrucciones y Listas, listas desplegables, los mismos datos de la persona en las 4 plantillas y validación estricta (sin correcciones en silencio).
 
 > **Cambios de la versión 3.0 sobre la 2.0 (acuerdos con el colegio, 2026-10-08):**
 >
@@ -294,6 +295,20 @@
 **Dado** que estoy en "Importar estudiantes"
 **Cuando** subo una plantilla con 650 filas
 **Entonces** el sistema rechaza el archivo y muestra "El archivo supera las 500 filas. Divídalo en varios archivos."
+
+### Escenario: Plantilla estándar con listas y datos completos (v4.0)
+
+**Dado** que estoy en "Importar" de Personas, Estudiantes, Docentes o Apoderados
+**Cuando** descargo y abro la plantilla
+**Entonces** veo las hojas «Datos», «Instrucciones» y «Listas»
+**Y** las columnas obligatorias llevan `*`, tipo de documento, sexo, contrato, jornada, parentesco y SI/NO se eligen de una lista desplegable, y las fechas tienen formato de fecha
+**Y** todas las plantillas traen los mismos datos de la persona (documento, apellidos, nombres, sexo, nacimiento, celular, correo, dirección y distrito) más los datos propios de la ficha (estudiante: lengua materna, religión y discapacidad; docente: especialidad y título profesional).
+
+### Escenario: Fila con un valor fuera de lo permitido (v4.0)
+
+**Dado** que subo un archivo con una fila sin sexo, con un tipo de contrato inválido o sin fecha de ingreso
+**Cuando** el sistema arma la vista previa
+**Entonces** marca esa fila con error y el motivo, y no la corrige por su cuenta ni la importa.
 
 ## Historia de Usuario 4: Apoderados y vínculo familiar
 
