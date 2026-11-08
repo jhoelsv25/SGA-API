@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, isNull, or, sql } from "drizzle-orm";
 import { Database, DRIZZLE } from "../../../core/database";
 import {
   credenciales,
@@ -22,8 +22,14 @@ export interface MarcacionCruda {
 export class MarcacionesBiometricasRepository {
   constructor(@Inject(DRIZZLE) private readonly db: Database) {}
 
-  /** Las más antiguas primero, para que entrada y salida se asignen en orden. */
-  async pendientes(limite: number): Promise<MarcacionCruda[]> {
+  /**
+   * Las más antiguas primero, para que entrada y salida se asignen en orden. Con `despuesDe` sigue desde la última
+   * fila ya revisada: así las que quedan pendientes (por ejemplo, sin turno) no tapan a las siguientes.
+   */
+  async pendientes(
+    limite: number,
+    despuesDe?: Pick<MarcacionCruda, "fechaHora" | "id">,
+  ): Promise<MarcacionCruda[]> {
     return this.db
       .select({
         id: marcacionesBiometricas.id,
@@ -33,7 +39,20 @@ export class MarcacionesBiometricasRepository {
         tipoReloj: marcacionesBiometricas.tipoReloj,
       })
       .from(marcacionesBiometricas)
-      .where(eq(marcacionesBiometricas.estado, "pendiente"))
+      .where(
+        and(
+          eq(marcacionesBiometricas.estado, "pendiente"),
+          despuesDe
+            ? or(
+                gt(marcacionesBiometricas.fechaHora, despuesDe.fechaHora),
+                and(
+                  eq(marcacionesBiometricas.fechaHora, despuesDe.fechaHora),
+                  gt(marcacionesBiometricas.id, despuesDe.id),
+                ),
+              )
+            : undefined,
+        ),
+      )
       .orderBy(asc(marcacionesBiometricas.fechaHora), asc(marcacionesBiometricas.id))
       .limit(limite);
   }

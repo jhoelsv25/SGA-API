@@ -22,10 +22,21 @@ export const MOTIVOS_RECHAZO_BIOMETRICO = {
 /** Una marca que no se puede convertir en asistencia: queda rechazada con su motivo, sin detener el lote. */
 export class RechazoBiometrico extends Error {}
 
+/**
+ * Una marca válida que aún no se puede convertir por un problema de configuración (por ejemplo, falta el turno):
+ * queda pendiente para reintentarla, sin detener el lote.
+ */
+export class EsperaBiometrico extends Error {}
+
 export interface ResumenProcesamiento {
   procesadas: number;
   rechazadas: number;
+  /** Quedaron pendientes por configuración, o porque una marca anterior de la misma persona sigue en espera. */
+  enEspera: number;
 }
+
+/** Páginas que se revisan por corrida; el resto queda para la siguiente. */
+const MAX_PAGINAS = 10;
 
 /**
  * Convierte las marcaciones crudas del reloj (que inserta SGA-NET) en `marcaciones`: identifica a la persona y
@@ -36,6 +47,7 @@ export interface ResumenProcesamiento {
 @Injectable()
 export class MarcacionesBiometricasService {
   private readonly logger = new Logger(MarcacionesBiometricasService.name);
+  private avisados = new Set<string>();
 
   constructor(
     private readonly crudas: MarcacionesBiometricasRepository,
@@ -45,23 +57,49 @@ export class MarcacionesBiometricasService {
   ) {}
 
   async procesarPendientes(limite = 200): Promise<ResumenProcesamiento> {
-    const resumen: ResumenProcesamiento = { procesadas: 0, rechazadas: 0 };
-    for (const cruda of await this.crudas.pendientes(limite)) {
-      try {
-        const marcacionId = await this.convertir(cruda);
-        await this.crudas.marcarProcesada(cruda.id, marcacionId);
-        resumen.procesadas++;
-      } catch (error) {
-        if (!(error instanceof RechazoBiometrico)) throw error; // falla de infraestructura: queda pendiente
-        await this.crudas.marcarRechazada(cruda.id, error.message);
-        resumen.rechazadas++;
+    const resumen: ResumenProcesamiento = { procesadas: 0, rechazadas: 0, enEspera: 0 };
+    // Códigos con una marca en espera: sus marcas siguientes también esperan, para no invertir entrada y salida.
+    const enEspera = new Map<string, string>();
+    let despuesDe: MarcacionCruda | undefined;
+    for (let pagina = 0; pagina < MAX_PAGINAS; pagina++) {
+      const lote = await this.crudas.pendientes(limite, despuesDe);
+      for (const cruda of lote) {
+        const codigo = cruda.codigoUsuario.trim();
+        if (enEspera.has(codigo)) {
+          resumen.enEspera++;
+          continue;
+        }
+        try {
+          const marcacionId = await this.convertir(cruda);
+          await this.crudas.marcarProcesada(cruda.id, marcacionId);
+          resumen.procesadas++;
+        } catch (error) {
+          if (error instanceof EsperaBiometrico) {
+            enEspera.set(codigo, error.message);
+            resumen.enEspera++;
+          } else if (error instanceof RechazoBiometrico) {
+            await this.crudas.marcarRechazada(cruda.id, error.message);
+            resumen.rechazadas++;
+          } else {
+            throw error; // falla de infraestructura: queda pendiente y se corta el lote
+          }
+        }
       }
+      if (lote.length < limite) break;
+      despuesDe = lote[lote.length - 1];
     }
     if (resumen.procesadas + resumen.rechazadas > 0) {
       this.logger.log(
         `Marcaciones del reloj: ${resumen.procesadas} procesadas, ${resumen.rechazadas} rechazadas.`,
       );
     }
+    // Se avisa una vez por código (la corrida se repite cada pocos segundos) y de nuevo si vuelve a quedar en espera.
+    for (const [codigo, motivo] of enEspera) {
+      if (!this.avisados.has(codigo)) {
+        this.logger.warn(`Marcaciones del reloj del código ${codigo} en espera: ${motivo}`);
+      }
+    }
+    this.avisados = new Set(enEspera.keys());
     return resumen;
   }
 
@@ -98,7 +136,7 @@ export class MarcacionesBiometricasService {
         );
       case "sin_turno":
         // Falla de configuración, no de la marca: queda pendiente hasta que exista el turno.
-        throw new Error(MENSAJES_MARCACION.SIN_TURNO);
+        throw new EsperaBiometrico(MENSAJES_MARCACION.SIN_TURNO);
     }
   }
 
