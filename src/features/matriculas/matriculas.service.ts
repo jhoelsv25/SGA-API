@@ -15,6 +15,7 @@ import {
   MatriculaCreatedResponseDto,
   MatriculaMasivaDto,
   MatriculaMasivaResultadoDto,
+  MatricularLoteDto,
   MatriculaQueryDto,
   MatriculaResponseDto,
   PaginatedMatriculasResponseDto,
@@ -164,6 +165,14 @@ export class MatriculasService {
     ip?: string,
   ): Promise<MatriculaMasivaResultadoDto> {
     return this.matriculaMasivaService.matricularMasivamente(dto, actorId, ip);
+  }
+
+  async matricularLote(
+    dto: MatricularLoteDto,
+    actorId: string,
+    ip?: string,
+  ): Promise<MatriculaMasivaResultadoDto> {
+    return this.matriculaMasivaService.matricularLoteEstudiantes(dto, actorId, ip);
   }
 
   // ── Delegación a MatriculaOperacionesService (HU3) ──
