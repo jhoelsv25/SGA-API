@@ -3,7 +3,13 @@ import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagg
 import { ClientInfo, type ClientInfoData, CurrentUser, Roles } from "../../common/decorators";
 import type { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface";
 import { BiometricoService } from "./biometrico.service";
-import { AsignarCodigoBiometricoDto, CodigoBiometricoResponseDto } from "./dto";
+import {
+  AsignarCodigoBiometricoDto,
+  CodigoBiometricoResponseDto,
+  GuardarProgramacionDto,
+  ProgramacionResponseDto,
+  SincronizacionRelojResponseDto,
+} from "./dto";
 
 const ROLES_BIOMETRICO = ["Administrador", "Soporte TI", "Secretaria"] as const;
 
@@ -48,5 +54,36 @@ export class BiometricoController {
     @ClientInfo() clientInfo: ClientInfoData,
   ): Promise<CodigoBiometricoResponseDto> {
     return this.service.quitarCodigo(personaId, usuario.id, clientInfo.ip);
+  }
+
+  @Get("programacion")
+  @ApiBearerAuth()
+  @Roles("Administrador", "Soporte TI")
+  @ApiOperation({ summary: "Horas en que el programa del reloj debe sincronizar" })
+  @ApiResponse({ status: 200, type: ProgramacionResponseDto })
+  async obtenerProgramacion(): Promise<ProgramacionResponseDto> {
+    return this.service.obtenerProgramacion();
+  }
+
+  @Put("programacion")
+  @ApiBearerAuth()
+  @Roles("Administrador")
+  @ApiOperation({ summary: "Guardar las horas de sincronización (reemplaza la lista completa)" })
+  @ApiResponse({ status: 200, type: ProgramacionResponseDto })
+  async guardarProgramacion(
+    @Body() dto: GuardarProgramacionDto,
+    @CurrentUser() usuario: AuthenticatedUser,
+    @ClientInfo() clientInfo: ClientInfoData,
+  ): Promise<ProgramacionResponseDto> {
+    return this.service.guardarProgramacion(dto, usuario.id, clientInfo.ip);
+  }
+
+  @Get("sincronizaciones")
+  @ApiBearerAuth()
+  @Roles("Administrador", "Soporte TI")
+  @ApiOperation({ summary: "Última sincronización de cada reloj" })
+  @ApiResponse({ status: 200, type: [SincronizacionRelojResponseDto] })
+  async listarSincronizaciones(): Promise<SincronizacionRelojResponseDto[]> {
+    return this.service.listarSincronizaciones();
   }
 }

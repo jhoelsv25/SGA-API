@@ -9,4 +9,11 @@ export const MENSAJES_BIOMETRICO = {
   CODIGO_REPETIDO: "Ese código biométrico ya pertenece a otra persona.",
   CODIGO_INVALIDO: "El código biométrico solo admite letras y números (máximo 20).",
   PERSONA_NO_ENCONTRADA: "La persona no existe.",
+  HORA_INVALIDA: "La hora debe tener el formato HH:mm (por ejemplo 07:30).",
+  DIAS_INVALIDOS: "Los días van de 1 (lunes) a 7 (domingo), separados por comas.",
+  HORA_REPETIDA: (hora: string): string => `La hora ${hora} está repetida.`,
+  PROGRAMACION_GUARDADA:
+    "Programación guardada. En el equipo del reloj, pulse «Crear y sincronizar tareas programadas».",
 } as const;
+
+export const MAX_HORAS_PROGRAMACION = 24;

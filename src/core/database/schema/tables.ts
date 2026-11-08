@@ -1333,6 +1333,28 @@ export const sincronizacionesBiometrico = pgTable("sincronizaciones_biometrico",
   equipo: varchar({ length: 100 }),
 });
 
+// Horas en que el programa del reloj (SGA-NET-BIOMETRICO) debe sincronizar. Una fila = una tarea programada de Windows.
+// La web las edita (solo Administrador); el programa las lee con su rol de base de datos y crea las tareas cuando alguien lo pide.
+export const biometricoProgramacion = pgTable(
+  "biometrico_programacion",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    hora: time({ precision: 0 }).notNull(),
+    dias: varchar({ length: 20 }).default("1,2,3,4,5").notNull(),
+    activa: boolean().default(true).notNull(),
+    creadoEn: timestamp("creado_en", { precision: 0, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    actualizadoEn: timestamp("actualizado_en", { precision: 0, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    unique("uq_biometrico_programacion_hora").on(table.hora),
+    check("ck_biometrico_programacion_dias", sql`dias ~ '^[1-7](,[1-7])*$'`),
+  ],
+);
+
 // Dispositivos desde los que un usuario inicia sesión en SGA-NET. SGA-WEB/SGA-API los autoriza; SGA-NET solo lee.
 export const equiposAcceso = pgTable(
   "equipos_acceso",

@@ -1,8 +1,19 @@
-import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 import { AuditService } from "../../common/services/audit.service";
 import { esViolacionUnica } from "../marcaciones/utils";
 import { MENSAJES_BIOMETRICO } from "./constants";
-import type { AsignarCodigoBiometricoDto, CodigoBiometricoResponseDto } from "./dto";
+import type {
+  AsignarCodigoBiometricoDto,
+  CodigoBiometricoResponseDto,
+  GuardarProgramacionDto,
+  ProgramacionResponseDto,
+  SincronizacionRelojResponseDto,
+} from "./dto";
 import { BiometricoRepository } from "./repositories";
 
 /** Código con el que el reloj identifica a cada persona. Las marcaciones llegan directo a la base (SGA-NET). */
@@ -87,5 +98,50 @@ export class BiometricoService {
       codigoBiometrico: null,
       mensaje: MENSAJES_BIOMETRICO.CODIGO_QUITADO(persona.nombreCompleto),
     };
+  }
+
+  async obtenerProgramacion(): Promise<ProgramacionResponseDto> {
+    const { horarios, actualizadoEn } = await this.repository.listarProgramacion();
+    return { horarios, actualizadoEn, mensaje: "" };
+  }
+
+  /** Reemplaza la lista de horas. Las tareas de Windows se crean después, desde el programa del reloj. */
+  async guardarProgramacion(
+    dto: GuardarProgramacionDto,
+    actorId: string,
+    ip?: string,
+  ): Promise<ProgramacionResponseDto> {
+    const vistas = new Set<string>();
+    for (const h of dto.horarios) {
+      if (vistas.has(h.hora))
+        throw new BadRequestException(MENSAJES_BIOMETRICO.HORA_REPETIDA(h.hora));
+      vistas.add(h.hora);
+    }
+    const dias = (d: string): string => [...new Set(d.split(","))].sort().join(",");
+    const nuevos = dto.horarios
+      .map((h) => ({ hora: h.hora, dias: dias(h.dias), activa: h.activa }))
+      .sort((a, b) => a.hora.localeCompare(b.hora));
+
+    const anterior = await this.repository.listarProgramacion();
+    await this.repository.reemplazarProgramacion(nuevos);
+    await this.auditService.log({
+      usuarioId: actorId,
+      accion: "actualizar",
+      tabla: "biometrico_programacion",
+      registroId: "programacion",
+      valorAnterior: { horarios: anterior.horarios },
+      valorNuevo: { horarios: nuevos },
+      direccionIp: ip,
+    });
+    const actual = await this.repository.listarProgramacion();
+    return {
+      horarios: actual.horarios,
+      actualizadoEn: actual.actualizadoEn,
+      mensaje: MENSAJES_BIOMETRICO.PROGRAMACION_GUARDADA,
+    };
+  }
+
+  async listarSincronizaciones(): Promise<SincronizacionRelojResponseDto[]> {
+    return this.repository.listarSincronizaciones();
   }
 }
