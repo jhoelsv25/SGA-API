@@ -1318,6 +1318,21 @@ export const marcacionesBiometricas = pgTable(
   ],
 );
 
+// Punto de sincronización del programa del reloj (SGA-NET-BIOMETRICO): una fila por reloj con la última marca entregada.
+// El programa la lee al iniciar para seguir desde ahí (aunque pierda su configuración local) y la actualiza tras cada ciclo.
+export const sincronizacionesBiometrico = pgTable("sincronizaciones_biometrico", {
+  relojSerie: varchar("reloj_serie", { length: 100 }).primaryKey().notNull(),
+  ultimaMarca: timestamp("ultima_marca", { precision: 0, mode: "string" }).notNull(),
+  ultimaSincronizacion: timestamp("ultima_sincronizacion", {
+    withTimezone: true,
+    precision: 6,
+    mode: "string",
+  })
+    .default(sql`now()`)
+    .notNull(),
+  equipo: varchar({ length: 100 }),
+});
+
 // Dispositivos desde los que un usuario inicia sesión en SGA-NET. SGA-WEB/SGA-API los autoriza; SGA-NET solo lee.
 export const equiposAcceso = pgTable(
   "equipos_acceso",
