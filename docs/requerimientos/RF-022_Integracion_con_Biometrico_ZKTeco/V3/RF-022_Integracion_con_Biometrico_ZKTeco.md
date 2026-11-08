@@ -11,7 +11,7 @@
 > **Cambios de la versión 3.0 sobre la 2.0 (2026-11-07):**
 >
 > - **Programa de escritorio en lugar de la app puente por HTTP.** Un programa de escritorio de Windows (**SGA Biométrico**, proyecto aparte `SGA-NET-BIOMETRICO`) lee el reloj por la red local y **guarda cada marcación cruda directamente en la base de datos** (`marcaciones_biometricas`). Ya no hay envío por API, latido ni órdenes al reloj desde el sistema.
-> - **El SGA convierte las marcas crudas en asistencia.** Un proceso del servidor revisa cada 30 segundos las marcas pendientes y aplica las reglas de `RF-010`.
+> - **El SGA convierte las marcas crudas en asistencia.** Cuando el programa del reloj termina una sincronización (tarea programada de Windows o botón «Sincronizar») avisa con `NOTIFY biometrico_procesar` y el servidor convierte en ese momento las marcas pendientes con las reglas de `RF-010`. No hay revisión periódica.
 > - **Se eliminan** el registro del reloj como equipo de tipo `biometrico`, la clave de la app, la configuración remota del reloj (IP, puerto, órdenes de prueba), el estado y las alertas de la app/reloj, el desfase de hora alertado por el servidor y la bandeja de marcaciones pendientes. Una marca que no se puede convertir queda **rechazada** con su motivo en la misma tabla.
 > - **Aprobación del equipo.** El programa usa la cuenta de servicio `biometrico` y queda «Esperando aprobación» hasta que el administrador lo aprueba en Seguridad → Equipos de acceso.
 
@@ -217,7 +217,7 @@
 
 ## Anexos y Prototipo Interactivo
 
-- **Esquema:** Reloj ZKTeco → (red local, puerto 4370) → **SGA Biométrico** (PC del colegio) → (PostgreSQL, TLS, rol de mínimo privilegio) → tabla `marcaciones_biometricas` → proceso del SGA-API cada 30 s → `marcaciones` (origen `biometrico`).
+- **Esquema:** Reloj ZKTeco → (red local, puerto 4370) → **SGA Biométrico** (PC del colegio) → (PostgreSQL, TLS, rol de mínimo privilegio) → tabla `marcaciones_biometricas` → `NOTIFY biometrico_procesar` al terminar cada sincronización → proceso del SGA-API → `marcaciones` (origen `biometrico`).
 - **Tabla `marcaciones_biometricas`:** serie del reloj, código de usuario, fecha y hora, estado (`pendiente`, `procesada`, `rechazada`), motivo de rechazo y marcación resultante. Índice único por (serie, código, hora).
-- **Variables del sistema:** `biometrico.minutos_antirrebote` y `marcacion.minutos_duplicado_entre_vias`. Configuración del proceso: `BIOMETRICO_INTERVALO_SEGUNDOS` y `BIOMETRICO_PROCESADOR_ACTIVO`.
+- **Variables del sistema:** `biometrico.minutos_antirrebote` y `marcacion.minutos_duplicado_entre_vias`. Configuración del proceso: `BIOMETRICO_PROCESADOR_ACTIVO` (no hay intervalo: se procesa con cada sincronización).
 - Pantallas: Docentes (código biométrico) · "Marcaciones de hoy" · Seguridad → Equipos de acceso (aprobar el equipo).

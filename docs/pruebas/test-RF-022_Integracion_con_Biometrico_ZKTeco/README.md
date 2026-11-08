@@ -13,8 +13,10 @@ Reloj ZKTeco ──(red local, puerto 4370)──▶ SGA Biométrico (PC del col
 
 - El programa de escritorio **SGA Biométrico** lee el reloj e **inserta cada marca cruda** en `marcaciones_biometricas`
   (serie del reloj, código de usuario, fecha y hora), sin duplicar. No hay API HTTP ni órdenes al reloj.
-- SGA-API revisa cada 30 s las marcas pendientes (`BIOMETRICO_INTERVALO_SEGUNDOS`; se apaga con
-  `BIOMETRICO_PROCESADOR_ACTIVO=false`) y las convierte en `marcaciones` con las reglas de RF-010: la primera marca
+- SGA-API convierte las marcas pendientes **solo cuando el programa sincroniza** (tarea programada de Windows o botón
+  «Sincronizar»): al terminar cada ciclo el programa ejecuta `NOTIFY biometrico_procesar` y SGA-API, que escucha con
+  `LISTEN`, las procesa en ese momento. No hay revisión periódica (se apaga con `BIOMETRICO_PROCESADOR_ACTIVO=false`). Las
+  convierte en `marcaciones` con las reglas de RF-010: la primera marca
   del día es entrada, la siguiente salida; antirrebote (`biometrico.minutos_antirrebote`) y duplicado entre vías
   (`marcacion.minutos_duplicado_entre_vias`).
 - Una marca con código desconocido, de alguien que no es personal vigente o repetida queda **rechazada** con su motivo
