@@ -93,7 +93,7 @@ export class MarcacionesBiometricasService {
         `Marcaciones del reloj: ${resumen.procesadas} procesadas, ${resumen.rechazadas} rechazadas.`,
       );
     }
-    // Se avisa una vez por código (la corrida se repite cada pocos segundos) y de nuevo si vuelve a quedar en espera.
+    // Se avisa una vez por código (una corrida por cada sincronización del reloj) y de nuevo si vuelve a quedar en espera.
     for (const [codigo, motivo] of enEspera) {
       if (!this.avisados.has(codigo)) {
         this.logger.warn(`Marcaciones del reloj del código ${codigo} en espera: ${motivo}`);
