@@ -22,7 +22,7 @@ Reloj ZKTeco ──(red local, puerto 4370)──▶ SGA Biométrico (PC del col
 - Una marca con código desconocido, de alguien que no es personal vigente o repetida queda **rechazada** con su motivo
   en `marcaciones_biometricas`.
 - El programa se identifica con la cuenta de servicio `biometrico` (la crea el seed, sin acceso a pantallas) y el
-  administrador aprueba el equipo en **Seguridad → Equipos de acceso**.
+  administrador aprueba el equipo en **Configuración → Biométrico**.
 
 ## 2. Qué se necesita
 
