@@ -86,26 +86,7 @@ describe("EquiposService (RF-004 HU3)", () => {
     });
 
     it("debe rechazar si el kiosko de sesiones no es de tipo kiosko o no es exclusivo de docentes (Escenario: Kiosko de sesiones mal configurado)", async () => {
-      // Caso 1: propósito sesiones con tipo biométrico
-      await expect(
-        service.create(
-          {
-            nombre: "Reloj Sesiones",
-            ubicacion: "Subdirección",
-            tipo: "biometrico",
-            proposito: "sesiones",
-            usuariosPermitidos: "docentes",
-            numeroSerie: "SN-12345",
-          },
-          "user-soporte",
-        ),
-      ).rejects.toThrow(
-        new BadRequestException(
-          "Un equipo de sesiones debe ser un kiosko de uso exclusivo de docentes.",
-        ),
-      );
-
-      // Caso 2: propósito sesiones con estudiantes incluidos
+      // Propósito sesiones con estudiantes incluidos
       await expect(
         service.create(
           {
@@ -155,27 +136,6 @@ describe("EquiposService (RF-004 HU3)", () => {
         ),
       ).rejects.toThrow(new ConflictException("Ya existe un equipo con ese nombre."));
     });
-
-    it("debe registrar un reloj biométrico requiriendo su número de serie (Escenario: Registrar un reloj biométrico)", async () => {
-      const dto: CreateEquipoDto = {
-        nombre: "Biométrico ZKTeco Puerta 2",
-        ubicacion: "Puerta secundaria",
-        tipo: "biometrico",
-        proposito: "marcacion",
-        usuariosPermitidos: "docentes,administrativos",
-        numeroSerie: "ZK-987654321",
-      };
-
-      await service.create(dto, "user-soporte");
-      expect(mockRepository.create).toHaveBeenCalledWith(dto);
-
-      // Si falta el número de serie en biométrico, debe rechazar
-      await expect(
-        service.create({ ...dto, numeroSerie: undefined }, "user-soporte"),
-      ).rejects.toThrow(
-        new BadRequestException("Debe ingresar el número de serie para equipos biométricos."),
-      );
-    });
   });
 
   describe("autorizar", () => {
@@ -193,18 +153,6 @@ describe("EquiposService (RF-004 HU3)", () => {
           tabla: "equipos_autorizados",
         }),
       );
-    });
-
-    it("CP-RF022-01: al generar la clave de un reloj biométrico avisa que no se volverá a mostrar", async () => {
-      mockRepository.findById = jest
-        .fn()
-        .mockResolvedValue({ ...mockEquipo, tipo: "biometrico", numeroSerie: "ZK-1" });
-      const res = await service.autorizar(mockEquipo.id, "user-soporte");
-
-      expect(res.message).toBe(
-        "Reloj biométrico autorizado. Copie la clave de la app puente: no se volverá a mostrar.",
-      );
-      expect(res.tokenAutorizacion).toHaveLength(64);
     });
 
     it("debe rechazar autorizar si el equipo está inactivo", async () => {
@@ -254,52 +202,6 @@ describe("EquiposService (RF-004 HU3)", () => {
       await expect(service.validarKiosko("token-de-equipo-desactivado")).rejects.toThrow(
         new UnauthorizedException("Este equipo no está autorizado. Comuníquese con el área de TI."),
       );
-    });
-  });
-
-  describe("RF-022: reloj biométrico", () => {
-    it("CP-RF022-02: un reloj biométrico sin número de serie se rechaza", async () => {
-      await expect(
-        service.create(
-          {
-            nombre: "Reloj docentes",
-            ubicacion: "Puerta principal",
-            tipo: "biometrico",
-            proposito: "marcacion",
-            usuariosPermitidos: "docentes",
-          },
-          "user-soporte",
-        ),
-      ).rejects.toThrow(
-        new BadRequestException("Debe ingresar el número de serie para equipos biométricos."),
-      );
-    });
-
-    it("CP-RF022-06: al cambiar el reloj por uno similar se actualiza el número de serie y se conserva el equipo", async () => {
-      mockRepository.findById = jest
-        .fn()
-        .mockResolvedValue({ ...mockEquipo, tipo: "biometrico", numeroSerie: "ZK-VIEJO" });
-      await service.update(
-        mockEquipo.id,
-        {
-          nombre: mockEquipo.nombre,
-          ubicacion: mockEquipo.ubicacion,
-          usuariosPermitidos: "docentes",
-          numeroSerie: "ZK-NUEVO",
-        },
-        "user-soporte",
-      );
-      expect(mockRepository.update).toHaveBeenCalledWith(
-        mockEquipo.id,
-        expect.objectContaining({ numeroSerie: "ZK-NUEVO" }),
-      );
-    });
-
-    it("CP-RF022-07: un reloj desactivado deja de aceptar sus claves de inmediato", async () => {
-      mockRepository.findByTokenHash = jest
-        .fn()
-        .mockResolvedValue({ ...mockEquipo, tipo: "biometrico", autorizado: true, activo: false });
-      await expect(service.validarKiosko("clave-del-reloj")).rejects.toThrow(UnauthorizedException);
     });
   });
 

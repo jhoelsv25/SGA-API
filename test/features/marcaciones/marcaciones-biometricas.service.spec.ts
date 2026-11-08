@@ -35,6 +35,7 @@ function construir(opciones: {
     origen?: "kiosko" | "manual" | "biometrico";
   }[];
   suspendido?: boolean;
+  sinTurno?: boolean;
 }) {
   const crudas = {
     pendientes: jest.fn().mockResolvedValue(opciones.pendientes),
@@ -61,12 +62,14 @@ function construir(opciones: {
     reetiquetar: jest.fn().mockResolvedValue(undefined),
     insertar: jest.fn().mockResolvedValue({ id: "m1" }),
   };
-  const turnos = { findByAplicaA: jest.fn().mockResolvedValue(turnoDocentes) };
+  const turnos = {
+    findByAplicaA: jest.fn().mockResolvedValue(opciones.sinTurno ? null : turnoDocentes),
+  };
   const calendario = {
     suspendeClasesEn: jest.fn().mockResolvedValue(opciones.suspendido ?? false),
   };
   const variables = { getValor: jest.fn().mockResolvedValue("5") };
-  // Las reglas son las de la app puente: se usa el servicio real sobre repositorios simulados.
+  // Las reglas son las del servicio de marcaciones: se usa el servicio real sobre repositorios simulados.
   const marcacionesService = new MarcacionesService(
     marcaciones as never,
     {} as never,
@@ -82,7 +85,7 @@ function construir(opciones: {
     marcacionesService,
     variables as never,
   );
-  return { servicio, crudas, marcaciones };
+  return { servicio, crudas, marcaciones, turnos };
 }
 
 describe("Marcaciones del reloj biométrico", () => {
@@ -91,7 +94,7 @@ describe("Marcaciones del reloj biométrico", () => {
       pendientes: [cruda("2026-11-06 07:35:10")],
     });
     const resumen = await servicio.procesarPendientes();
-    expect(resumen).toEqual({ procesadas: 1, rechazadas: 0 });
+    expect(resumen).toEqual({ procesadas: 1, rechazadas: 0, enEspera: 0 });
     expect(marcaciones.insertar).toHaveBeenCalledWith(
       expect.objectContaining({
         personaId: "p1",
@@ -167,7 +170,7 @@ describe("Marcaciones del reloj biométrico", () => {
       ...extra,
     });
     const resumen = await servicio.procesarPendientes();
-    expect(resumen).toEqual({ procesadas: 0, rechazadas: 1 });
+    expect(resumen).toEqual({ procesadas: 0, rechazadas: 1, enEspera: 0 });
     expect(crudas.marcarRechazada).toHaveBeenCalledWith("cruda-2026-11-06 07:35:00", motivo);
     expect(marcaciones.insertar).not.toHaveBeenCalled();
   });
@@ -180,5 +183,46 @@ describe("Marcaciones del reloj biométrico", () => {
     await expect(servicio.procesarPendientes()).rejects.toThrow("conexión perdida");
     expect(crudas.marcarProcesada).not.toHaveBeenCalled();
     expect(crudas.marcarRechazada).not.toHaveBeenCalled();
+  });
+
+  it("una marca sin turno queda en espera y no bloquea las marcas de otras personas", async () => {
+    const { servicio, crudas, marcaciones, turnos } = construir({
+      pendientes: [
+        cruda("2026-11-06 07:30:00", "SIN-TURNO"),
+        cruda("2026-11-06 07:31:00", "D001"),
+        cruda("2026-11-06 14:00:00", "SIN-TURNO"),
+      ],
+    });
+    crudas.buscarPersonaId.mockImplementation((c: string) =>
+      Promise.resolve(c === "SIN-TURNO" ? "p2" : "p1"),
+    );
+    marcaciones.findPersonaParaMarcar.mockImplementation((id: string) =>
+      Promise.resolve({
+        personaId: id,
+        tipoPersona: id === "p2" ? "administrativos" : "docentes",
+        vigente: true,
+      }),
+    );
+    turnos.findByAplicaA.mockImplementation((tipo: string) =>
+      Promise.resolve(tipo === "administrativos" ? null : turnoDocentes),
+    );
+    const resumen = await servicio.procesarPendientes();
+    expect(resumen).toEqual({ procesadas: 1, rechazadas: 0, enEspera: 2 });
+    expect(crudas.marcarProcesada).toHaveBeenCalledWith("cruda-2026-11-06 07:31:00", "m1");
+    expect(crudas.marcarRechazada).not.toHaveBeenCalled();
+  });
+
+  it("sigue con la página siguiente cuando las primeras marcas quedan en espera", async () => {
+    const { servicio, crudas } = construir({ pendientes: [], sinTurno: true });
+    crudas.pendientes
+      .mockResolvedValueOnce([cruda("2026-11-06 07:30:00", "A"), cruda("2026-11-06 07:31:00", "B")])
+      .mockResolvedValueOnce([cruda("2026-11-06 07:32:00", "C")]);
+    const resumen = await servicio.procesarPendientes(2);
+    expect(resumen).toEqual({ procesadas: 0, rechazadas: 0, enEspera: 3 });
+    expect(crudas.pendientes).toHaveBeenNthCalledWith(
+      2,
+      2,
+      expect.objectContaining({ id: "cruda-2026-11-06 07:31:00" }),
+    );
   });
 });

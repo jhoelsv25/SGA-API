@@ -1,5 +1,6 @@
 import { Pool } from "pg";
 import * as bcrypt from "bcryptjs";
+import { asegurarCuentaServicioBiometrico } from "./seed-cuenta-biometrico";
 import {
   MENU_CORREGIR_DATOS_CRITICOS,
   MENU_ESCRITORIO_BIOMETRICOS,
@@ -28,9 +29,21 @@ import {
   MENU_MIS_INDICADORES,
 } from "../../common/constants";
 
+// La conexión sale del entorno (.env), nunca del código: este usuario es el administrador de la base.
+try {
+  process.loadEnvFile();
+} catch {
+  // sin archivo .env: se usan las variables que ya tenga el entorno
+}
+const cadenaConexion = process.env.DATABASE_URL_DIRECT ?? process.env.DATABASE_URL;
+if (!cadenaConexion) {
+  throw new Error(
+    "Falta DATABASE_URL_DIRECT (o DATABASE_URL) en el entorno. Revise el archivo .env.",
+  );
+}
+
 const pool = new Pool({
-  connectionString:
-    "postgresql://postgres.pnevrdipvbewpswgxvyz:PrmYs7UfvYDsVEwV@aws-0-us-east-2.pooler.supabase.com:6543/postgres",
+  connectionString: cadenaConexion,
   ssl: { rejectUnauthorized: false },
 });
 
@@ -347,28 +360,6 @@ async function seed() {
       valor: "30",
       unidad: "minutos",
       valorMinimo: 0,
-      valorMaximo: 120,
-    },
-    {
-      codigo: "biometrico.desfase_maximo_min",
-      descripcion:
-        "Diferencia máxima entre la hora del reloj biométrico y la del servidor antes de ponerlo en hora y avisar",
-      modulo: "asistencia",
-      tipo: "entero",
-      valor: "2",
-      unidad: "minutos",
-      valorMinimo: 0,
-      valorMaximo: 60,
-    },
-    {
-      codigo: "biometrico.minutos_sin_comunicacion",
-      descripcion:
-        "Minutos sin avisos de la app puente (o sin respuesta del reloj) en horario de marcación antes de alertar",
-      modulo: "asistencia",
-      tipo: "entero",
-      valor: "10",
-      unidad: "minutos",
-      valorMinimo: 1,
       valorMaximo: 120,
     },
     {
@@ -1329,6 +1320,9 @@ async function seed() {
     [MENU_ESCRITORIO_BIOMETRICOS],
   );
   console.log("✔ Opción 'Biométricos' del escritorio registrada (solo Administrador).");
+
+  // RF-022: cuenta de servicio con la que el programa del reloj pide la aprobación de su equipo.
+  await asegurarCuentaServicioBiometrico(pool);
 
   await pool.end();
   console.log("==========================================");

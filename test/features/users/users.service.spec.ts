@@ -446,6 +446,35 @@ describe("UsersService (RF-002: HU 1)", () => {
       );
       expect(usersRepository.closeAllUserSessions).toHaveBeenCalledWith(dummyUser.id);
     });
+
+    it("usa la contraseña escrita por el administrador si cumple la política", async () => {
+      usersRepository.findUserById.mockResolvedValue(dummyUser);
+      usersRepository.update.mockResolvedValue(dummyUser);
+
+      const result = await service.resetPassword(dummyUser.id, currentAdmin.id, undefined, {
+        contrasena: "Clave2026",
+        debeCambiarContrasena: false,
+      });
+
+      expect(result.tempPassword).toBe("Clave2026");
+      expect(usersRepository.update).toHaveBeenCalledWith(
+        dummyUser.id,
+        expect.objectContaining({ debeCambiarContrasena: false, intentosFallidos: 0 }),
+      );
+      expect(usersRepository.closeAllUserSessions).toHaveBeenCalledWith(dummyUser.id);
+    });
+
+    it.each(["corta1", "SoloLetras", "12345678"])(
+      "rechaza la contraseña manual %s que no cumple la política",
+      async (contrasena) => {
+        usersRepository.findUserById.mockResolvedValue(dummyUser);
+
+        await expect(
+          service.resetPassword(dummyUser.id, currentAdmin.id, undefined, { contrasena }),
+        ).rejects.toThrow(BadRequestException);
+        expect(usersRepository.update).not.toHaveBeenCalled();
+      },
+    );
   });
 
   describe("findUsers()", () => {

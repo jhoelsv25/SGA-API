@@ -1,4 +1,4 @@
-export const EQUIPO_TIPOS = ["kiosko", "biometrico"] as const;
+export const EQUIPO_TIPOS = ["kiosko"] as const;
 export type EquipoTipo = (typeof EQUIPO_TIPOS)[number];
 
 export const EQUIPO_PROPOSITOS = ["marcacion", "sesiones"] as const;

@@ -24,9 +24,6 @@ export class EquiposRepository implements IEquiposRepository {
       autorizadoPorId: row.autorizadoPorId,
       activo: row.activo,
       ultimoAcceso: row.ultimoAcceso,
-      ultimoLatidoEn: row.ultimoLatidoEn,
-      relojRespondioEn: row.relojRespondioEn,
-      ultimoDesfaseMin: row.ultimoDesfaseMin,
       creadoEn: row.creadoEn,
       actualizadoEn: row.actualizadoEn,
     };

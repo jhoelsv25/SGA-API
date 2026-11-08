@@ -195,14 +195,14 @@ export class UsersController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary:
-      "Restablecer contraseña de una cuenta generando clave temporal o asignando una manual y cerrando sesiones abiertas",
+      "Restablecer contraseña de una cuenta (clave generada o definida manualmente) y cerrar sesiones abiertas",
   })
   @ApiResponse({ status: 200, type: TempPasswordResetResponseDto })
   async resetPassword(
     @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: ResetPasswordDto,
     @CurrentUser() user: AuthenticatedUser,
     @ClientInfo() client: ClientInfoData,
-    @Body() dto?: ResetPasswordDto,
   ): Promise<TempPasswordResetResponseDto> {
     return this.usersService.resetPassword(id, user.id, client.ip, dto);
   }
