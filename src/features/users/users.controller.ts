@@ -18,6 +18,7 @@ import { ClientInfo, type ClientInfoData, CurrentUser, Roles } from "../../commo
 import type { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface";
 import { ChangeUserRoleDto } from "./dto/change-user-role.dto";
 import { CreateUserDto } from "./dto/create-user.dto";
+import { ResetPasswordDto } from "./dto/reset-password.dto";
 import { UpdateUsernameDto } from "./dto/update-username.dto";
 import { AddUserRoleDto, UserRoleAssignmentDto } from "./dto/user-role.dto";
 import { UserQueryDto } from "./dto/user-query.dto";
@@ -194,14 +195,15 @@ export class UsersController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary:
-      "Restablecer contraseña de una cuenta generando clave temporal de un solo uso y cerrando sesiones abiertas",
+      "Restablecer contraseña de una cuenta generando clave temporal o asignando una manual y cerrando sesiones abiertas",
   })
   @ApiResponse({ status: 200, type: TempPasswordResetResponseDto })
   async resetPassword(
     @Param("id", ParseUUIDPipe) id: string,
     @CurrentUser() user: AuthenticatedUser,
     @ClientInfo() client: ClientInfoData,
+    @Body() dto?: ResetPasswordDto,
   ): Promise<TempPasswordResetResponseDto> {
-    return this.usersService.resetPassword(id, user.id, client.ip);
+    return this.usersService.resetPassword(id, user.id, client.ip, dto);
   }
 }

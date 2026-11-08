@@ -12,6 +12,7 @@ import { TEMP_PASSWORD_LENGTH, USER_ROLE_MESSAGES } from "./constants";
 import { AddUserRoleDto, UserRoleAssignmentDto } from "./dto/user-role.dto";
 import { ChangeUserRoleDto } from "./dto/change-user-role.dto";
 import { CreateUserDto } from "./dto/create-user.dto";
+import { ResetPasswordDto } from "./dto/reset-password.dto";
 import { UpdateUsernameDto } from "./dto/update-username.dto";
 import { UserQueryDto } from "./dto/user-query.dto";
 import {
@@ -279,11 +280,13 @@ export class UsersService {
     id: string,
     actorId: string,
     ip?: string,
+    dto?: ResetPasswordDto,
   ): Promise<TempPasswordResetResponseDto> {
     await this.findUserById(id);
 
-    // Generar nueva contraseña temporal
-    const tempPassword = generateTemporaryPassword(TEMP_PASSWORD_LENGTH);
+    // Si se proporciona una contraseña manual válida se usa esa, sino se genera aleatoria
+    const tempPassword =
+      dto?.nuevaContrasena?.trim() || generateTemporaryPassword(TEMP_PASSWORD_LENGTH);
     const newHash = await hashPassword(tempPassword);
 
     await this.usersRepository.update(id, {
@@ -300,7 +303,11 @@ export class UsersService {
       accion: "actualizar",
       tabla: "usuarios",
       registroId: id,
-      valorNuevo: { debeCambiarContrasena: true, claveRestablecida: true },
+      valorNuevo: {
+        debeCambiarContrasena: true,
+        claveRestablecida: true,
+        metodo: dto?.nuevaContrasena ? "manual" : "automatica",
+      },
       direccionIp: ip,
     });
 
