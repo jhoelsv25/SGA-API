@@ -3,15 +3,23 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  Optional,
 } from "@nestjs/common";
 import { AuditService } from "../../common/services/audit.service";
 import { hashPassword } from "../../common/utils";
+import {
+  DEFAULT_LONGITUD_CONTRASENA,
+  PASSWORD_LETRAS_Y_NUMEROS,
+  VAR_LONGITUD_CONTRASENA,
+} from "../auth/constants";
 import type { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface";
+import { VariablesSistemaRepository } from "../variables-sistema/repositories";
 import { RolesRepository } from "../roles/repositories/roles.repository";
 import { TEMP_PASSWORD_LENGTH, USER_ROLE_MESSAGES } from "./constants";
 import { AddUserRoleDto, UserRoleAssignmentDto } from "./dto/user-role.dto";
 import { ChangeUserRoleDto } from "./dto/change-user-role.dto";
 import { CreateUserDto } from "./dto/create-user.dto";
+import { ResetPasswordDto } from "./dto/reset-password.dto";
 import { UpdateUsernameDto } from "./dto/update-username.dto";
 import { UserQueryDto } from "./dto/user-query.dto";
 import {
@@ -32,6 +40,7 @@ export class UsersService {
     private readonly rolesRepository: RolesRepository,
     private readonly auditService: AuditService,
     private readonly userRolesService: UserRolesService,
+    @Optional() private readonly variablesRepository?: VariablesSistemaRepository,
   ) {}
 
   async findUsers(query: UserQueryDto): Promise<PaginatedUsersResponseDto> {
@@ -279,16 +288,22 @@ export class UsersService {
     id: string,
     actorId: string,
     ip?: string,
+    dto: ResetPasswordDto = {},
   ): Promise<TempPasswordResetResponseDto> {
     await this.findUserById(id);
 
-    // Generar nueva contraseña temporal
-    const tempPassword = generateTemporaryPassword(TEMP_PASSWORD_LENGTH);
+    // Contraseña escrita por el administrador (validada con la política) o generada
+    const manual = dto.contrasena !== undefined && dto.contrasena !== "";
+    if (manual) {
+      await this.validarPoliticaContrasena(dto.contrasena!);
+    }
+    const tempPassword = manual ? dto.contrasena! : generateTemporaryPassword(TEMP_PASSWORD_LENGTH);
     const newHash = await hashPassword(tempPassword);
+    const debeCambiarContrasena = dto.debeCambiarContrasena ?? true;
 
     await this.usersRepository.update(id, {
       contrasenaHash: newHash,
-      debeCambiarContrasena: true,
+      debeCambiarContrasena,
       intentosFallidos: 0,
     });
 
@@ -300,7 +315,11 @@ export class UsersService {
       accion: "actualizar",
       tabla: "usuarios",
       registroId: id,
-      valorNuevo: { debeCambiarContrasena: true, claveRestablecida: true },
+      valorNuevo: {
+        debeCambiarContrasena,
+        claveRestablecida: true,
+        origen: manual ? "manual" : "generada",
+      },
       direccionIp: ip,
     });
 
@@ -308,6 +327,23 @@ export class UsersService {
       message: "Contraseña restablecida exitosamente",
       tempPassword,
     };
+  }
+
+  /** Misma política que el cambio de contraseña: longitud mínima configurable, letras y números. */
+  private async validarPoliticaContrasena(contrasena: string): Promise<void> {
+    let longitudMinima = DEFAULT_LONGITUD_CONTRASENA;
+    try {
+      const variable = await this.variablesRepository?.findByCodigoVigente(VAR_LONGITUD_CONTRASENA);
+      const valor = Number(variable?.valor);
+      if (variable && Number.isFinite(valor)) longitudMinima = valor;
+    } catch {
+      // sin variable configurada: se usa el valor por defecto
+    }
+    if (contrasena.length < longitudMinima || !PASSWORD_LETRAS_Y_NUMEROS.test(contrasena)) {
+      throw new BadRequestException(
+        `La contraseña debe tener al menos ${longitudMinima} caracteres, con letras y números.`,
+      );
+    }
   }
 
   async updateUsername(
