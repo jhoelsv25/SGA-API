@@ -290,6 +290,10 @@ export class AulaVirtualRepository implements IAulaVirtualRepository {
   }
 
   async cursosDelDocente(docenteId: string, anioAcademicoId: string): Promise<CursoAulaResumen[]> {
+    const totalEstudiantesSql = sql<number>`(
+      SELECT count(*)::int FROM ${matriculas}
+      WHERE ${matriculas.seccionId} = ${secciones.id}
+        AND ${matriculas.estado} IN ('matriculado', 'vigente'))`;
     return this.db
       .select({
         cursoSeccionId: cursosSeccion.id,
@@ -299,6 +303,7 @@ export class AulaVirtualRepository implements IAulaVirtualRepository {
         colorHex: cursos.colorHex,
         areaCurricular: cursos.areaCurricular,
         gradoNombre: grados.nombre,
+        totalEstudiantes: totalEstudiantesSql,
       })
       .from(cursosSeccion)
       .innerJoin(cursos, eq(cursos.id, cursosSeccion.cursoId))
@@ -320,6 +325,10 @@ export class AulaVirtualRepository implements IAulaVirtualRepository {
       SELECT ${nombreSql(personas)} FROM ${docentes}
       JOIN ${personas} ON ${personas.id} = ${docentes.personaId}
       WHERE ${docentes.id} = ${cursosSeccion.docenteId})`;
+    const totalEstudiantesSql = sql<number>`(
+      SELECT count(*)::int FROM ${matriculas} m2
+      WHERE m2.seccion_id = ${secciones.id}
+        AND m2.estado IN ('matriculado', 'vigente'))`;
     return this.db
       .select({
         cursoSeccionId: cursosSeccion.id,
@@ -329,6 +338,7 @@ export class AulaVirtualRepository implements IAulaVirtualRepository {
         colorHex: cursos.colorHex,
         areaCurricular: cursos.areaCurricular,
         gradoNombre: grados.nombre,
+        totalEstudiantes: totalEstudiantesSql,
       })
       .from(matriculas)
       .innerJoin(estudiantes, eq(estudiantes.id, matriculas.estudianteId))
@@ -367,6 +377,10 @@ export class AulaVirtualRepository implements IAulaVirtualRepository {
       SELECT ${nombreSql(personas)} FROM ${docentes}
       JOIN ${personas} ON ${personas.id} = ${docentes.personaId}
       WHERE ${docentes.id} = ${cursosSeccion.docenteId})`;
+    const totalEstudiantesSql = sql<number>`(
+      SELECT count(*)::int FROM ${matriculas}
+      WHERE ${matriculas.seccionId} = ${secciones.id}
+        AND ${matriculas.estado} IN ('matriculado', 'vigente'))`;
     return this.db
       .select({
         cursoSeccionId: cursosSeccion.id,
@@ -376,6 +390,7 @@ export class AulaVirtualRepository implements IAulaVirtualRepository {
         colorHex: cursos.colorHex,
         areaCurricular: cursos.areaCurricular,
         gradoNombre: grados.nombre,
+        totalEstudiantes: totalEstudiantesSql,
       })
       .from(cursosSeccion)
       .innerJoin(cursos, eq(cursos.id, cursosSeccion.cursoId))
@@ -393,6 +408,10 @@ export class AulaVirtualRepository implements IAulaVirtualRepository {
       SELECT ${nombreSql(personas)} FROM ${docentes}
       JOIN ${personas} ON ${personas.id} = ${docentes.personaId}
       WHERE ${docentes.id} = ${cursosSeccion.docenteId})`;
+    const totalEstudiantesSql = sql<number>`(
+      SELECT count(*)::int FROM ${matriculas} m2
+      WHERE m2.seccion_id = ${secciones.id}
+        AND m2.estado IN ('matriculado', 'vigente'))`;
     const filas = await this.db
       .select({
         cursoSeccionId: cursosSeccion.id,
@@ -402,6 +421,7 @@ export class AulaVirtualRepository implements IAulaVirtualRepository {
         colorHex: cursos.colorHex,
         areaCurricular: cursos.areaCurricular,
         gradoNombre: grados.nombre,
+        totalEstudiantes: totalEstudiantesSql,
       })
       .from(estudianteApoderados)
       .innerJoin(apoderados, eq(apoderados.id, estudianteApoderados.apoderadoId))
