@@ -1701,6 +1701,11 @@ export const consolidadosDocente = pgTable(
     totalAusencias: smallint("total_ausencias").default(0).notNull(),
     minutosFueraAula: integer("minutos_fuera_aula").default(0).notNull(),
     minutosTotalFuera: integer("minutos_total_fuera").default(0).notNull(),
+    // RF-013 V2: horas pedagógicas (nulos en los consolidados anteriores) y decisión registrada.
+    minutosProgramados: integer("minutos_programados"),
+    minutosDictados: integer("minutos_dictados"),
+    minutosHoraPedagogica: smallint("minutos_hora_pedagogica"),
+    decisionRegistradaEn: timestamp("decision_registrada_en", { precision: 0, mode: "string" }),
     decision: varchar({ length: 20 }).default("ninguna").notNull(),
     observacion: varchar({ length: 1000 }),
     generadoPorId: uuid("generado_por_id").notNull(),
@@ -2863,3 +2868,42 @@ export const alertasSesionEnviadas = pgTable("alertas_sesion_enviadas", {
     .default(sql`CURRENT_TIMESTAMP`)
     .notNull(),
 });
+
+// RF-013 V2: compromisos de mejora del consolidado, versionados (una fila por versión).
+export const compromisosConsolidado = pgTable(
+  "compromisos_consolidado",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    compromisoId: uuid("compromiso_id").notNull(),
+    consolidadoId: uuid("consolidado_id").notNull(),
+    docenteId: uuid("docente_id").notNull(),
+    version: smallint().default(1).notNull(),
+    vigente: boolean().default(true).notNull(),
+    descripcion: varchar({ length: 500 }).notNull(),
+    fechaRevision: date("fecha_revision").notNull(),
+    estado: varchar({ length: 15 }).default("pendiente").notNull(),
+    observacionCierre: varchar("observacion_cierre", { length: 500 }),
+    cerradoPorId: uuid("cerrado_por_id"),
+    cerradoEn: timestamp("cerrado_en", { precision: 0, mode: "string" }),
+    enteradoEn: timestamp("enterado_en", { precision: 0, mode: "string" }),
+    anulado: boolean().default(false).notNull(),
+    motivoAnulacion: varchar("motivo_anulacion", { length: 500 }),
+    anuladoPorId: uuid("anulado_por_id"),
+    anuladoEn: timestamp("anulado_en", { precision: 0, mode: "string" }),
+    creadoPorId: uuid("creado_por_id").notNull(),
+    creadoEn: timestamp("creado_en", { precision: 0, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("ux_compromisos_consolidado_vigente")
+      .on(table.compromisoId)
+      .where(sql`vigente = true`),
+    index("ix_compromisos_consolidado_consolidado").on(table.consolidadoId),
+    index("ix_compromisos_consolidado_docente").on(table.docenteId),
+    check(
+      "ck_compromisos_consolidado_estado",
+      sql`(estado)::text = ANY ((ARRAY['pendiente'::character varying, 'cumplido'::character varying, 'no_cumplido'::character varying])::text[])`,
+    ),
+  ],
+);

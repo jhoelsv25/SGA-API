@@ -9,6 +9,28 @@ export interface ActorConsolidado {
   personaId: string;
 }
 
+/** Datos calculados al generar o volver a cerrar un consolidado. */
+export interface MetricasConsolidado {
+  sesionesProgramadas: number;
+  sesionesCumplidas: number;
+  sesionesParciales: number;
+  sesionesNoCumplidas: number;
+  sesionesJustificadas: number;
+  minutosPerdidosFirma: number;
+  totalAusencias: number;
+  minutosFueraAula: number;
+  minutosTotalFuera: number;
+  /** Duración total de las sesiones programadas (RF-013 V2). */
+  minutosProgramados: number;
+  /** Minutos firmados: cumplidas completas + parciales por lo firmado (RF-013 V2). */
+  minutosDictados: number;
+}
+
+export interface MetricasConsolidadoGuardadas extends MetricasConsolidado {
+  /** Valor de `sesion.minutos_hora_pedagogica` vigente al guardar. */
+  minutosHoraPedagogica: number;
+}
+
 export interface ConsolidadoResumenItem {
   id: string;
   docenteId: string;
@@ -29,7 +51,17 @@ export interface ConsolidadoResumenItem {
   minutosFueraAula: number;
   minutosTotalFuera: number;
   tiempoTotalFueraTexto: string;
+  /** Horas pedagógicas con un decimal; nulas en los consolidados anteriores a la V2. */
+  minutosProgramados: number | null;
+  minutosDictados: number | null;
+  minutosHoraPedagogica: number | null;
+  horasProgramadas: number | null;
+  horasDictadas: number | null;
+  horasPerdidas: number | null;
+  minutosNoDictados: number | null;
   decision: DecisionConsolidado;
+  /** Fecha y hora en que el Director registró su decisión; nula si aún no decide. */
+  decisionRegistradaEn: string | null;
   observacion: string | null;
   motivoCambio?: string | null;
   generadoEn: string;

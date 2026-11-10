@@ -4,6 +4,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
 } from "@nestjs/common";
 import { AuditService } from "../../common/services/audit.service";
@@ -11,6 +12,7 @@ import { InstitucionService } from "../institucion/institucion.service";
 import { NotificacionesService } from "../notificaciones/notificaciones.service";
 import {
   MENSAJES_CONSOLIDADO,
+  VARIABLES_CONSOLIDADO,
   mensajeConsolidadosGenerados,
   mensajeNuevaVersion,
 } from "./constants";
@@ -25,6 +27,7 @@ import type {
 import type { ActorConsolidado, ConsolidadoResumenItem } from "./interfaces";
 import { ConsolidadoDocenteRepository } from "./repositories";
 import {
+  calcularHorasPedagogicas,
   formatearMinutosAHrsMin,
   generarExcelConsolidados,
   generarFichaDocentePdf,
@@ -56,6 +59,20 @@ export class ConsolidadoDocenteService {
     }
   }
 
+  /** Duración de la hora pedagógica; un cambio solo afecta a los consolidados que se generen después. */
+  private async minutosHoraPedagogica(): Promise<number> {
+    const valor = await this.repository.valorVariable(
+      VARIABLES_CONSOLIDADO.MINUTOS_HORA_PEDAGOGICA,
+    );
+    const minutos = Number.parseInt(valor ?? "", 10);
+    if (Number.isNaN(minutos) || minutos < 1) {
+      throw new InternalServerErrorException(
+        MENSAJES_CONSOLIDADO.VARIABLE_FALTANTE(VARIABLES_CONSOLIDADO.MINUTOS_HORA_PEDAGOGICA),
+      );
+    }
+    return minutos;
+  }
+
   async generarConsolidados(dto: GenerarConsolidadoDto, actor: ActorConsolidado) {
     this.exigirDirectorOAdmin(actor);
 
@@ -70,6 +87,8 @@ export class ConsolidadoDocenteService {
     if (!puedeGenerar) {
       throw new BadRequestException(MENSAJES_CONSOLIDADO.BIMESTRE_AUN_ABIERTO);
     }
+
+    const minutosHoraPedagogica = await this.minutosHoraPedagogica();
 
     // Generación individual
     if (dto.docenteId) {
@@ -91,6 +110,7 @@ export class ConsolidadoDocenteService {
         docenteId: dto.docenteId,
         periodoId: periodo.id,
         ...metricas,
+        minutosHoraPedagogica,
         generadoPorId: actor.id,
       });
 
@@ -132,6 +152,7 @@ export class ConsolidadoDocenteService {
         docenteId: docente.docenteId,
         periodoId: periodo.id,
         ...metricas,
+        minutosHoraPedagogica,
         generadoPorId: actor.id,
       });
 
@@ -218,6 +239,11 @@ export class ConsolidadoDocenteService {
     return {
       consolidado: {
         ...consolidado,
+        ...calcularHorasPedagogicas(
+          consolidado.minutosProgramados,
+          consolidado.minutosDictados,
+          consolidado.minutosHoraPedagogica,
+        ),
         tiempoTotalFueraTexto: formatearMinutosAHrsMin(consolidado.minutosTotalFuera),
       },
       sesiones,
@@ -337,7 +363,7 @@ export class ConsolidadoDocenteService {
     const nuevaVersion = await this.repository.cerrarConNuevaVersion(
       consolidadoId,
       dto.motivoCambio!.trim(),
-      metricas,
+      { ...metricas, minutosHoraPedagogica: await this.minutosHoraPedagogica() },
       actor.id,
     );
 

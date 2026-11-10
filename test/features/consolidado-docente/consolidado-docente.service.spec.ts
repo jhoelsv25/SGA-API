@@ -55,7 +55,15 @@ const consolidadoMock = (
   minutosTotalFuera: 90,
   tiempoTotalFueraTexto: "1 h 30 min",
   totalAusencias: 1,
+  minutosProgramados: 900,
+  minutosDictados: 780,
+  minutosHoraPedagogica: 45,
+  horasProgramadas: 20,
+  horasDictadas: 17.3,
+  horasPerdidas: 2.7,
+  minutosNoDictados: 120,
   decision: "ninguna",
+  decisionRegistradaEn: null,
   observacion: null,
   motivoCambio: null,
   generadoEn: new Date().toISOString(),
@@ -103,6 +111,7 @@ describe("RF-013: Consolidado y Ficha de Seguimiento Docente (CP-RF013-01 a CP-R
       resolverSolicitud: jest.fn(),
       obtenerDocenteDePersona: jest.fn(),
       consolidadoCerradoBloqueante: jest.fn(),
+      valorVariable: jest.fn().mockResolvedValue("45"),
     };
 
     audit = {

@@ -56,6 +56,9 @@ export const MENU_MIS_AUSENCIAS = "/admin/mis-ausencias";
  */
 export const MENU_CONSOLIDADOS_DOCENTES = "/admin/consolidados-docentes";
 export const MENU_MI_SEGUIMIENTO = "/admin/mi-seguimiento";
+/** RF-013 V2: reportes del seguimiento docente. */
+export const MENU_PENDIENTES_SEGUIMIENTO = "/admin/pendientes-seguimiento";
+export const MENU_INFORME_HORAS_EFECTIVAS = "/admin/informe-horas-efectivas";
 
 /**
  * RF-020: indicadores de la tesis y panel general.

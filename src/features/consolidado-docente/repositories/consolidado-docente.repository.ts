@@ -16,6 +16,7 @@ import {
   sesionesClase,
   solicitudesRevisionConsolidado,
   usuarios,
+  variablesSistema,
 } from "../../../core/database/schema";
 import type {
   ConsolidadoResumenItem,
@@ -25,9 +26,11 @@ import type {
   EstadoConsolidado,
   EstadoSolicitudRevision,
   HistorialVersionConsolidadoItem,
+  MetricasConsolidado,
+  MetricasConsolidadoGuardadas,
   SolicitudRevisionItem,
 } from "../interfaces";
-import { formatearMinutosAHrsMin } from "../utils";
+import { calcularHorasPedagogicas, formatearMinutosAHrsMin } from "../utils";
 
 @Injectable()
 export class ConsolidadoDocenteRepository {
@@ -102,7 +105,11 @@ export class ConsolidadoDocenteRepository {
         totalAusencias: consolidadosDocente.totalAusencias,
         minutosFueraAula: consolidadosDocente.minutosFueraAula,
         minutosTotalFuera: consolidadosDocente.minutosTotalFuera,
+        minutosProgramados: consolidadosDocente.minutosProgramados,
+        minutosDictados: consolidadosDocente.minutosDictados,
+        minutosHoraPedagogica: consolidadosDocente.minutosHoraPedagogica,
         decision: sql<DecisionConsolidado>`${consolidadosDocente.decision}`,
+        decisionRegistradaEn: sql<string | null>`${consolidadosDocente.decisionRegistradaEn}::text`,
         observacion: consolidadosDocente.observacion,
         motivoCambio: consolidadosDocente.motivoCambio,
         generadoEn: sql<string>`${consolidadosDocente.generadoEn}::text`,
@@ -134,6 +141,11 @@ export class ConsolidadoDocenteRepository {
 
       resultado.push({
         ...fila,
+        ...calcularHorasPedagogicas(
+          fila.minutosProgramados,
+          fila.minutosDictados,
+          fila.minutosHoraPedagogica,
+        ),
         tiempoTotalFueraTexto: formatearMinutosAHrsMin(fila.minutosTotalFuera),
         solicitudesPendientesCount: solicitud?.total ?? 0,
       });
@@ -201,7 +213,11 @@ export class ConsolidadoDocenteRepository {
         totalAusencias: consolidadosDocente.totalAusencias,
         minutosFueraAula: consolidadosDocente.minutosFueraAula,
         minutosTotalFuera: consolidadosDocente.minutosTotalFuera,
+        minutosProgramados: consolidadosDocente.minutosProgramados,
+        minutosDictados: consolidadosDocente.minutosDictados,
+        minutosHoraPedagogica: consolidadosDocente.minutosHoraPedagogica,
         decision: sql<DecisionConsolidado>`${consolidadosDocente.decision}`,
+        decisionRegistradaEn: sql<string | null>`${consolidadosDocente.decisionRegistradaEn}::text`,
         observacion: consolidadosDocente.observacion,
         motivoCambio: consolidadosDocente.motivoCambio,
         generadoEn: sql<string>`${consolidadosDocente.generadoEn}::text`,
@@ -220,14 +236,20 @@ export class ConsolidadoDocenteRepository {
     return fila ?? null;
   }
 
-  async calcularMetricasDocente(docenteId: string, fechaInicio: string, fechaFin: string) {
+  async calcularMetricasDocente(
+    docenteId: string,
+    fechaInicio: string,
+    fechaFin: string,
+  ): Promise<MetricasConsolidado> {
     const sesiones = await this.db
       .select({
         id: sesionesClase.id,
         estado: sesionesClase.estado,
         minutosPerdidos: sesionesClase.minutosPerdidos,
+        duracion: sql<number>`COALESCE((EXTRACT(epoch FROM (COALESCE(${sesionesClase.horaFinPlan}, ${horarios.horaFin}) - COALESCE(${sesionesClase.horaInicioPlan}, ${horarios.horaInicio}))) / 60)::int, 0)`,
       })
       .from(sesionesClase)
+      .innerJoin(horarios, eq(horarios.id, sesionesClase.horarioId))
       .where(
         and(
           eq(sesionesClase.docenteId, docenteId),
@@ -241,8 +263,17 @@ export class ConsolidadoDocenteRepository {
     let noCumplidas = 0;
     let justificadas = 0;
     let minutosPerdidosFirma = 0;
+    let minutosProgramados = 0;
+    let minutosDictados = 0;
 
     for (const s of sesiones) {
+      const duracion = Number(s.duracion) || 0;
+      minutosProgramados += duracion;
+      // Las horas dictadas salen solo de las firmas: la cumplida por su duración y la parcial por lo firmado.
+      if (s.estado === "cumplida") minutosDictados += duracion;
+      else if (s.estado === "parcial") {
+        minutosDictados += Math.max(0, duracion - (s.minutosPerdidos || 0));
+      }
       if (s.estado === "cumplida") cumplidas++;
       else if (s.estado === "parcial") parciales++;
       else if (s.estado === "no_cumplida") noCumplidas++;
@@ -282,23 +313,28 @@ export class ConsolidadoDocenteRepository {
       totalAusencias,
       minutosFueraAula,
       minutosTotalFuera,
+      minutosProgramados,
+      minutosDictados,
     };
   }
 
-  async crearConsolidado(datos: {
-    docenteId: string;
-    periodoId: string;
-    sesionesProgramadas: number;
-    sesionesCumplidas: number;
-    sesionesParciales: number;
-    sesionesNoCumplidas: number;
-    sesionesJustificadas: number;
-    minutosPerdidosFirma: number;
-    totalAusencias: number;
-    minutosFueraAula: number;
-    minutosTotalFuera: number;
-    generadoPorId: string;
-  }) {
+  /** Valor vigente de una variable de sistema, o null si no está cargada. */
+  async valorVariable(codigo: string): Promise<string | null> {
+    const [fila] = await this.db
+      .select({ valor: variablesSistema.valor })
+      .from(variablesSistema)
+      .where(and(eq(variablesSistema.codigo, codigo), eq(variablesSistema.vigente, true)))
+      .limit(1);
+    return fila?.valor ?? null;
+  }
+
+  async crearConsolidado(
+    datos: MetricasConsolidadoGuardadas & {
+      docenteId: string;
+      periodoId: string;
+      generadoPorId: string;
+    },
+  ) {
     const [creado] = await this.db
       .insert(consolidadosDocente)
       .values({
@@ -316,6 +352,9 @@ export class ConsolidadoDocenteRepository {
         totalAusencias: datos.totalAusencias,
         minutosFueraAula: datos.minutosFueraAula,
         minutosTotalFuera: datos.minutosTotalFuera,
+        minutosProgramados: datos.minutosProgramados,
+        minutosDictados: datos.minutosDictados,
+        minutosHoraPedagogica: datos.minutosHoraPedagogica,
         decision: "ninguna",
         generadoPorId: datos.generadoPorId,
       })
@@ -334,6 +373,7 @@ export class ConsolidadoDocenteRepository {
       .set({
         decision,
         observacion: observacion || null,
+        decisionRegistradaEn: sql`CURRENT_TIMESTAMP`,
       })
       .where(eq(consolidadosDocente.id, consolidadoId))
       .returning();
@@ -354,17 +394,7 @@ export class ConsolidadoDocenteRepository {
   async cerrarConNuevaVersion(
     consolidadoAnteriorId: string,
     motivoCambio: string,
-    metricasRecalculadas: {
-      sesionesProgramadas: number;
-      sesionesCumplidas: number;
-      sesionesParciales: number;
-      sesionesNoCumplidas: number;
-      sesionesJustificadas: number;
-      minutosPerdidosFirma: number;
-      totalAusencias: number;
-      minutosFueraAula: number;
-      minutosTotalFuera: number;
-    },
+    metricasRecalculadas: MetricasConsolidadoGuardadas,
     generadoPorId: string,
   ) {
     return await this.db.transaction(async (tx) => {
@@ -401,7 +431,11 @@ export class ConsolidadoDocenteRepository {
           totalAusencias: metricasRecalculadas.totalAusencias,
           minutosFueraAula: metricasRecalculadas.minutosFueraAula,
           minutosTotalFuera: metricasRecalculadas.minutosTotalFuera,
+          minutosProgramados: metricasRecalculadas.minutosProgramados,
+          minutosDictados: metricasRecalculadas.minutosDictados,
+          minutosHoraPedagogica: metricasRecalculadas.minutosHoraPedagogica,
           decision: anterior.decision,
+          decisionRegistradaEn: anterior.decisionRegistradaEn,
           observacion: anterior.observacion,
           generadoPorId,
         })

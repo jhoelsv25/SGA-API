@@ -197,6 +197,13 @@
       "when": 1794395811900,
       "tag": "0028_rf011_v3_alertas_sesion",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1794482211900,
+      "tag": "0029_rf013_v2_horas_y_compromisos",
+      "breakpoints": true
     }
   ]
 }
