@@ -5,9 +5,11 @@ import type { AuthenticatedUser } from "@/features/auth/interfaces/jwt-payload.i
 import { CalendarioService } from "@/features/calendario/calendario.service";
 import { EquiposService } from "@/features/equipos/equipos.service";
 import { MarcacionesService } from "@/features/marcaciones/marcaciones.service";
+import { NotificacionesService } from "@/features/notificaciones/notificaciones.service";
 import {
   SesionesClaseRepository,
   SesionesClaseService,
+  VARIABLES_ALERTA,
   VARIABLES_JUSTIFICACION,
   VARIABLES_SESION,
   type SesionResponseDto,
@@ -95,6 +97,9 @@ describe("RF-011: Registro de sesión de clase", () => {
       justificacionesPorEstado: jest.fn().mockResolvedValue([]),
       diasSinClases: jest.fn().mockResolvedValue([]),
       diasPermisoPersonal: jest.fn().mockResolvedValue([]),
+      minutosPerdidosPorDocente: jest.fn().mockResolvedValue([]),
+      registrarAlertaEnviada: jest.fn().mockResolvedValue(true),
+      usuariosConRol: jest.fn().mockResolvedValue(["u-sub", "u-dir"]),
     };
     equipos = {
       validarKiosko: jest.fn().mockResolvedValue({
@@ -615,6 +620,166 @@ describe("RF-011: Registro de sesión de clase", () => {
       repo.diasPermisoPersonal!.mockResolvedValue(["2028-04-03", "2028-04-20", HOY]);
       const r = await service.aprobarJustificacion("ses-1", "u-sub");
       expect(r.mensaje).toBe("Sesión justificada.");
+    });
+  });
+
+  describe("RF-011 V3: alertas del panel", () => {
+    let notificaciones: Mocks<NotificacionesService>;
+    let conAlertas: SesionesClaseService;
+
+    const enCurso = (p: Partial<SesionResponseDto> = {}) =>
+      sesion({ estado: "en_curso", horaIngreso: "08:30", ...p });
+
+    const configurar = (extra: Record<string, string> = {}) => {
+      const base = new Map<string, string>([
+        [VARIABLES_SESION.MINUTOS_ANTES_FIRMA_INGRESO, "15"],
+        [VARIABLES_SESION.TOLERANCIA_INGRESO, "15"],
+        [VARIABLES_SESION.TOLERANCIA_SALIDA, "15"],
+        [VARIABLES_SESION.SALIDA_AUTOMATICA, "true"],
+        [VARIABLES_ALERTA.SALIDA_MINUTOS, "10"],
+        [VARIABLES_ALERTA.UMBRAL_DIA, "45"],
+        [VARIABLES_ALERTA.UMBRAL_SEMANA, "120"],
+      ]);
+      for (const [k, v] of Object.entries(extra)) base.set(k, v);
+      repo.valoresVariables!.mockResolvedValue(base);
+    };
+
+    beforeEach(() => {
+      notificaciones = { enviar: jest.fn().mockResolvedValue(undefined) };
+      conAlertas = new SesionesClaseService(
+        repo as unknown as SesionesClaseRepository,
+        equipos as unknown as EquiposService,
+        marcaciones as unknown as MarcacionesService,
+        anios as unknown as AniosAcademicosService,
+        calendario as unknown as CalendarioService,
+        audit as unknown as AuditService,
+        undefined,
+        undefined,
+        notificaciones as unknown as NotificacionesService,
+      );
+      configurar();
+    });
+
+    it("CP-RF011-30: alerta la sesión por terminar sin firma de salida y avisa al Subdirector y al Director", async () => {
+      reloj("09:50");
+      repo.sesionesDelDia!.mockResolvedValue([enCurso()]);
+      const panel = await conAlertas.panelDeHoy();
+      expect(panel.sesiones[0].alertaSalida).toBe(
+        "Matemática – 5.° A (prof. Quispe): faltan 10 minutos y no hay firma de salida.",
+      );
+      expect(panel.totalAlertas).toBe(1);
+      expect(repo.registrarAlertaEnviada).toHaveBeenCalledWith("salida:ses-1");
+      const llamadas = notificaciones.enviar!.mock.calls as [{ usuarioId: string }][];
+      expect(llamadas.map(([n]) => n.usuarioId)).toEqual(["u-sub", "u-dir"]);
+    });
+
+    it("no alerta antes de la anticipación configurada", async () => {
+      reloj("09:40");
+      repo.sesionesDelDia!.mockResolvedValue([enCurso()]);
+      const panel = await conAlertas.panelDeHoy();
+      expect(panel.sesiones[0].alertaSalida).toBeNull();
+      expect(notificaciones.enviar).not.toHaveBeenCalled();
+    });
+
+    it("CP-RF011-31: la alerta de salida sigue en el panel pero no se notifica dos veces", async () => {
+      reloj("09:55");
+      repo.sesionesDelDia!.mockResolvedValue([enCurso()]);
+      repo.registrarAlertaEnviada!.mockResolvedValue(false); // ya se envió a las 09:50
+      const panel = await conAlertas.panelDeHoy();
+      expect(panel.sesiones[0].alertaSalida).toContain("faltan 5 minutos");
+      expect(notificaciones.enviar).not.toHaveBeenCalled();
+    });
+
+    it("CP-RF011-32: al firmar la salida la alerta desaparece del panel", async () => {
+      reloj("09:55");
+      repo.sesionesDelDia!.mockResolvedValue([
+        enCurso({ estado: "cumplida", horaSalida: "09:55" }),
+      ]);
+      const panel = await conAlertas.panelDeHoy();
+      expect(panel.sesiones[0].alertaSalida).toBeNull();
+      expect(panel.totalAlertas).toBe(0);
+    });
+
+    it("CP-RF011-33: alerta por minutos perdidos del día y una sola notificación por docente y día", async () => {
+      reloj("12:00");
+      repo.minutosPerdidosPorDocente!.mockImplementation((desde: string, hasta: string) =>
+        Promise.resolve(
+          desde === hasta
+            ? [{ docenteId: "doc-1", docenteNombre: "Quispe, Juan", minutos: 60 }]
+            : [],
+        ),
+      );
+      const panel = await conAlertas.panelDeHoy();
+      expect(panel.alertasMinutos).toHaveLength(1);
+      expect(panel.alertasMinutos[0].mensaje).toBe(
+        "El docente Quispe acumula 60 minutos perdidos hoy (umbral: 45).",
+      );
+      expect(repo.registrarAlertaEnviada).toHaveBeenCalledWith(`minutos-dia:doc-1:${HOY}`);
+      expect(notificaciones.enviar).toHaveBeenCalledTimes(2); // Subdirector y Director
+    });
+
+    it("CP-RF011-34: alerta semanal con la semana de lunes a viernes", async () => {
+      reloj("12:00");
+      repo.minutosPerdidosPorDocente!.mockImplementation((desde: string, hasta: string) =>
+        Promise.resolve(
+          desde !== hasta
+            ? [{ docenteId: "doc-1", docenteNombre: "Quispe, Juan", minutos: 125 }]
+            : [],
+        ),
+      );
+      const panel = await conAlertas.panelDeHoy();
+      expect(repo.minutosPerdidosPorDocente).toHaveBeenCalledWith("2028-05-15", "2028-05-19");
+      expect(panel.alertasMinutos[0]).toMatchObject({
+        periodo: "semana",
+        minutos: 125,
+        umbral: 120,
+      });
+      expect(repo.registrarAlertaEnviada).toHaveBeenCalledWith("minutos-semana:doc-1:2028-05-15");
+    });
+
+    it("CP-RF011-36: con el umbral en 0 no se muestra ni se envía la alerta del día", async () => {
+      reloj("12:00");
+      configurar({ [VARIABLES_ALERTA.UMBRAL_DIA]: "0" });
+      repo.minutosPerdidosPorDocente!.mockImplementation((desde: string, hasta: string) =>
+        Promise.resolve(
+          desde === hasta
+            ? [{ docenteId: "doc-1", docenteNombre: "Quispe, Juan", minutos: 90 }]
+            : [],
+        ),
+      );
+      const panel = await conAlertas.panelDeHoy();
+      expect(panel.alertasMinutos).toEqual([]);
+      expect(notificaciones.enviar).not.toHaveBeenCalled();
+    });
+
+    it("sin las variables en la base el panel funciona y no alerta", async () => {
+      reloj("09:55");
+      repo.valoresVariables!.mockResolvedValue(
+        new Map([
+          [VARIABLES_SESION.MINUTOS_ANTES_FIRMA_INGRESO, "15"],
+          [VARIABLES_SESION.TOLERANCIA_INGRESO, "15"],
+          [VARIABLES_SESION.TOLERANCIA_SALIDA, "15"],
+          [VARIABLES_SESION.SALIDA_AUTOMATICA, "true"],
+        ]),
+      );
+      repo.sesionesDelDia!.mockResolvedValue([enCurso()]);
+      const panel = await conAlertas.panelDeHoy();
+      expect(panel.sesiones[0].alertaSalida).toBeNull();
+      expect(panel.alertasMinutos).toEqual([]);
+    });
+
+    it("si falla el envío el panel igual responde", async () => {
+      reloj("09:50");
+      repo.sesionesDelDia!.mockResolvedValue([enCurso()]);
+      notificaciones.enviar!.mockRejectedValue(new Error("redis caído"));
+      await expect(conAlertas.panelDeHoy()).resolves.toMatchObject({ totalAlertas: 1 });
+    });
+
+    it("la tarea periódica envía las alertas sin abrir el panel", async () => {
+      reloj("09:50");
+      repo.sesionesDelDia!.mockResolvedValue([enCurso()]);
+      await conAlertas.evaluarAlertas();
+      expect(notificaciones.enviar).toHaveBeenCalledTimes(2);
     });
   });
 });

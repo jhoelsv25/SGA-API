@@ -22,6 +22,12 @@ export interface DatosSolicitudJustificacion {
   documentoUrl: string | null;
 }
 
+export interface MinutosPerdidosDocente {
+  docenteId: string;
+  docenteNombre: string;
+  minutos: number;
+}
+
 export interface ResultadoCierre {
   noCumplidas: number;
   parciales: number;
@@ -55,6 +61,11 @@ export interface ISesionesClaseRepository {
   diasSinClases(desde: string, hasta: string): Promise<string[]>;
   /** Días distintos con sesiones justificadas por permiso personal en el año lectivo de la fecha. */
   diasPermisoPersonal(docenteId: string, fecha: string): Promise<string[]>;
+  /** Minutos perdidos por docente en el rango, sin contar las sesiones justificadas. */
+  minutosPerdidosPorDocente(desde: string, hasta: string): Promise<MinutosPerdidosDocente[]>;
+  /** true si la alerta no estaba registrada (se debe enviar); false si ya se había enviado. */
+  registrarAlertaEnviada(clave: string): Promise<boolean>;
+  usuariosConRol(nombresRol: readonly string[]): Promise<string[]>;
   docenteDePersona(personaId: string): Promise<{ id: string; activo: boolean } | null>;
   docenteActivo(docenteId: string): Promise<boolean>;
   valoresVariables(codigos: readonly string[]): Promise<Map<string, string>>;

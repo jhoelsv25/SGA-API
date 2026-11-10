@@ -1,4 +1,8 @@
 import {
+  apellidoDeNombre,
+  diasHabilesTranscurridos,
+  lunesDeLaSemana,
+  viernesDeLaSemana,
   elegirDestacada,
   evaluarIngreso,
   minutosSalidaAnticipada,
@@ -117,5 +121,27 @@ describe("RF-011: reglas de sesión", () => {
     ];
     expect(elegirDestacada(sesiones, "08:20", 15)).toBe("b");
     expect(elegirDestacada(sesiones, "10:30", 15)).toBe("c");
+  });
+});
+
+describe("RF-011 V3: fechas y mensajes de las alertas", () => {
+  it("el lunes y el viernes de la semana de un martes, un domingo y un lunes", () => {
+    expect([lunesDeLaSemana("2028-05-16"), viernesDeLaSemana("2028-05-16")]).toEqual([
+      "2028-05-15",
+      "2028-05-19",
+    ]);
+    expect(lunesDeLaSemana("2028-05-21")).toBe("2028-05-15"); // domingo
+    expect(lunesDeLaSemana("2028-05-15")).toBe("2028-05-15");
+  });
+
+  it("los días hábiles saltan fines de semana y días sin clases", () => {
+    expect(diasHabilesTranscurridos("2028-05-12", "2028-05-16")).toBe(2); // lun y mar
+    expect(diasHabilesTranscurridos("2028-05-12", "2028-05-16", new Set(["2028-05-15"]))).toBe(1);
+    expect(diasHabilesTranscurridos("2028-05-16", "2028-05-16")).toBe(0);
+  });
+
+  it("el apellido sale antes de la coma", () => {
+    expect(apellidoDeNombre("Quispe, Juan")).toBe("Quispe");
+    expect(apellidoDeNombre("Quispe Mamani")).toBe("Quispe Mamani");
   });
 });

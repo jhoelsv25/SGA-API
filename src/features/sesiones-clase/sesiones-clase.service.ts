@@ -12,6 +12,7 @@ import {
   Optional,
 } from "@nestjs/common";
 import { Queue } from "bullmq";
+import { MENU_SESIONES_HOY } from "../../common/constants";
 import { AuditService } from "../../common/services/audit.service";
 import { QUEUES } from "../../core/queues/queues.constants";
 import type { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface";
@@ -27,8 +28,14 @@ import {
   CRON_CERRAR_SESIONES,
   CRON_GENERAR_SESIONES,
   JOB_CERRAR_SESIONES,
+  CRON_EVALUAR_ALERTAS,
+  JOB_EVALUAR_ALERTAS,
   JOB_GENERAR_SESIONES,
   MENSAJES_SESION,
+  ROLES_ALERTA_SESION,
+  VARIABLES_ALERTA,
+  mensajeAlertaMinutos,
+  mensajeAlertaSalida,
   MOTIVOS_CON_AVISO_NORMA,
   MOTIVOS_JUSTIFICACION,
   MOTIVO_OTRO,
@@ -46,6 +53,7 @@ import {
   mensajeSalidaParcial,
 } from "./constants";
 import type {
+  AlertaMinutosDocenteDto,
   AprobarJustificacionDto,
   ContadorPermisosDto,
   CredencialesKioskoDto,
@@ -68,13 +76,22 @@ import type {
 } from "./dto";
 import { SesionesClaseRepository } from "./repositories";
 import {
+  apellidoDeNombre,
   diasHabilesTranscurridos,
+  lunesDeLaSemana,
+  viernesDeLaSemana,
   elegirDestacada,
   evaluarIngreso,
   minutosSalidaAnticipada,
   planificarSesiones,
 } from "./utils";
 import { minutosDelDia } from "../marcaciones/utils";
+
+interface ConfiguracionAlertas {
+  salidaMinutos: number | null;
+  umbralDia: number | null;
+  umbralSemana: number | null;
+}
 
 interface ConfiguracionSesion {
   minutosAntes: number;
@@ -120,6 +137,11 @@ export class SesionesClaseService implements OnModuleInit {
         JOB_GENERAR_SESIONES,
         { pattern: CRON_GENERAR_SESIONES, tz: "America/Lima" },
         { name: JOB_GENERAR_SESIONES, data: {} },
+      );
+      await this.cola.upsertJobScheduler(
+        JOB_EVALUAR_ALERTAS,
+        { pattern: CRON_EVALUAR_ALERTAS, tz: "America/Lima" },
+        { name: JOB_EVALUAR_ALERTAS, data: {} },
       );
       await this.cola.upsertJobScheduler(
         JOB_CERRAR_SESIONES,
@@ -350,16 +372,142 @@ export class SesionesClaseService implements OnModuleInit {
   // --- HU3: seguimiento del subdirector -------------------------------------------
 
   async panelDeHoy(): Promise<PanelSesionesResponseDto> {
+    const panel = await this.calcularPanel();
+    // Mirar el panel también dispara el aviso; la clave de cada alerta evita repetirlo.
+    await this.notificarAlertas(panel);
+    return panel;
+  }
+
+  /** Tarea periódica: avisa aunque nadie tenga abierto el panel. */
+  async evaluarAlertas(): Promise<void> {
+    await this.notificarAlertas(await this.calcularPanel());
+  }
+
+  private async calcularPanel(): Promise<PanelSesionesResponseDto> {
     const { fecha, hora } = ahoraEnColegio();
     await this.asegurarGeneracion(fecha);
     const { toleranciaIngreso } = await this.configuracion();
+    const alertas = await this.configuracionAlertas();
     const minutoActual = minutosDelDia(hora);
     const sesiones = (await this.repository.sesionesDelDia(fecha)).map((s) => ({
       ...s,
       alerta:
         s.estado === "pendiente" && minutoActual > minutosDelDia(s.horaInicio) + toleranciaIngreso,
+      alertaSalida: this.alertaDeSalida(s, minutoActual, alertas.salidaMinutos),
     }));
-    return { fecha, sesiones, totalAlertas: sesiones.filter((s) => s.alerta).length };
+    const alertasMinutos = await this.alertasDeMinutos(fecha, alertas);
+    const totalAlertas =
+      sesiones.filter((s) => s.alerta || s.alertaSalida).length + alertasMinutos.length;
+    return { fecha, sesiones, alertasMinutos, totalAlertas };
+  }
+
+  /** Sesión `en_curso` a `alerta_salida_minutos` o menos de terminar sin firma de salida. */
+  private alertaDeSalida(
+    s: SesionResponseDto,
+    minutoActual: number,
+    anticipacion: number | null,
+  ): string | null {
+    if (anticipacion === null || s.estado !== "en_curso" || s.horaSalida) return null;
+    const faltan = minutosDelDia(s.horaFin) - minutoActual;
+    if (faltan > anticipacion) return null;
+    return mensajeAlertaSalida(
+      s.cursoNombre,
+      s.seccionNombre,
+      apellidoDeNombre(s.docenteNombre),
+      Math.max(0, faltan),
+    );
+  }
+
+  /** Docentes con minutos perdidos sobre el umbral del día y de la semana (0 desactiva). */
+  private async alertasDeMinutos(
+    fecha: string,
+    cfg: ConfiguracionAlertas,
+  ): Promise<AlertaMinutosDocenteDto[]> {
+    const resultado: AlertaMinutosDocenteDto[] = [];
+    const periodos = [
+      { periodo: "dia" as const, umbral: cfg.umbralDia, desde: fecha, hasta: fecha },
+      {
+        periodo: "semana" as const,
+        umbral: cfg.umbralSemana,
+        desde: lunesDeLaSemana(fecha),
+        hasta: viernesDeLaSemana(fecha),
+      },
+    ];
+    for (const { periodo, umbral, desde, hasta } of periodos) {
+      if (!umbral) continue;
+      const filas = await this.repository.minutosPerdidosPorDocente(desde, hasta);
+      for (const f of filas.filter((x) => x.minutos >= umbral)) {
+        resultado.push({
+          docenteId: f.docenteId,
+          docenteNombre: f.docenteNombre,
+          periodo,
+          minutos: f.minutos,
+          umbral,
+          mensaje: mensajeAlertaMinutos(
+            apellidoDeNombre(f.docenteNombre),
+            f.minutos,
+            umbral,
+            periodo,
+          ),
+        });
+      }
+    }
+    return resultado;
+  }
+
+  /** Una notificación por alerta al Subdirector y al Director; la clave evita duplicarla. */
+  private async notificarAlertas(panel: PanelSesionesResponseDto): Promise<void> {
+    if (!this.notificacionesService) return;
+    try {
+      const pendientes: { clave: string; mensaje: string; sesionId: string | null }[] = [];
+      for (const s of panel.sesiones) {
+        if (s.alertaSalida) {
+          pendientes.push({ clave: `salida:${s.id}`, mensaje: s.alertaSalida, sesionId: s.id });
+        }
+      }
+      for (const a of panel.alertasMinutos) {
+        const inicio = a.periodo === "dia" ? panel.fecha : lunesDeLaSemana(panel.fecha);
+        pendientes.push({
+          clave: `minutos-${a.periodo}:${a.docenteId}:${inicio}`,
+          mensaje: a.mensaje,
+          sesionId: null,
+        });
+      }
+      if (pendientes.length === 0) return;
+      const destinatarios = await this.repository.usuariosConRol(ROLES_ALERTA_SESION);
+      for (const p of pendientes) {
+        if (!(await this.repository.registrarAlertaEnviada(p.clave))) continue;
+        for (const usuarioId of destinatarios) {
+          await this.notificacionesService.enviar({
+            usuarioId,
+            titulo: "Alerta de seguimiento docente",
+            mensaje: p.mensaje,
+            tipo: "alerta",
+            enlaceUrl: MENU_SESIONES_HOY,
+            sesionClaseId: p.sesionId,
+          });
+        }
+      }
+    } catch (error) {
+      // Una falla al avisar no debe romper el panel ni la tarea periódica.
+      this.logger.warn(
+        `No se pudieron enviar las alertas de sesiones: ${(error as Error).message}`,
+      );
+    }
+  }
+
+  /** Variables de las alertas; si faltan en la base, la alerta queda desactivada (no rompe el panel). */
+  private async configuracionAlertas(): Promise<ConfiguracionAlertas> {
+    const valores = await this.repository.valoresVariables(Object.values(VARIABLES_ALERTA));
+    const entero = (codigo: string): number | null => {
+      const n = Number.parseInt(valores.get(codigo) ?? "", 10);
+      return Number.isNaN(n) || n < 0 ? null : n;
+    };
+    return {
+      salidaMinutos: entero(VARIABLES_ALERTA.SALIDA_MINUTOS),
+      umbralDia: entero(VARIABLES_ALERTA.UMBRAL_DIA),
+      umbralSemana: entero(VARIABLES_ALERTA.UMBRAL_SEMANA),
+    };
   }
 
   async asignarReemplazo(

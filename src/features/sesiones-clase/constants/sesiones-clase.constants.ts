@@ -50,6 +50,20 @@ export const VARIABLES_JUSTIFICACION = {
   PERMISOS_MAX_ANIO: "sesion.permisos_personales_max_anio",
 } as const;
 
+/** Variables de sistema de las alertas del panel (RF-004 V3, RF-011 V3). */
+export const VARIABLES_ALERTA = {
+  SALIDA_MINUTOS: "sesion.alerta_salida_minutos",
+  UMBRAL_DIA: "sesion.alerta_minutos_perdidos_umbral",
+  UMBRAL_SEMANA: "sesion.alerta_minutos_perdidos_umbral_semana",
+} as const;
+
+/** Roles que reciben las alertas del seguimiento (RF-011 V3). */
+export const ROLES_ALERTA_SESION = ["Subdirector", "Director"] as const;
+
+export const JOB_EVALUAR_ALERTAS = "evaluar-alertas-de-sesiones";
+/** Cada 5 minutos, de lunes a viernes en horario escolar (hora de Lima). */
+export const CRON_EVALUAR_ALERTAS = "*/5 6-18 * * 1-5";
+
 export const JOB_GENERAR_SESIONES = "generar-sesiones-del-dia";
 export const JOB_CERRAR_SESIONES = "cerrar-sesiones-del-dia";
 /** A primera hora se generan; al final del día se cierran (hora de Lima). */
@@ -102,6 +116,26 @@ export const mensajeSolicitudVencida = (
   dias: number,
 ): string =>
   `La justificación de ${docente} (${curso} – ${seccion}, ${fecha}) lleva ${dias} días sin respuesta.`;
+
+export const mensajeAlertaSalida = (
+  curso: string,
+  seccion: string,
+  profesor: string,
+  faltan: number,
+): string =>
+  faltan > 0
+    ? `${curso} – ${seccion} (prof. ${profesor}): faltan ${faltan} minutos y no hay firma de salida.`
+    : `${curso} – ${seccion} (prof. ${profesor}): la clase terminó y no hay firma de salida.`;
+
+export const mensajeAlertaMinutos = (
+  apellido: string,
+  minutos: number,
+  umbral: number,
+  periodo: "dia" | "semana",
+): string =>
+  `El docente ${apellido} acumula ${minutos} minutos perdidos ${
+    periodo === "dia" ? "hoy" : "esta semana"
+  } (umbral: ${umbral}).`;
 
 export const mensajeIngreso = (hora: string, curso: string, seccion: string): string =>
   `Ingreso firmado a las ${hora}. ${curso} – ${seccion}.`;

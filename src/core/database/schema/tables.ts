@@ -2855,3 +2855,11 @@ export const suscripcionesPush = pgTable(
     }).onDelete("cascade"),
   ],
 );
+
+// RF-011 V3: alertas de sesiones ya notificadas, para no repetirlas (una por clave).
+export const alertasSesionEnviadas = pgTable("alertas_sesion_enviadas", {
+  clave: varchar({ length: 120 }).primaryKey().notNull(),
+  creadoEn: timestamp("creado_en", { precision: 0, mode: "string" })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+});

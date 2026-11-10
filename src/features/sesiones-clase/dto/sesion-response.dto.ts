@@ -37,11 +37,27 @@ export class SesionResponseDto {
 
 export class SesionPanelDto extends SesionResponseDto {
   @ApiProperty({ description: "Pasó la tolerancia sin firma de ingreso" }) alerta!: boolean;
+  @ApiPropertyOptional({
+    nullable: true,
+    description: "Alerta de salida: la sesión en curso está por terminar sin firma de salida",
+  })
+  alertaSalida!: string | null;
+}
+
+export class AlertaMinutosDocenteDto {
+  @ApiProperty() docenteId!: string;
+  @ApiProperty() docenteNombre!: string;
+  @ApiProperty({ enum: ["dia", "semana"] }) periodo!: "dia" | "semana";
+  @ApiProperty() minutos!: number;
+  @ApiProperty() umbral!: number;
+  @ApiProperty({ example: "El docente Quispe acumula 60 minutos perdidos hoy (umbral: 45)." })
+  mensaje!: string;
 }
 
 export class PanelSesionesResponseDto {
   @ApiProperty() fecha!: string;
   @ApiProperty({ type: [SesionPanelDto] }) sesiones!: SesionPanelDto[];
+  @ApiProperty({ type: [AlertaMinutosDocenteDto] }) alertasMinutos!: AlertaMinutosDocenteDto[];
   @ApiProperty() totalAlertas!: number;
 }
 

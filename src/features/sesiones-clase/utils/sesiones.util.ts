@@ -152,3 +152,21 @@ export function diasHabilesTranscurridos(
   }
   return total;
 }
+
+/** Lunes de la semana de una fecha AAAA-MM-DD. */
+export function lunesDeLaSemana(fecha: string): string {
+  const t = Date.parse(`${fecha}T00:00:00Z`);
+  const diasDesdeLunes = (new Date(t).getUTCDay() + 6) % 7;
+  return new Date(t - diasDesdeLunes * MS_DIA).toISOString().slice(0, 10);
+}
+
+/** Viernes de la semana de una fecha AAAA-MM-DD (la semana de seguimiento es de lunes a viernes). */
+export function viernesDeLaSemana(fecha: string): string {
+  const lunes = Date.parse(`${lunesDeLaSemana(fecha)}T00:00:00Z`);
+  return new Date(lunes + 4 * MS_DIA).toISOString().slice(0, 10);
+}
+
+/** Apellido para los mensajes: "Quispe, Juan" → "Quispe". */
+export function apellidoDeNombre(nombreCompleto: string): string {
+  return nombreCompleto.split(",")[0].trim();
+}

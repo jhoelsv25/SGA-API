@@ -1,8 +1,22 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, asc, desc, eq, gte, inArray, isNotNull, lte, sql, type SQL } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  gte,
+  inArray,
+  isNotNull,
+  isNull,
+  lte,
+  ne,
+  sql,
+  type SQL,
+} from "drizzle-orm";
 import { alias, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { Database, DRIZZLE } from "../../../core/database";
 import {
+  alertasSesionEnviadas,
   aniosAcademicos,
   calendarioEventos,
   cursos,
@@ -11,8 +25,10 @@ import {
   grados,
   horarios,
   personas,
+  roles,
   secciones,
   sesionesClase,
+  usuarioRoles,
   usuarios,
   variablesSistema,
 } from "../../../core/database/schema";
@@ -23,6 +39,7 @@ import type {
   DatosFirmaSalida,
   DatosSolicitudJustificacion,
   ISesionesClaseRepository,
+  MinutosPerdidosDocente,
   ResultadoCierre,
 } from "../interfaces";
 import type { BloqueDelDia, SesionPlanificada } from "../utils";
@@ -365,6 +382,58 @@ export class SesionesClaseRepository implements ISesionesClaseRepository {
       )
       .orderBy(desc(sesionesClase.justificacionSolicitadaEn));
     return filas.map((f) => this.mapear(f));
+  }
+
+  async minutosPerdidosPorDocente(desde: string, hasta: string): Promise<MinutosPerdidosDocente[]> {
+    const filas = await this.db
+      .select({
+        docenteId: sesionesClase.docenteId,
+        docenteNombre: nombre(personaDocente),
+        minutos: sql<number>`COALESCE(SUM(${sesionesClase.minutosPerdidos}), 0)::int`,
+      })
+      .from(sesionesClase)
+      .innerJoin(docentes, eq(docentes.id, sesionesClase.docenteId))
+      .innerJoin(personaDocente, eq(personaDocente.id, docentes.personaId))
+      .where(
+        and(
+          gte(sesionesClase.fecha, desde),
+          lte(sesionesClase.fecha, hasta),
+          ne(sesionesClase.estado, "justificada"),
+        ),
+      )
+      .groupBy(
+        sesionesClase.docenteId,
+        personaDocente.apellidoPaterno,
+        personaDocente.apellidoMaterno,
+        personaDocente.nombres,
+      );
+    return filas.map((f) => ({ ...f, minutos: Number(f.minutos) }));
+  }
+
+  async registrarAlertaEnviada(clave: string): Promise<boolean> {
+    const filas = await this.db
+      .insert(alertasSesionEnviadas)
+      .values({ clave })
+      .onConflictDoNothing()
+      .returning({ clave: alertasSesionEnviadas.clave });
+    return filas.length === 1;
+  }
+
+  async usuariosConRol(nombresRol: readonly string[]): Promise<string[]> {
+    const filas = await this.db
+      .selectDistinct({ id: usuarios.id })
+      .from(usuarios)
+      .innerJoin(usuarioRoles, eq(usuarioRoles.usuarioId, usuarios.id))
+      .innerJoin(roles, eq(roles.id, usuarioRoles.rolId))
+      .where(
+        and(
+          inArray(roles.nombre, [...nombresRol]),
+          eq(usuarioRoles.vigente, true),
+          isNull(usuarios.eliminadoEn),
+          eq(usuarios.estado, "activo"),
+        ),
+      );
+    return filas.map((f) => f.id);
   }
 
   async diasSinClases(desde: string, hasta: string): Promise<string[]> {
