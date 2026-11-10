@@ -19,6 +19,12 @@ import {
   MENU_LIBRETAS,
   MENU_MIS_LIBRETAS,
 } from "../../common/constants";
+import {
+  CODIGO_INSTRUMENTO_INICIAL,
+  CONTENIDO_INSTRUMENTO_INICIAL,
+  FUENTE_INSTRUMENTO_INICIAL,
+  NOMBRE_INSTRUMENTO_INICIAL,
+} from "./seed-instrumento-observacion";
 import { MENUS_SEGUIMIENTO_DOCENTE } from "./seed-menu-seguimiento-docente";
 import { VARIABLES_SEGUIMIENTO_DOCENTE } from "./seed-variables-seguimiento-docente";
 
@@ -1061,7 +1067,24 @@ async function seed() {
       [menu.ruta, [...menu.roles]],
     );
   }
-  console.log("✔ Opciones de Seguimiento docente registradas (RF-011, RF-012, RF-013, RF-020).");
+  console.log(
+    "✔ Opciones de Seguimiento docente registradas (RF-011, RF-012, RF-013, RF-020, RF-023).",
+  );
+
+  // RF-023 V1: versión inicial del instrumento de observación (vigente solo si no hay otra).
+  await pool.query(
+    `INSERT INTO instrumentos_observacion (codigo, nombre, fuente, contenido, vigente)
+     SELECT $1::varchar, $2::varchar, $3::varchar, $4::jsonb,
+            NOT EXISTS (SELECT 1 FROM instrumentos_observacion WHERE vigente)
+     WHERE NOT EXISTS (SELECT 1 FROM instrumentos_observacion WHERE codigo = $1::varchar);`,
+    [
+      CODIGO_INSTRUMENTO_INICIAL,
+      NOMBRE_INSTRUMENTO_INICIAL,
+      FUENTE_INSTRUMENTO_INICIAL,
+      JSON.stringify(CONTENIDO_INSTRUMENTO_INICIAL),
+    ],
+  );
+  console.log("✔ Instrumento de observación inicial (RF-023).");
 
   // RF-015: menús del Aula virtual bajo el contenedor "Aula virtual"
   await pool.query(

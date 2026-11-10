@@ -61,8 +61,10 @@ describe("RF-021 V2: matriz de accesos de Seguimiento docente", () => {
     expect(new Set(ordenes).size).toBe(ordenes.length);
   });
 
-  it("las opciones de RF-023 quedan fuera del seed hasta que existan sus pantallas", () => {
-    const sinPantalla = MENUS_SEGUIMIENTO_DOCENTE.filter((m) => !m.habilitada).map((m) => m.nombre);
-    expect(sinPantalla.sort()).toEqual(["Mis observaciones", "Observaciones de aula"]);
+  it("las opciones de RF-023 se registran porque su API ya existe", () => {
+    const habilitadas = MENUS_SEGUIMIENTO_DOCENTE.filter((m) => m.habilitada).map((m) => m.nombre);
+    expect(habilitadas).toEqual(
+      expect.arrayContaining(["Mis observaciones", "Observaciones de aula"]),
+    );
   });
 });

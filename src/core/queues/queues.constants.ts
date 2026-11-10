@@ -8,6 +8,7 @@ export const QUEUES = {
   SESIONES_CLASE: "sesiones-clase-queue",
   AULA_VIRTUAL: "aula-virtual-queue",
   CONSOLIDADO_DOCENTE: "consolidado-docente-queue",
+  OBSERVACIONES_AULA: "observaciones-aula-queue",
 } as const;
 
 export type QueueName = (typeof QUEUES)[keyof typeof QUEUES];

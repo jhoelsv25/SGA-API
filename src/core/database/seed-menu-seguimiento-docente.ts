@@ -19,8 +19,8 @@ import {
  * RF-002 V5). Es la carga inicial de Roles-Menú: el Administrador la puede ajustar y él ve todo
  * por regla del servicio de menús, por eso no figura en `roles`.
  *
- * `habilitada: false` = la opción aún no tiene pantalla ni endpoint (RF-023): el seed no la
- * registra para no dejar un enlace roto. RF-023 la pasa a `true` al implementarse.
+ * `habilitada: false` = la opción aún no tiene endpoint: el seed no la registra para no dejar
+ * un enlace roto. Hoy todas están habilitadas (RF-023 V1 ya tiene su API; ver P-78).
  */
 export interface MenuSeguimientoDocente {
   nombre: string;
@@ -113,7 +113,7 @@ export const MENUS_SEGUIMIENTO_DOCENTE: readonly MenuSeguimientoDocente[] = [
     icono: "Task01Icon",
     orden: 10,
     roles: DIRECCION,
-    habilitada: false,
+    habilitada: true,
   },
   {
     nombre: "Mis observaciones",
@@ -121,7 +121,7 @@ export const MENUS_SEGUIMIENTO_DOCENTE: readonly MenuSeguimientoDocente[] = [
     icono: "File02Icon",
     orden: 11,
     roles: ["Docente"],
-    habilitada: false,
+    habilitada: true,
   },
   {
     nombre: "Indicadores",

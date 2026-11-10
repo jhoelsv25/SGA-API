@@ -40,6 +40,7 @@ import { LibretasModule } from "./libretas";
 import { ConsolidadoDocenteModule } from "./consolidado-docente";
 import { IndicadoresModule } from "./indicadores";
 import { DashboardModule } from "./dashboard";
+import { ObservacionesAulaModule } from "./observaciones-aula";
 
 @Module({
   imports: [
@@ -81,6 +82,7 @@ import { DashboardModule } from "./dashboard";
     ConductaModule,
     LibretasModule,
     ConsolidadoDocenteModule,
+    ObservacionesAulaModule,
     IndicadoresModule,
     DashboardModule,
   ],
