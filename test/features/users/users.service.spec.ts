@@ -65,6 +65,7 @@ describe("UsersService (RF-002: HU 1)", () => {
       findRolesSugeridosActivos: jest.fn(),
       registrarCuenta: jest.fn(),
       findRoles: jest.fn(),
+      findTiposFichaVigente: jest.fn().mockResolvedValue([]),
       addRole: jest.fn(),
       setPrincipalRole: jest.fn(),
       retireRole: jest.fn(),
@@ -175,6 +176,7 @@ describe("UsersService (RF-002: HU 1)", () => {
       });
       usersRepository.findUserByPersonaId.mockResolvedValue(dummyUser);
       rolesRepository.findById.mockResolvedValue(rolActivo("rol-docente", "Docente"));
+      usersRepository.findTiposFichaVigente.mockResolvedValue(["docente"]);
 
       const result = await service.create(
         { personaId: "persona-1", cargoId: "cargo-ti", rolIds: ["rol-docente"] },
@@ -191,6 +193,26 @@ describe("UsersService (RF-002: HU 1)", () => {
       expect(usersRepository.findUserByUsername).not.toHaveBeenCalled();
       expect(result.tempPassword).toBeNull();
       expect(result.cuentaExistente).toBe(true);
+    });
+
+    it("RF-002 V4: rechaza el rol Docente si la persona no tiene ficha vigente", async () => {
+      usersRepository.findPersonaById.mockResolvedValue({
+        id: "persona-1",
+        numeroDocumento: "48123456",
+      });
+      rolesRepository.findById.mockResolvedValue(rolActivo("rol-docente", "Docente"));
+
+      await expect(
+        service.create(
+          { personaId: "persona-1", cargoId: "cargo-ti", rolIds: ["rol-docente"] },
+          currentAdmin.id,
+        ),
+      ).rejects.toThrow(
+        new ConflictException(
+          'El rol Docente requiere una ficha vigente. Regístrela desde "Docentes".',
+        ),
+      );
+      expect(usersRepository.registrarCuenta).not.toHaveBeenCalled();
     });
 
     it("Roles indicados: usa esos roles en el orden dado (el primero es el principal)", async () => {
@@ -530,6 +552,7 @@ describe("UsersService (RF-002: HU 1)", () => {
       usersRepository.findRoles
         .mockResolvedValueOnce([docente])
         .mockResolvedValueOnce([docente, apoderado]);
+      usersRepository.findTiposFichaVigente.mockResolvedValue(["docente", "apoderado"]);
 
       // Act
       const result = await service.addRole(dummyUser.id, { rolId: "rol-apoderado" }, currentAdmin);

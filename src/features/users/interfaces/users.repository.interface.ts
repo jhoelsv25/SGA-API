@@ -2,6 +2,7 @@ import { PaginatedUsersResponseDto, UserResponseDto } from "../dto/user-response
 import { NuevaPersonaDto } from "../dto/create-user.dto";
 import { UserQueryDto } from "../dto/user-query.dto";
 import { UserRoleAssignmentDto } from "../dto/user-role.dto";
+import type { TipoFichaDeRol } from "../constants";
 
 export interface PersonaBasica {
   id: string;
@@ -78,6 +79,9 @@ export interface IUsersRepository {
   findRolesSugeridosActivos(cargoId: string): Promise<string[]>;
   /** Devuelve el id de la cuenta (creada o existente). */
   registrarCuenta(data: RegistrarCuentaData): Promise<string>;
+
+  /** RF-002 V4: tipos de ficha vigente de la persona. */
+  findTiposFichaVigente(personaId: string): Promise<TipoFichaDeRol[]>;
 
   // RF-002 V2 (HU1): varios roles por cuenta
   findRoles(userId: string, includeRetired: boolean): Promise<UserRoleAssignmentDto[]>;

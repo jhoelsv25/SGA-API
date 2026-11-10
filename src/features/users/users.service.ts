@@ -114,6 +114,9 @@ export class UsersService {
       }
     }
 
+    // RF-002 V4: Docente, Estudiante y Apoderado exigen su ficha vigente
+    await this.userRolesService.exigirFichaParaRoles(personaId, rolIds);
+
     // 4. Cuenta: si la persona ya tiene una, se reutiliza
     const cuentaExistente = personaId
       ? await this.usersRepository.findUserByPersonaId(personaId)
