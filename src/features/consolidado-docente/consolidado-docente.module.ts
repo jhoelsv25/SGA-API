@@ -10,7 +10,13 @@ import { CompromisosConsolidadoService } from "./compromisos-consolidado.service
 import { ConsolidadoDocenteController } from "./consolidado-docente.controller";
 import { ConsolidadoDocenteService } from "./consolidado-docente.service";
 import { ConsolidadoDocenteProcessor } from "./processors";
-import { CompromisosConsolidadoRepository, ConsolidadoDocenteRepository } from "./repositories";
+import {
+  CompromisosConsolidadoRepository,
+  ConsolidadoDocenteRepository,
+  SeguimientoReportesRepository,
+} from "./repositories";
+import { SeguimientoReportesController } from "./seguimiento-reportes.controller";
+import { SeguimientoReportesService } from "./seguimiento-reportes.service";
 
 @Module({
   imports: [
@@ -19,11 +25,17 @@ import { CompromisosConsolidadoRepository, ConsolidadoDocenteRepository } from "
     NotificacionesModule,
     InstitucionModule,
   ],
-  controllers: [CompromisosConsolidadoController, ConsolidadoDocenteController],
+  controllers: [
+    CompromisosConsolidadoController,
+    ConsolidadoDocenteController,
+    SeguimientoReportesController,
+  ],
   providers: [
     ConsolidadoDocenteRepository,
     CompromisosConsolidadoRepository,
+    SeguimientoReportesRepository,
     ConsolidadoDocenteService,
+    SeguimientoReportesService,
     CompromisosConsolidadoService,
     ConsolidadoDocenteProcessor,
     AuditService,

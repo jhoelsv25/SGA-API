@@ -25,6 +25,8 @@ import {
   MENU_MIS_AUSENCIAS,
   MENU_CONSOLIDADOS_DOCENTES,
   MENU_MI_SEGUIMIENTO,
+  MENU_PENDIENTES_SEGUIMIENTO,
+  MENU_INFORME_HORAS_EFECTIVAS,
   MENU_INDICADORES,
   MENU_MIS_INDICADORES,
 } from "../../common/constants";
@@ -1139,6 +1141,20 @@ async function seed() {
       icono: "File02Icon",
       orden: 7,
       roles: ["Docente"],
+    },
+    {
+      nombre: "Pendientes de seguimiento",
+      ruta: MENU_PENDIENTES_SEGUIMIENTO,
+      icono: "Task01Icon",
+      orden: 8,
+      roles: ["Director", "Subdirector", "Administrador"],
+    },
+    {
+      nombre: "Informe mensual de horas efectivas",
+      ruta: MENU_INFORME_HORAS_EFECTIVAS,
+      icono: "File02Icon",
+      orden: 9,
+      roles: ["Director", "Subdirector", "Administrador"],
     },
   ];
   for (const menu of MENUS_CONSOLIDADOS) {
