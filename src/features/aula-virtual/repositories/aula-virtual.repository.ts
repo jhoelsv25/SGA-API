@@ -210,6 +210,15 @@ function aEntrega(fila: Record<string, unknown>): EntregaFila {
   };
 }
 
+/** RF-017: etiqueta del autor según sus roles vigentes, sea o no su rol principal. */
+const ROL_AUTOR_SQL = sql<string>`CASE WHEN EXISTS (
+  SELECT 1 FROM usuario_roles ur
+  JOIN roles r ON r.id = ur.rol_id
+  WHERE ur.usuario_id = ${usuarios.id}
+    AND ur.vigente
+    AND LOWER(r.nombre) IN ('docente', 'director', 'subdirector', 'administrador')
+) THEN 'docente' ELSE 'estudiante' END`;
+
 @Injectable()
 export class AulaVirtualRepository implements IAulaVirtualRepository {
   constructor(@Inject(DRIZZLE) private readonly db: Database) {}
@@ -1530,9 +1539,7 @@ export class AulaVirtualRepository implements IAulaVirtualRepository {
       ${verOcultos ? sql`` : sql`AND cp.vigente = true`}
     )`;
 
-    const autorRolSql = sql<string>`CASE WHEN EXISTS (
-      SELECT 1 FROM roles r WHERE r.id = ${usuarios.rolId} AND LOWER(r.nombre) IN ('docente', 'director', 'subdirector', 'administrador')
-    ) THEN 'docente' ELSE 'estudiante' END`;
+    const autorRolSql = ROL_AUTOR_SQL;
 
     const filas = await this.db
       .select({
@@ -1567,9 +1574,7 @@ export class AulaVirtualRepository implements IAulaVirtualRepository {
       WHERE cp.publicacion_id = ${publicacionesAula.id} AND cp.vigente = true
     )`;
 
-    const autorRolSql = sql<string>`CASE WHEN EXISTS (
-      SELECT 1 FROM roles r WHERE r.id = ${usuarios.rolId} AND LOWER(r.nombre) IN ('docente', 'director', 'subdirector', 'administrador')
-    ) THEN 'docente' ELSE 'estudiante' END`;
+    const autorRolSql = ROL_AUTOR_SQL;
 
     const [fila] = await this.db
       .select({
@@ -1662,9 +1667,7 @@ export class AulaVirtualRepository implements IAulaVirtualRepository {
       condiciones.push(eq(comentariosPublicacion.vigente, true));
     }
 
-    const autorRolSql = sql<string>`CASE WHEN EXISTS (
-      SELECT 1 FROM roles r WHERE r.id = ${usuarios.rolId} AND LOWER(r.nombre) IN ('docente', 'director', 'subdirector', 'administrador')
-    ) THEN 'docente' ELSE 'estudiante' END`;
+    const autorRolSql = ROL_AUTOR_SQL;
 
     const filas = await this.db
       .select({
@@ -1691,9 +1694,7 @@ export class AulaVirtualRepository implements IAulaVirtualRepository {
   }
 
   async obtenerComentario(id: string): Promise<ComentarioMuroFila | null> {
-    const autorRolSql = sql<string>`CASE WHEN EXISTS (
-      SELECT 1 FROM roles r WHERE r.id = ${usuarios.rolId} AND LOWER(r.nombre) IN ('docente', 'director', 'subdirector', 'administrador')
-    ) THEN 'docente' ELSE 'estudiante' END`;
+    const autorRolSql = ROL_AUTOR_SQL;
 
     const [fila] = await this.db
       .select({
@@ -1769,9 +1770,7 @@ export class AulaVirtualRepository implements IAulaVirtualRepository {
       condiciones.push(eq(mensajesChat.vigente, true));
     }
 
-    const emisorRolSql = sql<string>`CASE WHEN EXISTS (
-      SELECT 1 FROM roles r WHERE r.id = ${usuarios.rolId} AND LOWER(r.nombre) IN ('docente', 'director', 'subdirector', 'administrador')
-    ) THEN 'docente' ELSE 'estudiante' END`;
+    const emisorRolSql = ROL_AUTOR_SQL;
 
     const filas = await this.db
       .select({
@@ -1800,9 +1799,7 @@ export class AulaVirtualRepository implements IAulaVirtualRepository {
   }
 
   async obtenerMensajeChat(id: string): Promise<MensajeChatFila | null> {
-    const emisorRolSql = sql<string>`CASE WHEN EXISTS (
-      SELECT 1 FROM roles r WHERE r.id = ${usuarios.rolId} AND LOWER(r.nombre) IN ('docente', 'director', 'subdirector', 'administrador')
-    ) THEN 'docente' ELSE 'estudiante' END`;
+    const emisorRolSql = ROL_AUTOR_SQL;
 
     const [fila] = await this.db
       .select({
