@@ -16,6 +16,12 @@ export interface DatosFirmaSalida {
   equipoId: string;
 }
 
+export interface DatosSolicitudJustificacion {
+  motivoCodigo: string;
+  motivo: string;
+  documentoUrl: string | null;
+}
+
 export interface ResultadoCierre {
   noCumplidas: number;
   parciales: number;
@@ -37,7 +43,7 @@ export interface ISesionesClaseRepository {
   firmarSalida(id: string, docenteId: string, datos: DatosFirmaSalida): Promise<boolean>;
   actualizarTema(id: string, tema: string): Promise<void>;
   reemplazar(id: string, docenteId: string): Promise<boolean>;
-  solicitarJustificacion(id: string, motivo: string, documentoUrl: string | null): Promise<void>;
+  solicitarJustificacion(id: string, datos: DatosSolicitudJustificacion): Promise<void>;
   resolverJustificacion(
     id: string,
     estado: Extract<EstadoJustificacion, "aprobada" | "rechazada">,
@@ -45,6 +51,10 @@ export interface ISesionesClaseRepository {
     comentario: string | null,
   ): Promise<void>;
   justificacionesPorEstado(estado: EstadoJustificacion): Promise<SesionResponseDto[]>;
+  /** Fechas AAAA-MM-DD que suspenden clases en el rango (feriados y suspensiones). */
+  diasSinClases(desde: string, hasta: string): Promise<string[]>;
+  /** Días distintos con sesiones justificadas por permiso personal en el año lectivo de la fecha. */
+  diasPermisoPersonal(docenteId: string, fecha: string): Promise<string[]>;
   docenteDePersona(personaId: string): Promise<{ id: string; activo: boolean } | null>;
   docenteActivo(docenteId: string): Promise<boolean>;
   valoresVariables(codigos: readonly string[]): Promise<Map<string, string>>;

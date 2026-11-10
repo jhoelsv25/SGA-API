@@ -1,8 +1,10 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, asc, desc, eq, inArray, isNotNull, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNotNull, lte, sql, type SQL } from "drizzle-orm";
 import { alias, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { Database, DRIZZLE } from "../../../core/database";
 import {
+  aniosAcademicos,
+  calendarioEventos,
   cursos,
   cursosSeccion,
   docentes,
@@ -19,6 +21,7 @@ import type { SesionResponseDto } from "../dto";
 import type {
   DatosFirmaIngreso,
   DatosFirmaSalida,
+  DatosSolicitudJustificacion,
   ISesionesClaseRepository,
   ResultadoCierre,
 } from "../interfaces";
@@ -65,6 +68,7 @@ export class SesionesClaseRepository implements ISesionesClaseRepository {
         observaciones: sesionesClase.observaciones,
         justificacionEstado: sesionesClase.justificacionEstado,
         justificacionMotivo: sesionesClase.justificacion,
+        justificacionMotivoCodigo: sesionesClase.justificacionMotivoCodigo,
         justificacionDocumentoUrl: sesionesClase.justificacionDocumentoUrl,
         justificacionComentario: sesionesClase.justificacionComentario,
         justificacionSolicitadaEn: sesionesClase.justificacionSolicitadaEn,
@@ -107,6 +111,7 @@ export class SesionesClaseRepository implements ISesionesClaseRepository {
         ? {
             estado: fila.justificacionEstado as EstadoJustificacion,
             motivo: fila.justificacionMotivo ?? "",
+            motivoCodigo: fila.justificacionMotivoCodigo,
             documentoUrl: fila.justificacionDocumentoUrl,
             comentario: fila.justificacionComentario,
             solicitadaEn: fila.justificacionSolicitadaEn,
@@ -317,17 +322,14 @@ export class SesionesClaseRepository implements ISesionesClaseRepository {
     return filas.length === 1;
   }
 
-  async solicitarJustificacion(
-    id: string,
-    motivo: string,
-    documentoUrl: string | null,
-  ): Promise<void> {
+  async solicitarJustificacion(id: string, datos: DatosSolicitudJustificacion): Promise<void> {
     await this.db
       .update(sesionesClase)
       .set({
         justificacionEstado: "solicitada",
-        justificacion: motivo,
-        justificacionDocumentoUrl: documentoUrl,
+        justificacion: datos.motivo,
+        justificacionMotivoCodigo: datos.motivoCodigo,
+        justificacionDocumentoUrl: datos.documentoUrl,
         justificacionSolicitadaEn: sql`CURRENT_TIMESTAMP`,
         justificacionComentario: null,
         justificacionRevisadaEn: null,
@@ -363,6 +365,53 @@ export class SesionesClaseRepository implements ISesionesClaseRepository {
       )
       .orderBy(desc(sesionesClase.justificacionSolicitadaEn));
     return filas.map((f) => this.mapear(f));
+  }
+
+  async diasSinClases(desde: string, hasta: string): Promise<string[]> {
+    const filas = await this.db
+      .select({
+        dia: sql<string>`to_char(d.dia, 'YYYY-MM-DD')`,
+      })
+      .from(calendarioEventos)
+      .innerJoin(
+        sql`LATERAL generate_series(
+              GREATEST(${calendarioEventos.fechaInicio}, ${desde}::date),
+              LEAST(${calendarioEventos.fechaFin}, ${hasta}::date),
+              interval '1 day'
+            ) AS d(dia)`,
+        sql`true`,
+      )
+      .where(
+        and(
+          eq(calendarioEventos.suspendeClases, true),
+          lte(calendarioEventos.fechaInicio, hasta),
+          gte(calendarioEventos.fechaFin, desde),
+        ),
+      );
+    return [...new Set(filas.map((f) => f.dia))];
+  }
+
+  async diasPermisoPersonal(docenteId: string, fecha: string): Promise<string[]> {
+    const filas = await this.db
+      .selectDistinct({ fecha: sesionesClase.fecha })
+      .from(sesionesClase)
+      .innerJoin(
+        aniosAcademicos,
+        and(
+          lte(aniosAcademicos.fechaInicio, fecha),
+          gte(aniosAcademicos.fechaFin, fecha),
+          lte(aniosAcademicos.fechaInicio, sesionesClase.fecha),
+          gte(aniosAcademicos.fechaFin, sesionesClase.fecha),
+        ),
+      )
+      .where(
+        and(
+          eq(sesionesClase.docenteId, docenteId),
+          eq(sesionesClase.estado, "justificada"),
+          eq(sesionesClase.justificacionMotivoCodigo, "permiso_personal"),
+        ),
+      );
+    return filas.map((f) => f.fecha);
   }
 
   async docenteDePersona(personaId: string): Promise<{ id: string; activo: boolean } | null> {

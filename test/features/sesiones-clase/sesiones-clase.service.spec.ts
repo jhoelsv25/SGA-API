@@ -8,6 +8,7 @@ import { MarcacionesService } from "@/features/marcaciones/marcaciones.service";
 import {
   SesionesClaseRepository,
   SesionesClaseService,
+  VARIABLES_JUSTIFICACION,
   VARIABLES_SESION,
   type SesionResponseDto,
 } from "@/features/sesiones-clase";
@@ -70,6 +71,12 @@ describe("RF-011: Registro de sesión de clase", () => {
           [VARIABLES_SESION.TOLERANCIA_INGRESO, "15"],
           [VARIABLES_SESION.TOLERANCIA_SALIDA, "15"],
           [VARIABLES_SESION.SALIDA_AUTOMATICA, "true"],
+          [VARIABLES_JUSTIFICACION.AVISO_DIAS, "3"],
+          [VARIABLES_JUSTIFICACION.PERMISOS_MAX_ANIO, "3"],
+          [
+            VARIABLES_JUSTIFICACION.MOTIVOS_CON_DOCUMENTO,
+            "descanso_medico,comision_de_servicio,licencia",
+          ],
         ]),
       ),
       findById: jest.fn().mockResolvedValue(sesion()),
@@ -85,6 +92,9 @@ describe("RF-011: Registro de sesión de clase", () => {
       docenteActivo: jest.fn().mockResolvedValue(true),
       solicitarJustificacion: jest.fn(),
       resolverJustificacion: jest.fn(),
+      justificacionesPorEstado: jest.fn().mockResolvedValue([]),
+      diasSinClases: jest.fn().mockResolvedValue([]),
+      diasPermisoPersonal: jest.fn().mockResolvedValue([]),
     };
     equipos = {
       validarKiosko: jest.fn().mockResolvedValue({
@@ -325,6 +335,7 @@ describe("RF-011: Registro de sesión de clase", () => {
       justificacion: {
         estado: "solicitada",
         motivo: "Descanso médico",
+        motivoCodigo: "descanso_medico",
         documentoUrl: null,
         comentario: null,
         solicitadaEn: null,
@@ -376,21 +387,21 @@ describe("RF-011: Registro de sesión de clase", () => {
       repo.findById!.mockResolvedValue(sesion({ estado: "no_cumplida" }));
       const r = await service.solicitarJustificacion(
         "ses-1",
-        { motivo: "Descanso médico", documentoUrl: "https://x/cert.pdf" },
+        { motivo: "descanso_medico", documentoUrl: "https://x/cert.pdf" },
         docenteUsuario,
       );
       expect(r.mensaje).toBe("Su justificación fue enviada al subdirector.");
-      expect(repo.solicitarJustificacion).toHaveBeenCalledWith(
-        "ses-1",
-        "Descanso médico",
-        "https://x/cert.pdf",
-      );
+      expect(repo.solicitarJustificacion).toHaveBeenCalledWith("ses-1", {
+        motivoCodigo: "descanso_medico",
+        motivo: "Descanso médico",
+        documentoUrl: "https://x/cert.pdf",
+      });
     });
 
     it("CP-RF011-27: sin motivo no se envía", async () => {
       await expect(
-        service.solicitarJustificacion("ses-1", { motivo: "" }, docenteUsuario),
-      ).rejects.toThrow("Indique el motivo de la justificación.");
+        service.solicitarJustificacion("ses-1", { motivo: "" as never }, docenteUsuario),
+      ).rejects.toThrow("Elija el motivo de la justificación.");
     });
 
     it("CP-RF011-28: bimestre cerrado bloquea justificar y corregir el tema", async () => {
@@ -398,7 +409,7 @@ describe("RF-011: Registro de sesión de clase", () => {
       repo.findById!.mockResolvedValue(sesion({ estado: "no_cumplida" }));
       const mensaje = "El bimestre está cerrado. La sesión ya no se puede modificar.";
       await expect(
-        service.solicitarJustificacion("ses-1", { motivo: "x" }, docenteUsuario),
+        service.solicitarJustificacion("ses-1", { motivo: "permiso_personal" }, docenteUsuario),
       ).rejects.toThrow(mensaje);
       await expect(service.corregirTema("ses-1", { tema: "y" }, docenteUsuario)).rejects.toThrow(
         mensaje,
@@ -408,8 +419,202 @@ describe("RF-011: Registro de sesión de clase", () => {
     it("otro docente no puede justificar una sesión ajena", async () => {
       repo.findById!.mockResolvedValue(sesion({ estado: "no_cumplida", docenteId: "otro" }));
       await expect(
-        service.solicitarJustificacion("ses-1", { motivo: "x" }, docenteUsuario),
+        service.solicitarJustificacion("ses-1", { motivo: "permiso_personal" }, docenteUsuario),
       ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe("RF-011 V3: justificaciones", () => {
+    const noCumplida = () => sesion({ estado: "no_cumplida" });
+    const solicitud = (p: Partial<NonNullable<SesionResponseDto["justificacion"]>> = {}) =>
+      sesion({
+        estado: "no_cumplida",
+        justificacion: {
+          estado: "solicitada",
+          motivo: "Permiso personal",
+          motivoCodigo: "permiso_personal",
+          documentoUrl: null,
+          comentario: null,
+          solicitadaEn: `${HOY} 09:00:00`,
+          revisadaEn: null,
+          ...p,
+        },
+      });
+
+    it("CP-RF011-44: el catálogo trae los seis motivos con su regla de documento", async () => {
+      const motivos = await service.motivosJustificacion();
+      expect(motivos.map((m) => m.etiqueta)).toEqual([
+        "Descanso médico",
+        "Permiso personal",
+        "Comisión de servicio",
+        "Licencia",
+        "Caso fortuito o fuerza mayor",
+        "Otro",
+      ]);
+      const porCodigo = Object.fromEntries(motivos.map((m) => [m.codigo, m]));
+      expect(porCodigo.descanso_medico.requiereDocumento).toBe(true);
+      expect(porCodigo.permiso_personal.requiereDocumento).toBe(false);
+      expect(porCodigo.otro.requiereObservacion).toBe(true);
+    });
+
+    it("CP-RF011-45: descanso médico sin documento no se envía", async () => {
+      repo.findById!.mockResolvedValue(noCumplida());
+      await expect(
+        service.solicitarJustificacion("ses-1", { motivo: "descanso_medico" }, docenteUsuario),
+      ).rejects.toThrow("Para este motivo debe adjuntar un documento.");
+      expect(repo.solicitarJustificacion).not.toHaveBeenCalled();
+    });
+
+    it("CP-RF011-46: permiso personal sin documento queda solicitada", async () => {
+      repo.findById!.mockResolvedValue(noCumplida());
+      const r = await service.solicitarJustificacion(
+        "ses-1",
+        { motivo: "permiso_personal" },
+        docenteUsuario,
+      );
+      expect(r.mensaje).toBe("Su justificación fue enviada al subdirector.");
+      expect(repo.solicitarJustificacion).toHaveBeenCalledWith(
+        "ses-1",
+        expect.objectContaining({ motivoCodigo: "permiso_personal", documentoUrl: null }),
+      );
+    });
+
+    it("CP-RF011-47: el motivo «Otro» exige la observación y la guarda como texto", async () => {
+      repo.findById!.mockResolvedValue(noCumplida());
+      await expect(
+        service.solicitarJustificacion("ses-1", { motivo: "otro" }, docenteUsuario),
+      ).rejects.toThrow("Indique la observación del motivo «Otro».");
+      await service.solicitarJustificacion(
+        "ses-1",
+        { motivo: "otro", observacion: " Cita en el juzgado " },
+        docenteUsuario,
+      );
+      expect(repo.solicitarJustificacion).toHaveBeenCalledWith(
+        "ses-1",
+        expect.objectContaining({ motivoCodigo: "otro", motivo: "Cita en el juzgado" }),
+      );
+    });
+
+    it("CP-RF011-43: permiso personal y licencia traen el aviso de la norma; descanso médico no", async () => {
+      const motivos = await service.motivosJustificacion();
+      const aviso = (c: string) => motivos.find((m) => m.codigo === c)?.aviso;
+      expect(aviso("permiso_personal")).toBe(
+        "Presentar la solicitud no da derecho al permiso o licencia; debe ser aprobada.",
+      );
+      expect(aviso("licencia")).toBeTruthy();
+      expect(aviso("descanso_medico")).toBeNull();
+    });
+
+    it("CP-RF011-37: la bandeja va de la más antigua a la reciente y marca la vencida", async () => {
+      // Martes 16/05/2028: hace 1, 2 y 4 días hábiles (jueves 11 → 4 hábiles; viernes 12 → 2... )
+      const hace = (fecha: string, id: string) =>
+        sesion({
+          id,
+          estado: "no_cumplida",
+          justificacion: {
+            estado: "solicitada",
+            motivo: "Permiso personal",
+            motivoCodigo: "permiso_personal",
+            documentoUrl: null,
+            comentario: null,
+            solicitadaEn: `${fecha} 09:00:00`,
+            revisadaEn: null,
+          },
+        });
+      repo.justificacionesPorEstado!.mockResolvedValue([
+        hace("2028-05-15", "reciente"), // lunes → 1 día hábil
+        hace("2028-05-10", "antigua"), // miércoles → 4 días hábiles
+        hace("2028-05-12", "media"), // viernes → 2 días hábiles
+      ]);
+      const bandeja = await service.justificacionesSolicitadas();
+      expect(bandeja.map((b) => [b.id, b.antiguedadDias, b.vencida])).toEqual([
+        ["antigua", 4, true],
+        ["media", 2, false],
+        ["reciente", 1, false],
+      ]);
+    });
+
+    it("CP-RF011-38: filtra por motivo y por vencidas a la vez", async () => {
+      const con = (id: string, codigo: string, fecha: string) => ({
+        ...solicitud({ motivoCodigo: codigo, solicitadaEn: `${fecha} 09:00:00` }),
+        id,
+      });
+      repo.justificacionesPorEstado!.mockResolvedValue([
+        con("a", "descanso_medico", "2028-05-10"), // vencida
+        con("b", "descanso_medico", "2028-05-15"), // reciente
+        con("c", "permiso_personal", "2028-05-10"), // vencida, otro motivo
+      ]);
+      const r = await service.justificacionesSolicitadas({
+        motivo: "descanso_medico",
+        vencidas: "true",
+      });
+      expect(r.map((x) => x.id)).toEqual(["a"]);
+    });
+
+    it("los días sin clases no cuentan para la antigüedad", async () => {
+      repo.diasSinClases!.mockResolvedValue(["2028-05-11", "2028-05-12"]);
+      repo.justificacionesPorEstado!.mockResolvedValue([
+        solicitud({ solicitadaEn: "2028-05-10 09:00:00" }),
+      ]);
+      const [item] = await service.justificacionesSolicitadas();
+      expect(item.antiguedadDias).toBe(2); // solo lunes 15 y martes 16
+      expect(item.vencida).toBe(false);
+    });
+
+    it("CP-RF011-40: al abrir la solicitud muestra cuántos días de permiso lleva", async () => {
+      repo.findById!.mockResolvedValue(solicitud());
+      repo.diasPermisoPersonal!.mockResolvedValue(["2028-04-03", "2028-04-20"]);
+      const r = await service.detalleSolicitud("ses-1");
+      expect(r.permisosPersonales).toEqual({
+        usados: 2,
+        tope: 3,
+        mensaje: "Lleva 2 de 3 días de permiso personal este año.",
+      });
+    });
+
+    it("el contador solo aplica al permiso personal", async () => {
+      repo.findById!.mockResolvedValue(
+        solicitud({ motivo: "Descanso médico", motivoCodigo: "descanso_medico" }),
+      );
+      const r = await service.detalleSolicitud("ses-1");
+      expect(r.permisosPersonales).toBeNull();
+    });
+
+    it("CP-RF011-41: al superar el tope pide confirmar y, si confirma, aprueba y lo deja en la bitácora", async () => {
+      repo.findById!.mockResolvedValue(solicitud());
+      repo.diasPermisoPersonal!.mockResolvedValue(["2028-04-03", "2028-04-20", "2028-05-02"]);
+      await expect(service.aprobarJustificacion("ses-1", "u-sub")).rejects.toMatchObject({
+        response: {
+          message:
+            "Con esta aprobación superará los 3 días de permiso personal al año. ¿Desea continuar?",
+          requiereConfirmacion: true,
+        },
+      });
+      expect(repo.resolverJustificacion).not.toHaveBeenCalled();
+
+      const r = await service.aprobarJustificacion("ses-1", "u-sub", undefined, {
+        confirmarTope: true,
+      });
+      expect(r.mensaje).toBe("Sesión justificada.");
+      expect(repo.resolverJustificacion).toHaveBeenCalledWith("ses-1", "aprobada", "u-sub", null);
+      expect(argumento(audit.log, 0)).toMatchObject({
+        valorNuevo: { topePermisosSuperado: true, tope: 3 },
+      });
+    });
+
+    it("dentro del tope aprueba sin pedir confirmación", async () => {
+      repo.findById!.mockResolvedValue(solicitud());
+      repo.diasPermisoPersonal!.mockResolvedValue(["2028-04-03", "2028-04-20"]);
+      const r = await service.aprobarJustificacion("ses-1", "u-sub");
+      expect(r.mensaje).toBe("Sesión justificada.");
+    });
+
+    it("CP-RF011-42: varias sesiones del mismo día cuentan un solo día", async () => {
+      // Ya hay 3 días justificados y uno de ellos es el mismo día de esta sesión: no suma otro.
+      repo.findById!.mockResolvedValue(solicitud());
+      repo.diasPermisoPersonal!.mockResolvedValue(["2028-04-03", "2028-04-20", HOY]);
+      const r = await service.aprobarJustificacion("ses-1", "u-sub");
+      expect(r.mensaje).toBe("Sesión justificada.");
     });
   });
 });

@@ -1,6 +1,19 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { IsNotEmpty, IsOptional, IsString, IsUUID, Matches, MaxLength } from "class-validator";
-import { MENSAJES_SESION } from "../constants";
+import {
+  IsBoolean,
+  IsIn,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Matches,
+  MaxLength,
+} from "class-validator";
+import {
+  CODIGOS_MOTIVO_JUSTIFICACION,
+  MENSAJES_SESION,
+  type MotivoJustificacion,
+} from "../constants";
 
 export class ReemplazoSesionDto {
   @ApiProperty({ description: "Docente que dictará la sesión" })
@@ -17,17 +30,43 @@ export class TemaSesionDto {
 }
 
 export class SolicitarJustificacionDto {
-  @ApiProperty({ example: "Descanso médico" })
+  @ApiProperty({ enum: CODIGOS_MOTIVO_JUSTIFICACION, example: "descanso_medico" })
   @IsString({ message: MENSAJES_SESION.JUSTIFICACION_SIN_MOTIVO })
-  @IsNotEmpty({ message: MENSAJES_SESION.JUSTIFICACION_SIN_MOTIVO })
+  @IsIn(CODIGOS_MOTIVO_JUSTIFICACION, { message: MENSAJES_SESION.JUSTIFICACION_SIN_MOTIVO })
+  motivo!: MotivoJustificacion;
+
+  @ApiPropertyOptional({ description: "Obligatoria solo con el motivo «Otro»" })
+  @IsOptional()
+  @IsString()
   @MaxLength(500)
-  motivo!: string;
+  observacion?: string;
 
   @ApiPropertyOptional({ description: "Enlace del documento (certificado, constancia)" })
   @IsOptional()
   @IsString()
   @MaxLength(255)
   documentoUrl?: string;
+}
+
+export class AprobarJustificacionDto {
+  @ApiPropertyOptional({
+    description: "Confirma la aprobación aunque supere el tope de permisos personales del año",
+  })
+  @IsOptional()
+  @IsBoolean()
+  confirmarTope?: boolean;
+}
+
+export class FiltrosBandejaJustificacionesDto {
+  @ApiPropertyOptional({ enum: CODIGOS_MOTIVO_JUSTIFICACION })
+  @IsOptional()
+  @IsIn(CODIGOS_MOTIVO_JUSTIFICACION)
+  motivo?: MotivoJustificacion;
+
+  @ApiPropertyOptional({ description: "true para ver solo las solicitudes vencidas" })
+  @IsOptional()
+  @Matches(/^(true|false)$/, { message: "Use true o false." })
+  vencidas?: string;
 }
 
 export class RechazarJustificacionDto {

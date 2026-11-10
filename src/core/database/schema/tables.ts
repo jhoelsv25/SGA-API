@@ -1501,6 +1501,8 @@ export const sesionesClase = pgTable(
     docenteTitularId: uuid("docente_titular_id"),
     justificacionEstado: varchar("justificacion_estado", { length: 15 }),
     justificacionDocumentoUrl: varchar("justificacion_documento_url", { length: 255 }),
+    // RF-011 V3: motivo catalogado de la justificación (la columna `justificacion` guarda el texto).
+    justificacionMotivoCodigo: varchar("justificacion_motivo_codigo", { length: 30 }),
     justificacionSolicitadaEn: timestamp("justificacion_solicitada_en", {
       precision: 0,
       mode: "string",

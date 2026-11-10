@@ -33,10 +33,14 @@ import {
 } from "../../common/decorators";
 import type { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface";
 import {
+  AprobarJustificacionDto,
   CredencialesKioskoDto,
+  DetalleSolicitudJustificacionDto,
+  FiltrosBandejaJustificacionesDto,
   FirmaSesionResponseDto,
   FirmarIngresoDto,
   MensajeSesionResponseDto,
+  MotivoJustificacionDto,
   MisSesionesResponseDto,
   PanelSesionesResponseDto,
   RangoSesionesQueryDto,
@@ -45,6 +49,7 @@ import {
   SesionResponseDto,
   SesionesKioskoResponseDto,
   SolicitarJustificacionDto,
+  SolicitudJustificacionDto,
   TemaSesionDto,
 } from "./dto";
 import { SesionesClaseService } from "./sesiones-clase.service";
@@ -118,10 +123,32 @@ export class SesionesClaseController {
   @Get("justificaciones")
   @ApiBearerAuth()
   @MenuAccess(MENU_JUSTIFICACIONES_SESION)
-  @ApiOperation({ summary: "Justificaciones solicitadas por revisar" })
-  @ApiResponse({ status: 200, type: [SesionResponseDto] })
-  async justificaciones(): Promise<SesionResponseDto[]> {
-    return this.service.justificacionesSolicitadas();
+  @ApiOperation({ summary: "Bandeja de justificaciones por revisar, con antigüedad y filtros" })
+  @ApiResponse({ status: 200, type: [SolicitudJustificacionDto] })
+  async justificaciones(
+    @Query() filtros: FiltrosBandejaJustificacionesDto,
+  ): Promise<SolicitudJustificacionDto[]> {
+    return this.service.justificacionesSolicitadas(filtros);
+  }
+
+  @Get("justificaciones/motivos")
+  @ApiBearerAuth()
+  @MenuAccess(MENU_MIS_SESIONES, MENU_JUSTIFICACIONES_SESION)
+  @ApiOperation({ summary: "Catálogo de motivos de justificación" })
+  @ApiResponse({ status: 200, type: [MotivoJustificacionDto] })
+  async motivosJustificacion(): Promise<MotivoJustificacionDto[]> {
+    return this.service.motivosJustificacion();
+  }
+
+  @Get("justificaciones/:id")
+  @ApiBearerAuth()
+  @MenuAccess(MENU_JUSTIFICACIONES_SESION)
+  @ApiOperation({ summary: "Detalle de una solicitud, con el contador de permisos personales" })
+  @ApiResponse({ status: 200, type: DetalleSolicitudJustificacionDto })
+  async detalleJustificacion(
+    @Param("id", ParseUUIDPipe) id: string,
+  ): Promise<DetalleSolicitudJustificacionDto> {
+    return this.service.detalleSolicitud(id);
   }
 
   @Patch(":id/reemplazo")
@@ -146,10 +173,11 @@ export class SesionesClaseController {
   @ApiResponse({ status: 200, type: MensajeSesionResponseDto })
   async aprobarJustificacion(
     @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: AprobarJustificacionDto,
     @CurrentUser() usuario: AuthenticatedUser,
     @ClientInfo() clientInfo: ClientInfoData,
   ): Promise<MensajeSesionResponseDto> {
-    return this.service.aprobarJustificacion(id, usuario.id, clientInfo.ip);
+    return this.service.aprobarJustificacion(id, usuario.id, clientInfo.ip, dto);
   }
 
   @Patch(":id/justificacion/rechazar")

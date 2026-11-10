@@ -128,3 +128,27 @@ export function elegirDestacada<
     .sort((a, b) => minutosDelDia(a.horaInicio) - minutosDelDia(b.horaInicio))[0];
   return siguiente?.id ?? abiertas.find((s) => s.estado === "en_curso")?.id ?? null;
 }
+
+const MS_DIA = 24 * 60 * 60 * 1000;
+
+/**
+ * Días hábiles transcurridos entre dos fechas AAAA-MM-DD, sin contar la de inicio y contando
+ * la de fin: lunes a viernes que no estén en `diasSinClases` (feriados y suspensiones, P-46).
+ */
+export function diasHabilesTranscurridos(
+  desde: string,
+  hasta: string,
+  diasSinClases: ReadonlySet<string> = new Set(),
+): number {
+  const inicio = Date.parse(`${desde}T00:00:00Z`);
+  const fin = Date.parse(`${hasta}T00:00:00Z`);
+  let total = 0;
+  for (let t = inicio + MS_DIA; t <= fin; t += MS_DIA) {
+    const dia = new Date(t);
+    const diaSemana = dia.getUTCDay();
+    if (diaSemana === 0 || diaSemana === 6) continue;
+    if (diasSinClases.has(dia.toISOString().slice(0, 10))) continue;
+    total += 1;
+  }
+  return total;
+}

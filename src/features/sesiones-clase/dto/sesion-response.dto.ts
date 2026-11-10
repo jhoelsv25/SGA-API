@@ -4,6 +4,8 @@ import type { EstadoJustificacion, EstadoSesion } from "../constants";
 export class JustificacionSesionDto {
   @ApiProperty() estado!: EstadoJustificacion;
   @ApiProperty() motivo!: string;
+  @ApiPropertyOptional({ nullable: true, description: "Código del catálogo de motivos" })
+  motivoCodigo!: string | null;
   @ApiPropertyOptional({ nullable: true }) documentoUrl!: string | null;
   @ApiPropertyOptional({ nullable: true }) comentario!: string | null;
   @ApiPropertyOptional({ nullable: true }) solicitadaEn!: string | null;
@@ -71,4 +73,30 @@ export class MisSesionesResponseDto {
 export class MensajeSesionResponseDto {
   @ApiProperty() mensaje!: string;
   @ApiProperty({ type: SesionResponseDto }) sesion!: SesionResponseDto;
+}
+
+export class SolicitudJustificacionDto extends SesionResponseDto {
+  @ApiProperty({ description: "Días hábiles desde la solicitud" }) antiguedadDias!: number;
+  @ApiProperty({ description: "Supera el plazo configurable sin respuesta" }) vencida!: boolean;
+}
+
+export class ContadorPermisosDto {
+  @ApiProperty() usados!: number;
+  @ApiProperty() tope!: number;
+  @ApiProperty({ example: "Lleva 2 de 3 días de permiso personal este año." }) mensaje!: string;
+}
+
+export class DetalleSolicitudJustificacionDto {
+  @ApiProperty({ type: SolicitudJustificacionDto }) solicitud!: SolicitudJustificacionDto;
+  @ApiPropertyOptional({ type: ContadorPermisosDto, nullable: true })
+  permisosPersonales!: ContadorPermisosDto | null;
+}
+
+export class MotivoJustificacionDto {
+  @ApiProperty() codigo!: string;
+  @ApiProperty() etiqueta!: string;
+  @ApiProperty() requiereDocumento!: boolean;
+  @ApiProperty() requiereObservacion!: boolean;
+  @ApiPropertyOptional({ nullable: true, description: "Aviso de la norma para este motivo" })
+  aviso!: string | null;
 }

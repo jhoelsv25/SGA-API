@@ -12,6 +12,25 @@ export type EstadoSesion = (typeof ESTADOS_SESION)[number];
 export const ESTADOS_JUSTIFICACION = ["solicitada", "aprobada", "rechazada"] as const;
 export type EstadoJustificacion = (typeof ESTADOS_JUSTIFICACION)[number];
 
+/** Catálogo de motivos de justificación (RF-011 V3, HU4). */
+export const MOTIVOS_JUSTIFICACION = [
+  { codigo: "descanso_medico", etiqueta: "Descanso médico" },
+  { codigo: "permiso_personal", etiqueta: "Permiso personal" },
+  { codigo: "comision_de_servicio", etiqueta: "Comisión de servicio" },
+  { codigo: "licencia", etiqueta: "Licencia" },
+  { codigo: "caso_fortuito_o_fuerza_mayor", etiqueta: "Caso fortuito o fuerza mayor" },
+  { codigo: "otro", etiqueta: "Otro" },
+] as const;
+export type MotivoJustificacion = (typeof MOTIVOS_JUSTIFICACION)[number]["codigo"];
+export const CODIGOS_MOTIVO_JUSTIFICACION = MOTIVOS_JUSTIFICACION.map((m) => m.codigo);
+export const MOTIVO_PERMISO_PERSONAL: MotivoJustificacion = "permiso_personal";
+export const MOTIVO_OTRO: MotivoJustificacion = "otro";
+/** Motivos cuya solicitud no da derecho al permiso o licencia (Lineamientos MINEDU, art. 3). */
+export const MOTIVOS_CON_AVISO_NORMA: readonly MotivoJustificacion[] = [
+  "permiso_personal",
+  "licencia",
+];
+
 export const PROPOSITO_EQUIPO_SESIONES = "sesiones";
 export const TIPO_BLOQUE_CLASE = "clase";
 export const OBSERVACION_SIN_SALIDA = "Sin firma de salida";
@@ -22,6 +41,13 @@ export const VARIABLES_SESION = {
   TOLERANCIA_INGRESO: "sesion.tolerancia_ingreso_min",
   TOLERANCIA_SALIDA: "sesion.tolerancia_salida_min",
   SALIDA_AUTOMATICA: "sesion.salida_automatica_sin_firma",
+} as const;
+
+/** Variables de sistema de las justificaciones (RF-004 V3, RF-011 V3). */
+export const VARIABLES_JUSTIFICACION = {
+  AVISO_DIAS: "sesion.justificacion_aviso_dias",
+  MOTIVOS_CON_DOCUMENTO: "sesion.justificacion_motivos_con_documento",
+  PERMISOS_MAX_ANIO: "sesion.permisos_personales_max_anio",
 } as const;
 
 export const JOB_GENERAR_SESIONES = "generar-sesiones-del-dia";
@@ -38,7 +64,10 @@ export const MENSAJES_SESION = {
   EQUIPO_NO_AUTORIZADO: "Este equipo no está autorizado. Comuníquese con el área de TI.",
   BIMESTRE_CERRADO: "El bimestre está cerrado. La sesión ya no se puede modificar.",
   JUSTIFICACION_ENVIADA: "Su justificación fue enviada al subdirector.",
-  JUSTIFICACION_SIN_MOTIVO: "Indique el motivo de la justificación.",
+  JUSTIFICACION_SIN_MOTIVO: "Elija el motivo de la justificación.",
+  JUSTIFICACION_SIN_DOCUMENTO: "Para este motivo debe adjuntar un documento.",
+  JUSTIFICACION_SIN_OBSERVACION: "Indique la observación del motivo «Otro».",
+  AVISO_NORMA: "Presentar la solicitud no da derecho al permiso o licencia; debe ser aprobada.",
   JUSTIFICACION_APROBADA: "Sesión justificada.",
   JUSTIFICACION_RECHAZADA: "La justificación fue rechazada.",
   RECHAZO_SIN_COMENTARIO: "Indique el motivo del rechazo.",
@@ -58,6 +87,21 @@ export const MENSAJES_SESION = {
   VARIABLE_FALTANTE: (codigo: string) => `Falta configurar la variable de sistema «${codigo}».`,
   RANGO_INVALIDO: "La fecha de fin debe ser posterior al inicio.",
 } as const;
+
+export const mensajeContadorPermisos = (usados: number, tope: number): string =>
+  `Lleva ${usados} de ${tope} días de permiso personal este año.`;
+
+export const mensajeTopePermisosSuperado = (tope: number): string =>
+  `Con esta aprobación superará los ${tope} días de permiso personal al año. ¿Desea continuar?`;
+
+export const mensajeSolicitudVencida = (
+  docente: string,
+  curso: string,
+  seccion: string,
+  fecha: string,
+  dias: number,
+): string =>
+  `La justificación de ${docente} (${curso} – ${seccion}, ${fecha}) lleva ${dias} días sin respuesta.`;
 
 export const mensajeIngreso = (hora: string, curso: string, seccion: string): string =>
   `Ingreso firmado a las ${hora}. ${curso} – ${seccion}.`;
