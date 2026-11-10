@@ -578,9 +578,10 @@ export class SecretariaDashboardDataDto {
 
 export class DashboardResponseDto {
   @ApiProperty({
-    enum: ["directivo", "docente", "estudiante", "apoderado", "admin", "secretaria"],
+    enum: ["directivo", "docente", "estudiante", "apoderado", "admin", "secretaria", "adicional"],
   })
-  rolCategoria!: "directivo" | "docente" | "estudiante" | "apoderado" | "admin" | "secretaria";
+  rolCategoria!:
+    "directivo" | "docente" | "estudiante" | "apoderado" | "admin" | "secretaria" | "adicional";
 
   @ApiProperty()
   rolNombre!: string;

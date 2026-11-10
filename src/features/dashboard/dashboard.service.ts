@@ -3,47 +3,28 @@ import type { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface
 import { DashboardFiltrosDto, DashboardResponseDto } from "./dto";
 import { DashboardRepository } from "./repositories/dashboard.repository";
 
+type CategoriaRol = DashboardResponseDto["rolCategoria"];
+
+/** RF-021: los roles del sistema tienen su panel; un rol adicional no ve datos del colegio. */
+const CATEGORIA_POR_ROL: ReadonlyMap<string, CategoriaRol> = new Map([
+  ["Administrador", "admin"],
+  ["Soporte TI", "admin"],
+  ["Secretaria", "secretaria"],
+  ["Director", "directivo"],
+  ["Subdirector", "directivo"],
+  ["Docente", "docente"],
+  ["Estudiante", "estudiante"],
+  ["Apoderado", "apoderado"],
+]);
+
 @Injectable()
 export class DashboardService {
   private readonly logger = new Logger(DashboardService.name);
 
   constructor(private readonly dashboardRepository: DashboardRepository) {}
 
-  private categorizarRol(
-    rolNombre: string,
-  ): "directivo" | "docente" | "estudiante" | "apoderado" | "admin" | "secretaria" {
-    const rolLower = (rolNombre || "").toLowerCase();
-
-    if (rolLower.includes("docente") || rolLower.includes("profesor")) {
-      return "docente";
-    }
-
-    if (rolLower.includes("estudiante") || rolLower.includes("alumno")) {
-      return "estudiante";
-    }
-
-    if (
-      rolLower.includes("apoderado") ||
-      rolLower.includes("padre") ||
-      rolLower.includes("tutor")
-    ) {
-      return "apoderado";
-    }
-
-    if (rolLower.includes("secretaria") || rolLower.includes("secretario")) {
-      return "secretaria";
-    }
-
-    if (
-      rolLower.includes("admin") ||
-      rolLower.includes("soporte") ||
-      rolLower.includes("sistemas") ||
-      rolLower.includes("ti")
-    ) {
-      return "admin";
-    }
-
-    return "directivo";
+  private categorizarRol(rolNombre: string): CategoriaRol {
+    return CATEGORIA_POR_ROL.get(rolNombre) ?? "adicional";
   }
 
   async getDashboardData(
@@ -76,6 +57,10 @@ export class DashboardService {
       periodoId: referencia.periodoId,
       periodoNombre: referencia.periodoNombre,
     };
+
+    if (rolCategoria === "adicional") {
+      return { rolCategoria, rolNombre: user.role, periodoActual };
+    }
 
     if (rolCategoria === "admin") {
       const dataAdmin = await this.dashboardRepository.obtenerDatosAdmin();
