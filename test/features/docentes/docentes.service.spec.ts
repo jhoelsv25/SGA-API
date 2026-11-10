@@ -307,7 +307,7 @@ describe("DocentesService (RF-007 Historia de Usuario 1)", () => {
       const result = await service.reactivar("doc-1", "admin-1");
 
       expect(result.docente.estado).toBe("activo");
-      expect(repository.reactivar).toHaveBeenCalledWith("doc-1");
+      expect(repository.reactivar).toHaveBeenCalledWith("doc-1", "admin-1");
     });
 
     it("rechaza reactivar si la persona tiene ficha de estudiante vigente", async () => {

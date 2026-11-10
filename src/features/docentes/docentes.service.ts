@@ -294,7 +294,7 @@ export class DocentesService {
       throw conflictoConDependencias(FICHA_MESSAGES.DOCENTE_CON_CARGA);
     }
 
-    const result = await this.repository.cesar(id, dto.fechaCese);
+    const result = await this.repository.cesar(id, dto.fechaCese, actorId);
     if (!result) {
       throw new NotFoundException(DOCENTE_MESSAGES.NOT_FOUND);
     }
@@ -349,7 +349,7 @@ export class DocentesService {
       });
     }
 
-    const docente = await this.repository.reactivar(id);
+    const docente = await this.repository.reactivar(id, actorId);
     if (!docente) {
       throw new NotFoundException(DOCENTE_MESSAGES.NOT_FOUND);
     }

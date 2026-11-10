@@ -296,7 +296,7 @@ describe("EstudiantesService (RF-007 Historia de Usuario 2)", () => {
         "admin-1",
       );
 
-      expect(docentesRepository.cesar).toHaveBeenCalledWith("doc-1", "2026-11-07");
+      expect(docentesRepository.cesar).toHaveBeenCalledWith("doc-1", "2026-11-07", "admin-1");
       expect(repository.create).toHaveBeenCalled();
     });
 
@@ -331,7 +331,7 @@ describe("EstudiantesService (RF-007 Historia de Usuario 2)", () => {
       ).rejects.toThrow("fallo de base de datos");
 
       expect(docentesRepository.cesar).toHaveBeenCalled();
-      expect(docentesRepository.reactivar).toHaveBeenCalledWith("doc-1");
+      expect(docentesRepository.reactivar).toHaveBeenCalledWith("doc-1", "admin-1");
     });
 
     it("permite crear estudiante sin baja si el docente ya está cesado", async () => {
