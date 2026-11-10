@@ -1,3 +1,4 @@
+import { sinFichaDocente } from "../../common/utils/ficha-docente.util";
 import {
   BadRequestException,
   ForbiddenException,
@@ -102,7 +103,7 @@ export class AusenciasConsultaService {
   async misAusencias(personaId: string): Promise<AusenciaResponseDto[]> {
     const docente = await this.repository.docentePorPersonaId(personaId);
     if (!docente) {
-      throw new ForbiddenException("El usuario no tiene un registro de docente asociado.");
+      throw sinFichaDocente();
     }
 
     const anioAcademicoId = this.anioLectivoCls.id();
@@ -125,7 +126,7 @@ export class AusenciasConsultaService {
   async obtenerDetalleDocente(id: string, personaId: string): Promise<AusenciaResponseDto> {
     const docente = await this.repository.docentePorPersonaId(personaId);
     if (!docente) {
-      throw new ForbiddenException("El usuario no tiene un registro de docente asociado.");
+      throw sinFichaDocente();
     }
 
     const ausencia = await this.repository.buscarPorId(id);
@@ -162,7 +163,7 @@ export class AusenciasConsultaService {
     // 1. Verificar existencia del docente autenticado
     const docente = await this.repository.docentePorPersonaId(personaId);
     if (!docente) {
-      throw new ForbiddenException("El usuario no tiene un registro de docente asociado.");
+      throw sinFichaDocente();
     }
 
     // 2. Existencia y pertenencia (CP-RF012-23)

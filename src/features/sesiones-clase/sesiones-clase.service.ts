@@ -1,3 +1,4 @@
+import { sinFichaDocente } from "../../common/utils/ficha-docente.util";
 import { InjectQueue } from "@nestjs/bullmq";
 import {
   BadRequestException,
@@ -590,7 +591,7 @@ export class SesionesClaseService implements OnModuleInit {
   private async docenteDelUsuario(usuario: AuthenticatedUser): Promise<string> {
     const docente = await this.repository.docenteDePersona(usuario.personaId);
     if (!docente) {
-      throw new ForbiddenException(MENSAJES_SESION.NO_ES_DOCENTE);
+      throw sinFichaDocente();
     }
     return docente.id;
   }

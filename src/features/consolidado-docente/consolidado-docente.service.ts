@@ -1,3 +1,4 @@
+import { sinFichaDocente } from "../../common/utils/ficha-docente.util";
 import {
   BadRequestException,
   ConflictException,
@@ -228,7 +229,7 @@ export class ConsolidadoDocenteService {
   async obtenerMiSeguimiento(periodoId: string, actor: ActorConsolidado) {
     const docente = await this.repository.obtenerDocenteDePersona(actor.personaId);
     if (!docente) {
-      throw new ForbiddenException(MENSAJES_CONSOLIDADO.DOCENTE_NO_ENCONTRADO);
+      throw sinFichaDocente();
     }
 
     const consolidado = await this.repository.obtenerConsolidadoVigenteDocente(

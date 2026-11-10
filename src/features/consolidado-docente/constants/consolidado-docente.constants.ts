@@ -15,7 +15,6 @@ export const MENSAJES_CONSOLIDADO = {
   SOLICITUD_NO_ENCONTRADA: "Solicitud de revisión no encontrada.",
   SOLICITUD_NO_PENDIENTE: "La solicitud de revisión ya fue resuelta.",
   NO_TIENE_PERMISO: "No tiene permiso para realizar esta acción.",
-  DOCENTE_NO_ENCONTRADO: "Perfil de docente no encontrado.",
 } as const;
 
 export const mensajeConsolidadosGenerados = (docentes: number, bimestre: string): string =>

@@ -1,3 +1,4 @@
+import { sinFichaDocente } from "../../common/utils/ficha-docente.util";
 import {
   BadRequestException,
   ConflictException,
@@ -475,7 +476,7 @@ export class HorariosService {
 
     const docente = await this.horariosRepo.docentePorPersonaId(personaId);
     if (!docente) {
-      throw new NotFoundException("No se encontró el docente asociado al usuario.");
+      throw sinFichaDocente();
     }
 
     const bloques = await this.horariosRepo.findByDocente(anio.id, docente.id);
