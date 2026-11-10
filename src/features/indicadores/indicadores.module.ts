@@ -4,6 +4,7 @@ import { IndicadoresController } from "./indicadores.controller";
 import { IndicadoresService } from "./indicadores.service";
 import {
   ComparacionRepository,
+  IndicadoresApoyoRepository,
   IndicadoresCalculoRepository,
   MedicionRepository,
   PanelRepository,
@@ -12,6 +13,7 @@ import {
 import {
   ComparacionService,
   ExportacionService,
+  IndicadoresApoyoService,
   IndicadoresCalculoService,
   MedicionService,
   PanelService,
@@ -23,6 +25,7 @@ import {
   providers: [
     // Repositorios
     IndicadoresCalculoRepository,
+    IndicadoresApoyoRepository,
     PretestRepository,
     ComparacionRepository,
     MedicionRepository,
@@ -34,6 +37,7 @@ import {
     MedicionService,
     PanelService,
     ExportacionService,
+    IndicadoresApoyoService,
     // Fachada principal
     IndicadoresService,
     // Auditoría asíncrona

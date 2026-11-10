@@ -11,3 +11,4 @@ export * from "./comparacion-response.dto";
 export * from "./panel-general-response.dto";
 export * from "./mensaje-indicadores-response.dto";
 export * from "./exportar-indicadores-query.dto";
+export * from "./indicadores-apoyo.dto";

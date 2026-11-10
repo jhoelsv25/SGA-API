@@ -9,8 +9,10 @@ import {
   CerrarMedicionDto,
   ComparacionBimestreResponseDto,
   ExportarIndicadoresQueryDto,
+  FiltroApoyoQueryDto,
   FiltroIndicadoresQueryDto,
   HistorialMedicionResponseDto,
+  IndicadoresApoyoResponseDto,
   MedicionBimestreResponseDto,
   MensajeIndicadoresResponseDto,
   MisIndicadoresDocenteResponseDto,
@@ -55,6 +57,55 @@ export class IndicadoresController {
     @Query("periodoId") periodoId?: string,
   ): Promise<MisIndicadoresDocenteResponseDto> {
     return this.service.obtenerMisIndicadores(usuario.personaId, periodoId);
+  }
+
+  // =========================================================================
+  // 2b. INDICADORES DE APOYO DEL SEGUIMIENTO DOCENTE (RF-020 V2)
+  // Informativos: no se congelan ni entran al pretest, postest o comparación.
+  // =========================================================================
+
+  @Get("apoyo")
+  @MenuAccess(MENU_INDICADORES)
+  @ApiOperation({
+    summary: "Indicadores de apoyo con ranking de docentes y evolución por bimestre (RF-020 V2)",
+  })
+  @ApiResponse({ status: 200, type: IndicadoresApoyoResponseDto })
+  async obtenerApoyo(@Query() query: FiltroApoyoQueryDto): Promise<IndicadoresApoyoResponseDto> {
+    return this.service.obtenerApoyo(query);
+  }
+
+  @Get("apoyo/mis-indicadores")
+  @MenuAccess(MENU_MIS_INDICADORES)
+  @ApiOperation({ summary: "Mis indicadores de apoyo, sin ranking ni datos de otros (RF-020 V2)" })
+  @ApiResponse({ status: 200, type: IndicadoresApoyoResponseDto })
+  async obtenerMisApoyo(
+    @CurrentUser() usuario: AuthenticatedUser,
+    @Query() query: FiltroApoyoQueryDto,
+  ): Promise<IndicadoresApoyoResponseDto> {
+    return this.service.obtenerMisApoyo(usuario.personaId, query);
+  }
+
+  @Get("apoyo/exportar/excel")
+  @MenuAccess(MENU_INDICADORES)
+  @ApiOperation({ summary: "Exportar los indicadores de apoyo a Excel con detalle (RF-020 V2)" })
+  async exportarApoyoExcel(
+    @Query() query: FiltroApoyoQueryDto,
+    @CurrentUser() usuario: AuthenticatedUser,
+    @ClientInfo() clientInfo: ClientInfoData,
+    @Res() res: Response,
+  ): Promise<void> {
+    const { buffer, nombreArchivo } = await this.service.exportarApoyoExcel(
+      query,
+      usuario.id,
+      usuario.username,
+      clientInfo.ip,
+    );
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    );
+    res.setHeader("Content-Disposition", `attachment; filename="${nombreArchivo}"`);
+    res.send(buffer);
   }
 
   // =========================================================================

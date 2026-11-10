@@ -97,3 +97,28 @@ export const MENSAJES_INDICADORES = {
   MEDICION_NO_ENCONTRADA: "Medición de bimestre no encontrada.",
   PRETEST_NO_ENCONTRADO: "Pretest no encontrado.",
 } as const;
+
+/**
+ * Indicadores de apoyo del seguimiento docente (RF-020 V2). NO son indicadores de la tesis:
+ * no se congelan, no entran al pretest/postest ni a la comparación, y no tienen meta ni semáforo.
+ */
+export const INDICADORES_APOYO = [
+  "jornadasEfectivas",
+  "minutosPerdidos",
+  "promedioMinutosPerdidos",
+  "puntualidad",
+  "minutosFueraAula",
+  "tiempoResolucion",
+] as const;
+export type IndicadorApoyo = (typeof INDICADORES_APOYO)[number];
+
+export const MENSAJES_APOYO = {
+  SECCION: "Indicadores de apoyo: informativos, no forman parte de los indicadores de la tesis.",
+  EN_CURSO: "En curso: el día de hoy aún no se cierra.",
+  SIN_DATOS: "Sin datos",
+} as const;
+
+/** Variable de RF-011 V3 que define cuándo una justificación está vencida (días hábiles). */
+export const VARIABLE_JUSTIFICACION_AVISO_DIAS = "sesion.justificacion_aviso_dias";
+/** Valor por defecto de RF-004 V3 si la variable aún no está cargada en la base. */
+export const AVISO_DIAS_POR_DEFECTO = 3;

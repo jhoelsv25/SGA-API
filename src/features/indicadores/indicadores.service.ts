@@ -4,8 +4,10 @@ import type {
   CerrarMedicionDto,
   ComparacionBimestreResponseDto,
   ExportarIndicadoresQueryDto,
+  FiltroApoyoQueryDto,
   FiltroIndicadoresQueryDto,
   HistorialMedicionResponseDto,
+  IndicadoresApoyoResponseDto,
   MedicionBimestreResponseDto,
   MensajeIndicadoresResponseDto,
   MisIndicadoresDocenteResponseDto,
@@ -17,6 +19,7 @@ import type {
 } from "./dto";
 import { ComparacionService } from "./services/comparacion.service";
 import { ExportacionService } from "./services/exportacion.service";
+import { IndicadoresApoyoService } from "./services/indicadores-apoyo.service";
 import { IndicadoresCalculoService } from "./services/indicadores-calculo.service";
 import { MedicionService } from "./services/medicion.service";
 import { PanelService } from "./services/panel.service";
@@ -35,6 +38,7 @@ export class IndicadoresService {
     private readonly medicionService: MedicionService,
     private readonly panelService: PanelService,
     private readonly exportacionService: ExportacionService,
+    private readonly apoyoService: IndicadoresApoyoService,
   ) {}
 
   /**
@@ -155,5 +159,34 @@ export class IndicadoresService {
     ip?: string,
   ): Promise<{ buffer: Buffer; nombreArchivo: string }> {
     return this.exportacionService.exportarPdf(query, actorId, actorNombre, ip);
+  }
+
+  /**
+   * Indicadores de apoyo del seguimiento docente con ranking (RF-020 V2). Solo informativos.
+   */
+  async obtenerApoyo(query: FiltroApoyoQueryDto): Promise<IndicadoresApoyoResponseDto> {
+    return this.apoyoService.consultar(query);
+  }
+
+  /**
+   * Indicadores de apoyo del docente autenticado, sin ranking ni datos de otros (RF-020 V2).
+   */
+  async obtenerMisApoyo(
+    personaId: string,
+    query: FiltroApoyoQueryDto,
+  ): Promise<IndicadoresApoyoResponseDto> {
+    return this.apoyoService.consultarMios(personaId, query);
+  }
+
+  /**
+   * Exporta a Excel los indicadores de apoyo con sus hojas de detalle (RF-020 V2).
+   */
+  async exportarApoyoExcel(
+    query: FiltroApoyoQueryDto,
+    actorId: string,
+    actorNombre: string,
+    ip?: string,
+  ): Promise<{ buffer: Buffer; nombreArchivo: string }> {
+    return this.apoyoService.exportarExcel(query, actorId, actorNombre, ip);
   }
 }

@@ -3,3 +3,4 @@ export * from "./medicion.repository";
 export * from "./pretest.repository";
 export * from "./comparacion.repository";
 export * from "./panel.repository";
+export * from "./indicadores-apoyo.repository";
