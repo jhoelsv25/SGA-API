@@ -1,3 +1,5 @@
+import { MenuAlternativo } from "../../common/decorators/menu-alternativo.decorator";
+import { MENU_CURRICULO } from "../../common/constants/menu-rutas.constants";
 import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { ClientInfo, type ClientInfoData, CurrentUser, Roles } from "../../common/decorators";
@@ -7,12 +9,13 @@ import { CursosService } from "./cursos.service";
 
 @ApiTags("Cursos")
 @ApiBearerAuth()
+@MenuAlternativo(MENU_CURRICULO)
 @Controller("cursos")
 export class CursosController {
   constructor(private readonly service: CursosService) {}
 
   @Get()
-  @Roles("Administrador", "Director", "Coordinador", "Secretaria", "Docente")
+  @Roles("Administrador", "Director", "Coordinador", "Subdirector", "Secretaria", "Docente")
   @ApiOperation({ summary: "Listar catálogo de cursos (con filtros de estado, área y búsqueda)" })
   @ApiResponse({
     status: 200,
@@ -24,7 +27,7 @@ export class CursosController {
   }
 
   @Get(":id")
-  @Roles("Administrador", "Director", "Coordinador", "Secretaria", "Docente")
+  @Roles("Administrador", "Director", "Coordinador", "Subdirector", "Secretaria", "Docente")
   @ApiOperation({ summary: "Obtener detalle de un curso por ID" })
   @ApiParam({ name: "id", description: "UUID del curso" })
   @ApiResponse({

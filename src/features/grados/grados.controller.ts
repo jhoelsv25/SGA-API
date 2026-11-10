@@ -1,3 +1,5 @@
+import { MenuAlternativo } from "../../common/decorators/menu-alternativo.decorator";
+import { MENU_CURRICULO } from "../../common/constants/menu-rutas.constants";
 import { Body, Controller, Get, Param, ParseUUIDPipe, Patch } from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { ClientInfo, type ClientInfoData, CurrentUser, Roles } from "../../common/decorators";
@@ -7,12 +9,13 @@ import { GradosService } from "./grados.service";
 
 @ApiTags("Grados")
 @ApiBearerAuth()
+@MenuAlternativo(MENU_CURRICULO)
 @Controller("grados")
 export class GradosController {
   constructor(private readonly service: GradosService) {}
 
   @Get()
-  @Roles("Administrador", "Director", "Coordinador", "Secretaria", "Docente")
+  @Roles("Administrador", "Director", "Coordinador", "Subdirector", "Secretaria", "Docente")
   @ApiOperation({ summary: "Listar los grados de secundaria (1.° a 5.° en orden)" })
   @ApiResponse({
     status: 200,
@@ -24,7 +27,7 @@ export class GradosController {
   }
 
   @Get(":id")
-  @Roles("Administrador", "Director", "Coordinador", "Secretaria", "Docente")
+  @Roles("Administrador", "Director", "Coordinador", "Subdirector", "Secretaria", "Docente")
   @ApiOperation({ summary: "Obtener detalle de un grado por ID" })
   @ApiParam({ name: "id", description: "UUID del grado" })
   @ApiResponse({

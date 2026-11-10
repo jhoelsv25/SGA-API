@@ -68,3 +68,13 @@ export const MENU_MIS_INDICADORES = "/admin/mis-indicadores";
  * La ruta es la de la página en esa aplicación; el portal web no las muestra.
  */
 export const MENU_ESCRITORIO_BIOMETRICOS = "/biometricos";
+
+/**
+ * RF-002: opciones con las que un rol, además de los roles fijos, puede usar estos módulos.
+ */
+export const MENU_PERSONAS = "/admin/personas";
+export const MENU_DOCENTES = "/admin/docentes";
+export const MENU_ESTUDIANTES = "/admin/estudiantes";
+export const MENU_APODERADOS = "/admin/apoderados";
+export const MENU_MATRICULAS = "/admin/enrollment";
+export const MENU_CURRICULO = "/admin/curriculum";

@@ -1,3 +1,5 @@
+import { MenuAlternativo } from "../../common/decorators/menu-alternativo.decorator";
+import { MENU_ESTUDIANTES } from "../../common/constants/menu-rutas.constants";
 import {
   Body,
   Controller,
@@ -27,6 +29,7 @@ import {
 
 @ApiTags("Comunidad - Estudiantes")
 @ApiBearerAuth()
+@MenuAlternativo(MENU_ESTUDIANTES)
 @Controller("estudiantes")
 export class EstudiantesController {
   constructor(private readonly estudiantesService: EstudiantesService) {}
