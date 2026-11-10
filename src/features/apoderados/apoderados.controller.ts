@@ -1,3 +1,5 @@
+import { MenuAlternativo } from "../../common/decorators/menu-alternativo.decorator";
+import { MENU_APODERADOS } from "../../common/constants/menu-rutas.constants";
 import {
   Body,
   Controller,
@@ -29,6 +31,7 @@ import {
 
 @ApiTags("Comunidad - Apoderados")
 @ApiBearerAuth()
+@MenuAlternativo(MENU_APODERADOS)
 @Controller("apoderados")
 export class ApoderadosController {
   constructor(private readonly apoderadosService: ApoderadosService) {}

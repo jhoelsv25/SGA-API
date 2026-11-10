@@ -1,3 +1,5 @@
+import { MenuAlternativo } from "../../common/decorators/menu-alternativo.decorator";
+import { MENU_MATRICULAS } from "../../common/constants/menu-rutas.constants";
 import {
   Body,
   Controller,
@@ -32,6 +34,7 @@ import { MatriculasService } from "./matriculas.service";
 
 @ApiTags("Matrícula - Matrícula, Retiro y Traslado")
 @ApiBearerAuth()
+@MenuAlternativo(MENU_MATRICULAS)
 @Controller("matriculas")
 export class MatriculasController {
   constructor(private readonly matriculasService: MatriculasService) {}

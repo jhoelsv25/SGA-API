@@ -1,3 +1,5 @@
+import { MenuAlternativo } from "../../common/decorators/menu-alternativo.decorator";
+import { MENU_CURRICULO } from "../../common/constants/menu-rutas.constants";
 import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post } from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { ClientInfo, type ClientInfoData, CurrentUser, Roles } from "../../common/decorators";
@@ -12,12 +14,13 @@ import { PlanEstudiosService } from "./plan-estudios.service";
 
 @ApiTags("Plan de Estudios")
 @ApiBearerAuth()
+@MenuAlternativo(MENU_CURRICULO)
 @Controller("plan-estudios")
 export class PlanEstudiosController {
   constructor(private readonly service: PlanEstudiosService) {}
 
   @Get(":gradoId")
-  @Roles("Administrador", "Director", "Coordinador", "Secretaria", "Docente")
+  @Roles("Administrador", "Director", "Coordinador", "Subdirector", "Secretaria", "Docente")
   @ApiOperation({ summary: "Obtener el plan de estudios y total de horas semanales de un grado" })
   @ApiParam({ name: "gradoId", description: "UUID del grado" })
   @ApiResponse({

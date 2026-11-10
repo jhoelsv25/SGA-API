@@ -1,3 +1,5 @@
+import { MenuAlternativo } from "../../common/decorators/menu-alternativo.decorator";
+import { MENU_PERSONAS } from "../../common/constants/menu-rutas.constants";
 import {
   Body,
   Controller,
@@ -30,6 +32,7 @@ import { PersonasService } from "./personas.service";
 @ApiTags("Comunidad - Personas")
 @ApiBearerAuth()
 @Roles("Administrador", "Secretaria")
+@MenuAlternativo(MENU_PERSONAS)
 @Controller("personas")
 export class PersonasController {
   constructor(private readonly personasService: PersonasService) {}

@@ -1,17 +1,23 @@
+import { MENU_ALTERNATIVO_KEY } from "../decorators/menu-alternativo.decorator";
+import { RolMenusService } from "../services/rol-menus.service";
 import { CanActivate, ExecutionContext, Injectable } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import { ROLES_KEY } from "../decorators/roles.decorator";
 
 interface RequestUser {
+  roleId?: string;
   role?: string;
   roles?: string[];
 }
 
 @Injectable()
 export class RolesGuard implements CanActivate {
-  constructor(private readonly reflector: Reflector) {}
+  constructor(
+    private readonly reflector: Reflector,
+    private readonly rolMenus: RolMenusService,
+  ) {}
 
-  canActivate(context: ExecutionContext): boolean {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const requiredRoles = this.reflector.getAllAndOverride<string[]>(ROLES_KEY, [
       context.getHandler(),
       context.getClass(),
@@ -36,6 +42,10 @@ export class RolesGuard implements CanActivate {
       return true;
     }
 
-    return false;
+    const rutaMenu = this.reflector.getAllAndOverride<string | undefined>(MENU_ALTERNATIVO_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    return rutaMenu && user.roleId ? this.rolMenus.tieneMenu(user.roleId, rutaMenu) : false;
   }
 }
