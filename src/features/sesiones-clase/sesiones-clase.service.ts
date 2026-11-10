@@ -12,7 +12,7 @@ import {
   Optional,
 } from "@nestjs/common";
 import { Queue } from "bullmq";
-import { MENU_SESIONES_HOY } from "../../common/constants";
+import { MENU_JUSTIFICACIONES_SESION, MENU_SESIONES_HOY } from "../../common/constants";
 import { AuditService } from "../../common/services/audit.service";
 import { QUEUES } from "../../core/queues/queues.constants";
 import type { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface";
@@ -28,11 +28,15 @@ import {
   CRON_CERRAR_SESIONES,
   CRON_GENERAR_SESIONES,
   JOB_CERRAR_SESIONES,
+  CRON_AVISAR_JUSTIFICACIONES_VENCIDAS,
   CRON_EVALUAR_ALERTAS,
+  JOB_AVISAR_JUSTIFICACIONES_VENCIDAS,
   JOB_EVALUAR_ALERTAS,
   JOB_GENERAR_SESIONES,
   MENSAJES_SESION,
   ROLES_ALERTA_SESION,
+  ROLES_APROBADOR_JUSTIFICACION,
+  mensajeSolicitudVencida,
   VARIABLES_ALERTA,
   mensajeAlertaMinutos,
   mensajeAlertaSalida,
@@ -137,6 +141,11 @@ export class SesionesClaseService implements OnModuleInit {
         JOB_GENERAR_SESIONES,
         { pattern: CRON_GENERAR_SESIONES, tz: "America/Lima" },
         { name: JOB_GENERAR_SESIONES, data: {} },
+      );
+      await this.cola.upsertJobScheduler(
+        JOB_AVISAR_JUSTIFICACIONES_VENCIDAS,
+        { pattern: CRON_AVISAR_JUSTIFICACIONES_VENCIDAS, tz: "America/Lima" },
+        { name: JOB_AVISAR_JUSTIFICACIONES_VENCIDAS, data: {} },
       );
       await this.cola.upsertJobScheduler(
         JOB_EVALUAR_ALERTAS,
@@ -455,6 +464,45 @@ export class SesionesClaseService implements OnModuleInit {
     return resultado;
   }
 
+  /**
+   * Revisión diaria: avisa al aprobador de cada solicitud vencida, una sola vez por solicitud.
+   * Si el sistema estuvo caído, el aviso sale al reanudarse aunque la fecha ya haya pasado (P-72).
+   */
+  async avisarSolicitudesVencidas(): Promise<number> {
+    if (!this.notificacionesService) return 0;
+    const vencidas = await this.justificacionesSolicitadas({ vencidas: "true" });
+    if (vencidas.length === 0) return 0;
+    const aprobadores = [
+      ...new Set(await this.repository.usuariosConRol(ROLES_APROBADOR_JUSTIFICACION)),
+    ];
+    let avisadas = 0;
+    for (const s of vencidas) {
+      // La fecha de solicitud entra en la clave: una nueva solicitud de la misma sesión vuelve a avisar.
+      const clave = `justificacion-vencida:${s.id}:${s.justificacion?.solicitadaEn ?? ""}`;
+      if (!(await this.repository.registrarAlertaEnviada(clave))) continue;
+      const [, mes, dia] = s.fecha.split("-");
+      const mensaje = mensajeSolicitudVencida(
+        apellidoDeNombre(s.docenteNombre),
+        s.cursoNombre,
+        s.seccionNombre,
+        `${dia}/${mes}`,
+        s.antiguedadDias,
+      );
+      for (const usuarioId of aprobadores) {
+        await this.notificacionesService.enviar({
+          usuarioId,
+          titulo: "Justificación sin respuesta",
+          mensaje,
+          tipo: "alerta",
+          enlaceUrl: MENU_JUSTIFICACIONES_SESION,
+          sesionClaseId: s.id,
+        });
+      }
+      avisadas += 1;
+    }
+    return avisadas;
+  }
+
   /** Una notificación por alerta al Subdirector y al Director; la clave evita duplicarla. */
   private async notificarAlertas(panel: PanelSesionesResponseDto): Promise<void> {
     if (!this.notificacionesService) return;
@@ -474,7 +522,8 @@ export class SesionesClaseService implements OnModuleInit {
         });
       }
       if (pendientes.length === 0) return;
-      const destinatarios = await this.repository.usuariosConRol(ROLES_ALERTA_SESION);
+      // Una persona con dos roles recibe una sola notificación por alerta (P-72).
+      const destinatarios = [...new Set(await this.repository.usuariosConRol(ROLES_ALERTA_SESION))];
       for (const p of pendientes) {
         if (!(await this.repository.registrarAlertaEnviada(p.clave))) continue;
         for (const usuarioId of destinatarios) {

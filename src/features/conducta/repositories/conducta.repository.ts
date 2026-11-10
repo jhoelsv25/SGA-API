@@ -245,10 +245,7 @@ export class ConductaRepository {
         .innerJoin(estudiantes, eq(matriculas.estudianteId, estudiantes.id))
         .innerJoin(usuarios, eq(estudiantes.personaId, usuarios.personaId))
         .where(
-          and(
-            eq(usuarios.id, usuarioId),
-            inArray(matriculas.estado, ["matriculado", "vigente"]),
-          ),
+          and(eq(usuarios.id, usuarioId), inArray(matriculas.estado, ["matriculado", "vigente"])),
         )
         .orderBy(desc(matriculas.creadoEn));
       return rows.map((r) => r.matriculaId);
@@ -264,10 +261,7 @@ export class ConductaRepository {
       .innerJoin(apoderados, eq(estudianteApoderados.apoderadoId, apoderados.id))
       .innerJoin(usuarios, eq(apoderados.personaId, usuarios.personaId))
       .where(
-        and(
-          eq(usuarios.id, usuarioId),
-          inArray(matriculas.estado, ["matriculado", "vigente"]),
-        ),
+        and(eq(usuarios.id, usuarioId), inArray(matriculas.estado, ["matriculado", "vigente"])),
       )
       .orderBy(desc(matriculas.creadoEn));
     return rows.map((r) => r.matriculaId);

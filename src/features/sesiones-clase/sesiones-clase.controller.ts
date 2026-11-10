@@ -30,6 +30,7 @@ import {
   CurrentUser,
   MenuAccess,
   Public,
+  Roles,
 } from "../../common/decorators";
 import type { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface";
 import {
@@ -55,6 +56,9 @@ import {
 import { SesionesClaseService } from "./sesiones-clase.service";
 
 const TOKEN_KIOSKO = "x-kiosk-token";
+
+/** El Director consulta la bandeja pero no aprueba ni rechaza (P-49). */
+const ROLES_RESUELVEN_JUSTIFICACION = ["Subdirector", "Administrador"] as const;
 
 @ApiTags("Sesiones de clase")
 @Controller("sesiones-clase")
@@ -169,6 +173,7 @@ export class SesionesClaseController {
   @Patch(":id/justificacion/aprobar")
   @ApiBearerAuth()
   @MenuAccess(MENU_JUSTIFICACIONES_SESION)
+  @Roles(...ROLES_RESUELVEN_JUSTIFICACION)
   @ApiOperation({ summary: "Aprobar la justificación de una sesión no cumplida" })
   @ApiResponse({ status: 200, type: MensajeSesionResponseDto })
   async aprobarJustificacion(
@@ -183,6 +188,7 @@ export class SesionesClaseController {
   @Patch(":id/justificacion/rechazar")
   @ApiBearerAuth()
   @MenuAccess(MENU_JUSTIFICACIONES_SESION)
+  @Roles(...ROLES_RESUELVEN_JUSTIFICACION)
   @ApiOperation({ summary: "Rechazar la justificación con un comentario" })
   @ApiResponse({ status: 200, type: MensajeSesionResponseDto })
   async rechazarJustificacion(

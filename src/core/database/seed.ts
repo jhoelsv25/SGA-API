@@ -1059,7 +1059,8 @@ async function seed() {
       ruta: MENU_JUSTIFICACIONES_SESION,
       icono: "CheckmarkCircle02Icon",
       orden: 2,
-      roles: ["Subdirector"],
+      // RF-002 V5, RF-011 V3: el Director la ve (consulta); solo el Subdirector aprueba o rechaza.
+      roles: ["Subdirector", "Director"],
     },
     {
       nombre: "Mis sesiones",

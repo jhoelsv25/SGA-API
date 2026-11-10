@@ -198,7 +198,9 @@ export class ConductaService {
       incidencia.registradoPorId !== user.id &&
       !["admin", "administrador", "director", "subdirector"].includes(rol)
     ) {
-      throw new ForbiddenException("Solo quien registró la incidencia o un directivo puede anularla.");
+      throw new ForbiddenException(
+        "Solo quien registró la incidencia o un directivo puede anularla.",
+      );
     }
 
     // Registro inmutable en bitácora antes de anular
@@ -357,8 +359,10 @@ export class ConductaService {
     // Control de acceso para apoderado
     if (rol === "apoderado") {
       if (!dto.matriculaId) {
-        const matriculasHijos =
-          await this.repository.obtenerMatriculasDeUsuario?.(user.id, "apoderado");
+        const matriculasHijos = await this.repository.obtenerMatriculasDeUsuario?.(
+          user.id,
+          "apoderado",
+        );
         if (!matriculasHijos?.length) {
           return { data: [], nextCursor: null, hasMore: false };
         }
@@ -374,8 +378,10 @@ export class ConductaService {
     // Control de acceso para estudiante
     if (rol === "estudiante") {
       if (!dto.matriculaId) {
-        const matriculasPropias =
-          await this.repository.obtenerMatriculasDeUsuario?.(user.id, "estudiante");
+        const matriculasPropias = await this.repository.obtenerMatriculasDeUsuario?.(
+          user.id,
+          "estudiante",
+        );
         if (!matriculasPropias?.length) {
           return { data: [], nextCursor: null, hasMore: false };
         }
@@ -402,8 +408,10 @@ export class ConductaService {
 
     if (rol === "apoderado") {
       if (!dto.matriculaId) {
-        const matriculasHijos =
-          await this.repository.obtenerMatriculasDeUsuario?.(user.id, "apoderado");
+        const matriculasHijos = await this.repository.obtenerMatriculasDeUsuario?.(
+          user.id,
+          "apoderado",
+        );
         if (!matriculasHijos?.length) {
           return { data: [], nextCursor: null, hasMore: false };
         }
@@ -418,8 +426,10 @@ export class ConductaService {
 
     if (rol === "estudiante") {
       if (!dto.matriculaId) {
-        const matriculasPropias =
-          await this.repository.obtenerMatriculasDeUsuario?.(user.id, "estudiante");
+        const matriculasPropias = await this.repository.obtenerMatriculasDeUsuario?.(
+          user.id,
+          "estudiante",
+        );
         if (!matriculasPropias?.length) {
           return { data: [], nextCursor: null, hasMore: false };
         }

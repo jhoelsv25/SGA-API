@@ -64,6 +64,12 @@ export const JOB_EVALUAR_ALERTAS = "evaluar-alertas-de-sesiones";
 /** Cada 5 minutos, de lunes a viernes en horario escolar (hora de Lima). */
 export const CRON_EVALUAR_ALERTAS = "*/5 6-18 * * 1-5";
 
+/** Revisión diaria de justificaciones sin respuesta (RF-011 V3, RF-019 V2). */
+export const JOB_AVISAR_JUSTIFICACIONES_VENCIDAS = "avisar-justificaciones-vencidas";
+export const CRON_AVISAR_JUSTIFICACIONES_VENCIDAS = "30 6 * * 1-5";
+/** Quién resuelve las justificaciones; el Director las consulta pero no las resuelve (P-49). */
+export const ROLES_APROBADOR_JUSTIFICACION = ["Subdirector"] as const;
+
 export const JOB_GENERAR_SESIONES = "generar-sesiones-del-dia";
 export const JOB_CERRAR_SESIONES = "cerrar-sesiones-del-dia";
 /** A primera hora se generan; al final del día se cierran (hora de Lima). */
