@@ -13,23 +13,13 @@ import {
   MENU_ASISTENCIA_CLASE,
   MENU_ASISTENCIA_SECCION,
   MENU_MI_ASISTENCIA,
-  MENU_SESIONES_HOY,
-  MENU_JUSTIFICACIONES_SESION,
-  MENU_MIS_SESIONES,
   MENU_AULA_VIRTUAL,
   MENU_SOLICITUDES_CAMBIO_FECHA,
   MENU_MATERIALES_BIMESTRE,
   MENU_LIBRETAS,
   MENU_MIS_LIBRETAS,
-  MENU_AUSENCIAS_DOCENTES,
-  MENU_MIS_AUSENCIAS,
-  MENU_CONSOLIDADOS_DOCENTES,
-  MENU_MI_SEGUIMIENTO,
-  MENU_PENDIENTES_SEGUIMIENTO,
-  MENU_INFORME_HORAS_EFECTIVAS,
-  MENU_INDICADORES,
-  MENU_MIS_INDICADORES,
 } from "../../common/constants";
+import { MENUS_SEGUIMIENTO_DOCENTE } from "./seed-menu-seguimiento-docente";
 import { VARIABLES_SEGUIMIENTO_DOCENTE } from "./seed-variables-seguimiento-docente";
 
 // La conexión sale del entorno (.env), nunca del código: este usuario es el administrador de la base.
@@ -1048,31 +1038,9 @@ async function seed() {
          WHERE x.modulo_id = m.id AND x.es_contenedor AND x.nombre = 'Seguimiento docente'
        );`,
   );
-  const MENUS_SESIONES = [
-    {
-      nombre: "Sesiones de hoy",
-      ruta: MENU_SESIONES_HOY,
-      icono: "Clock01Icon",
-      orden: 1,
-      roles: ["Director", "Subdirector"],
-    },
-    {
-      nombre: "Justificaciones de sesiones",
-      ruta: MENU_JUSTIFICACIONES_SESION,
-      icono: "CheckmarkCircle02Icon",
-      orden: 2,
-      // RF-002 V5, RF-011 V3: el Director la ve (consulta); solo el Subdirector aprueba o rechaza.
-      roles: ["Subdirector", "Director"],
-    },
-    {
-      nombre: "Mis sesiones",
-      ruta: MENU_MIS_SESIONES,
-      icono: "BookOpen01Icon",
-      orden: 3,
-      roles: ["Docente"],
-    },
-  ];
-  for (const menu of MENUS_SESIONES) {
+  // RF-021 V2: la matriz del grupo «Seguimiento docente» (RF-002 V5) vive en un solo archivo.
+  // `orden` se actualiza para corregir bases que tenían dos opciones con el mismo número.
+  for (const menu of MENUS_SEGUIMIENTO_DOCENTE.filter((m) => m.habilitada)) {
     await pool.query(
       `INSERT INTO menus (modulo_id, menu_padre_id, nombre, ruta, icono, orden, es_contenedor)
        SELECT c.modulo_id, c.id, $2::varchar, $1::varchar, $3::varchar, $4::int, false
@@ -1081,135 +1049,19 @@ async function seed() {
          AND NOT EXISTS (SELECT 1 FROM menus x WHERE x.ruta = $1::varchar);`,
       [menu.ruta, menu.nombre, menu.icono, menu.orden],
     );
+    await pool.query(`UPDATE menus SET orden = $2::int WHERE ruta = $1::varchar;`, [
+      menu.ruta,
+      menu.orden,
+    ]);
     await pool.query(
       `INSERT INTO rol_menus (rol_id, menu_id)
        SELECT r.id, m.id FROM roles r, menus m
        WHERE r.nombre = ANY($2::varchar[]) AND m.ruta = $1
        ON CONFLICT DO NOTHING;`,
-      [menu.ruta, menu.roles],
+      [menu.ruta, [...menu.roles]],
     );
   }
-  console.log("✔ Opciones de Seguimiento docente registradas.");
-
-  // RF-012: menús de Ausencias docentes bajo el contenedor "Seguimiento docente"
-  const MENUS_AUSENCIAS = [
-    {
-      nombre: "Ausencias docentes",
-      ruta: MENU_AUSENCIAS_DOCENTES,
-      icono: "UserGroupIcon",
-      orden: 4,
-      roles: ["Director", "Subdirector", "Administrador"],
-    },
-    {
-      nombre: "Mis ausencias",
-      ruta: MENU_MIS_AUSENCIAS,
-      icono: "Task01Icon",
-      orden: 5,
-      roles: ["Docente"],
-    },
-  ];
-  for (const menu of MENUS_AUSENCIAS) {
-    await pool.query(
-      `INSERT INTO menus (modulo_id, menu_padre_id, nombre, ruta, icono, orden, es_contenedor)
-       SELECT c.modulo_id, c.id, $2::varchar, $1::varchar, $3::varchar, $4::int, false
-       FROM menus c JOIN modulos m ON m.id = c.modulo_id
-       WHERE m.codigo = 'academico' AND c.es_contenedor AND c.nombre = 'Seguimiento docente'
-         AND NOT EXISTS (SELECT 1 FROM menus x WHERE x.ruta = $1::varchar);`,
-      [menu.ruta, menu.nombre, menu.icono, menu.orden],
-    );
-    await pool.query(
-      `INSERT INTO rol_menus (rol_id, menu_id)
-       SELECT r.id, m.id FROM roles r, menus m
-       WHERE r.nombre = ANY($2::varchar[]) AND m.ruta = $1
-       ON CONFLICT DO NOTHING;`,
-      [menu.ruta, menu.roles],
-    );
-  }
-
-  // RF-013: menús de Consolidado y seguimiento docente bajo el contenedor "Seguimiento docente"
-  const MENUS_CONSOLIDADOS = [
-    {
-      nombre: "Consolidados docentes",
-      ruta: MENU_CONSOLIDADOS_DOCENTES,
-      icono: "ChartBarLineIcon",
-      orden: 6,
-      roles: ["Director", "Subdirector", "Administrador"],
-    },
-    {
-      nombre: "Mi seguimiento",
-      ruta: MENU_MI_SEGUIMIENTO,
-      icono: "File02Icon",
-      orden: 7,
-      roles: ["Docente"],
-    },
-    {
-      nombre: "Pendientes de seguimiento",
-      ruta: MENU_PENDIENTES_SEGUIMIENTO,
-      icono: "Task01Icon",
-      orden: 8,
-      roles: ["Director", "Subdirector", "Administrador"],
-    },
-    {
-      nombre: "Informe mensual de horas efectivas",
-      ruta: MENU_INFORME_HORAS_EFECTIVAS,
-      icono: "File02Icon",
-      orden: 9,
-      roles: ["Director", "Subdirector", "Administrador"],
-    },
-  ];
-  for (const menu of MENUS_CONSOLIDADOS) {
-    await pool.query(
-      `INSERT INTO menus (modulo_id, menu_padre_id, nombre, ruta, icono, orden, es_contenedor)
-       SELECT c.modulo_id, c.id, $2::varchar, $1::varchar, $3::varchar, $4::int, false
-       FROM menus c JOIN modulos m ON m.id = c.modulo_id
-       WHERE m.codigo = 'academico' AND c.es_contenedor AND c.nombre = 'Seguimiento docente'
-         AND NOT EXISTS (SELECT 1 FROM menus x WHERE x.ruta = $1::varchar);`,
-      [menu.ruta, menu.nombre, menu.icono, menu.orden],
-    );
-    await pool.query(
-      `INSERT INTO rol_menus (rol_id, menu_id)
-       SELECT r.id, m.id FROM roles r, menus m
-       WHERE r.nombre = ANY($2::varchar[]) AND m.ruta = $1
-       ON CONFLICT DO NOTHING;`,
-      [menu.ruta, menu.roles],
-    );
-  }
-
-  // RF-020: menús de Indicadores de la tesis bajo el contenedor "Seguimiento docente"
-  const MENUS_INDICADORES_SEED = [
-    {
-      nombre: "Indicadores",
-      ruta: MENU_INDICADORES,
-      icono: "ChartBarLineIcon",
-      orden: 8,
-      roles: ["Director", "Subdirector", "Administrador"],
-    },
-    {
-      nombre: "Mis indicadores",
-      ruta: MENU_MIS_INDICADORES,
-      icono: "File02Icon",
-      orden: 9,
-      roles: ["Docente"],
-    },
-  ];
-  for (const menu of MENUS_INDICADORES_SEED) {
-    await pool.query(
-      `INSERT INTO menus (modulo_id, menu_padre_id, nombre, ruta, icono, orden, es_contenedor)
-       SELECT c.modulo_id, c.id, $2::varchar, $1::varchar, $3::varchar, $4::int, false
-       FROM menus c JOIN modulos m ON m.id = c.modulo_id
-       WHERE m.codigo = 'academico' AND c.es_contenedor AND c.nombre = 'Seguimiento docente'
-         AND NOT EXISTS (SELECT 1 FROM menus x WHERE x.ruta = $1::varchar);`,
-      [menu.ruta, menu.nombre, menu.icono, menu.orden],
-    );
-    await pool.query(
-      `INSERT INTO rol_menus (rol_id, menu_id)
-       SELECT r.id, m.id FROM roles r, menus m
-       WHERE r.nombre = ANY($2::varchar[]) AND m.ruta = $1
-       ON CONFLICT DO NOTHING;`,
-      [menu.ruta, menu.roles],
-    );
-  }
-  console.log("✔ Opciones de Indicadores de la tesis registradas (RF-020).");
+  console.log("✔ Opciones de Seguimiento docente registradas (RF-011, RF-012, RF-013, RF-020).");
 
   // RF-015: menús del Aula virtual bajo el contenedor "Aula virtual"
   await pool.query(

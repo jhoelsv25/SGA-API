@@ -33,6 +33,13 @@ export const MENU_JUSTIFICACIONES_SESION = "/admin/justificaciones-sesion";
 export const MENU_MIS_SESIONES = "/admin/mis-sesiones";
 
 /**
+ * RF-023: observación de aula. Rutas previstas; el seed no registra estas opciones
+ * hasta que RF-023 tenga sus pantallas (ver `MENUS_SEGUIMIENTO_DOCENTE`).
+ */
+export const MENU_OBSERVACIONES_AULA = "/admin/observaciones-aula";
+export const MENU_MIS_OBSERVACIONES = "/admin/mis-observaciones";
+
+/**
  * RF-015: aula virtual (unidades y materiales de reforzamiento).
  */
 export const MENU_AULA_VIRTUAL = "/admin/aula-virtual";
