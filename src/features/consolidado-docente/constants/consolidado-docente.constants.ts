@@ -24,6 +24,8 @@ export const MENSAJES_CONSOLIDADO = {
   COMPROMISO_ANULACION_SIN_MOTIVO: "Indique el motivo de la anulación.",
   COMPROMISO_ANULADO: "El compromiso está anulado.",
   COMPROMISO_NO_ENCONTRADO: "Compromiso no encontrado.",
+  COMPROMISO_NO_EDITABLE: "El compromiso ya está cerrado. No se puede modificar.",
+  COMPROMISO_SIN_CAMBIOS: "Indique una fecha de revisión o una descripción distinta.",
   COMPROMISOS_PENDIENTES_CAMBIO_DECISION:
     "Hay compromisos pendientes. Ciérrelos o anúlelos antes de cambiar la decisión.",
   ENTERADO: "Gracias. Quedó registrado que está enterado.",

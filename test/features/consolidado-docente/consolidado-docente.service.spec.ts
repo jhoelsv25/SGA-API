@@ -112,6 +112,7 @@ describe("RF-013: Consolidado y Ficha de Seguimiento Docente (CP-RF013-01 a CP-R
       obtenerDocenteDePersona: jest.fn(),
       consolidadoCerradoBloqueante: jest.fn(),
       valorVariable: jest.fn().mockResolvedValue("45"),
+      contarCompromisosPendientes: jest.fn().mockResolvedValue(0),
     };
 
     audit = {

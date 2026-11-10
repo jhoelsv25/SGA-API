@@ -3,6 +3,7 @@ import { and, desc, eq, sql } from "drizzle-orm";
 import { Database, DRIZZLE } from "../../../core/database";
 import {
   ausenciasSesion,
+  compromisosConsolidado,
   consolidadosDocente,
   cursos,
   cursosSeccion,
@@ -316,6 +317,27 @@ export class ConsolidadoDocenteRepository {
       minutosProgramados,
       minutosDictados,
     };
+  }
+
+  /** Compromisos pendientes (vigentes y no anulados) del docente en el bimestre. */
+  async contarCompromisosPendientes(docenteId: string, periodoId: string): Promise<number> {
+    const [fila] = await this.db
+      .select({ total: sql<number>`count(*)::int` })
+      .from(compromisosConsolidado)
+      .innerJoin(
+        consolidadosDocente,
+        eq(consolidadosDocente.id, compromisosConsolidado.consolidadoId),
+      )
+      .where(
+        and(
+          eq(compromisosConsolidado.docenteId, docenteId),
+          eq(consolidadosDocente.periodoId, periodoId),
+          eq(compromisosConsolidado.vigente, true),
+          eq(compromisosConsolidado.anulado, false),
+          eq(compromisosConsolidado.estado, "pendiente"),
+        ),
+      );
+    return fila?.total ?? 0;
   }
 
   /** Valor vigente de una variable de sistema, o null si no está cargada. */

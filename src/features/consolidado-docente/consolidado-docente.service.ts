@@ -11,6 +11,7 @@ import { AuditService } from "../../common/services/audit.service";
 import { InstitucionService } from "../institucion/institucion.service";
 import { NotificacionesService } from "../notificaciones/notificaciones.service";
 import {
+  DECISIONES_CON_COMPROMISO,
   MENSAJES_CONSOLIDADO,
   VARIABLES_CONSOLIDADO,
   mensajeConsolidadosGenerados,
@@ -280,6 +281,17 @@ export class ConsolidadoDocenteService {
     const consolidado = await this.repository.obtenerConsolidadoPorId(consolidadoId);
     if (!consolidado) {
       throw new NotFoundException(MENSAJES_CONSOLIDADO.NO_ENCONTRADO);
+    }
+
+    // No se cambia a una decisión sin compromisos mientras queden compromisos pendientes (RF-013 V2).
+    if (!DECISIONES_CON_COMPROMISO.includes(dto.decision)) {
+      const pendientes = await this.repository.contarCompromisosPendientes(
+        consolidado.docenteId,
+        consolidado.periodoId,
+      );
+      if (pendientes > 0) {
+        throw new BadRequestException(MENSAJES_CONSOLIDADO.COMPROMISOS_PENDIENTES_CAMBIO_DECISION);
+      }
     }
 
     const actualizado = await this.repository.actualizarDecision(

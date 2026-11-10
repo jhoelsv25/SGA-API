@@ -6,3 +6,4 @@ export * from "./repositories";
 export * from "./consolidado-docente.service";
 export * from "./consolidado-docente.controller";
 export * from "./consolidado-docente.module";
+export * from "./compromisos-consolidado.service";
