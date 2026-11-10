@@ -204,6 +204,13 @@
       "when": 1794482211900,
       "tag": "0029_rf013_v2_horas_y_compromisos",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1794568611900,
+      "tag": "0030_rf023_v1_observacion_aula",
+      "breakpoints": true
     }
   ]
 }

@@ -2907,3 +2907,199 @@ export const compromisosConsolidado = pgTable(
     ),
   ],
 );
+
+// RF-023 V1: instrumento de observación versionado (desempeños, aspectos y niveles en `contenido`).
+export const instrumentosObservacion = pgTable(
+  "instrumentos_observacion",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    codigo: varchar({ length: 60 }).notNull(),
+    nombre: varchar({ length: 150 }).notNull(),
+    fuente: varchar({ length: 250 }),
+    contenido: jsonb().notNull(),
+    vigente: boolean().default(false).notNull(),
+    creadoPorId: uuid("creado_por_id"),
+    creadoEn: timestamp("creado_en", { precision: 0, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    unique("uq_instrumentos_observacion_codigo").on(table.codigo),
+    uniqueIndex("ux_instrumentos_observacion_vigente")
+      .on(table.vigente)
+      .where(sql`vigente = true`),
+  ],
+);
+
+// RF-023 V1: observación de aula (ciclo programada → retroalimentada).
+export const observacionesAula = pgTable(
+  "observaciones_aula",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    docenteId: uuid("docente_id").notNull(),
+    cursoSeccionId: uuid("curso_seccion_id").notNull(),
+    horarioId: uuid("horario_id"),
+    sesionClaseId: uuid("sesion_clase_id"),
+    periodoId: uuid("periodo_id").notNull(),
+    observadorUsuarioId: uuid("observador_usuario_id").notNull(),
+    instrumentoId: uuid("instrumento_id").notNull(),
+    observacionAnteriorId: uuid("observacion_anterior_id"),
+    fecha: date().notNull(),
+    horaInicioProgramada: time("hora_inicio_programada", { precision: 0 }).notNull(),
+    horaFinProgramada: time("hora_fin_programada", { precision: 0 }).notNull(),
+    estado: varchar({ length: 20 }).default("programada").notNull(),
+    avisadoEn: timestamp("avisado_en", { precision: 0, mode: "string" }),
+    horaInicioReal: time("hora_inicio_real", { precision: 0 }),
+    horaFinReal: time("hora_fin_real", { precision: 0 }),
+    minutosTotales: smallint("minutos_totales"),
+    estudiantesPresentes: smallint("estudiantes_presentes"),
+    notasCerradasEn: timestamp("notas_cerradas_en", { precision: 0, mode: "string" }),
+    calificadaEn: timestamp("calificada_en", { precision: 0, mode: "string" }),
+    retroFecha: date("retro_fecha"),
+    retroHoraInicio: time("retro_hora_inicio", { precision: 0 }),
+    retroHoraFin: time("retro_hora_fin", { precision: 0 }),
+    retroResumen: varchar("retro_resumen", { length: 2000 }),
+    retroalimentadaEn: timestamp("retroalimentada_en", { precision: 0, mode: "string" }),
+    enteradoEn: timestamp("enterado_en", { precision: 0, mode: "string" }),
+    motivoCancelacion: varchar("motivo_cancelacion", { length: 500 }),
+    canceladaEn: timestamp("cancelada_en", { precision: 0, mode: "string" }),
+    canceladaPorId: uuid("cancelada_por_id"),
+    creadoPorId: uuid("creado_por_id").notNull(),
+    creadoEn: timestamp("creado_en", { precision: 0, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    actualizadoEn: timestamp("actualizado_en", { precision: 0, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    index("ix_observaciones_aula_docente").on(table.docenteId, table.fecha),
+    index("ix_observaciones_aula_observador").on(table.observadorUsuarioId, table.fecha),
+    index("ix_observaciones_aula_periodo").on(table.periodoId),
+    check(
+      "ck_observaciones_aula_estado",
+      sql`(estado)::text = ANY ((ARRAY['programada'::character varying, 'en_observacion'::character varying, 'notas_cerradas'::character varying, 'calificada'::character varying, 'retroalimentada'::character varying, 'cancelada'::character varying])::text[])`,
+    ),
+    check("ck_observaciones_aula_horas", sql`hora_fin_programada > hora_inicio_programada`),
+  ],
+);
+
+export const observacionesAulaCambios = pgTable(
+  "observaciones_aula_cambios",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    observacionId: uuid("observacion_id").notNull(),
+    tipo: varchar({ length: 15 }).notNull(),
+    fechaAnterior: date("fecha_anterior"),
+    horaAnterior: time("hora_anterior", { precision: 0 }),
+    fechaNueva: date("fecha_nueva"),
+    horaNueva: time("hora_nueva", { precision: 0 }),
+    motivo: varchar({ length: 500 }).notNull(),
+    usuarioId: uuid("usuario_id").notNull(),
+    creadoEn: timestamp("creado_en", { precision: 0, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [index("ix_observaciones_aula_cambios_obs").on(table.observacionId)],
+);
+
+export const observacionesAulaNotas = pgTable(
+  "observaciones_aula_notas",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    observacionId: uuid("observacion_id").notNull(),
+    desempeno: smallint().notNull(),
+    aspecto: varchar({ length: 150 }),
+    texto: varchar({ length: 1000 }).notNull(),
+    horaAproximada: time("hora_aproximada", { precision: 0 }),
+    creadoEn: timestamp("creado_en", { precision: 0, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    actualizadoEn: timestamp("actualizado_en", { precision: 0, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [index("ix_observaciones_aula_notas_obs").on(table.observacionId, table.desempeno)],
+);
+
+export const observacionesAulaCalificaciones = pgTable(
+  "observaciones_aula_calificaciones",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    observacionId: uuid("observacion_id").notNull(),
+    desempeno: smallint().notNull(),
+    nivel: smallint().notNull(),
+    fundamento: varchar({ length: 1000 }).notNull(),
+    version: smallint().default(1).notNull(),
+    vigente: boolean().default(true).notNull(),
+    motivoCambio: varchar("motivo_cambio", { length: 500 }),
+    creadoPorId: uuid("creado_por_id").notNull(),
+    creadoEn: timestamp("creado_en", { precision: 0, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("ux_observaciones_aula_calif_vigente")
+      .on(table.observacionId, table.desempeno)
+      .where(sql`vigente = true`),
+  ],
+);
+
+export const observacionesAulaCompromisos = pgTable(
+  "observaciones_aula_compromisos",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    compromisoId: uuid("compromiso_id").notNull(),
+    observacionId: uuid("observacion_id").notNull(),
+    desempeno: smallint().notNull(),
+    descripcion: varchar({ length: 500 }).notNull(),
+    fechaRevision: date("fecha_revision").notNull(),
+    estado: varchar({ length: 15 }).default("pendiente").notNull(),
+    observacionCierre: varchar("observacion_cierre", { length: 500 }),
+    cerradoPorId: uuid("cerrado_por_id"),
+    cerradoEn: timestamp("cerrado_en", { precision: 0, mode: "string" }),
+    version: smallint().default(1).notNull(),
+    vigente: boolean().default(true).notNull(),
+    motivoCambio: varchar("motivo_cambio", { length: 500 }),
+    creadoPorId: uuid("creado_por_id").notNull(),
+    creadoEn: timestamp("creado_en", { precision: 0, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("ux_observaciones_aula_comp_vigente")
+      .on(table.compromisoId)
+      .where(sql`vigente = true`),
+    index("ix_observaciones_aula_comp_obs").on(table.observacionId),
+  ],
+);
+
+export const observacionesAulaComentarios = pgTable(
+  "observaciones_aula_comentarios",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    observacionId: uuid("observacion_id").notNull(),
+    texto: varchar({ length: 1000 }).notNull(),
+    usuarioId: uuid("usuario_id").notNull(),
+    creadoEn: timestamp("creado_en", { precision: 0, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [unique("uq_observaciones_aula_comentarios_obs").on(table.observacionId)],
+);
+
+export const observacionesAulaArchivos = pgTable(
+  "observaciones_aula_archivos",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    observacionId: uuid("observacion_id").notNull(),
+    url: varchar({ length: 255 }).notNull(),
+    nombreOriginal: varchar("nombre_original", { length: 255 }),
+    retirado: boolean().default(false).notNull(),
+    subidoPorId: uuid("subido_por_id").notNull(),
+    creadoEn: timestamp("creado_en", { precision: 0, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [index("ix_observaciones_aula_archivos_obs").on(table.observacionId)],
+);
