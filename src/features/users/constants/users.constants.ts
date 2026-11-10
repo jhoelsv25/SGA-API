@@ -8,6 +8,16 @@ export const BCRYPT_SALT_ROUNDS = 10;
 
 export const DEFAULT_USER_PAGE_LIMIT = 10;
 
+export type TipoFichaDeRol = "docente" | "estudiante" | "apoderado";
+
+/** RF-002 V4: roles que solo puede tener quien tiene la ficha vigente de ese tipo. */
+export const ROLES_CON_FICHA: ReadonlyMap<string, { tipo: TipoFichaDeRol; opcion: string }> =
+  new Map([
+    ["Docente", { tipo: "docente", opcion: "Docentes" }],
+    ["Estudiante", { tipo: "estudiante", opcion: "Estudiantes" }],
+    ["Apoderado", { tipo: "apoderado", opcion: "Apoderados" }],
+  ]);
+
 /** RF-002 V2 (HU1): mensajes de la gestión de varios roles por cuenta. */
 export const USER_ROLE_MESSAGES = {
   ROLE_NOT_FOUND: "El rol seleccionado no existe o no está activo.",
@@ -21,4 +31,9 @@ export const USER_ROLE_MESSAGES = {
   PERSONA_REQUIRED: "Seleccione una persona del padrón o registre una nueva.",
   CORREO_REPETIDO: "El correo ya está registrado para otra persona.",
   CARGO_SIN_ROLES: "El cargo no tiene roles sugeridos. Indique al menos un rol.",
+  // RF-002 V4: roles que dependen de una ficha
+  ROL_REQUIERE_FICHA: (rol: string, opcion: string) =>
+    `El rol ${rol} requiere una ficha vigente. Regístrela desde "${opcion}".`,
+  RETIRO_CON_FICHA: (rol: string, opcion: string) =>
+    `No se puede retirar el rol ${rol} porque la persona tiene una ficha vigente. Primero debe darla de baja desde "${opcion}".`,
 } as const;

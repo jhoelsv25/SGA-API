@@ -220,7 +220,13 @@ export class ApoderadosRepository implements IApoderadosRepository {
         const [tieneRol] = await tx
           .select({ id: usuarioRoles.id })
           .from(usuarioRoles)
-          .where(and(eq(usuarioRoles.usuarioId, usuarioId), eq(usuarioRoles.rolId, data.rolId)))
+          .where(
+            and(
+              eq(usuarioRoles.usuarioId, usuarioId),
+              eq(usuarioRoles.rolId, data.rolId),
+              eq(usuarioRoles.vigente, true),
+            ),
+          )
           .limit(1);
 
         if (!tieneRol) {

@@ -7,7 +7,7 @@ import {
 import { AuditService } from "../../../common/services/audit.service";
 import type { AuthenticatedUser } from "../../auth/interfaces/jwt-payload.interface";
 import { RolesRepository } from "../../roles/repositories/roles.repository";
-import { USER_ROLE_MESSAGES } from "../constants";
+import { ROLES_CON_FICHA, USER_ROLE_MESSAGES } from "../constants";
 import { AddUserRoleDto, UserRoleAssignmentDto } from "../dto/user-role.dto";
 import { ChangeUserRoleDto } from "../dto/change-user-role.dto";
 import { UserResponseDto } from "../dto/user-response.dto";
@@ -29,6 +29,35 @@ export class UserRolesService {
     return user;
   }
 
+  /** RF-002 V4: rechaza los roles que dependen de una ficha que la persona no tiene vigente. */
+  async exigirFichaParaRoles(personaId: string | undefined, rolIds: string[]): Promise<void> {
+    const rolesPedidos = await Promise.all(rolIds.map((id) => this.rolesRepository.findById(id)));
+    const conFicha = rolesPedidos.flatMap((rol) => {
+      const ficha = rol ? ROLES_CON_FICHA.get(rol.nombre) : undefined;
+      return rol && ficha ? [{ nombre: rol.nombre, ...ficha }] : [];
+    });
+    if (conFicha.length === 0) return;
+
+    const vigentes = personaId ? await this.usersRepository.findTiposFichaVigente(personaId) : [];
+    const faltante = conFicha.find((rol) => !vigentes.includes(rol.tipo));
+    if (faltante) {
+      throw new ConflictException(
+        USER_ROLE_MESSAGES.ROL_REQUIERE_FICHA(faltante.nombre, faltante.opcion),
+      );
+    }
+  }
+
+  /** RF-002 V4: mientras la ficha siga vigente, su rol no se puede retirar. */
+  private async exigirSinFichaVigente(personaId: string, rolNombre: string): Promise<void> {
+    const ficha = ROLES_CON_FICHA.get(rolNombre);
+    if (!ficha) return;
+
+    const vigentes = await this.usersRepository.findTiposFichaVigente(personaId);
+    if (vigentes.includes(ficha.tipo)) {
+      throw new ConflictException(USER_ROLE_MESSAGES.RETIRO_CON_FICHA(rolNombre, ficha.opcion));
+    }
+  }
+
   async changeRole(
     id: string,
     dto: ChangeUserRoleDto,
@@ -47,6 +76,12 @@ export class UserRolesService {
     const role = await this.rolesRepository.findById(dto.rolId);
     if (!role || !role.activo) {
       throw new NotFoundException("El rol seleccionado no existe o no está activo.");
+    }
+
+    await this.exigirFichaParaRoles(user.persona.id, [dto.rolId]);
+    // El cambio retira el rol principal anterior
+    if (user.rol.id !== dto.rolId) {
+      await this.exigirSinFichaVigente(user.persona.id, user.rol.nombre);
     }
 
     const updated = await this.usersRepository.update(id, { rolId: dto.rolId });
@@ -79,7 +114,7 @@ export class UserRolesService {
     actorUser: AuthenticatedUser,
     ip?: string,
   ): Promise<UserRoleAssignmentDto[]> {
-    await this.assertUserExists(id);
+    const user = await this.assertUserExists(id);
 
     const role = await this.rolesRepository.findById(dto.rolId);
     if (!role || !role.activo) {
@@ -90,6 +125,8 @@ export class UserRolesService {
     if (vigentes.some((p) => p.rolId === dto.rolId)) {
       throw new ConflictException(USER_ROLE_MESSAGES.ALREADY_ASSIGNED);
     }
+
+    await this.exigirFichaParaRoles(user.persona.id, [dto.rolId]);
 
     await this.usersRepository.addRole(id, dto.rolId, actorUser.id);
 
@@ -143,7 +180,7 @@ export class UserRolesService {
     actorUser: AuthenticatedUser,
     ip?: string,
   ): Promise<UserRoleAssignmentDto[]> {
-    await this.assertUserExists(id);
+    const user = await this.assertUserExists(id);
 
     const vigentes = await this.usersRepository.findRoles(id, false);
     const target = vigentes.find((p) => p.rolId === rolId);
@@ -159,6 +196,8 @@ export class UserRolesService {
     if (target.esPrincipal) {
       throw new BadRequestException(USER_ROLE_MESSAGES.RETIRE_PRINCIPAL);
     }
+
+    await this.exigirSinFichaVigente(user.persona.id, target.rolNombre);
 
     await this.usersRepository.retireRole(id, rolId, actorUser.id);
 

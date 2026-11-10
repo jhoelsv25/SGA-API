@@ -1,10 +1,13 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, desc, eq, ilike, isNull, or, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { Database, DRIZZLE } from "../../../core/database";
 import {
+  apoderados,
   cargoRolesSugeridos,
   cargos,
+  docentes,
+  estudiantes,
   personaCargos,
   personas,
   roles,
@@ -19,6 +22,8 @@ import {
 } from "../dto/user-response.dto";
 import { UserQueryDto } from "../dto/user-query.dto";
 import { UserRoleAssignmentDto } from "../dto/user-role.dto";
+import { TipoFichaDeRol } from "../constants";
+import { ESTADOS_FICHA_VIGENTE } from "../../personas/utils/ficha-academica.util";
 import { decodeCursor, encodeCursor } from "../../../common/utils";
 import {
   DbUserProcedureExecutionResult,
@@ -328,6 +333,44 @@ export class UsersRepository implements IUsersRepository {
         });
       }
     });
+  }
+
+  async findTiposFichaVigente(personaId: string): Promise<TipoFichaDeRol[]> {
+    const [docente, estudiante, apoderado] = await Promise.all([
+      this.db
+        .select({ id: docentes.id })
+        .from(docentes)
+        .where(
+          and(
+            eq(docentes.personaId, personaId),
+            isNull(docentes.eliminadoEn),
+            inArray(docentes.estado, [...ESTADOS_FICHA_VIGENTE.docente]),
+          ),
+        )
+        .limit(1),
+      this.db
+        .select({ id: estudiantes.id })
+        .from(estudiantes)
+        .where(
+          and(
+            eq(estudiantes.personaId, personaId),
+            isNull(estudiantes.eliminadoEn),
+            inArray(estudiantes.estado, [...ESTADOS_FICHA_VIGENTE.estudiante]),
+          ),
+        )
+        .limit(1),
+      this.db
+        .select({ id: apoderados.id })
+        .from(apoderados)
+        .where(and(eq(apoderados.personaId, personaId), isNull(apoderados.eliminadoEn)))
+        .limit(1),
+    ]);
+
+    const tipos: TipoFichaDeRol[] = [];
+    if (docente.length > 0) tipos.push("docente");
+    if (estudiante.length > 0) tipos.push("estudiante");
+    if (apoderado.length > 0) tipos.push("apoderado");
+    return tipos;
   }
 
   async findRoles(userId: string, includeRetired: boolean): Promise<UserRoleAssignmentDto[]> {

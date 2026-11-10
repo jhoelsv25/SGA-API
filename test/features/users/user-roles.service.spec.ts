@@ -54,6 +54,7 @@ describe("UserRolesService (RF-002: HU 1 - Asignación y ciclo de roles)", () =>
     const mockUsersRepo = {
       findUserById: jest.fn().mockResolvedValue(dummyUser),
       findRoles: jest.fn(),
+      findTiposFichaVigente: jest.fn().mockResolvedValue([]),
       addRole: jest.fn(),
       setPrincipalRole: jest.fn(),
       retireRole: jest.fn(),
@@ -194,6 +195,95 @@ describe("UserRolesService (RF-002: HU 1 - Asignación y ciclo de roles)", () =>
       await expect(
         service.retireRole("user-target-uuid", "rol-docente", currentAdmin),
       ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe("RF-002 V4: roles que dependen de una ficha", () => {
+    const rolCatalogo = (id: string, nombre: string) =>
+      ({ id, nombre, esSistema: true, activo: true }) as unknown as RoleDetailResponseDto;
+    const asignacion = (rolId: string, rolNombre: string, esPrincipal: boolean) =>
+      ({ id: rolId, rolId, rolNombre, esPrincipal, vigente: true }) as UserRoleAssignmentDto;
+
+    it.each([
+      ["Docente", "Docentes"],
+      ["Estudiante", "Estudiantes"],
+      ["Apoderado", "Apoderados"],
+    ])("rechaza agregar el rol %s sin ficha vigente", async (rol, opcion) => {
+      rolesRepository.findById.mockResolvedValue(rolCatalogo("rol-x", rol));
+      usersRepository.findRoles.mockResolvedValue([]);
+
+      await expect(
+        service.addRole("user-target-uuid", { rolId: "rol-x" }, currentAdmin),
+      ).rejects.toThrow(
+        new ConflictException(
+          `El rol ${rol} requiere una ficha vigente. Regístrela desde "${opcion}".`,
+        ),
+      );
+      expect(usersRepository.addRole).not.toHaveBeenCalled();
+    });
+
+    it("agrega el rol cuando la persona tiene su ficha vigente", async () => {
+      rolesRepository.findById.mockResolvedValue(rolCatalogo("rol-docente", "Docente"));
+      usersRepository.findRoles.mockResolvedValue([]);
+      usersRepository.findTiposFichaVigente.mockResolvedValue(["docente"]);
+
+      await service.addRole("user-target-uuid", { rolId: "rol-docente" }, currentAdmin);
+
+      expect(usersRepository.findTiposFichaVigente).toHaveBeenCalledWith("persona-1");
+      expect(usersRepository.addRole).toHaveBeenCalled();
+    });
+
+    it("no consulta fichas para un rol que no depende de ellas", async () => {
+      rolesRepository.findById.mockResolvedValue(rolCatalogo("rol-sec", "Secretaria"));
+      usersRepository.findRoles.mockResolvedValue([]);
+
+      await service.addRole("user-target-uuid", { rolId: "rol-sec" }, currentAdmin);
+
+      expect(usersRepository.findTiposFichaVigente).not.toHaveBeenCalled();
+      expect(usersRepository.addRole).toHaveBeenCalled();
+    });
+
+    it("rechaza retirar el rol mientras la ficha siga vigente", async () => {
+      usersRepository.findRoles.mockResolvedValue([
+        asignacion("rol-sec", "Secretaria", true),
+        asignacion("rol-docente", "Docente", false),
+      ]);
+      usersRepository.findTiposFichaVigente.mockResolvedValue(["docente"]);
+
+      await expect(
+        service.retireRole("user-target-uuid", "rol-docente", currentAdmin),
+      ).rejects.toThrow(ConflictException);
+      expect(usersRepository.retireRole).not.toHaveBeenCalled();
+    });
+
+    it("permite retirar el rol cuando la ficha ya no está vigente", async () => {
+      usersRepository.findRoles.mockResolvedValue([
+        asignacion("rol-sec", "Secretaria", true),
+        asignacion("rol-docente", "Docente", false),
+      ]);
+
+      await service.retireRole("user-target-uuid", "rol-docente", currentAdmin);
+
+      expect(usersRepository.retireRole).toHaveBeenCalled();
+    });
+
+    it("rechaza cambiar el rol principal si eso retira un rol con ficha vigente", async () => {
+      rolesRepository.findById.mockResolvedValue(rolCatalogo("rol-sec", "Secretaria"));
+      usersRepository.findTiposFichaVigente.mockResolvedValue(["docente"]);
+
+      await expect(
+        service.changeRole("user-target-uuid", { rolId: "rol-sec" }, currentAdmin),
+      ).rejects.toThrow(ConflictException);
+      expect(usersRepository.update).not.toHaveBeenCalled();
+    });
+
+    it("rechaza cambiar al rol Docente sin ficha vigente", async () => {
+      rolesRepository.findById.mockResolvedValue(rolCatalogo("rol-docente", "Docente"));
+
+      await expect(
+        service.changeRole("user-target-uuid", { rolId: "rol-docente" }, currentAdmin),
+      ).rejects.toThrow(ConflictException);
+      expect(usersRepository.syncPrincipalRole).not.toHaveBeenCalled();
     });
   });
 });
