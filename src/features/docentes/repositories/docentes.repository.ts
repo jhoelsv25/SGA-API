@@ -12,6 +12,7 @@ import {
   usuarios,
 } from "../../../core/database/schema";
 import { decodeCursor, encodeCursor } from "../../../common/utils";
+import { retirarRolConservandoCuenta } from "../../../common/utils/retiro-rol.util";
 import type {
   CreateDocenteResponseDto,
   DocenteQueryDto,
@@ -27,6 +28,7 @@ import type {
 } from "../interfaces";
 
 const CARGOS_ESTUDIANTE_APODERADO = ["Estudiante", "Apoderado(a)"];
+const ROL_DOCENTE = "Docente";
 
 @Injectable()
 export class DocentesRepository implements IDocentesRepository {
@@ -291,6 +293,7 @@ export class DocentesRepository implements IDocentesRepository {
   async cesar(
     id: string,
     fechaCese: string,
+    actorId: string,
   ): Promise<{
     docente: DocenteResponseDto;
     mantuvoCuentaActiva: boolean;
@@ -314,56 +317,42 @@ export class DocentesRepository implements IDocentesRepository {
         })
         .where(eq(docentes.id, id));
 
-      // 2. Evaluar si la persona tiene otras fichas o cargos activos
-      const [otrasFichas] = await tx
+      // 2. Evaluar si la persona sigue vinculada por otra ficha vigente o por otro cargo
+      const [otrasVinculaciones] = await tx
         .select({
-          esEstudiante: sql<boolean>`EXISTS(SELECT 1 FROM estudiantes e WHERE e.persona_id = ${docenteRow.personaId} AND e.eliminado_en IS NULL)`,
+          esEstudiante: sql<boolean>`EXISTS(SELECT 1 FROM estudiantes e WHERE e.persona_id = ${docenteRow.personaId} AND e.eliminado_en IS NULL AND e.estado = 'activo')`,
           esApoderado: sql<boolean>`EXISTS(SELECT 1 FROM apoderados a WHERE a.persona_id = ${docenteRow.personaId} AND a.eliminado_en IS NULL)`,
+          tieneOtroCargo: sql<boolean>`EXISTS(
+            SELECT 1 FROM persona_cargos pc
+            WHERE pc.persona_id = ${docenteRow.personaId} AND pc.vigente
+              AND NOT EXISTS(
+                SELECT 1 FROM cargo_roles_sugeridos crs
+                JOIN roles r ON r.id = crs.rol_id
+                WHERE crs.cargo_id = pc.cargo_id AND r.nombre = ${ROL_DOCENTE}
+              )
+          )`,
         })
         .from(personas)
         .where(eq(personas.id, docenteRow.personaId));
 
-      const tieneOtrasFichas = otrasFichas.esEstudiante || otrasFichas.esApoderado;
-
-      // Buscar rol Docente
-      const [rolDocente] = await tx
-        .select({ id: roles.id })
-        .from(roles)
-        .where(eq(roles.nombre, "Docente"))
-        .limit(1);
+      const sigueVinculada =
+        otrasVinculaciones.esEstudiante ||
+        otrasVinculaciones.esApoderado ||
+        otrasVinculaciones.tieneOtroCargo;
 
       const [usuarioRow] = await tx
-        .select({ id: usuarios.id, rolId: usuarios.rolId })
+        .select({ id: usuarios.id })
         .from(usuarios)
         .where(and(eq(usuarios.personaId, docenteRow.personaId), isNull(usuarios.eliminadoEn)))
         .limit(1);
 
-      if (tieneOtrasFichas) {
-        // Solo revocar el rol Docente
-        if (usuarioRow && rolDocente) {
-          await tx
-            .delete(usuarioRoles)
-            .where(
-              and(eq(usuarioRoles.usuarioId, usuarioRow.id), eq(usuarioRoles.rolId, rolDocente.id)),
-            );
+      // Solo se conserva la cuenta si le queda otro rol con el que ingresar
+      const mantuvoCuentaActiva =
+        sigueVinculada &&
+        (!usuarioRow ||
+          (await retirarRolConservandoCuenta(tx, usuarioRow.id, ROL_DOCENTE, actorId)));
 
-          // Si el rol principal era Docente, reasignar a otro rol disponible del usuario
-          if (usuarioRow.rolId === rolDocente.id) {
-            const [otroRol] = await tx
-              .select({ rolId: usuarioRoles.rolId })
-              .from(usuarioRoles)
-              .where(eq(usuarioRoles.usuarioId, usuarioRow.id))
-              .limit(1);
-
-            if (otroRol) {
-              await tx
-                .update(usuarios)
-                .set({ rolId: otroRol.rolId })
-                .where(eq(usuarios.id, usuarioRow.id));
-            }
-          }
-        }
-      } else {
+      if (!mantuvoCuentaActiva) {
         // No tiene otras fichas: desactivar cuenta, anular credencial y finalizar cargo
         if (usuarioRow) {
           await tx
@@ -400,7 +389,7 @@ export class DocentesRepository implements IDocentesRepository {
 
       return {
         docente: docenteActualizado,
-        mantuvoCuentaActiva: tieneOtrasFichas,
+        mantuvoCuentaActiva,
       };
     });
   }
@@ -418,7 +407,7 @@ export class DocentesRepository implements IDocentesRepository {
   }
 
   /** Reactiva un docente cesado: vuelve a 'activo', limpia la fecha de cese y reabre su cuenta. */
-  async reactivar(id: string): Promise<DocenteResponseDto | null> {
+  async reactivar(id: string, actorId: string): Promise<DocenteResponseDto | null> {
     return this.db.transaction(async (tx) => {
       const [fila] = await tx
         .update(docentes)
@@ -438,6 +427,38 @@ export class DocentesRepository implements IDocentesRepository {
             isNull(usuarios.eliminadoEn),
           ),
         );
+
+      // RF-002 V4: la ficha vigente lleva su rol; el cese pudo habérselo retirado
+      const [cuenta] = await tx
+        .select({ id: usuarios.id })
+        .from(usuarios)
+        .where(and(eq(usuarios.personaId, fila.personaId), isNull(usuarios.eliminadoEn)))
+        .limit(1);
+      const [rolDocente] = await tx
+        .select({ id: roles.id })
+        .from(roles)
+        .where(eq(roles.nombre, ROL_DOCENTE))
+        .limit(1);
+
+      if (cuenta && rolDocente) {
+        const [yaLoTiene] = await tx
+          .select({ id: usuarioRoles.id })
+          .from(usuarioRoles)
+          .where(
+            and(
+              eq(usuarioRoles.usuarioId, cuenta.id),
+              eq(usuarioRoles.rolId, rolDocente.id),
+              eq(usuarioRoles.vigente, true),
+            ),
+          )
+          .limit(1);
+
+        if (!yaLoTiene) {
+          await tx
+            .insert(usuarioRoles)
+            .values({ usuarioId: cuenta.id, rolId: rolDocente.id, asignadoPorId: actorId });
+        }
+      }
 
       return this.findById(id);
     });

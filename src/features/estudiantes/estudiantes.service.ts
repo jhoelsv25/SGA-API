@@ -80,7 +80,7 @@ export class EstudiantesService {
     const fechaCese = baja.fecha ?? new Date().toISOString().slice(0, 10);
     validarFechasDocente(docente.fechaIngreso, fechaCese);
 
-    await this.docentesRepository.cesar(docente.id, fechaCese);
+    await this.docentesRepository.cesar(docente.id, fechaCese, actorId);
     await this.auditService.log({
       usuarioId: actorId,
       accion: "actualizar",
@@ -97,7 +97,7 @@ export class EstudiantesService {
     });
 
     return async () => {
-      await this.docentesRepository.reactivar(docente.id);
+      await this.docentesRepository.reactivar(docente.id, actorId);
     };
   }
 

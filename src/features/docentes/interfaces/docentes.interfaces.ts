@@ -58,5 +58,5 @@ export interface IDocentesRepository {
     mantuvoCuentaActiva: boolean;
   } | null>;
   contarCargaVigente(docenteId: string): Promise<number>;
-  reactivar(id: string): Promise<DocenteResponseDto | null>;
+  reactivar(id: string, actorId: string): Promise<DocenteResponseDto | null>;
 }
