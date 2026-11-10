@@ -62,6 +62,11 @@ export class ActualizarUnidadDto {
   @MaxLength(1000)
   descripcion?: string;
 
+  @ApiPropertyOptional({ description: "UUID del bimestre" })
+  @IsOptional()
+  @IsUUID("4", { message: "Seleccione un bimestre válido." })
+  periodoId?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsDateString()

@@ -396,6 +396,7 @@ export class AulaVirtualService implements OnModuleInit {
     const actualizada = await this.repository.actualizarUnidad(unidadId, {
       titulo: dto.titulo?.trim(),
       descripcion: dto.descripcion === undefined ? undefined : dto.descripcion.trim() || null,
+      periodoId: dto.periodoId,
       fechaInicio: dto.fechaInicio,
       fechaFin: dto.fechaFin,
       orden: dto.orden,
@@ -1005,8 +1006,8 @@ export class AulaVirtualService implements OnModuleInit {
     enlace: string | undefined,
     archivo: Express.Multer.File | undefined,
   ): Promise<ContenidoMaterial> {
-    if (tipo === "enlace") {
-      const url = enlace?.trim() ?? "";
+    const url = enlace?.trim() ?? "";
+    if (tipo === "enlace" || (tipo === "video" && url) || (url && !archivo)) {
       if (!esEnlaceValido(url)) {
         throw new BadRequestException(MENSAJES_AULA_VIRTUAL.ENLACE_INVALIDO);
       }
