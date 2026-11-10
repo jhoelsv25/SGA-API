@@ -88,7 +88,11 @@ describe("MatriculaOperacionesService (RF-009: HU3 Retiro, Traslado, Cambio de s
         fechaRetiro: "2027-08-15",
         motivoRetiro: "Cambio de domicilio",
       });
-      expect(repo.desactivarEstudianteYCredenciales).toHaveBeenCalledWith("est-1", "retirado");
+      expect(repo.desactivarEstudianteYCredenciales).toHaveBeenCalledWith(
+        "est-1",
+        "retirado",
+        "sec-user",
+      );
       expect(audit.log).toHaveBeenCalled();
       expect(res).toBeDefined();
     });
@@ -113,7 +117,11 @@ describe("MatriculaOperacionesService (RF-009: HU3 Retiro, Traslado, Cambio de s
         fechaRetiro: "2027-08-15",
         motivoRetiro: "Traslado a: I.E. Alfonso Ugarte",
       });
-      expect(repo.desactivarEstudianteYCredenciales).toHaveBeenCalledWith("est-1", "trasladado");
+      expect(repo.desactivarEstudianteYCredenciales).toHaveBeenCalledWith(
+        "est-1",
+        "trasladado",
+        "sec-user",
+      );
       expect(audit.log).toHaveBeenCalled();
     });
   });

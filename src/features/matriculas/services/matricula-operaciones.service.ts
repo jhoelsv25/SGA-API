@@ -57,6 +57,7 @@ export class MatriculaOperacionesService {
     await this.matriculasRepository.desactivarEstudianteYCredenciales(
       matricula.estudiante.id,
       "retirado",
+      actorId,
     );
 
     if (this.libretasService) {
@@ -135,6 +136,7 @@ export class MatriculaOperacionesService {
     await this.matriculasRepository.desactivarEstudianteYCredenciales(
       matricula.estudiante.id,
       "trasladado",
+      actorId,
     );
 
     if (this.libretasService) {

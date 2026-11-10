@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, count, eq, sql } from "drizzle-orm";
+import { and, count, eq, isNull, sql } from "drizzle-orm";
 
 import { Database, DRIZZLE } from "../../../core/database";
 import {
@@ -17,6 +17,7 @@ import {
   usuarios,
 } from "../../../core/database/schema";
 import { decodeCursor, encodeCursor } from "../../../common/utils";
+import { retirarRolConservandoCuenta } from "../../../common/utils/retiro-rol.util";
 import {
   DatosConstanciaMatricula,
   DbMatriculasProcedureExecutionResult,
@@ -276,23 +277,17 @@ export class MatriculasRepository {
   async desactivarEstudianteYCredenciales(
     estudianteId: string,
     nuevoEstado: "retirado" | "trasladado",
+    actorId: string,
   ): Promise<void> {
-    // 1. Cambiar estado en estudiantes
-    await this.db
-      .update(estudiantes)
-      .set({ estado: nuevoEstado, actualizadoEn: sql`CURRENT_TIMESTAMP` })
-      .where(eq(estudiantes.id, estudianteId));
+    await this.db.transaction(async (tx) => {
+      const [est] = await tx
+        .update(estudiantes)
+        .set({ estado: nuevoEstado, actualizadoEn: sql`CURRENT_TIMESTAMP` })
+        .where(eq(estudiantes.id, estudianteId))
+        .returning({ personaId: estudiantes.personaId });
+      if (!est) return;
 
-    // 2. Obtener personaId
-    const [est] = await this.db
-      .select({ personaId: estudiantes.personaId })
-      .from(estudiantes)
-      .where(eq(estudiantes.id, estudianteId))
-      .limit(1);
-
-    if (est?.personaId) {
-      // 3. Desactivar credenciales activas
-      await this.db
+      await tx
         .update(credenciales)
         .set({
           activa: false,
@@ -301,15 +296,30 @@ export class MatriculasRepository {
         })
         .where(and(eq(credenciales.personaId, est.personaId), eq(credenciales.activa, true)));
 
-      // 4. Inactivar cuenta de usuario si existe
-      await this.db
-        .update(usuarios)
-        .set({
-          estado: "inactivo",
-          actualizadoEn: sql`CURRENT_TIMESTAMP`,
+      const [cuenta] = await tx
+        .select({
+          id: usuarios.id,
+          tieneOtraFicha: sql<boolean>`(
+            EXISTS(SELECT 1 FROM apoderados a WHERE a.persona_id = ${est.personaId} AND a.eliminado_en IS NULL)
+            OR EXISTS(SELECT 1 FROM docentes d WHERE d.persona_id = ${est.personaId} AND d.eliminado_en IS NULL AND d.estado IN ('activo', 'licencia'))
+          )`,
         })
-        .where(eq(usuarios.personaId, est.personaId));
-    }
+        .from(usuarios)
+        .where(and(eq(usuarios.personaId, est.personaId), isNull(usuarios.eliminadoEn)))
+        .limit(1);
+      if (!cuenta) return;
+
+      // RF-009 V2: con otra ficha vigente y otro rol, la cuenta se conserva
+      const conservaCuenta =
+        cuenta.tieneOtraFicha &&
+        (await retirarRolConservandoCuenta(tx, cuenta.id, "Estudiante", actorId));
+      if (!conservaCuenta) {
+        await tx
+          .update(usuarios)
+          .set({ estado: "inactivo", actualizadoEn: sql`CURRENT_TIMESTAMP` })
+          .where(eq(usuarios.id, cuenta.id));
+      }
+    });
   }
 
   async findMatriculas(query?: MatriculaQueryDto): Promise<PaginatedMatriculasResponseDto> {
