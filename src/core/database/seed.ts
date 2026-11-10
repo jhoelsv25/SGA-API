@@ -28,6 +28,7 @@ import {
   MENU_INDICADORES,
   MENU_MIS_INDICADORES,
 } from "../../common/constants";
+import { VARIABLES_SEGUIMIENTO_DOCENTE } from "./seed-variables-seguimiento-docente";
 
 // La conexión sale del entorno (.env), nunca del código: este usuario es el administrador de la base.
 try {
@@ -209,6 +210,7 @@ async function seed() {
 
   // 1.3 Variables del Sistema (RF-004 HU4)
   const VARIABLES_SEED = [
+    ...VARIABLES_SEGUIMIENTO_DOCENTE,
     {
       codigo: "seguridad.intentos_fallidos_bloqueo",
       descripcion: "Intentos fallidos antes de bloquear la cuenta",
