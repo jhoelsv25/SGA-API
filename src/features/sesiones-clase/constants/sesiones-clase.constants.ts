@@ -53,7 +53,6 @@ export const MENSAJES_SESION = {
   REEMPLAZO_SOLO_PENDIENTE: "Solo se puede asignar un reemplazo a una sesión sin firmar.",
   REEMPLAZO_MISMO_DOCENTE: "La sesión ya está asignada a ese docente.",
   DOCENTE_NO_DISPONIBLE: "El docente no existe o no está activo.",
-  NO_ES_DOCENTE: "Su cuenta no está vinculada a un docente.",
   SESION_NO_ES_SUYA: "Solo el docente de la sesión puede hacer esta acción.",
   TEMA_CERRADO: "El tema ya no se puede corregir: la salida está firmada.",
   VARIABLE_FALTANTE: (codigo: string) => `Falta configurar la variable de sistema «${codigo}».`,

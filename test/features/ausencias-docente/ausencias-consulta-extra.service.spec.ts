@@ -115,7 +115,9 @@ describe("RF-012: Pruebas adicionales de defensa para AusenciasConsultaService (
       repo.docentePorPersonaId = jest.fn().mockResolvedValue(null);
 
       await expect(service.misAusencias("per-no-docente-uuid")).rejects.toThrow(
-        new ForbiddenException("El usuario no tiene un registro de docente asociado."),
+        new ForbiddenException(
+          "Esta opción es para docentes: su cuenta no tiene una ficha de docente.",
+        ),
       );
     });
 
@@ -125,7 +127,9 @@ describe("RF-012: Pruebas adicionales de defensa para AusenciasConsultaService (
       await expect(
         service.obtenerDetalleDocente("aus-quispe-v1", "per-no-docente-uuid"),
       ).rejects.toThrow(
-        new ForbiddenException("El usuario no tiene un registro de docente asociado."),
+        new ForbiddenException(
+          "Esta opción es para docentes: su cuenta no tiene una ficha de docente.",
+        ),
       );
     });
 
@@ -137,7 +141,9 @@ describe("RF-012: Pruebas adicionales de defensa para AusenciasConsultaService (
       await expect(
         service.presentarDescargo("aus-quispe-v1", dto, "per-no-docente-uuid", "user-uuid"),
       ).rejects.toThrow(
-        new ForbiddenException("El usuario no tiene un registro de docente asociado."),
+        new ForbiddenException(
+          "Esta opción es para docentes: su cuenta no tiene una ficha de docente.",
+        ),
       );
     });
   });

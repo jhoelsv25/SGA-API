@@ -1,4 +1,4 @@
-import { BadRequestException, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, NotFoundException } from "@nestjs/common";
 import { AnioLectivoCls } from "@/common/anio-lectivo";
 import {
   IndicadoresCalculoRepository,
@@ -661,15 +661,15 @@ describe("RF-020: Indicadores de la Tesis — Cálculo de Indicadores (CP-RF020-
       expect(misIndicadores.cursos[1]?.igm.porcentaje).toBe(100.0);
     });
 
-    it("CP-RF020-07: debe lanzar NotFoundException si la persona no cuenta con registro de docente activo", async () => {
+    it("CP-RF020-07: debe lanzar ForbiddenException si la persona no cuenta con registro de docente activo", async () => {
       // Dado que la persona autenticada no tiene docente asociado
       repo.obtenerDocentePorPersonaId.mockResolvedValue(null);
 
       // Cuando intenta consultar mis-indicadores
-      // Entonces debe rechazar con NotFoundException
+      // Entonces debe rechazar con ForbiddenException
       await expect(
         service.obtenerMisIndicadores("persona-sin-docente-uuid", PERIODO_II_BIMESTRE_ID),
-      ).rejects.toThrow(NotFoundException);
+      ).rejects.toThrow(ForbiddenException);
     });
 
     it("CP-RF020-07: debe lanzar NotFoundException si se consulta mis-indicadores con un período que no existe", async () => {

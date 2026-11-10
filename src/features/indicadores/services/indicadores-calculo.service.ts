@@ -1,3 +1,4 @@
+import { sinFichaDocente } from "../../../common/utils/ficha-docente.util";
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { AnioLectivoCls } from "@/common/anio-lectivo";
 import { MENSAJES_INDICADORES } from "../constants";
@@ -174,9 +175,7 @@ export class IndicadoresCalculoService {
   ): Promise<MisIndicadoresDocenteResponseDto> {
     const docente = await this.repository.obtenerDocentePorPersonaId(personaId);
     if (!docente) {
-      throw new NotFoundException(
-        "No se encontró el registro de docente correspondiente al usuario autenticado.",
-      );
+      throw sinFichaDocente();
     }
 
     const anioAcademicoId = this.anioLectivoCls.id() ?? "";
