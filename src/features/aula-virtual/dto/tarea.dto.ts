@@ -337,3 +337,31 @@ export class CerrarTareaDto {
   @IsBoolean()
   asignarCeroSinEntrega?: boolean;
 }
+
+export class CalificarDirectoDto {
+  @ApiProperty({
+    example: "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+    description: "UUID de la matrícula del estudiante en la sección.",
+  })
+  @IsNotEmpty({ message: "La matrícula es requerida." })
+  @IsUUID("4", { message: "La matrícula debe ser un UUID válido." })
+  matriculaId!: string;
+
+  @ApiProperty({
+    example: 16.5,
+    description: "Nota numérica vigesimal de 0 a 20.",
+  })
+  @IsNumber({}, { message: "La nota debe ser un número." })
+  @Min(0, { message: "La nota debe estar entre 0 y 20." })
+  @Max(20, { message: "La nota debe estar entre 0 y 20." })
+  nota!: number;
+
+  @ApiPropertyOptional({
+    example: "Excelente trabajo presentado en clase.",
+    maxLength: 2000,
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  retroalimentacion?: string;
+}
