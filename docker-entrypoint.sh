@@ -27,3 +27,4 @@ pnpm db:procedures || {
 
 echo "=== [SGA-API] Iniciando NestJS en producción... ==="
 exec "$@"
+

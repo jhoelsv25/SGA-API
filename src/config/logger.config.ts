@@ -4,14 +4,13 @@ import DailyRotateFile from "winston-daily-rotate-file";
 
 /**
  * Configuración de logs con Winston y rotación automática de archivos (DailyRotateFile).
- * - Guarda logs generales por 14 días.
- * - Guarda logs de errores críticos por 30 días.
+ * - Guarda logs generales por 5 días.
+ * - Guarda logs de errores críticos por 7 días.
  * - Comprime logs antiguos en .gz para ahorrar almacenamiento.
  */
 export const getWinstonLoggerConfig = (): WinstonModuleOptions => {
   const isProduction = process.env.NODE_ENV === "production";
 
-  // Formato común para archivos (JSON estructurado con timestamp)
   const fileLogFormat = winston.format.combine(
     winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
     winston.format.errors({ stack: true }),
@@ -20,7 +19,6 @@ export const getWinstonLoggerConfig = (): WinstonModuleOptions => {
 
   return {
     transports: [
-      // 1. Salida en consola (colorizada y formateada al estilo NestJS)
       new winston.transports.Console({
         level: isProduction ? "info" : "debug",
         format: winston.format.combine(
@@ -39,8 +37,8 @@ export const getWinstonLoggerConfig = (): WinstonModuleOptions => {
         filename: "application-%DATE%.log",
         datePattern: "YYYY-MM-DD",
         zippedArchive: true,
-        maxSize: "20m",
-        maxFiles: "14d", // Retención por 14 días
+        maxSize: "10m",
+        maxFiles: "5d", // Retención de solo 5 días para no saturar disco en VPS
         level: "info",
         format: fileLogFormat,
       }),
@@ -51,8 +49,8 @@ export const getWinstonLoggerConfig = (): WinstonModuleOptions => {
         filename: "error-%DATE%.log",
         datePattern: "YYYY-MM-DD",
         zippedArchive: true,
-        maxSize: "20m",
-        maxFiles: "30d", // Retención de errores por 30 días para auditoría
+        maxSize: "10m",
+        maxFiles: "7d", // Retención de errores por 7 días para depuración
         level: "error",
         format: fileLogFormat,
       }),
