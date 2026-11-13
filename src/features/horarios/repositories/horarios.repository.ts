@@ -2,6 +2,7 @@ import { Inject, Injectable, InternalServerErrorException } from "@nestjs/common
 import { and, asc, eq, inArray, ne, or, sql } from "drizzle-orm";
 import { Database, DRIZZLE } from "../../../core/database";
 import {
+  aniosAcademicos,
   apoderados,
   cursos,
   cursosSeccion,
@@ -529,6 +530,24 @@ export class HorariosRepository implements IHorariosRepository {
       .limit(1);
 
     return filas.length > 0;
+  }
+
+  async infoSeccion(
+    seccionId: string,
+  ): Promise<{ gradoNombre: string; seccionNombre: string; anio: number } | null> {
+    const filas = await this.db
+      .select({
+        gradoNombre: grados.nombre,
+        seccionNombre: secciones.nombre,
+        anio: aniosAcademicos.anio,
+      })
+      .from(secciones)
+      .innerJoin(grados, eq(secciones.gradoId, grados.id))
+      .innerJoin(aniosAcademicos, eq(secciones.anioAcademicoId, aniosAcademicos.id))
+      .where(eq(secciones.id, seccionId))
+      .limit(1);
+
+    return filas[0] ?? null;
   }
 
   private mapearFilaABloqueResponse(fila: {

@@ -97,6 +97,9 @@ export interface IHorariosRepository {
   tieneSesiones(id: string): Promise<boolean>;
   findByDocente(anioId: string, docenteId: string): Promise<BloqueDocenteResponseDto[]>;
   docentePorPersonaId(personaId: string): Promise<DocenteSimpleResultado | null>;
+  infoSeccion(
+    seccionId: string,
+  ): Promise<{ gradoNombre: string; seccionNombre: string; anio: number } | null>;
   matriculaEstudiante(
     anioId: string,
     estudianteId: string,

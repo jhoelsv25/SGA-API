@@ -28,6 +28,7 @@ import {
   UpdateBloqueHorarioDto,
 } from "./dto";
 import { HorariosRepository } from "./repositories";
+import { generarHorarioPdfBuffer } from "./utils";
 import {
   construirAdvertenciaHorasPlan,
   construirMensajeCruceDocente,
@@ -275,6 +276,50 @@ export class HorariosService {
       resumenHoras,
       advertencias,
     };
+  }
+
+  async generarHorarioSeccionPdf(
+    seccionId: string,
+    docenteId?: string,
+  ): Promise<{ buffer: Buffer; nombreArchivo: string }> {
+    const [info, data, cursosSeccion] = await Promise.all([
+      this.horariosRepo.infoSeccion(seccionId),
+      this.listarPorSeccion(seccionId),
+      docenteId ? this.horariosRepo.cursosSeccionPorSeccion(seccionId) : Promise.resolve([]),
+    ]);
+    if (!info) {
+      throw new NotFoundException(MENSAJES_HORARIOS.SECCION_NO_ENCONTRADA);
+    }
+
+    let bloquesFiltrados = data.bloques;
+    let docenteNombre: string | undefined;
+
+    if (docenteId) {
+      const cursosDocente = new Set(
+        cursosSeccion.filter((c) => c.docenteId === docenteId).map((c) => c.cursoSeccionId),
+      );
+      bloquesFiltrados = data.bloques.filter(
+        (b) =>
+          b.tipoBloque === "receso" ||
+          (b.cursoSeccionId !== null &&
+            b.cursoSeccionId !== undefined &&
+            cursosDocente.has(b.cursoSeccionId)),
+      );
+      docenteNombre =
+        bloquesFiltrados.find((b) => b.tipoBloque === "clase")?.docenteNombre ?? undefined;
+    }
+
+    const buffer = await generarHorarioPdfBuffer({
+      titulo: `${info.gradoNombre} – Sección ${info.seccionNombre}`,
+      subtitulo: `Año académico ${info.anio}`,
+      filtroDocente: docenteNombre,
+      bloques: bloquesFiltrados,
+    });
+    const slug = `${info.gradoNombre}-${info.seccionNombre}-${info.anio}`
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+    return { buffer, nombreArchivo: `horario-${slug || "seccion"}.pdf` };
   }
 
   async proponerGrilla(

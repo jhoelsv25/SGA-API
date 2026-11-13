@@ -9,7 +9,10 @@ import {
   Patch,
   Post,
   Query,
+  Res,
+  StreamableFile,
 } from "@nestjs/common";
+import type { Response } from "express";
 import {
   ApiBearerAuth,
   ApiHeader,
@@ -113,6 +116,32 @@ export class HorariosController {
     @Param("seccionId", ParseUUIDPipe) seccionId: string,
   ): Promise<ListarPorSeccionResponseDto> {
     return this.service.listarPorSeccion(seccionId);
+  }
+
+  @Get("seccion/:seccionId/pdf")
+  @ApiOperation({ summary: "Descargar el horario semanal de una sección en PDF" })
+  @ApiParam({ name: "seccionId", description: "UUID de la sección escolar" })
+  @ApiQuery({
+    name: "docenteId",
+    required: false,
+    description: "UUID del docente para filtrar los bloques de clase (opcional)",
+  })
+  @ApiResponse({ status: 200, description: "Archivo PDF del horario semanal" })
+  async descargarPdfSeccion(
+    @Param("seccionId", ParseUUIDPipe) seccionId: string,
+    @Res({ passthrough: true }) res: Response,
+    @Query("docenteId", new ParseUUIDPipe({ optional: true })) docenteId?: string,
+  ): Promise<StreamableFile> {
+    const { buffer, nombreArchivo } = await this.service.generarHorarioSeccionPdf(
+      seccionId,
+      docenteId,
+    );
+    res.set({
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename="${nombreArchivo}"`,
+      "Content-Length": buffer.length,
+    });
+    return new StreamableFile(buffer);
   }
 
   @Get("seccion/:seccionId/grilla")
