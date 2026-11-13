@@ -6,14 +6,14 @@ export interface DatosFirmaIngreso {
   hora: string;
   tema: string;
   minutosRetraso: number;
-  equipoId: string;
+  equipoId: string | null;
 }
 
 export interface DatosFirmaSalida {
   hora: string;
   minutosPerdidos: number;
   estado: Extract<EstadoSesion, "cumplida" | "parcial">;
-  equipoId: string;
+  equipoId: string | null;
 }
 
 export interface DatosSolicitudJustificacion {

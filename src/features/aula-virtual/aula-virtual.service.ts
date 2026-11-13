@@ -44,6 +44,7 @@ import type {
   ActualizarTareaDto,
   ActualizarUnidadDto,
   AulaVirtualResponse,
+  CalificarDirectoDto,
   CalificarEntregaDto,
   CerrarTareaDto,
   ContenidoMaterialDto,
@@ -396,6 +397,7 @@ export class AulaVirtualService implements OnModuleInit {
     const actualizada = await this.repository.actualizarUnidad(unidadId, {
       titulo: dto.titulo?.trim(),
       descripcion: dto.descripcion === undefined ? undefined : dto.descripcion.trim() || null,
+      periodoId: dto.periodoId,
       fechaInicio: dto.fechaInicio,
       fechaFin: dto.fechaFin,
       orden: dto.orden,
@@ -1005,8 +1007,8 @@ export class AulaVirtualService implements OnModuleInit {
     enlace: string | undefined,
     archivo: Express.Multer.File | undefined,
   ): Promise<ContenidoMaterial> {
-    if (tipo === "enlace") {
-      const url = enlace?.trim() ?? "";
+    const url = enlace?.trim() ?? "";
+    if (tipo === "enlace" || (tipo === "video" && url) || (url && !archivo)) {
       if (!esEnlaceValido(url)) {
         throw new BadRequestException(MENSAJES_AULA_VIRTUAL.ENLACE_INVALIDO);
       }
@@ -1800,6 +1802,70 @@ export class AulaVirtualService implements OnModuleInit {
     }
 
     return { mensaje: "Entrega calificada exitosamente.", entrega: calificada };
+  }
+
+  async calificarDirecto(
+    usuario: AuthenticatedUser,
+    tareaId: string,
+    dto: CalificarDirectoDto,
+  ): Promise<{ mensaje: string; entrega: EntregaResponse }> {
+    const tarea = await this.repository.findTarea(tareaId);
+    if (!tarea) throw new NotFoundException(MENSAJES_TAREA.TAREA_NO_ENCONTRADA);
+
+    const curso = await this.requerirCurso(tarea.cursoSeccionId);
+    await this.exigirDocenteDelCurso(curso, usuario);
+
+    if (tarea.periodoId) {
+      const periodo = await this.requerirPeriodo(tarea.periodoId);
+      if (periodo && periodo.estado === "cerrado") {
+        throw new BadRequestException(MENSAJES_TAREA.BIMESTRE_CERRADO);
+      }
+    }
+
+    if (dto.nota < 0 || dto.nota > 20) {
+      throw new BadRequestException(MENSAJES_TAREA.NOTA_FUERA_DE_RANGO);
+    }
+
+    const entregaExistente = await this.repository.findEntregaActiva(tareaId, dto.matriculaId);
+    const ahora = new Date().toISOString();
+
+    let calificada: EntregaResponse;
+
+    if (entregaExistente) {
+      calificada = await this.repository.calificarEntrega(entregaExistente.id, {
+        nota: dto.nota,
+        retroalimentacion: dto.retroalimentacion?.trim() ?? null,
+        calificadaPorId: usuario.id,
+        calificadaEn: ahora,
+      });
+    } else {
+      calificada = await this.repository.guardarEntrega({
+        tareaId,
+        matriculaId: dto.matriculaId,
+        intento: 1,
+        iniciadoEn: ahora,
+        entregadaEn: ahora,
+        texto: "Calificación manual directa / Entrega física",
+        estado: "calificada",
+        nota: dto.nota,
+        retroalimentacion: dto.retroalimentacion?.trim() ?? null,
+        calificadaPorId: usuario.id,
+        calificadaEn: ahora,
+      });
+    }
+
+    const entregaCompleta = await this.repository.findEntrega(calificada.id);
+    if (entregaCompleta?.estudianteId) {
+      await this.notificaciones.enviar({
+        usuarioId: entregaCompleta.estudianteId,
+        titulo: `Tarea calificada en ${curso.cursoNombre}`,
+        mensaje: `Tu calificación en «${tarea.titulo}» fue registrada con nota ${dto.nota.toFixed(2)}.`,
+        tipo: "informacion",
+        enlaceUrl: `/admin/aula-virtual/${curso.id}`,
+      });
+    }
+
+    return { mensaje: "Calificación registrada exitosamente.", entrega: calificada };
   }
 
   async obtenerLibroNotas(

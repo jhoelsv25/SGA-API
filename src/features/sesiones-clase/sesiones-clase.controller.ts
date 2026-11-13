@@ -42,6 +42,7 @@ import {
   FirmarIngresoDto,
   MensajeSesionResponseDto,
   MotivoJustificacionDto,
+  MiJornadaHoyResponseDto,
   MisSesionesResponseDto,
   PanelSesionesResponseDto,
   RangoSesionesQueryDto,
@@ -201,6 +202,44 @@ export class SesionesClaseController {
   }
 
   // --- Docente
+
+  @Get("mi-jornada-hoy")
+  @Roles("Docente")
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Sesiones de hoy del docente autenticado para firma rápida en header" })
+  @ApiResponse({ status: 200, type: MiJornadaHoyResponseDto })
+  async miJornadaHoy(@CurrentUser() usuario: AuthenticatedUser): Promise<MiJornadaHoyResponseDto> {
+    return this.service.miJornadaHoy(usuario);
+  }
+
+  @Post(":id/ingreso")
+  @HttpCode(200)
+  @Roles("Docente")
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Firmar ingreso de una sesión desde la web del docente" })
+  @ApiResponse({ status: 200, type: FirmaSesionResponseDto })
+  async firmarIngresoWeb(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: TemaSesionDto,
+    @CurrentUser() usuario: AuthenticatedUser,
+    @ClientInfo() clientInfo: ClientInfoData,
+  ): Promise<FirmaSesionResponseDto> {
+    return this.service.firmarIngresoWeb(id, dto, usuario, clientInfo.ip);
+  }
+
+  @Post(":id/salida")
+  @HttpCode(200)
+  @Roles("Docente")
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Firmar salida de una sesión desde la web del docente" })
+  @ApiResponse({ status: 200, type: FirmaSesionResponseDto })
+  async firmarSalidaWeb(
+    @Param("id", ParseUUIDPipe) id: string,
+    @CurrentUser() usuario: AuthenticatedUser,
+    @ClientInfo() clientInfo: ClientInfoData,
+  ): Promise<FirmaSesionResponseDto> {
+    return this.service.firmarSalidaWeb(id, usuario, clientInfo.ip);
+  }
 
   @Get("mis-sesiones")
   @ApiBearerAuth()

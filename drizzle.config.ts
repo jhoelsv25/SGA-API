@@ -8,8 +8,8 @@ export default defineConfig({
   schema: "./src/core/database/schema",
   out: "./drizzle",
   dbCredentials: {
-    // Session pooler: las migraciones necesitan una sesión estable (no el transaction pooler)
-    url: process.env.DATABASE_URL_DIRECT!,
+    // Session pooler o conexión directa a PostgreSQL
+    url: (process.env.DATABASE_URL_DIRECT || process.env.DATABASE_URL)!,
   },
   schemaFilter: ["public"],
   strict: true,

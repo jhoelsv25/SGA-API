@@ -588,4 +588,104 @@ describe("AuthService (RF-001: Acceso al Sistema)", () => {
       );
     });
   });
+
+  describe("Vista simulada (Impersonation): solo Administrador y Soporte TI", () => {
+    const adminSession = {
+      id: "admin-1",
+      username: "admin",
+      roleId: "rol-admin",
+      role: "Administrador",
+      personaId: "persona-admin",
+    };
+
+    const docenteSession = {
+      id: "doc-1",
+      username: "cquispe",
+      roleId: "rol-docente",
+      role: "Docente",
+      personaId: "persona-doc",
+    };
+
+    it("rechaza con ForbiddenException si un rol distinto a Administrador o Soporte TI intenta simular", async () => {
+      await expect(
+        authService.impersonate(docenteSession, { userId: "target-user-1" }),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it("rechaza simularse a sí mismo", async () => {
+      await expect(
+        authService.impersonate(adminSession, { userId: adminSession.id }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("permite al Administrador iniciar vista simulada como un Docente y registra auditoría", async () => {
+      const targetUser = {
+        ...mockUser,
+        id: "target-doc-1",
+        nombreUsuario: "cquispe",
+        rolId: "rol-docente",
+      };
+      authRepository.findUserById.mockResolvedValue(targetUser);
+      authRepository.findUserRoles.mockResolvedValue([
+        { rolId: "rol-docente", nombre: "Docente", esSistema: false, esPrincipal: true },
+      ]);
+      authRepository.findPersonaById.mockResolvedValue(mockPersona);
+      authRepository.findInstitution.mockResolvedValue(mockInstitution);
+      authRepository.getUserModules.mockResolvedValue([]);
+      sessionService.generateAccessToken.mockReturnValue("token_simulado");
+      sessionService.recordSession.mockResolvedValue(undefined);
+      sessionService.revokeSession.mockResolvedValue(undefined);
+
+      const res = await authService.impersonate(
+        adminSession,
+        { userId: targetUser.id },
+        "token_admin",
+        "127.0.0.1",
+      );
+
+      expect(res.accessToken).toBe("token_simulado");
+      expect(res.user.impersonatedBy).toEqual({
+        userId: adminSession.id,
+        username: adminSession.username,
+        role: adminSession.role,
+      });
+      expect(sessionService.revokeSession).toHaveBeenCalledWith("token_admin");
+    });
+
+    it("permite salir de la vista simulada y restaurar la sesión del Administrador", async () => {
+      const adminUser = {
+        ...mockUser,
+        id: adminSession.id,
+        nombreUsuario: adminSession.username,
+        rolId: adminSession.roleId,
+        personaId: adminSession.personaId,
+      };
+      authRepository.findUserById.mockResolvedValue(adminUser);
+      authRepository.findUserRoles.mockResolvedValue([
+        { rolId: "rol-admin", nombre: "Administrador", esSistema: true, esPrincipal: true },
+      ]);
+      authRepository.findPersonaById.mockResolvedValue(mockPersona);
+      authRepository.findInstitution.mockResolvedValue(mockInstitution);
+      authRepository.getUserModules.mockResolvedValue([]);
+      sessionService.generateAccessToken.mockReturnValue("token_admin_restaurado");
+      sessionService.recordSession.mockResolvedValue(undefined);
+      sessionService.revokeSession.mockResolvedValue(undefined);
+
+      const simulatedUser = {
+        ...docenteSession,
+        impersonatedBy: {
+          userId: adminSession.id,
+          username: adminSession.username,
+          roleId: adminSession.roleId,
+          role: adminSession.role,
+        },
+      };
+
+      const res = await authService.stopImpersonate(simulatedUser, "token_simulado", "127.0.0.1");
+
+      expect(res.accessToken).toBe("token_admin_restaurado");
+      expect(res.user.impersonatedBy).toBeUndefined();
+      expect(sessionService.revokeSession).toHaveBeenCalledWith("token_simulado");
+    });
+  });
 });

@@ -1,18 +1,25 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   Logger,
+  NotFoundException,
   Optional,
   UnauthorizedException,
 } from "@nestjs/common";
 import { AuditService } from "../../common/services/audit.service";
 import { AuthModuleDto, AuthResponseDto, CurrentUserDto } from "./dto/auth-response.dto";
+import { ImpersonateDto } from "./dto/impersonate.dto";
 import { SwitchRoleDto } from "./dto/switch-role.dto";
 import { ChangePasswordDto } from "./dto/change-password.dto";
 import { ForgotPasswordDto } from "./dto/forgot-password.dto";
 import { LoginDto } from "./dto/login.dto";
 import type { UsuarioRolRecord, UsuarioRecord } from "./interfaces/auth-repository.interface";
-import type { JwtPayload } from "./interfaces/jwt-payload.interface";
+import type {
+  AuthenticatedUser,
+  ImpersonatorInfo,
+  JwtPayload,
+} from "./interfaces/jwt-payload.interface";
 import { AuthRepository } from "./repositories/auth.repository";
 import { AuthPasswordService, SessionService } from "./services";
 import { NotificacionesService } from "../notificaciones/notificaciones.service";
@@ -104,7 +111,11 @@ export class AuthService {
     };
   }
 
-  async checkToken(userId: string, activeRoleId?: string): Promise<AuthResponseDto> {
+  async checkToken(
+    userId: string,
+    activeRoleId?: string,
+    impersonatedBy?: ImpersonatorInfo,
+  ): Promise<AuthResponseDto> {
     const user = await this.authRepository.findUserById(userId);
     if (!user) {
       throw new UnauthorizedException("Sesión inválida o expirada");
@@ -113,6 +124,13 @@ export class AuthService {
     this.assertUserIsActive(user);
 
     const { userDto, modules } = await this.buildUserRole(user, activeRoleId);
+    if (impersonatedBy) {
+      userDto.impersonatedBy = {
+        userId: impersonatedBy.userId,
+        username: impersonatedBy.username,
+        role: impersonatedBy.role,
+      };
+    }
 
     return {
       user: userDto,
@@ -141,6 +159,13 @@ export class AuthService {
 
     // 4. Construir rol (conserva el rol activo si sigue asignado) y generar nuevo token
     const { userDto, modules, activeRole } = await this.buildUserRole(user, payload.roleId);
+    if (payload.impersonatedBy) {
+      userDto.impersonatedBy = {
+        userId: payload.impersonatedBy.userId,
+        username: payload.impersonatedBy.username,
+        role: payload.impersonatedBy.role,
+      };
+    }
 
     const newPayload: JwtPayload = {
       sub: user.id,
@@ -148,6 +173,7 @@ export class AuthService {
       roleId: activeRole.rolId,
       role: activeRole.nombre,
       personaId: user.personaId,
+      impersonatedBy: payload.impersonatedBy,
     };
 
     const newAccessToken = this.sessionService.generateAccessToken(newPayload, false);
@@ -226,6 +252,174 @@ export class AuthService {
 
     return {
       message: `Rol cambiado a ${activeRole.nombre}.`,
+      accessToken,
+      user: userDto,
+      modules,
+    };
+  }
+
+  /**
+   * Inicia una vista simulada ("Ver como usuario").
+   * Exclusivo para Administrador o Soporte TI.
+   */
+  async impersonate(
+    adminUser: AuthenticatedUser,
+    dto: ImpersonateDto,
+    oldToken?: string,
+    ipAddress?: string,
+    userAgent?: string,
+  ): Promise<AuthResponseDto> {
+    if (!["Administrador", "Soporte TI"].includes(adminUser.role)) {
+      throw new ForbiddenException(
+        "Solo el Administrador o Soporte TI pueden ingresar en modo vista simulada.",
+      );
+    }
+
+    if (adminUser.impersonatedBy) {
+      throw new BadRequestException(
+        "Ya se encuentra en una vista simulada. Vuelva a su cuenta original primero.",
+      );
+    }
+
+    if (dto.userId === adminUser.id) {
+      throw new BadRequestException("No puede simular su propia cuenta.");
+    }
+
+    const targetUser = await this.authRepository.findUserById(dto.userId);
+    if (!targetUser) {
+      throw new NotFoundException("Usuario destino no encontrado.");
+    }
+
+    this.assertUserIsActive(targetUser);
+
+    const roles = await this.resolveRoles(targetUser);
+    let targetRoleId: string | undefined;
+
+    if (dto.roleId) {
+      const encontrado = roles.find((r) => r.rolId === dto.roleId);
+      if (!encontrado) {
+        throw new BadRequestException("El usuario destino no tiene asignado ese rol.");
+      }
+      targetRoleId = encontrado.rolId;
+    }
+
+    const { userDto, modules, activeRole } = await this.buildUserRole(targetUser, targetRoleId);
+
+    const impersonatedBy: ImpersonatorInfo = {
+      userId: adminUser.id,
+      username: adminUser.username,
+      roleId: adminUser.roleId,
+      role: adminUser.role,
+    };
+
+    userDto.impersonatedBy = {
+      userId: impersonatedBy.userId,
+      username: impersonatedBy.username,
+      role: impersonatedBy.role,
+    };
+
+    const payload: JwtPayload = {
+      sub: targetUser.id,
+      username: targetUser.nombreUsuario,
+      roleId: activeRole.rolId,
+      role: activeRole.nombre,
+      personaId: targetUser.personaId,
+      impersonatedBy,
+    };
+
+    if (oldToken) {
+      await this.sessionService.revokeSession(oldToken);
+    }
+
+    const accessToken = this.sessionService.generateAccessToken(payload, false);
+    await this.sessionService.recordSession({
+      userId: targetUser.id,
+      token: accessToken,
+      rememberMe: false,
+      ipAddress,
+      userAgent,
+    });
+
+    await this.auditService?.log({
+      usuarioId: adminUser.id,
+      accion: "iniciar_sesion",
+      tabla: "usuarios",
+      registroId: targetUser.id,
+      valorNuevo: {
+        vistaSimulada: true,
+        usuarioSimulado: targetUser.nombreUsuario,
+        rolSimulado: activeRole.nombre,
+      },
+      direccionIp: ipAddress,
+    });
+
+    return {
+      message: `Vista simulada iniciada como ${targetUser.nombreUsuario} (${activeRole.nombre}).`,
+      accessToken,
+      user: userDto,
+      modules,
+    };
+  }
+
+  /**
+   * Finaliza la vista simulada y restaura la sesión del Administrador o Soporte TI.
+   */
+  async stopImpersonate(
+    currentUser: AuthenticatedUser,
+    oldToken?: string,
+    ipAddress?: string,
+    userAgent?: string,
+  ): Promise<AuthResponseDto> {
+    if (!currentUser.impersonatedBy) {
+      throw new BadRequestException("La sesión actual no está en modo vista simulada.");
+    }
+
+    const adminInfo = currentUser.impersonatedBy;
+    const adminUser = await this.authRepository.findUserById(adminInfo.userId);
+    if (!adminUser) {
+      throw new UnauthorizedException("La cuenta administradora original ya no existe.");
+    }
+
+    this.assertUserIsActive(adminUser);
+
+    const { userDto, modules, activeRole } = await this.buildUserRole(adminUser, adminInfo.roleId);
+
+    const payload: JwtPayload = {
+      sub: adminUser.id,
+      username: adminUser.nombreUsuario,
+      roleId: activeRole.rolId,
+      role: activeRole.nombre,
+      personaId: adminUser.personaId,
+    };
+
+    if (oldToken) {
+      await this.sessionService.revokeSession(oldToken);
+    }
+
+    const accessToken = this.sessionService.generateAccessToken(payload, false);
+    await this.sessionService.recordSession({
+      userId: adminUser.id,
+      token: accessToken,
+      rememberMe: false,
+      ipAddress,
+      userAgent,
+    });
+
+    await this.auditService?.log({
+      usuarioId: adminUser.id,
+      accion: "cerrar_sesion",
+      tabla: "usuarios",
+      registroId: currentUser.id,
+      valorAnterior: {
+        vistaSimulada: true,
+        usuarioSimulado: currentUser.username,
+        rolSimulado: currentUser.role,
+      },
+      direccionIp: ipAddress,
+    });
+
+    return {
+      message: `Sesión restaurada como ${adminUser.nombreUsuario} (${activeRole.nombre}).`,
       accessToken,
       user: userDto,
       modules,

@@ -69,6 +69,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       personaId: user.personaId,
       rolPendiente: payload.rolPendiente === true,
       recordar: payload.recordar === true,
+      impersonatedBy: payload.impersonatedBy,
     };
   }
 }

@@ -37,6 +37,7 @@ import {
   ActualizarMaterialDto,
   ActualizarTareaDto,
   ActualizarUnidadDto,
+  CalificarDirectoDto,
   CalificarEntregaDto,
   CerrarTareaDto,
   ContenidoMaterialDto,
@@ -417,6 +418,17 @@ export class AulaVirtualController {
     @CurrentUser() usuario: AuthenticatedUser,
   ): Promise<{ mensaje: string; entrega: EntregaResponse }> {
     return this.service.calificarEntrega(usuario, entregaId, dto);
+  }
+
+  @Post("tareas/:id/calificar-directo")
+  @ApiOperation({ summary: "Calificar directamente a un estudiante (entrega física o manual)" })
+  @ApiParam({ name: "id", description: "UUID de la tarea" })
+  async calificarDirecto(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: CalificarDirectoDto,
+    @CurrentUser() usuario: AuthenticatedUser,
+  ): Promise<{ mensaje: string; entrega: EntregaResponse }> {
+    return this.service.calificarDirecto(usuario, id, dto);
   }
 
   @Get("cursos/:cursoSeccionId/libro-notas")
