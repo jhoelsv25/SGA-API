@@ -532,6 +532,43 @@ export class HorariosService {
     };
   }
 
+  async generarMiHorarioPdf(personaId: string): Promise<{ buffer: Buffer; nombreArchivo: string }> {
+    const anio = await this.resolverAnio(false);
+    const docente = await this.horariosRepo.docentePorPersonaId(personaId);
+    if (!docente) {
+      throw sinFichaDocente();
+    }
+    const bloquesDocente = await this.horariosRepo.findByDocente(anio.id, docente.id);
+    const bloques: BloqueHorarioResponseDto[] = bloquesDocente.map((b) => ({
+      id: b.id,
+      seccionId: "",
+      cursoSeccionId: null,
+      cursoNombre: b.cursoNombre,
+      docenteNombre: `${b.gradoNumero}.° · Sección ${b.seccionNombre}`,
+      diaSemana: b.diaSemana,
+      horaInicio: b.horaInicio,
+      horaFin: b.horaFin,
+      tipoBloque: b.cursoNombre ? "clase" : "receso",
+      aula: b.aula,
+      colorHex: b.colorHex,
+    }));
+
+    const buffer = await generarHorarioPdfBuffer({
+      titulo: "Mi Horario Docente",
+      subtitulo: `Año académico ${anio.anio}`,
+      bloques,
+    });
+    return { buffer, nombreArchivo: `mi-horario-docente-${anio.anio}.pdf` };
+  }
+
+  async generarHorarioEstudiantePdf(
+    estudianteId: string,
+    usuario: UsuarioConsultaEstudiante,
+  ): Promise<{ buffer: Buffer; nombreArchivo: string }> {
+    const horario = await this.horarioDeEstudiante(estudianteId, usuario);
+    return this.generarHorarioSeccionPdf(horario.seccionId);
+  }
+
   async horarioDeEstudiante(
     estudianteId: string,
     usuario: UsuarioConsultaEstudiante,

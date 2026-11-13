@@ -203,6 +203,24 @@ export class HorariosController {
     return this.service.miHorario(usuario.personaId);
   }
 
+  @Get("mi-horario/pdf")
+  @ApiOperation({
+    summary: "Descargar el horario semanal propio del docente autenticado en PDF",
+  })
+  @ApiResponse({ status: 200, description: "Archivo PDF del horario semanal del docente" })
+  async descargarMiHorarioPdf(
+    @CurrentUser() usuario: AuthenticatedUser,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<StreamableFile> {
+    const { buffer, nombreArchivo } = await this.service.generarMiHorarioPdf(usuario.personaId);
+    res.set({
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename="${nombreArchivo}"`,
+      "Content-Length": buffer.length,
+    });
+    return new StreamableFile(buffer);
+  }
+
   @Get("estudiante/:estudianteId")
   @ApiOperation({
     summary: "Consultar el horario semanal de la sección asignada a un estudiante",
@@ -218,5 +236,28 @@ export class HorariosController {
     @CurrentUser() usuario: AuthenticatedUser,
   ): Promise<HorarioEstudianteResponseDto> {
     return this.service.horarioDeEstudiante(estudianteId, usuario);
+  }
+
+  @Get("estudiante/:estudianteId/pdf")
+  @ApiOperation({
+    summary: "Descargar el horario semanal de la sección asignada a un estudiante en PDF",
+  })
+  @ApiParam({ name: "estudianteId", description: "UUID del estudiante a consultar" })
+  @ApiResponse({ status: 200, description: "Archivo PDF del horario semanal del estudiante" })
+  async descargarPdfEstudiante(
+    @Param("estudianteId", ParseUUIDPipe) estudianteId: string,
+    @CurrentUser() usuario: AuthenticatedUser,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<StreamableFile> {
+    const { buffer, nombreArchivo } = await this.service.generarHorarioEstudiantePdf(
+      estudianteId,
+      usuario,
+    );
+    res.set({
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename="${nombreArchivo}"`,
+      "Content-Length": buffer.length,
+    });
+    return new StreamableFile(buffer);
   }
 }

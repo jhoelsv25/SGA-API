@@ -114,8 +114,6 @@ interface DocenteEnKiosko {
 @Injectable()
 export class SesionesClaseService implements OnModuleInit {
   private readonly logger = new Logger(SesionesClaseService.name);
-  /** Fechas ya generadas en este proceso: evita repetir la generación en cada consulta. */
-  private readonly fechasGeneradas = new Set<string>();
 
   constructor(
     private readonly repository: SesionesClaseRepository,
@@ -177,7 +175,6 @@ export class SesionesClaseService implements OnModuleInit {
 
     const bloques = await this.repository.bloquesDelDia(anio.id, diaIsoDeFecha(fecha));
     const creadas = await this.repository.insertarSesiones(fecha, planificarSesiones(bloques));
-    this.fechasGeneradas.add(fecha);
     if (creadas > 0) {
       await this.auditService.log({
         accion: "crear",
@@ -1048,9 +1045,7 @@ export class SesionesClaseService implements OnModuleInit {
   }
 
   private async asegurarGeneracion(fecha: string): Promise<void> {
-    if (this.fechasGeneradas.has(fecha)) return;
     await this.generarDelDia(fecha);
-    this.fechasGeneradas.add(fecha);
   }
 
   /** Lee de las variables de sistema; ningún valor de negocio va escrito en el código. */
