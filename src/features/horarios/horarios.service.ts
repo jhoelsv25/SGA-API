@@ -282,19 +282,19 @@ export class HorariosService {
     seccionId: string,
     docenteId?: string,
   ): Promise<{ buffer: Buffer; nombreArchivo: string }> {
-    const [info, data, cursosSeccion] = await Promise.all([
+    const [info, data] = await Promise.all([
       this.horariosRepo.infoSeccion(seccionId),
       this.listarPorSeccion(seccionId),
-      docenteId ? this.horariosRepo.cursosSeccionPorSeccion(seccionId) : Promise.resolve([]),
     ]);
     if (!info) {
       throw new NotFoundException(MENSAJES_HORARIOS.SECCION_NO_ENCONTRADA);
     }
 
-    let bloquesFiltrados = data.bloques;
+    let bloquesFiltrados: BloqueHorarioResponseDto[] = data.bloques;
     let docenteNombre: string | undefined;
 
     if (docenteId) {
+      const cursosSeccion = await this.horariosRepo.cursosSeccionPorSeccion(seccionId);
       const cursosDocente = new Set(
         cursosSeccion.filter((c) => c.docenteId === docenteId).map((c) => c.cursoSeccionId),
       );
