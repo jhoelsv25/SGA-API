@@ -43,6 +43,7 @@ import type {
   FirmaSesionResponseDto,
   FirmarIngresoDto,
   MensajeSesionResponseDto,
+  MiJornadaHoyResponseDto,
   MisSesionesResponseDto,
   PanelSesionesResponseDto,
   RangoSesionesQueryDto,
@@ -221,67 +222,14 @@ export class SesionesClaseService implements OnModuleInit {
     ip?: string,
   ): Promise<FirmaSesionResponseDto> {
     const docente = await this.identificarEnKiosko(token, dto);
-    const sesion = await this.sesionDelDocente(sesionId, docente.docenteId);
-    const { fecha, hora } = ahoraEnColegio();
-    if (sesion.estado !== "pendiente") {
-      throw new ConflictException(MENSAJES_SESION.INGRESO_YA_FIRMADO);
-    }
-    if (sesion.fecha !== fecha) {
-      throw new BadRequestException(MENSAJES_SESION.SESION_TERMINADA);
-    }
-    const tema = dto.tema?.trim();
-    if (!tema) {
-      throw new BadRequestException(MENSAJES_SESION.FALTA_TEMA);
-    }
-
-    const config = await this.configuracion();
-    const evaluacion = evaluarIngreso({
-      horaInicio: sesion.horaInicio,
-      horaFin: sesion.horaFin,
-      ahora: hora,
-      minutosAntes: config.minutosAntes,
-      toleranciaIngreso: config.toleranciaIngreso,
-    });
-    if (evaluacion.tipo === "antes") {
-      throw new BadRequestException(mensajeAntesDeVentana(evaluacion.habilitaA));
-    }
-    if (evaluacion.tipo === "despues") {
-      throw new BadRequestException(MENSAJES_SESION.SESION_TERMINADA);
-    }
-
-    const firmada = await this.repository.firmarIngreso(sesion.id, docente.docenteId, {
-      hora,
-      tema,
-      minutosRetraso: evaluacion.minutosRetraso,
+    return this.ejecutarFirmaIngreso({
+      sesionId,
+      docenteId: docente.docenteId,
+      temaRaw: dto.tema,
       equipoId: docente.equipoId,
+      canal: "kiosko",
+      ip,
     });
-    if (!firmada) {
-      throw new ConflictException(MENSAJES_SESION.INGRESO_YA_FIRMADO);
-    }
-    await this.auditService.log({
-      accion: "actualizar",
-      tabla: "sesiones_clase",
-      registroId: sesion.id,
-      valorAnterior: { estado: "pendiente" },
-      valorNuevo: {
-        estado: "en_curso",
-        firma: "ingreso",
-        hora,
-        tema,
-        minutosRetraso: evaluacion.minutosRetraso,
-        equipoId: docente.equipoId,
-      },
-      direccionIp: ip,
-    });
-
-    const horaFirma = horaCorta(hora);
-    return {
-      mensaje:
-        evaluacion.minutosRetraso > 0
-          ? mensajeIngresoConRetraso(horaFirma, evaluacion.minutosRetraso)
-          : mensajeIngreso(horaFirma, sesion.cursoNombre, sesion.seccionNombre),
-      sesion: await this.requireSesion(sesion.id),
-    };
   }
 
   async firmarSalida(
@@ -291,46 +239,13 @@ export class SesionesClaseService implements OnModuleInit {
     ip?: string,
   ): Promise<FirmaSesionResponseDto> {
     const docente = await this.identificarEnKiosko(token, dto);
-    const sesion = await this.sesionDelDocente(sesionId, docente.docenteId);
-    if (sesion.estado === "pendiente") {
-      throw new BadRequestException(MENSAJES_SESION.SALIDA_SIN_INGRESO);
-    }
-    if (sesion.estado !== "en_curso") {
-      throw new ConflictException(MENSAJES_SESION.SALIDA_YA_FIRMADA);
-    }
-
-    const { hora } = ahoraEnColegio();
-    const { toleranciaSalida } = await this.configuracion();
-    const salidaAntes = minutosSalidaAnticipada(sesion.horaFin, hora, toleranciaSalida);
-    const minutosPerdidos = sesion.minutosRetraso + salidaAntes;
-    const estado = minutosPerdidos === 0 ? "cumplida" : "parcial";
-
-    const firmada = await this.repository.firmarSalida(sesion.id, docente.docenteId, {
-      hora,
-      minutosPerdidos,
-      estado,
+    return this.ejecutarFirmaSalida({
+      sesionId,
+      docenteId: docente.docenteId,
       equipoId: docente.equipoId,
+      canal: "kiosko",
+      ip,
     });
-    if (!firmada) {
-      throw new ConflictException(MENSAJES_SESION.SALIDA_YA_FIRMADA);
-    }
-    await this.auditService.log({
-      accion: "actualizar",
-      tabla: "sesiones_clase",
-      registroId: sesion.id,
-      valorAnterior: { estado: "en_curso" },
-      valorNuevo: { estado, firma: "salida", hora, minutosPerdidos, equipoId: docente.equipoId },
-      direccionIp: ip,
-    });
-
-    const horaFirma = horaCorta(hora);
-    return {
-      mensaje:
-        estado === "cumplida"
-          ? mensajeSalidaCumplida(horaFirma)
-          : mensajeSalidaParcial(horaFirma, minutosPerdidos),
-      sesion: await this.requireSesion(sesion.id),
-    };
   }
 
   // --- HU3: seguimiento del subdirector -------------------------------------------
@@ -435,7 +350,70 @@ export class SesionesClaseService implements OnModuleInit {
     };
   }
 
-  // --- HU4: mis sesiones y justificación ------------------------------------------
+  // --- HU4: mis sesiones, firma web y justificación --------------------------------
+
+  async miJornadaHoy(usuario: AuthenticatedUser): Promise<MiJornadaHoyResponseDto> {
+    const docenteId = await this.docenteDelUsuario(usuario);
+    const { fecha, hora } = ahoraEnColegio();
+    await this.asegurarGeneracion(fecha);
+    const sesiones = await this.repository.sesionesDeDocente(docenteId, fecha, fecha);
+    const { minutosAntes } = await this.configuracion();
+    const firmaWebHabilitada = await this.firmaWebHabilitada();
+    return {
+      fecha,
+      docenteNombre: sesiones[0]?.docenteNombre ?? usuario.username,
+      destacadaId: elegirDestacada(sesiones, hora, minutosAntes),
+      minutosAntes,
+      firmaWebHabilitada,
+      sesiones,
+    };
+  }
+
+  async firmarIngresoWeb(
+    sesionId: string,
+    dto: TemaSesionDto,
+    usuario: AuthenticatedUser,
+    ip?: string,
+  ): Promise<FirmaSesionResponseDto> {
+    if (usuario.impersonatedBy) {
+      throw new ForbiddenException(MENSAJES_SESION.FIRMA_BLOQUEADA_SIMULACION);
+    }
+    if (!(await this.firmaWebHabilitada())) {
+      throw new ForbiddenException(MENSAJES_SESION.FIRMA_WEB_DESHABILITADA);
+    }
+    const docenteId = await this.docenteDelUsuario(usuario);
+    return this.ejecutarFirmaIngreso({
+      sesionId,
+      docenteId,
+      temaRaw: dto.tema,
+      equipoId: null,
+      actorId: usuario.id,
+      canal: "web",
+      ip,
+    });
+  }
+
+  async firmarSalidaWeb(
+    sesionId: string,
+    usuario: AuthenticatedUser,
+    ip?: string,
+  ): Promise<FirmaSesionResponseDto> {
+    if (usuario.impersonatedBy) {
+      throw new ForbiddenException(MENSAJES_SESION.FIRMA_BLOQUEADA_SIMULACION);
+    }
+    if (!(await this.firmaWebHabilitada())) {
+      throw new ForbiddenException(MENSAJES_SESION.FIRMA_WEB_DESHABILITADA);
+    }
+    const docenteId = await this.docenteDelUsuario(usuario);
+    return this.ejecutarFirmaSalida({
+      sesionId,
+      docenteId,
+      equipoId: null,
+      actorId: usuario.id,
+      canal: "web",
+      ip,
+    });
+  }
 
   async misSesiones(
     usuario: AuthenticatedUser,
@@ -534,6 +512,143 @@ export class SesionesClaseService implements OnModuleInit {
   }
 
   // --- privados ------------------------------------------------------------------
+
+  private async firmaWebHabilitada(): Promise<boolean> {
+    if (!this.variablesService) return true;
+    return this.variablesService.isActiva(VARIABLES_SESION.PERMITIR_FIRMA_WEB, true);
+  }
+
+  private async ejecutarFirmaIngreso(params: {
+    sesionId: string;
+    docenteId: string;
+    temaRaw: string | undefined;
+    equipoId: string | null;
+    actorId?: string;
+    canal: "kiosko" | "web";
+    ip?: string;
+  }): Promise<FirmaSesionResponseDto> {
+    const sesion = await this.sesionDelDocente(params.sesionId, params.docenteId);
+    const { fecha, hora } = ahoraEnColegio();
+    if (sesion.estado !== "pendiente") {
+      throw new ConflictException(MENSAJES_SESION.INGRESO_YA_FIRMADO);
+    }
+    if (sesion.fecha !== fecha) {
+      throw new BadRequestException(MENSAJES_SESION.SESION_TERMINADA);
+    }
+    const tema = params.temaRaw?.trim();
+    if (!tema) {
+      throw new BadRequestException(MENSAJES_SESION.FALTA_TEMA);
+    }
+
+    const config = await this.configuracion();
+    const evaluacion = evaluarIngreso({
+      horaInicio: sesion.horaInicio,
+      horaFin: sesion.horaFin,
+      ahora: hora,
+      minutosAntes: config.minutosAntes,
+      toleranciaIngreso: config.toleranciaIngreso,
+    });
+    if (evaluacion.tipo === "antes") {
+      throw new BadRequestException(mensajeAntesDeVentana(evaluacion.habilitaA));
+    }
+    if (evaluacion.tipo === "despues") {
+      throw new BadRequestException(MENSAJES_SESION.SESION_TERMINADA);
+    }
+
+    const firmada = await this.repository.firmarIngreso(sesion.id, params.docenteId, {
+      hora,
+      tema,
+      minutosRetraso: evaluacion.minutosRetraso,
+      equipoId: params.equipoId,
+    });
+    if (!firmada) {
+      throw new ConflictException(MENSAJES_SESION.INGRESO_YA_FIRMADO);
+    }
+    await this.auditService.log({
+      ...(params.actorId ? { usuarioId: params.actorId } : {}),
+      accion: "actualizar",
+      tabla: "sesiones_clase",
+      registroId: sesion.id,
+      valorAnterior: { estado: "pendiente" },
+      valorNuevo: {
+        estado: "en_curso",
+        firma: "ingreso",
+        canal: params.canal,
+        hora,
+        tema,
+        minutosRetraso: evaluacion.minutosRetraso,
+        equipoId: params.equipoId,
+      },
+      direccionIp: params.ip,
+    });
+
+    const horaFirma = horaCorta(hora);
+    return {
+      mensaje:
+        evaluacion.minutosRetraso > 0
+          ? mensajeIngresoConRetraso(horaFirma, evaluacion.minutosRetraso)
+          : mensajeIngreso(horaFirma, sesion.cursoNombre, sesion.seccionNombre),
+      sesion: await this.requireSesion(sesion.id),
+    };
+  }
+
+  private async ejecutarFirmaSalida(params: {
+    sesionId: string;
+    docenteId: string;
+    equipoId: string | null;
+    actorId?: string;
+    canal: "kiosko" | "web";
+    ip?: string;
+  }): Promise<FirmaSesionResponseDto> {
+    const sesion = await this.sesionDelDocente(params.sesionId, params.docenteId);
+    if (sesion.estado === "pendiente") {
+      throw new BadRequestException(MENSAJES_SESION.SALIDA_SIN_INGRESO);
+    }
+    if (sesion.estado !== "en_curso") {
+      throw new ConflictException(MENSAJES_SESION.SALIDA_YA_FIRMADA);
+    }
+
+    const { hora } = ahoraEnColegio();
+    const { toleranciaSalida } = await this.configuracion();
+    const salidaAntes = minutosSalidaAnticipada(sesion.horaFin, hora, toleranciaSalida);
+    const minutosPerdidos = sesion.minutosRetraso + salidaAntes;
+    const estado = minutosPerdidos === 0 ? "cumplida" : "parcial";
+
+    const firmada = await this.repository.firmarSalida(sesion.id, params.docenteId, {
+      hora,
+      minutosPerdidos,
+      estado,
+      equipoId: params.equipoId,
+    });
+    if (!firmada) {
+      throw new ConflictException(MENSAJES_SESION.SALIDA_YA_FIRMADA);
+    }
+    await this.auditService.log({
+      ...(params.actorId ? { usuarioId: params.actorId } : {}),
+      accion: "actualizar",
+      tabla: "sesiones_clase",
+      registroId: sesion.id,
+      valorAnterior: { estado: "en_curso" },
+      valorNuevo: {
+        estado,
+        firma: "salida",
+        canal: params.canal,
+        hora,
+        minutosPerdidos,
+        equipoId: params.equipoId,
+      },
+      direccionIp: params.ip,
+    });
+
+    const horaFirma = horaCorta(hora);
+    return {
+      mensaje:
+        estado === "cumplida"
+          ? mensajeSalidaCumplida(horaFirma)
+          : mensajeSalidaParcial(horaFirma, minutosPerdidos),
+      sesion: await this.requireSesion(sesion.id),
+    };
+  }
 
   private async identificarEnKiosko(
     token: string | undefined,

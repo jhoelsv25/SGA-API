@@ -22,6 +22,7 @@ export const VARIABLES_SESION = {
   TOLERANCIA_INGRESO: "sesion.tolerancia_ingreso_min",
   TOLERANCIA_SALIDA: "sesion.tolerancia_salida_min",
   SALIDA_AUTOMATICA: "sesion.salida_automatica_sin_firma",
+  PERMITIR_FIRMA_WEB: "sesion.permitir_firma_web",
 } as const;
 
 export const JOB_GENERAR_SESIONES = "generar-sesiones-del-dia";
@@ -57,6 +58,9 @@ export const MENSAJES_SESION = {
   TEMA_CERRADO: "El tema ya no se puede corregir: la salida está firmada.",
   VARIABLE_FALTANTE: (codigo: string) => `Falta configurar la variable de sistema «${codigo}».`,
   RANGO_INVALIDO: "La fecha de fin debe ser posterior al inicio.",
+  FIRMA_WEB_DESHABILITADA:
+    "La firma desde la web no está habilitada. Use un equipo kiosko autorizado.",
+  FIRMA_BLOQUEADA_SIMULACION: "No puede firmar sesiones de clase mientras usa la vista simulada.",
 } as const;
 
 export const mensajeIngreso = (hora: string, curso: string, seccion: string): string =>

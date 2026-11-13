@@ -72,3 +72,12 @@ export class MensajeSesionResponseDto {
   @ApiProperty() mensaje!: string;
   @ApiProperty({ type: SesionResponseDto }) sesion!: SesionResponseDto;
 }
+
+export class MiJornadaHoyResponseDto {
+  @ApiProperty({ example: "2026-11-12" }) fecha!: string;
+  @ApiProperty() docenteNombre!: string;
+  @ApiPropertyOptional({ nullable: true }) destacadaId!: string | null;
+  @ApiProperty({ example: 10 }) minutosAntes!: number;
+  @ApiProperty() firmaWebHabilitada!: boolean;
+  @ApiProperty({ type: [SesionResponseDto] }) sesiones!: SesionResponseDto[];
+}

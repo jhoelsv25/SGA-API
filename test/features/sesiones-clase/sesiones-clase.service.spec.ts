@@ -412,4 +412,62 @@ describe("RF-011: Registro de sesión de clase", () => {
       ).rejects.toThrow(ForbiddenException);
     });
   });
+
+  describe("Firma web del docente (header)", () => {
+    it("miJornadaHoy devuelve sesiones de hoy con destacadaId y minutosAntes", async () => {
+      repo.sesionesDeDocente!.mockResolvedValue([sesion()]);
+      const r = await service.miJornadaHoy(docenteUsuario);
+      expect(r.fecha).toBe(HOY);
+      expect(r.destacadaId).toBe("ses-1");
+      expect(r.minutosAntes).toBe(15);
+      expect(r.firmaWebHabilitada).toBe(true);
+      expect(r.sesiones).toHaveLength(1);
+    });
+
+    it("permite firmar ingreso y salida desde la web sin equipoId", async () => {
+      const ingreso = await service.firmarIngresoWeb(
+        "ses-1",
+        { tema: "Fracciones" },
+        docenteUsuario,
+        "127.0.0.1",
+      );
+      expect(ingreso.mensaje).toBe("Ingreso firmado a las 08:30. Matemática – 5.° A.");
+      expect(repo.firmarIngreso).toHaveBeenCalledWith("ses-1", "doc-1", {
+        hora: "08:30:00",
+        tema: "Fracciones",
+        minutosRetraso: 0,
+        equipoId: null,
+      });
+
+      reloj("10:00");
+      repo.findById!.mockResolvedValue(sesion({ estado: "en_curso" }));
+      const salida = await service.firmarSalidaWeb("ses-1", docenteUsuario, "127.0.0.1");
+      expect(salida.mensaje).toBe("Salida firmada a las 10:00. Sesión cumplida.");
+      expect(repo.firmarSalida).toHaveBeenCalledWith("ses-1", "doc-1", {
+        hora: "10:00:00",
+        minutosPerdidos: 0,
+        estado: "cumplida",
+        equipoId: null,
+      });
+    });
+
+    it("bloquea la firma web si el usuario está en vista simulada", async () => {
+      const simulado: AuthenticatedUser = {
+        ...docenteUsuario,
+        impersonatedBy: {
+          userId: "u-admin",
+          username: "admin",
+          roleId: "r-admin",
+          role: "Administrador",
+        },
+      };
+      await expect(service.firmarIngresoWeb("ses-1", { tema: "x" }, simulado)).rejects.toThrow(
+        "No puede firmar sesiones de clase mientras usa la vista simulada.",
+      );
+      await expect(service.firmarSalidaWeb("ses-1", simulado)).rejects.toThrow(
+        "No puede firmar sesiones de clase mientras usa la vista simulada.",
+      );
+      expect(repo.firmarIngreso).not.toHaveBeenCalled();
+    });
+  });
 });
