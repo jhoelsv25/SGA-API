@@ -1,6 +1,16 @@
 import { VARIABLES_SEGUIMIENTO_DOCENTE } from "../../../src/core/database/seed-variables-seguimiento-docente";
 
 describe("Variables del seguimiento docente (RF-004 V3)", () => {
+  it("respeta el largo de las columnas de variables_sistema", () => {
+    for (const v of VARIABLES_SEGUIMIENTO_DOCENTE) {
+      expect(v.codigo.length).toBeLessThanOrEqual(60);
+      expect(v.descripcion.length).toBeLessThanOrEqual(255);
+      expect(v.modulo.length).toBeLessThanOrEqual(30);
+      expect(v.tipo.length).toBeLessThanOrEqual(10);
+      expect((v.unidad ?? "").length).toBeLessThanOrEqual(20);
+    }
+  });
+
   const porCodigo = new Map(VARIABLES_SEGUIMIENTO_DOCENTE.map((v) => [v.codigo, v]));
 
   it("define las 11 variables nuevas sin códigos repetidos", () => {

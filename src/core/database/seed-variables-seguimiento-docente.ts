@@ -122,7 +122,7 @@ export const VARIABLES_SEGUIMIENTO_DOCENTE: VariableSeedSeguimiento[] = [
     modulo: "observacion",
     tipo: "entero",
     valor: "2",
-    unidad: "observaciones por docente y año lectivo",
+    unidad: "observaciones",
     valorMinimo: 2,
     valorMaximo: 3,
   },
