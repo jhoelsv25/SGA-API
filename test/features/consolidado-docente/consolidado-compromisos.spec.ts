@@ -119,7 +119,12 @@ describe("RF-013 V2: compromisos de mejora", () => {
       );
       expect(r.compromiso.estado).toBe("pendiente");
       expect(notificaciones.enviar).toHaveBeenCalledWith(
-        expect.objectContaining({ usuarioId: "u-doc" }),
+        expect.objectContaining({
+          usuarioId: "u-doc",
+          enlaceUrl: expect.stringMatching(
+            /^\/admin\/mi-seguimiento\?periodoId=.+&compromisoId=.+/,
+          ) as unknown,
+        }),
       );
       expect(audit.log).toHaveBeenCalledWith(expect.objectContaining({ accion: "crear" }));
     });
@@ -175,7 +180,12 @@ describe("RF-013 V2: compromisos de mejora", () => {
         "u-dir",
       );
       expect(notificaciones.enviar).toHaveBeenCalledWith(
-        expect.objectContaining({ usuarioId: "u-doc" }),
+        expect.objectContaining({
+          usuarioId: "u-doc",
+          enlaceUrl: expect.stringMatching(
+            /^\/admin\/mi-seguimiento\?periodoId=.+&compromisoId=.+/,
+          ) as unknown,
+        }),
       );
     });
 

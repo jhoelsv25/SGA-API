@@ -135,6 +135,7 @@ export class CompromisosConsolidadoService implements OnModuleInit {
       "Nuevo compromiso de mejora",
       `Se registró un compromiso: ${descripcion}. Fecha de revisión: ${fechaDdMmYyyy(dto.fechaRevision)}.`,
       consolidado.periodoId,
+      creado.compromisoId,
     );
     return {
       compromiso: this.conVencimiento(creado),
@@ -192,6 +193,7 @@ export class CompromisosConsolidadoService implements OnModuleInit {
       "Compromiso de mejora cerrado",
       `${mensajeCompromisoCerrado(dto.resultado)} ${observacion}`,
       actual.periodoId,
+      actual.compromisoId,
     );
     return {
       compromiso: await this.compromisoActualizado(compromisoId),
@@ -311,6 +313,7 @@ export class CompromisosConsolidadoService implements OnModuleInit {
     titulo: string,
     mensaje: string,
     periodoId: string,
+    compromisoId: string,
   ): Promise<void> {
     try {
       const usuarioId = await this.repository.usuarioDeDocente(docenteId);
@@ -320,7 +323,7 @@ export class CompromisosConsolidadoService implements OnModuleInit {
         titulo,
         mensaje: mensaje.slice(0, 500),
         tipo: "informacion",
-        enlaceUrl: `/admin/mi-seguimiento?periodoId=${periodoId}`,
+        enlaceUrl: `/admin/mi-seguimiento?periodoId=${periodoId}&compromisoId=${compromisoId}`,
       });
     } catch (error) {
       // Un aviso fallido no debe deshacer el compromiso ya guardado.
