@@ -17,11 +17,13 @@ import {
   CurrentUser,
   ExtractToken,
   Public,
+  Roles,
 } from "../../common/decorators";
 import { AuthService } from "./auth.service";
 import { AuthResponseDto } from "./dto/auth-response.dto";
 import { ChangePasswordDto } from "./dto/change-password.dto";
 import { ForgotPasswordDto } from "./dto/forgot-password.dto";
+import { ImpersonateDto } from "./dto/impersonate.dto";
 import { LoginDto } from "./dto/login.dto";
 import { SwitchRoleDto } from "./dto/switch-role.dto";
 import type { AuthenticatedUser } from "./interfaces/jwt-payload.interface";
@@ -64,7 +66,66 @@ export class AuthController {
   })
   @ApiResponse({ status: 401, description: "Sesión inválida o expirada" })
   async checkToken(@CurrentUser() user: AuthenticatedUser): Promise<AuthResponseDto> {
+    if (user.impersonatedBy) {
+      return this.authService.checkToken(user.id, user.roleId, user.impersonatedBy);
+    }
     return this.authService.checkToken(user.id, user.roleId);
+  }
+
+  @Post("impersonate")
+  @Roles("Administrador", "Soporte TI")
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiCookieAuth()
+  @ApiOperation({
+    summary: "Ingresar en modo vista simulada como otro usuario (solo Administrador / Soporte TI)",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Vista simulada iniciada; se emite un token con el usuario destino",
+    type: AuthResponseDto,
+  })
+  @ApiResponse({ status: 403, description: "Solo Administrador o Soporte TI están autorizados" })
+  async impersonate(
+    @CurrentUser() user: AuthenticatedUser,
+    @ExtractToken() token: string | undefined,
+    @Body() dto: ImpersonateDto,
+    @ClientInfo() client: ClientInfoData,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<AuthResponseDto> {
+    const result = await this.authService.impersonate(
+      user,
+      dto,
+      token,
+      client.ip,
+      client.userAgent,
+    );
+    setAuthCookie({ res, token: result.accessToken, rememberMe: false });
+    return result;
+  }
+
+  @Post("stop-impersonate")
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiCookieAuth()
+  @ApiOperation({
+    summary:
+      "Salir de la vista simulada y restaurar la sesión original de Administrador / Soporte TI",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Sesión administradora restaurada",
+    type: AuthResponseDto,
+  })
+  async stopImpersonate(
+    @CurrentUser() user: AuthenticatedUser,
+    @ExtractToken() token: string | undefined,
+    @ClientInfo() client: ClientInfoData,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<AuthResponseDto> {
+    const result = await this.authService.stopImpersonate(user, token, client.ip, client.userAgent);
+    setAuthCookie({ res, token: result.accessToken, rememberMe: false });
+    return result;
   }
 
   @Post("switch-role")

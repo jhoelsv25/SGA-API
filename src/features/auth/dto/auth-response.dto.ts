@@ -11,6 +11,17 @@ export class AuthRoleDto {
   isPrincipal!: boolean;
 }
 
+export class ImpersonatedByDto {
+  @ApiProperty({ example: "550e8400-e29b-41d4-a716-446655440000" })
+  userId!: string;
+
+  @ApiProperty({ example: "admin" })
+  username!: string;
+
+  @ApiProperty({ example: "Administrador" })
+  role!: string;
+}
+
 export class CurrentUserDto {
   @ApiProperty({ example: "550e8400-e29b-41d4-a716-446655440000" })
   id!: string;
@@ -63,6 +74,12 @@ export class CurrentUserDto {
       "Rutas de menú del rol activo. Registrar en el calendario exige /admin/calendario.",
   })
   menuRoutes?: string[];
+
+  @ApiPropertyOptional({
+    type: ImpersonatedByDto,
+    description: "Información del Administrador o Soporte TI cuando la sesión es simulada",
+  })
+  impersonatedBy?: ImpersonatedByDto;
 }
 
 export class AuthModuleDto {
