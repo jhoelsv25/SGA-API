@@ -369,6 +369,7 @@ export class ObservacionesEjecucionService implements OnModuleInit {
         "Se corrigió la calificación de su observación",
         `Se corrigió el desempeño ${desempeno}. Motivo: ${motivo}`,
         id,
+        true,
       );
     }
     return { mensaje: mensajeNuevaVersion(version), version };
@@ -475,6 +476,7 @@ export class ObservacionesEjecucionService implements OnModuleInit {
       "Se corrigió un compromiso de mejora",
       `Se actualizó el compromiso: ${descripcion}. Motivo: ${motivo}`,
       id,
+      true,
     );
     return { compromiso: await this.repo.compromisoVigente(compromisoId), version };
   }
@@ -513,6 +515,7 @@ export class ObservacionesEjecucionService implements OnModuleInit {
       "Su observación de aula ya está disponible",
       MENSAJES_OBSERVACION.RETRO_REGISTRADA,
       id,
+      true,
     );
     return {
       observacion: await this.comun.cargar(id),

@@ -115,6 +115,14 @@ const dd = (fecha: string) => fecha.split("-").reverse().join("/");
 
 export const mensajeProgramada = (fecha: string, hora: string): string =>
   `Observación programada para el ${dd(fecha)} a las ${hora.slice(0, 5)}. Se avisó al docente.`;
+export const mensajeAvisoProgramada = (
+  fecha: string,
+  hora: string,
+  curso: string,
+  seccion: string,
+  observador: string,
+): string =>
+  `Tiene una observación de aula el ${dd(fecha)} a las ${hora.slice(0, 5)}, en ${curso} ${seccion}. Observador: ${observador}.`;
 export const mensajeReprogramada = (fecha: string): string =>
   `Observación reprogramada para el ${dd(fecha)}. Se avisó al docente.`;
 export const mensajeDuracionFuera = (minutos: number): string =>

@@ -156,7 +156,10 @@ describe("RF-023 V1: Mis observaciones del docente (HU6)", () => {
       );
       expect(r.mensaje).toBe("Su comentario fue registrado.");
       expect(notificaciones.enviar).toHaveBeenCalledWith(
-        expect.objectContaining({ usuarioId: "u-sub" }),
+        expect.objectContaining({
+          usuarioId: "u-sub",
+          enlaceUrl: expect.stringMatching(/\/obs-1$/) as string,
+        }),
       );
       expect(repo.guardarBorrador).not.toHaveBeenCalled();
       expect(repo.nuevaVersionCalificacion).not.toHaveBeenCalled();

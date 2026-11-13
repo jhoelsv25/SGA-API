@@ -57,7 +57,16 @@ describe("RF-023 V1: cronograma de observaciones (HU1)", () => {
         "Observación programada para el 20/05/2027 a las 08:30. Se avisó al docente.",
       );
       expect(notificaciones.enviar).toHaveBeenCalledWith(
-        expect.objectContaining({ usuarioId: "u-doc" }),
+        expect.objectContaining({
+          usuarioId: "u-doc",
+          enlaceUrl: expect.not.stringMatching(/obs-/) as string,
+          mensaje: expect.stringContaining("Matemática") as string,
+        }),
+      );
+      expect(notificaciones.enviar).toHaveBeenCalledWith(
+        expect.objectContaining({
+          mensaje: expect.stringContaining("Observador: Sara Rojas") as string,
+        }),
       );
       expect(audit.log).toHaveBeenCalled();
     });

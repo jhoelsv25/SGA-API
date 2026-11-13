@@ -129,6 +129,8 @@ export class ObservacionesComunService {
     titulo: string,
     mensaje: string,
     observacionId: string,
+    /** Detalle solo cuando el docente ya puede verla (retroalimentada); antes, la lista. */
+    aDetalle = false,
   ): Promise<void> {
     try {
       const usuarioId = await this.repository.usuarioDeDocente(docenteId);
@@ -138,7 +140,7 @@ export class ObservacionesComunService {
         titulo,
         mensaje: mensaje.slice(0, 500),
         tipo: "informacion",
-        enlaceUrl: `${MENU_MIS_OBSERVACIONES}?observacionId=${observacionId}`,
+        enlaceUrl: aDetalle ? `${MENU_MIS_OBSERVACIONES}/${observacionId}` : MENU_MIS_OBSERVACIONES,
       });
     } catch (error) {
       this.logger.warn(`No se pudo notificar al docente: ${(error as Error).message}`);
@@ -158,7 +160,7 @@ export class ObservacionesComunService {
         titulo,
         mensaje: mensaje.slice(0, 500),
         tipo,
-        enlaceUrl: `${MENU_OBSERVACIONES_AULA}?observacionId=${observacionId}`,
+        enlaceUrl: `${MENU_OBSERVACIONES_AULA}/${observacionId}`,
       });
     } catch (error) {
       this.logger.warn(`No se pudo notificar: ${(error as Error).message}`);

@@ -9,6 +9,7 @@ import { MENU_OBSERVACIONES_AULA } from "../../common/constants";
 import { ahoraEnColegio } from "../marcaciones/utils";
 import {
   MENSAJES_OBSERVACION,
+  mensajeAvisoProgramada,
   mensajeProgramada,
   mensajeReprogramada,
   type EstadoObservacion,
@@ -156,8 +157,20 @@ export class ObservacionesProgramacionService {
       reobservacionDe: anteriorId,
     });
     const mensaje = mensajeProgramada(dto.fecha, r.bloque.horaInicio);
-    await this.comun.notificarDocente(dto.docenteId, "Observación de aula programada", mensaje, id);
-    return { observacion: await this.comun.cargar(id), mensaje };
+    const creada = await this.comun.cargar(id);
+    await this.comun.notificarDocente(
+      dto.docenteId,
+      "Observación de aula programada",
+      mensajeAvisoProgramada(
+        dto.fecha,
+        r.bloque.horaInicio,
+        creada.cursoNombre,
+        creada.seccionNombre,
+        creada.observadorNombre,
+      ),
+      id,
+    );
+    return { observacion: creada, mensaje };
   }
 
   async reprogramar(id: string, dto: ReprogramarObservacionDto, actor: ActorObservacion) {

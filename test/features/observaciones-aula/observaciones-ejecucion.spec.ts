@@ -406,7 +406,10 @@ describe("RF-023 V1: notas, calificación, retroalimentación y seguimiento (HU2
         "Retroalimentación registrada. El docente ya puede ver su observación.",
       );
       expect(notificaciones.enviar).toHaveBeenCalledWith(
-        expect.objectContaining({ usuarioId: "u-doc" }),
+        expect.objectContaining({
+          usuarioId: "u-doc",
+          enlaceUrl: expect.stringMatching(/\/obs-1$/) as string,
+        }),
       );
     });
 
