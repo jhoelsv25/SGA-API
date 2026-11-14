@@ -11,6 +11,8 @@ export interface DatosCarnePdf {
   tipoRol: string;
   codigoCredencial: string;
   codigoInstitucional?: string | null;
+  gradoNombre?: string | null;
+  seccionNombre?: string | null;
   emitidaEn: string;
   institucion: {
     nombre: string;
@@ -241,9 +243,21 @@ function dibujarCarneEnDoc(
       .fillColor(COLOR_TEXT_MUTED)
       .text(labelId, dataX, curY, { continued: true });
     doc.font("Helvetica").fillColor(COLOR_TEXT_MAIN).text(datos.codigoInstitucional);
-    curY = doc.y + 2.5;
+    curY = doc.y + 1.5;
   } else {
-    curY = doc.y + 3;
+    curY = doc.y + 2;
+  }
+
+  if (datos.gradoNombre && datos.seccionNombre) {
+    doc
+      .fontSize(5.5)
+      .font("Helvetica-Bold")
+      .fillColor(COLOR_PRIMARY)
+      .text(`${datos.gradoNombre} · Secc. ${datos.seccionNombre}`, dataX, curY, {
+        width: dataWidth,
+        ellipsis: true,
+      });
+    curY = doc.y + 2;
   }
 
   // Código de Marcación

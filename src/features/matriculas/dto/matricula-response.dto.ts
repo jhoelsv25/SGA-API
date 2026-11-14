@@ -23,6 +23,29 @@ export class MatriculaEstudianteItemDto {
   estado!: string;
 }
 
+export class ApoderadoMatriculaItemDto {
+  @ApiProperty()
+  id!: string;
+
+  @ApiProperty({ example: "Juan Pérez Quispe" })
+  nombreCompleto!: string;
+
+  @ApiProperty({ example: "dni" })
+  tipoDocumento!: string;
+
+  @ApiProperty({ example: "40123456" })
+  numeroDocumento!: string;
+
+  @ApiProperty({ example: "padre" })
+  parentesco!: string;
+
+  @ApiPropertyOptional({ example: "987654321", nullable: true })
+  telefono?: string | null;
+
+  @ApiProperty({ example: true })
+  esPrincipal!: boolean;
+}
+
 export class MatriculaResponseDto {
   @ApiProperty({ example: "550e8400-e29b-41d4-a716-446655440000" })
   id!: string;
@@ -80,6 +103,9 @@ export class MatriculaResponseDto {
 
   @ApiProperty({ type: MatriculaEstudianteItemDto })
   estudiante!: MatriculaEstudianteItemDto;
+
+  @ApiPropertyOptional({ type: [ApoderadoMatriculaItemDto] })
+  apoderados?: ApoderadoMatriculaItemDto[];
 
   @ApiProperty()
   creadoEn!: string;

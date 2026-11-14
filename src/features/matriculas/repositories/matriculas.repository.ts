@@ -1,9 +1,10 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, count, eq, isNull, sql } from "drizzle-orm";
+import { and, count, desc, eq, isNull, sql } from "drizzle-orm";
 
 import { Database, DRIZZLE } from "../../../core/database";
 import {
   aniosAcademicos,
+  apoderados,
   asistenciasEstudiante,
   credenciales,
   entregasTarea,
@@ -72,7 +73,41 @@ export class MatriculasRepository {
 
     if (!row) return null;
 
-    return this.mapToResponseDto(row);
+    const apoderadosRows = await this.db
+      .select({
+        id: apoderados.id,
+        nombres: personas.nombres,
+        apellidoPaterno: personas.apellidoPaterno,
+        apellidoMaterno: personas.apellidoMaterno,
+        tipoDocumento: personas.tipoDocumento,
+        numeroDocumento: personas.numeroDocumento,
+        telefono: personas.telefono,
+        parentesco: estudianteApoderados.parentesco,
+        esPrincipal: estudianteApoderados.esPrincipal,
+      })
+      .from(estudianteApoderados)
+      .innerJoin(apoderados, eq(estudianteApoderados.apoderadoId, apoderados.id))
+      .innerJoin(personas, eq(apoderados.personaId, personas.id))
+      .where(
+        and(
+          eq(estudianteApoderados.estudianteId, row.estudianteId),
+          isNull(apoderados.eliminadoEn),
+        ),
+      )
+      .orderBy(desc(estudianteApoderados.esPrincipal));
+
+    return {
+      ...this.mapToResponseDto(row),
+      apoderados: apoderadosRows.map((a) => ({
+        id: a.id,
+        nombreCompleto: [a.apellidoPaterno, a.apellidoMaterno, a.nombres].filter(Boolean).join(" "),
+        tipoDocumento: a.tipoDocumento,
+        numeroDocumento: a.numeroDocumento,
+        parentesco: a.parentesco,
+        telefono: a.telefono ?? null,
+        esPrincipal: a.esPrincipal,
+      })),
+    };
   }
 
   async findMatriculaByEstudianteYAnio(

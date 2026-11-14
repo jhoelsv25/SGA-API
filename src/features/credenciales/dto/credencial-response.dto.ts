@@ -89,6 +89,18 @@ export class CarneDatosDto {
   })
   codigoInstitucional?: string | null;
 
+  @ApiPropertyOptional({
+    description: "Grado escolar actual del estudiante (si aplica)",
+    example: "1.° de secundaria",
+  })
+  gradoNombre?: string | null;
+
+  @ApiPropertyOptional({
+    description: "Sección actual del estudiante (si aplica)",
+    example: "A",
+  })
+  seccionNombre?: string | null;
+
   @ApiProperty({ description: "Fecha de emisión", example: "2026-10-09" })
   emitidaEn: string;
 

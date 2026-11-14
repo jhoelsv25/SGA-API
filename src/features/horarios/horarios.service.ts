@@ -574,14 +574,16 @@ export class HorariosService {
     usuario: UsuarioConsultaEstudiante,
   ): Promise<HorarioEstudianteResponseDto> {
     const rol = (usuario.role ?? usuario.rol ?? "").trim().toLowerCase();
+    let idConsulta = estudianteId;
 
     if (rol === "estudiante") {
       const estudiantePersonaId = usuario.personaId ?? usuario.id;
-      if (estudiantePersonaId !== estudianteId) {
+      if (estudiantePersonaId !== estudianteId && usuario.id !== estudianteId) {
         throw new ForbiddenException(
           "No tiene permiso para consultar el horario de otro estudiante.",
         );
       }
+      idConsulta = estudiantePersonaId;
     } else if (rol === "apoderado") {
       const apoderadoPersonaId = usuario.personaId ?? usuario.id;
       const esVinculado = await this.horariosRepo.esApoderadoDeEstudiante(
@@ -597,7 +599,7 @@ export class HorariosService {
 
     const anio = await this.resolverAnio(false);
 
-    const matricula = await this.horariosRepo.matriculaEstudiante(anio.id, estudianteId);
+    const matricula = await this.horariosRepo.matriculaEstudiante(anio.id, idConsulta);
     if (!matricula || matricula.estado !== "matriculado") {
       throw new NotFoundException(
         "El estudiante no cuenta con matrícula activa en el año académico.",

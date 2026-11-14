@@ -1,7 +1,8 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { Database, DRIZZLE } from "../../../core/database";
 import {
+  aniosAcademicos,
   credenciales,
   docentes,
   estudiantes,
@@ -83,10 +84,33 @@ export class CredencialesRepository {
 
     // Verificar si es estudiante
     const estRows = await this.db
-      .select({ codigoSiagie: estudiantes.codigo })
+      .select({ id: estudiantes.id, codigoSiagie: estudiantes.codigo })
       .from(estudiantes)
       .where(and(eq(estudiantes.personaId, personaId), eq(estudiantes.estado, "activo")))
       .limit(1);
+
+    let gradoNombre: string | null = null;
+    let seccionNombre: string | null = null;
+    if (estRows.length > 0) {
+      const matRows = await this.db
+        .select({
+          gradoNombre: grados.nombre,
+          seccionNombre: secciones.nombre,
+        })
+        .from(matriculas)
+        .innerJoin(secciones, eq(matriculas.seccionId, secciones.id))
+        .innerJoin(grados, eq(secciones.gradoId, grados.id))
+        .innerJoin(aniosAcademicos, eq(matriculas.anioAcademicoId, aniosAcademicos.id))
+        .where(
+          and(eq(matriculas.estudianteId, estRows[0].id), eq(matriculas.estado, "matriculado")),
+        )
+        .orderBy(desc(aniosAcademicos.anio))
+        .limit(1);
+      if (matRows.length > 0) {
+        gradoNombre = matRows[0].gradoNombre;
+        seccionNombre = matRows[0].seccionNombre;
+      }
+    }
 
     // Verificar si es docente
     const docRows = await this.db
@@ -131,6 +155,8 @@ export class CredencialesRepository {
       tipoRol,
       codigoCredencial: cred.codigo,
       codigoInstitucional,
+      gradoNombre,
+      seccionNombre,
       emitidaEn: cred.emitidaEn,
       institucion: {
         nombre: inst?.nombre || "I.E. De Mujeres Nuestra Señora del Carmen",
