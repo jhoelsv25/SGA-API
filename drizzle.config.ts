@@ -1,7 +1,11 @@
 import { defineConfig } from "drizzle-kit";
 
 // drizzle-kit no carga .env por sí mismo (Node 24 lo trae nativo)
-process.loadEnvFile();
+try {
+  process.loadEnvFile();
+} catch {
+  // En Docker/producción las variables ya vienen en el entorno (no hay .env)
+}
 
 export default defineConfig({
   dialect: "postgresql",
