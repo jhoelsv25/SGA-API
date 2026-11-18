@@ -12,16 +12,19 @@ import helmet from "helmet";
 import { WinstonModule } from "nest-winston";
 import { AppModule } from "./app.module";
 import { GlobalHttpExceptionFilter, LoggingInterceptor } from "./common";
-import { crearCsrfUtils, getCorsConfig, getWinstonLoggerConfig, setupSwagger } from "./config";
+import {
+  crearCsrfUtils,
+  crearMiddlewareUploads,
+  getCorsConfig,
+  getWinstonLoggerConfig,
+  setupSwagger,
+} from "./config";
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: WinstonModule.createLogger(getWinstonLoggerConfig()),
   });
   const configService = app.get(ConfigService);
-
-  // Servir archivos estáticos subidos (/uploads)
-  app.useStaticAssets(join(process.cwd(), "uploads"), { prefix: "/uploads/" });
 
   // Compresión de respuestas HTTP (gzip)
   app.use(compression());
@@ -31,6 +34,12 @@ async function bootstrap() {
 
   // Parser de cookies (para HttpOnly cookies de autenticación)
   app.use(cookieParser());
+
+  // Proteger archivos privados en /uploads/ (solo /uploads/logos/ es público)
+  app.use(crearMiddlewareUploads(configService));
+
+  // Servir archivos estáticos subidos (/uploads)
+  app.useStaticAssets(join(process.cwd(), "uploads"), { prefix: "/uploads/" });
 
   // Protección CSRF (Double Submit Cookie) para peticiones con cookie de sesión
   const { doubleCsrfProtection } = crearCsrfUtils(configService);
