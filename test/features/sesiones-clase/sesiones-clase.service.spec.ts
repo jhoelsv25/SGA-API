@@ -86,6 +86,8 @@ describe("RF-011: Registro de sesión de clase", () => {
       firmarIngreso: jest.fn().mockResolvedValue(true),
       firmarSalida: jest.fn().mockResolvedValue(true),
       sesionesDeDocente: jest.fn().mockResolvedValue([]),
+      ultimosTemasDocente: jest.fn().mockResolvedValue([]),
+      cursoSeccionDeSesion: jest.fn().mockResolvedValue("cs-1"),
       sesionesDelDia: jest.fn().mockResolvedValue([]),
       bloquesDelDia: jest.fn().mockResolvedValue([]),
       insertarSesiones: jest.fn().mockResolvedValue(0),
@@ -784,14 +786,28 @@ describe("RF-011: Registro de sesión de clase", () => {
   });
 
   describe("Firma web del docente (header)", () => {
-    it("miJornadaHoy devuelve sesiones de hoy con destacadaId y minutosAntes", async () => {
+    it("miJornadaHoy devuelve sesiones de hoy con destacadaId, minutosAntes y temasRecientes", async () => {
       repo.sesionesDeDocente!.mockResolvedValue([sesion()]);
+      repo.ultimosTemasDocente!.mockResolvedValue([
+        {
+          cursoNombre: "Matemática",
+          seccionNombre: "5.° A",
+          temas: ["Ecuaciones cuadráticas"],
+        },
+      ]);
       const r = await service.miJornadaHoy(docenteUsuario);
       expect(r.fecha).toBe(HOY);
       expect(r.destacadaId).toBe("ses-1");
       expect(r.minutosAntes).toBe(15);
       expect(r.firmaWebHabilitada).toBe(true);
       expect(r.sesiones).toHaveLength(1);
+      expect(r.temasRecientes).toEqual([
+        {
+          cursoNombre: "Matemática",
+          seccionNombre: "5.° A",
+          temas: ["Ecuaciones cuadráticas"],
+        },
+      ]);
     });
 
     it("permite firmar ingreso y salida desde la web sin equipoId", async () => {
@@ -819,6 +835,128 @@ describe("RF-011: Registro de sesión de clase", () => {
         estado: "cumplida",
         equipoId: null,
       });
+    });
+
+    it("crea borrador en Aula Virtual al firmar ingreso si crearEnAulaVirtual es true", async () => {
+      const aulaVirtualMock = {
+        crearUnidad: jest.fn().mockResolvedValue({ id: "uni-1" }),
+      };
+      const iaMock = {
+        estaHabilitada: jest.fn().mockReturnValue(true),
+        generarEstructurado: jest.fn().mockResolvedValue({
+          datos: {
+            titulo: "Ecuaciones cuadráticas",
+            descripcion: "Resolver ecuaciones de segundo grado.",
+          },
+          textoCrudo: "{}",
+          modelo: "mistral/mistral-small-latest",
+          proveedor: "gateway",
+        }),
+      };
+      anios.anioVigente!.mockResolvedValue({
+        id: "anio",
+        estado: "en_curso",
+        bimestres: [
+          {
+            id: "bim-1",
+            fechaInicio: "2028-05-10",
+            fechaFin: "2028-07-16",
+          },
+        ],
+      });
+
+      const servicioConAula = new SesionesClaseService(
+        repo as unknown as SesionesClaseRepository,
+        equipos as unknown as EquiposService,
+        marcaciones as unknown as MarcacionesService,
+        anios as unknown as AniosAcademicosService,
+        calendario as unknown as CalendarioService,
+        audit as unknown as AuditService,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        aulaVirtualMock as never,
+        iaMock as never,
+      );
+
+      const ingreso = await servicioConAula.firmarIngresoWeb(
+        "ses-1",
+        { tema: "Ecuaciones cuadráticas", crearEnAulaVirtual: true },
+        docenteUsuario,
+        "127.0.0.1",
+      );
+
+      expect(ingreso.aulaVirtualCreada).toBe(true);
+      expect(aulaVirtualMock.crearUnidad).toHaveBeenCalledWith(
+        "cs-1",
+        {
+          titulo: "Ecuaciones cuadráticas",
+          descripcion: "Resolver ecuaciones de segundo grado.",
+          periodoId: "bim-1",
+          fechaInicio: "2028-05-10",
+          fechaFin: "2028-07-16",
+          publicada: false,
+        },
+        docenteUsuario,
+        "127.0.0.1",
+      );
+    });
+
+    it("sugerirTema devuelve sugerencias de IA cuando IaService está habilitado y hace respaldo sin IA", async () => {
+      repo.ultimosTemasDocente!.mockResolvedValue([
+        {
+          cursoNombre: "Matemática",
+          seccionNombre: "5.° A",
+          temas: ["Factorización"],
+        },
+      ]);
+
+      const sinIa = await service.sugerirTema(
+        "ses-1",
+        { borrador: "ec cuadraticas" },
+        docenteUsuario,
+      );
+      expect(sinIa.sugerencias).toEqual(["ec cuadraticas", "Factorización"]);
+
+      const iaMock = {
+        estaHabilitada: jest.fn().mockReturnValue(true),
+        generarEstructurado: jest.fn().mockResolvedValue({
+          datos: {
+            sugerencias: [
+              "Resolución de ecuaciones cuadráticas",
+              "Ecuaciones de segundo grado por factorización",
+              "Fórmula general en ecuaciones cuadráticas",
+            ],
+          },
+          textoCrudo: "{}",
+          modelo: "mistral/mistral-small-latest",
+          proveedor: "gateway",
+        }),
+      };
+
+      const servicioConIa = new SesionesClaseService(
+        repo as unknown as SesionesClaseRepository,
+        equipos as unknown as EquiposService,
+        marcaciones as unknown as MarcacionesService,
+        anios as unknown as AniosAcademicosService,
+        calendario as unknown as CalendarioService,
+        audit as unknown as AuditService,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        iaMock as never,
+      );
+
+      const conIa = await servicioConIa.sugerirTema(
+        "ses-1",
+        { borrador: "ec cuadraticas" },
+        docenteUsuario,
+      );
+      expect(conIa.sugerencias).toHaveLength(3);
+      expect(conIa.sugerencias[0]).toBe("Resolución de ecuaciones cuadráticas");
     });
 
     it("bloquea la firma web si el usuario está en vista simulada", async () => {

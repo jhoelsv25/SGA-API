@@ -1,4 +1,9 @@
-import { Inject, Injectable, InternalServerErrorException } from "@nestjs/common";
+import {
+  ConflictException,
+  Inject,
+  Injectable,
+  InternalServerErrorException,
+} from "@nestjs/common";
 import { and, asc, eq, inArray, ne, or, sql } from "drizzle-orm";
 import { Database, DRIZZLE } from "../../../core/database";
 import {
@@ -388,6 +393,49 @@ export class HorariosRepository implements IHorariosRepository {
       );
     }
     return bloque;
+  }
+
+  async crearLote(
+    seccionId: string,
+    bloques: CreateBloqueData[],
+    reemplazarExistentes: boolean,
+  ): Promise<BloqueHorarioResponseDto[]> {
+    await this.db.transaction(async (tx) => {
+      if (reemplazarExistentes) {
+        const existentes = await tx
+          .select({ id: horarios.id })
+          .from(horarios)
+          .where(eq(horarios.seccionId, seccionId));
+        if (existentes.length > 0) {
+          const ids = existentes.map((e) => e.id);
+          const [conSesion] = await tx
+            .select({ id: sesionesClase.id })
+            .from(sesionesClase)
+            .where(inArray(sesionesClase.horarioId, ids))
+            .limit(1);
+          if (conSesion) {
+            throw new ConflictException(
+              "No se puede reemplazar el horario porque ya existen sesiones de clase registradas.",
+            );
+          }
+          await tx.delete(horarios).where(eq(horarios.seccionId, seccionId));
+        }
+      }
+
+      await tx.insert(horarios).values(
+        bloques.map((data) => ({
+          seccionId: data.seccionId,
+          cursoSeccionId: data.tipoBloque === "receso" ? null : (data.cursoSeccionId ?? null),
+          diaSemana: data.diaSemana,
+          horaInicio: data.horaInicio,
+          horaFin: data.horaFin,
+          tipoBloque: data.tipoBloque,
+          aula: data.aula ?? null,
+        })),
+      );
+    });
+
+    return this.findBySeccion(seccionId);
   }
 
   async update(id: string, data: UpdateBloqueData): Promise<BloqueHorarioResponseDto> {

@@ -4,6 +4,7 @@ import { AuditService } from "../../common/services/audit.service";
 import { QUEUES } from "../../core/queues/queues.constants";
 import { QueuesModule } from "../../core/queues/queues.module";
 import { AnioEscolarModule } from "../anio-escolar/anio-escolar.module";
+import { AulaVirtualModule } from "../aula-virtual/aula-virtual.module";
 import { CalendarioModule } from "../calendario/calendario.module";
 import { EquiposModule } from "../equipos/equipos.module";
 import { MarcacionesModule } from "../marcaciones/marcaciones.module";
@@ -22,6 +23,7 @@ import { SesionesClaseService } from "./sesiones-clase.service";
     EquiposModule,
     MarcacionesModule,
     AnioEscolarModule,
+    AulaVirtualModule,
     CalendarioModule,
     ConsolidadoDocenteModule,
     NotificacionesModule,

@@ -14,9 +14,11 @@ import {
 import { Queue } from "bullmq";
 import { MENU_JUSTIFICACIONES_SESION, MENU_SESIONES_HOY } from "../../common/constants";
 import { AuditService } from "../../common/services/audit.service";
+import { IaService } from "../../core/ia/ia.service";
 import { QUEUES } from "../../core/queues/queues.constants";
 import type { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface";
 import { AniosAcademicosService } from "../anio-escolar/anios.service";
+import { AulaVirtualService } from "../aula-virtual/aula-virtual.service";
 import { CalendarioService } from "../calendario/calendario.service";
 import { ConsolidadoDocenteService } from "../consolidado-docente/consolidado-docente.service";
 import { EquiposService } from "../equipos/equipos.service";
@@ -77,8 +79,16 @@ import type {
   SesionResponseDto,
   SesionesKioskoResponseDto,
   SolicitarJustificacionDto,
+  SugerirTemaDto,
+  SugerirTemaResponseDto,
   TemaSesionDto,
 } from "./dto";
+import {
+  construirPromptSugerirTema,
+  construirPromptUnidadAulaVirtual,
+  INSTRUCCION_SISTEMA_SUGERIR_TEMA,
+  INSTRUCCION_SISTEMA_UNIDAD_AULA_VIRTUAL,
+} from "./prompts";
 import { SesionesClaseRepository } from "./repositories";
 import {
   apellidoDeNombre,
@@ -131,6 +141,10 @@ export class SesionesClaseService implements OnModuleInit {
     private readonly notificacionesService?: NotificacionesService,
     @Optional()
     private readonly variablesService?: VariablesSistemaService,
+    @Optional()
+    private readonly aulaVirtualService?: AulaVirtualService,
+    @Optional()
+    private readonly iaService?: IaService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -604,6 +618,7 @@ export class SesionesClaseService implements OnModuleInit {
     const { fecha, hora } = ahoraEnColegio();
     await this.asegurarGeneracion(fecha);
     const sesiones = await this.repository.sesionesDeDocente(docenteId, fecha, fecha);
+    const temasRecientes = await this.repository.ultimosTemasDocente(docenteId, fecha);
     const { minutosAntes } = await this.configuracion();
     const firmaWebHabilitada = await this.firmaWebHabilitada();
     return {
@@ -613,6 +628,7 @@ export class SesionesClaseService implements OnModuleInit {
       minutosAntes,
       firmaWebHabilitada,
       sesiones,
+      temasRecientes,
     };
   }
 
@@ -629,7 +645,7 @@ export class SesionesClaseService implements OnModuleInit {
       throw new ForbiddenException(MENSAJES_SESION.FIRMA_WEB_DESHABILITADA);
     }
     const docenteId = await this.docenteDelUsuario(usuario);
-    return this.ejecutarFirmaIngreso({
+    const respuesta = await this.ejecutarFirmaIngreso({
       sesionId,
       docenteId,
       temaRaw: dto.tema,
@@ -638,6 +654,136 @@ export class SesionesClaseService implements OnModuleInit {
       canal: "web",
       ip,
     });
+    if (dto.crearEnAulaVirtual) {
+      const aulaVirtualCreada = await this.crearBorradorEnAulaVirtual(
+        respuesta.sesion,
+        dto.tema.trim(),
+        usuario,
+        ip,
+      );
+      return { ...respuesta, aulaVirtualCreada };
+    }
+    return respuesta;
+  }
+
+  private async crearBorradorEnAulaVirtual(
+    sesion: SesionResponseDto,
+    tema: string,
+    usuario: AuthenticatedUser,
+    ip?: string,
+  ): Promise<boolean> {
+    if (!this.aulaVirtualService) return false;
+    try {
+      const cursoSeccionId = await this.repository.cursoSeccionDeSesion(sesion.id);
+      if (!cursoSeccionId) return false;
+      const anio = await this.aniosService.anioVigente();
+      if (!anio) return false;
+      const bimestre =
+        anio.bimestres.find(
+          (b) =>
+            b.fechaInicio.slice(0, 10) <= sesion.fecha && sesion.fecha <= b.fechaFin.slice(0, 10),
+        ) ?? anio.bimestres[0];
+      if (!bimestre) return false;
+
+      const contenido = await this.construirContenidoUnidad(sesion, tema);
+      await this.aulaVirtualService.crearUnidad(
+        cursoSeccionId,
+        {
+          titulo: contenido.titulo.slice(0, 150),
+          descripcion: contenido.descripcion.slice(0, 1000),
+          periodoId: bimestre.id,
+          fechaInicio: bimestre.fechaInicio.slice(0, 10),
+          fechaFin: bimestre.fechaFin.slice(0, 10),
+          publicada: false,
+        },
+        usuario,
+        ip,
+      );
+      return true;
+    } catch (error) {
+      this.logger.warn(
+        `No se pudo crear borrador en Aula Virtual para sesión ${sesion.id}: ${(error as Error).message}`,
+      );
+      return false;
+    }
+  }
+
+  private async construirContenidoUnidad(
+    sesion: SesionResponseDto,
+    tema: string,
+  ): Promise<{ titulo: string; descripcion: string }> {
+    const respaldo = {
+      titulo: tema.slice(0, 150),
+      descripcion: `Sesión de clase del ${sesion.fecha}: ${tema}`,
+    };
+    if (!this.iaService?.estaHabilitada()) return respaldo;
+    try {
+      const resultado = await this.iaService.generarEstructurado<{
+        titulo: string;
+        descripcion: string;
+      }>({
+        instruccionSistema: INSTRUCCION_SISTEMA_UNIDAD_AULA_VIRTUAL,
+        prompt: construirPromptUnidadAulaVirtual({
+          cursoNombre: sesion.cursoNombre,
+          seccionNombre: sesion.seccionNombre,
+          tema,
+        }),
+      });
+      return {
+        titulo: resultado.datos.titulo?.trim() || respaldo.titulo,
+        descripcion: resultado.datos.descripcion?.trim() || respaldo.descripcion,
+      };
+    } catch {
+      return respaldo;
+    }
+  }
+
+  async sugerirTema(
+    sesionId: string,
+    dto: SugerirTemaDto,
+    usuario: AuthenticatedUser,
+  ): Promise<SugerirTemaResponseDto> {
+    const docenteId = await this.docenteDelUsuario(usuario);
+    const sesion = await this.sesionDelDocente(sesionId, docenteId);
+    const recientes = await this.repository.ultimosTemasDocente(docenteId, sesion.fecha);
+    const delCurso =
+      recientes.find(
+        (r) => r.cursoNombre === sesion.cursoNombre && r.seccionNombre === sesion.seccionNombre,
+      )?.temas ?? [];
+
+    const borrador = dto.borrador?.trim();
+    if (!this.iaService?.estaHabilitada()) {
+      return {
+        sugerencias: borrador ? [borrador, ...delCurso].slice(0, 3) : delCurso.slice(0, 3),
+      };
+    }
+
+    try {
+      const respuesta = await this.iaService.generarEstructurado<{
+        sugerencias: string[];
+      }>({
+        instruccionSistema: INSTRUCCION_SISTEMA_SUGERIR_TEMA,
+        prompt: construirPromptSugerirTema({
+          cursoNombre: sesion.cursoNombre,
+          seccionNombre: sesion.seccionNombre,
+          temasRecientes: delCurso,
+          borrador,
+        }),
+      });
+
+      const sugerencias = (respuesta.datos.sugerencias ?? [])
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0)
+        .slice(0, 3);
+
+      return {
+        sugerencias: sugerencias.length > 0 ? sugerencias : delCurso.slice(0, 3),
+      };
+    } catch {
+      return {
+        sugerencias: borrador ? [borrador, ...delCurso].slice(0, 3) : delCurso.slice(0, 3),
+      };
+    }
   }
 
   async firmarSalidaWeb(

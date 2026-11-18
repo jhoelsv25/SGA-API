@@ -1,4 +1,5 @@
 export * from "./create-bloque-horario.dto";
+export * from "./crear-bloques-lote.dto";
 export * from "./update-bloque-horario.dto";
 export * from "./bloque-horario-response.dto";
 export * from "./resumen-horas-curso.dto";
@@ -9,3 +10,4 @@ export * from "./copiar-horario-response.dto";
 export * from "./bloque-docente-response.dto";
 export * from "./mi-horario-response.dto";
 export * from "./horario-estudiante-response.dto";
+export * from "./proponer-horario-ia.dto";

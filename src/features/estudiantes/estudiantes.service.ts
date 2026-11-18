@@ -4,9 +4,13 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  Optional,
+  ServiceUnavailableException,
 } from "@nestjs/common";
 import { AuditService } from "../../common/services/audit.service";
 import { hashPassword, hashSha256 } from "../../common/utils";
+import type { MimeTypeOcr } from "../../core/ocr/constants";
+import { OcrService } from "../../core/ocr/ocr.service";
 import { CargosRepository } from "../cargos/repositories/cargos.repository";
 import { DocentesRepository } from "../docentes/repositories/docentes.repository";
 import { validarFechasDocente } from "../docentes/utils";
@@ -26,9 +30,11 @@ import type {
   CreateEstudianteResponseDto,
   EstudianteQueryDto,
   EstudianteResponseDto,
+  OcrDocumentoEstudianteResponseDto,
   PaginatedEstudiantesResponseDto,
   UpdateEstudianteDto,
 } from "./dto";
+import { INSTRUCCION_OCR_DOCUMENTO_ESTUDIANTE } from "./prompts";
 import { EstudiantesRepository } from "./repositories/estudiantes.repository";
 import {
   generateCodigoCredencial,
@@ -48,7 +54,43 @@ export class EstudiantesService {
     private readonly rolesRepository: RolesRepository,
     private readonly auditService: AuditService,
     private readonly docentesRepository: DocentesRepository,
+    @Optional() private readonly ocrService?: OcrService,
   ) {}
+
+  async extraerDatosDocumentoOcr(
+    archivo: Express.Multer.File | undefined,
+  ): Promise<OcrDocumentoEstudianteResponseDto> {
+    if (!archivo) {
+      throw new BadRequestException("Debe adjuntar una imagen o PDF del documento.");
+    }
+    if (!this.ocrService) {
+      throw new ServiceUnavailableException("El servicio OCR no está disponible.");
+    }
+    const resultado = await this.ocrService.extraerDatos<{
+      dni?: string | null;
+      apellidoPaterno?: string | null;
+      apellidoMaterno?: string | null;
+      nombres?: string | null;
+      fechaNacimiento?: string | null;
+      sexo?: "M" | "F" | null;
+    }>({
+      archivo: {
+        contenido: archivo.buffer,
+        mimeType: archivo.mimetype as MimeTypeOcr,
+      },
+      instruccion: INSTRUCCION_OCR_DOCUMENTO_ESTUDIANTE,
+    });
+
+    return {
+      dni: resultado.datos.dni ?? null,
+      apellidoPaterno: resultado.datos.apellidoPaterno ?? null,
+      apellidoMaterno: resultado.datos.apellidoMaterno ?? null,
+      nombres: resultado.datos.nombres ?? null,
+      fechaNacimiento: resultado.datos.fechaNacimiento ?? null,
+      sexo: resultado.datos.sexo ?? null,
+      estrategia: resultado.estrategia,
+    };
+  }
 
   /**
    * Una persona solo puede tener una ficha académica vigente (docente o estudiante).

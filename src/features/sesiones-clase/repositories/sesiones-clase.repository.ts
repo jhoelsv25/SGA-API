@@ -41,6 +41,7 @@ import type {
   ISesionesClaseRepository,
   MinutosPerdidosDocente,
   ResultadoCierre,
+  TemaRecienteCurso,
 } from "../interfaces";
 import type { BloqueDelDia, SesionPlanificada } from "../utils";
 
@@ -272,6 +273,65 @@ export class SesionesClaseRepository implements ISesionesClaseRepository {
       )
       .orderBy(...this.ordenDelDia());
     return filas.map((f) => this.mapear(f));
+  }
+
+  async ultimosTemasDocente(
+    docenteId: string,
+    antesDeFecha: string,
+    limite = 30,
+  ): Promise<TemaRecienteCurso[]> {
+    const filas = await this.db
+      .select({
+        cursoNombre: cursos.nombre,
+        seccionNombre: sql<string>`${grados.numero} || '.° ' || ${secciones.nombre}`,
+        tema: sesionesClase.tema,
+      })
+      .from(sesionesClase)
+      .innerJoin(horarios, eq(horarios.id, sesionesClase.horarioId))
+      .innerJoin(secciones, eq(secciones.id, horarios.seccionId))
+      .innerJoin(grados, eq(grados.id, secciones.gradoId))
+      .innerJoin(cursosSeccion, eq(cursosSeccion.id, horarios.cursoSeccionId))
+      .innerJoin(cursos, eq(cursos.id, cursosSeccion.cursoId))
+      .where(
+        and(
+          eq(sesionesClase.docenteId, docenteId),
+          sql`${sesionesClase.fecha} < ${antesDeFecha}`,
+          isNotNull(sesionesClase.tema),
+          sql`BTRIM(${sesionesClase.tema}) <> ''`,
+        ),
+      )
+      .orderBy(desc(sesionesClase.fecha), desc(sesionesClase.horaInicioPlan))
+      .limit(limite);
+
+    const agrupados = new Map<string, TemaRecienteCurso>();
+    for (const fila of filas) {
+      const tema = fila.tema?.trim();
+      if (!tema) continue;
+      const clave = `${fila.cursoNombre}::${fila.seccionNombre}`;
+      let grupo = agrupados.get(clave);
+      if (!grupo) {
+        grupo = {
+          cursoNombre: fila.cursoNombre,
+          seccionNombre: fila.seccionNombre,
+          temas: [],
+        };
+        agrupados.set(clave, grupo);
+      }
+      if (grupo.temas.length < 5 && !grupo.temas.includes(tema)) {
+        grupo.temas.push(tema);
+      }
+    }
+    return [...agrupados.values()];
+  }
+
+  async cursoSeccionDeSesion(sesionId: string): Promise<string | null> {
+    const [fila] = await this.db
+      .select({ cursoSeccionId: horarios.cursoSeccionId })
+      .from(sesionesClase)
+      .innerJoin(horarios, eq(horarios.id, sesionesClase.horarioId))
+      .where(eq(sesionesClase.id, sesionId))
+      .limit(1);
+    return fila?.cursoSeccionId ?? null;
   }
 
   async firmarIngreso(id: string, docenteId: string, datos: DatosFirmaIngreso): Promise<boolean> {

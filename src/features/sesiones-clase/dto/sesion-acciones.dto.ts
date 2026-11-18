@@ -27,6 +27,25 @@ export class TemaSesionDto {
   @IsNotEmpty({ message: MENSAJES_SESION.FALTA_TEMA })
   @MaxLength(500)
   tema!: string;
+
+  @ApiPropertyOptional({
+    description: "Si es true, crea una unidad en borrador en Aula Virtual con el tema",
+    default: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  crearEnAulaVirtual?: boolean;
+}
+
+export class SugerirTemaDto {
+  @ApiPropertyOptional({
+    example: "ec cuadraticas",
+    description: "Borrador corto o palabras clave del docente para pulir con IA",
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  borrador?: string;
 }
 
 export class SolicitarJustificacionDto {

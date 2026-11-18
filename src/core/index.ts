@@ -4,4 +4,6 @@ export * from "./cache";
 export * from "./queues";
 export * from "./throttler";
 export * from "./health";
+export * from "./ia";
+export * from "./ocr";
 export * from "./core.module";

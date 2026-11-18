@@ -12,8 +12,11 @@ import {
   Patch,
   Post,
   Query,
+  UploadedFile,
+  UseInterceptors,
 } from "@nestjs/common";
-import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
+import { FileInterceptor } from "@nestjs/platform-express";
+import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { ClientInfo, type ClientInfoData, CurrentUser, Roles } from "../../common/decorators";
 import type { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface";
 import { DarBajaFichaActualDto } from "../personas/dto/baja-ficha.dto";
@@ -23,6 +26,7 @@ import {
   CreateEstudianteResponseDto,
   EstudianteQueryDto,
   EstudianteResponseDto,
+  OcrDocumentoEstudianteResponseDto,
   PaginatedEstudiantesResponseDto,
   UpdateEstudianteDto,
 } from "./dto";
@@ -51,6 +55,21 @@ export class EstudiantesController {
   @ApiResponse({ status: 404, description: "Estudiante no encontrado" })
   async findById(@Param("id", ParseUUIDPipe) id: string): Promise<EstudianteResponseDto> {
     return this.estudiantesService.findById(id);
+  }
+
+  @Post("ocr-documento")
+  @Roles("Administrador", "Secretaria")
+  @HttpCode(HttpStatus.OK)
+  @UseInterceptors(FileInterceptor("archivo", { limits: { fileSize: 10 * 1024 * 1024 } }))
+  @ApiConsumes("multipart/form-data")
+  @ApiOperation({
+    summary: "Extraer datos de DNI o ficha de estudiante desde imagen/PDF usando OCR",
+  })
+  @ApiResponse({ status: 200, type: OcrDocumentoEstudianteResponseDto })
+  async leerDocumentoOcr(
+    @UploadedFile() archivo: Express.Multer.File | undefined,
+  ): Promise<OcrDocumentoEstudianteResponseDto> {
+    return this.estudiantesService.extraerDatosDocumentoOcr(archivo);
   }
 
   @Post()

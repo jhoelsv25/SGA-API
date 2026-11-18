@@ -34,6 +34,12 @@ export interface ResultadoCierre {
   docentesAfectados?: string[];
 }
 
+export interface TemaRecienteCurso {
+  cursoNombre: string;
+  seccionNombre: string;
+  temas: string[];
+}
+
 export interface ISesionesClaseRepository {
   bloquesDelDia(anioAcademicoId: string, diaSemana: number): Promise<BloqueDelDia[]>;
   insertarSesiones(fecha: string, planes: SesionPlanificada[]): Promise<number>;
@@ -45,6 +51,12 @@ export interface ISesionesClaseRepository {
   findById(id: string): Promise<SesionResponseDto | null>;
   sesionesDelDia(fecha: string): Promise<SesionResponseDto[]>;
   sesionesDeDocente(docenteId: string, desde: string, hasta: string): Promise<SesionResponseDto[]>;
+  ultimosTemasDocente(
+    docenteId: string,
+    antesDeFecha: string,
+    limite?: number,
+  ): Promise<TemaRecienteCurso[]>;
+  cursoSeccionDeSesion(sesionId: string): Promise<string | null>;
   firmarIngreso(id: string, docenteId: string, datos: DatosFirmaIngreso): Promise<boolean>;
   firmarSalida(id: string, docenteId: string, datos: DatosFirmaSalida): Promise<boolean>;
   actualizarTema(id: string, tema: string): Promise<void>;

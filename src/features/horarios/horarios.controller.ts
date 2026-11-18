@@ -29,12 +29,16 @@ import type { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface
 import { MENSAJES_HORARIOS, REGEX_HORA_HH_MM } from "./constants";
 import {
   BloqueMutacionResponseDto,
+  BloquesLoteResponseDto,
   CopiarHorarioResponseDto,
   CreateBloqueHorarioDto,
+  CrearBloquesLoteDto,
   GrillaPropuestaResponseDto,
   HorarioEstudianteResponseDto,
   ListarPorSeccionResponseDto,
   MiHorarioResponseDto,
+  ProponerHorarioIaDto,
+  PropuestaHorarioIaResponseDto,
   UpdateBloqueHorarioDto,
 } from "./dto";
 import { HorariosService } from "./horarios.service";
@@ -66,6 +70,26 @@ export class HorariosController {
     @ClientInfo() clientInfo: ClientInfoData,
   ): Promise<BloqueMutacionResponseDto> {
     return this.service.crearBloque(seccionId, dto, usuario.id, clientInfo.ip);
+  }
+
+  @Post("seccion/:seccionId/bloques/lote")
+  @MenuAccess(MENU_HORARIOS)
+  @ApiOperation({
+    summary: "Guardar múltiples bloques de horario en lote (ideal tras propuesta IA/drag & drop)",
+  })
+  @ApiParam({ name: "seccionId", description: "UUID de la sección escolar" })
+  @ApiResponse({
+    status: 201,
+    description: "Bloques guardados en lote exitosamente",
+    type: BloquesLoteResponseDto,
+  })
+  async crearBloquesLote(
+    @Param("seccionId", ParseUUIDPipe) seccionId: string,
+    @Body() dto: CrearBloquesLoteDto,
+    @CurrentUser() usuario: AuthenticatedUser,
+    @ClientInfo() clientInfo: ClientInfoData,
+  ): Promise<BloquesLoteResponseDto> {
+    return this.service.crearBloquesLote(seccionId, dto, usuario.id, clientInfo.ip);
   }
 
   @Patch("bloques/:id")
@@ -167,6 +191,24 @@ export class HorariosController {
       throw new BadRequestException(MENSAJES_HORARIOS.FORMATO_HORA_INVALIDO);
     }
     return this.service.proponerGrilla(seccionId, horaEntrada);
+  }
+
+  @Post("seccion/:seccionId/proponer-ia")
+  @MenuAccess(MENU_HORARIOS)
+  @ApiOperation({
+    summary: "Proponer distribución de cursos en la grilla usando IA + validador sin cruces",
+  })
+  @ApiParam({ name: "seccionId", description: "UUID de la sección escolar" })
+  @ApiResponse({
+    status: 200,
+    description: "Propuesta de horario validada sin cruces lista para ajustar y guardar",
+    type: PropuestaHorarioIaResponseDto,
+  })
+  async proponerConIa(
+    @Param("seccionId", ParseUUIDPipe) seccionId: string,
+    @Body() dto: ProponerHorarioIaDto,
+  ): Promise<PropuestaHorarioIaResponseDto> {
+    return this.service.proponerConIa(seccionId, dto);
   }
 
   @Post("seccion/:destinoId/copiar-de/:origenId")

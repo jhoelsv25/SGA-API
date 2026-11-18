@@ -92,6 +92,11 @@ export interface IHorariosRepository {
   horaEntradaEstudiantes(): Promise<string>;
   cursosSeccionPorSeccion(seccionId: string): Promise<CursoSeccionDetalle[]>;
   create(data: CreateBloqueData): Promise<BloqueHorarioResponseDto>;
+  crearLote(
+    seccionId: string,
+    bloques: CreateBloqueData[],
+    reemplazarExistentes: boolean,
+  ): Promise<BloqueHorarioResponseDto[]>;
   update(id: string, data: UpdateBloqueData): Promise<BloqueHorarioResponseDto>;
   delete(id: string): Promise<boolean>;
   tieneSesiones(id: string): Promise<boolean>;

@@ -3,6 +3,8 @@ import { AnioLectivoModule } from "../common/anio-lectivo";
 import { CacheModule } from "./cache";
 import { DatabaseModule } from "./database";
 import { HealthModule } from "./health";
+import { IaModule } from "./ia";
+import { OcrModule } from "./ocr";
 import { QueuesModule } from "./queues";
 import { RedisModule } from "./redis";
 import { AppThrottlerModule } from "./throttler";
@@ -16,6 +18,8 @@ import { AppThrottlerModule } from "./throttler";
     QueuesModule,
     AppThrottlerModule,
     HealthModule,
+    IaModule,
+    OcrModule,
   ],
   exports: [
     DatabaseModule,
@@ -24,6 +28,8 @@ import { AppThrottlerModule } from "./throttler";
     QueuesModule,
     AppThrottlerModule,
     HealthModule,
+    IaModule,
+    OcrModule,
   ],
 })
 export class CoreModule {}

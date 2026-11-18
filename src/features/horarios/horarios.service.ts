@@ -9,6 +9,7 @@ import {
 } from "@nestjs/common";
 import { AnioLectivoCls } from "../../common/anio-lectivo";
 import { AuditService } from "../../common/services/audit.service";
+import { IaService } from "../../core/ia/ia.service";
 import { AniosAcademicosService } from "../anio-escolar/anios.service";
 import { DocentesRepository } from "../docentes";
 import { SeccionesRepository } from "../secciones";
@@ -17,18 +18,29 @@ import { DIAS_SEMANA_CLASE, MENSAJES_HORARIOS, TABLA_HORARIOS } from "./constant
 import {
   BloqueHorarioResponseDto,
   BloqueMutacionResponseDto,
+  BloquesLoteResponseDto,
   ConflictoHorarioCopiaDto,
   CopiarHorarioResponseDto,
   CreateBloqueHorarioDto,
+  CrearBloquesLoteDto,
   GrillaPropuestaResponseDto,
   HorarioEstudianteResponseDto,
   ListarPorSeccionResponseDto,
   MiHorarioResponseDto,
+  ProponerHorarioIaDto,
+  PropuestaHorarioIaResponseDto,
   ResumenHorasCursoDto,
   UpdateBloqueHorarioDto,
 } from "./dto";
+import { construirPromptProponerHorario, INSTRUCCION_SISTEMA_PROPONER_HORARIO } from "./prompts";
 import { HorariosRepository } from "./repositories";
-import { generarHorarioPdfBuffer } from "./utils";
+import {
+  AsignacionIaPropuesta,
+  BloqueOcupadoDocente,
+  consolidarPropuestaHorario,
+  generarHorarioPdfBuffer,
+  NecesidadCursoHorario,
+} from "./utils";
 import {
   construirAdvertenciaHorasPlan,
   construirMensajeCruceDocente,
@@ -54,6 +66,7 @@ export class HorariosService {
     private readonly anioLectivoCls: AnioLectivoCls,
     private readonly auditService: AuditService,
     @Optional() private readonly variablesSistemaRepo?: VariablesSistemaRepository,
+    @Optional() private readonly iaService?: IaService,
   ) {}
 
   async crearBloque(
@@ -219,6 +232,120 @@ export class HorariosService {
     };
   }
 
+  async crearBloquesLote(
+    seccionId: string,
+    dto: CrearBloquesLoteDto,
+    actorId: string,
+    ip?: string,
+  ): Promise<BloquesLoteResponseDto> {
+    const anio = await this.resolverAnio(true);
+    const seccion = await this.seccionesRepo.findById(seccionId);
+    if (!seccion) {
+      throw new NotFoundException(MENSAJES_HORARIOS.SECCION_NO_ENCONTRADA);
+    }
+    this.exigirSeccionAbierta(seccion);
+
+    const cursosSeccion = await this.horariosRepo.cursosSeccionPorSeccion(seccionId);
+    const cursosIds = new Set(cursosSeccion.map((c) => c.cursoSeccionId));
+    const normalizados: Array<{
+      diaSemana: number;
+      horaInicio: string;
+      horaFin: string;
+      tipoBloque: "clase" | "receso";
+      cursoSeccionId: string | null;
+      aula: string | null;
+    }> = [];
+
+    for (const item of dto.bloques) {
+      const horaInicio = normalizarHora(item.horaInicio);
+      const horaFin = normalizarHora(item.horaFin);
+      if (convertirHoraAMinutos(horaFin) <= convertirHoraAMinutos(horaInicio)) {
+        throw new BadRequestException(MENSAJES_HORARIOS.FIN_DEBE_SER_POSTERIOR);
+      }
+      if (item.tipoBloque === "clase" && !item.cursoSeccionId) {
+        throw new BadRequestException(MENSAJES_HORARIOS.CLASE_REQUIERE_CURSO);
+      }
+
+      const cursoSeccionId = item.tipoBloque === "receso" ? null : (item.cursoSeccionId ?? null);
+      if (cursoSeccionId && !cursosIds.has(cursoSeccionId)) {
+        throw new BadRequestException(MENSAJES_HORARIOS.CLASE_REQUIERE_CURSO);
+      }
+
+      const inicioMin = convertirHoraAMinutos(horaInicio);
+      const finMin = convertirHoraAMinutos(horaFin);
+      const chocaInterno = normalizados.some(
+        (otro) =>
+          otro.diaSemana === item.diaSemana &&
+          inicioMin < convertirHoraAMinutos(otro.horaFin) &&
+          finMin > convertirHoraAMinutos(otro.horaInicio),
+      );
+      if (chocaInterno) {
+        throw new ConflictException(MENSAJES_HORARIOS.BLOQUES_SUPERPUESTOS);
+      }
+
+      if (!dto.reemplazarExistentes) {
+        const solapados = await this.horariosRepo.findSolapados(
+          seccionId,
+          item.diaSemana,
+          horaInicio,
+          horaFin,
+        );
+        if (solapados.length > 0) {
+          throw new ConflictException(MENSAJES_HORARIOS.BLOQUES_SUPERPUESTOS);
+        }
+      }
+
+      if (cursoSeccionId) {
+        const cruce = await this.horariosRepo.findCruceDocente(
+          anio.id,
+          cursoSeccionId,
+          item.diaSemana,
+          horaInicio,
+          horaFin,
+          seccionId,
+        );
+        if (cruce) {
+          throw new ConflictException(construirMensajeCruceDocente(cruce));
+        }
+      }
+
+      normalizados.push({
+        diaSemana: item.diaSemana,
+        horaInicio,
+        horaFin,
+        tipoBloque: item.tipoBloque,
+        cursoSeccionId,
+        aula: item.aula ?? null,
+      });
+    }
+
+    const bloques = await this.horariosRepo.crearLote(
+      seccionId,
+      normalizados.map((b) => ({ seccionId, ...b })),
+      Boolean(dto.reemplazarExistentes),
+    );
+
+    await this.auditService.log({
+      usuarioId: actorId,
+      accion: "crear",
+      tabla: TABLA_HORARIOS,
+      registroId: seccionId,
+      valorNuevo: {
+        seccionId,
+        totalCreados: normalizados.length,
+        reemplazarExistentes: Boolean(dto.reemplazarExistentes),
+      },
+      direccionIp: ip,
+    });
+
+    const advertencias = await this.calcularAdvertencias(seccionId);
+    return {
+      bloques,
+      totalCreados: normalizados.length,
+      advertencias,
+    };
+  }
+
   async eliminarBloque(id: string, actorId: string, ip?: string): Promise<void> {
     await this.resolverAnio(true);
 
@@ -374,6 +501,114 @@ export class HorariosService {
       horaEntrada: horaInicioBase,
       bloques,
     };
+  }
+
+  async proponerConIa(
+    seccionId: string,
+    dto: ProponerHorarioIaDto,
+  ): Promise<PropuestaHorarioIaResponseDto> {
+    const grilla = await this.proponerGrilla(seccionId, dto.horaEntrada);
+    const anio = await this.resolverAnio(false);
+    const [cursos, planPorCurso, bloquesActualesSeccion] = await Promise.all([
+      this.horariosRepo.cursosSeccionPorSeccion(seccionId),
+      this.horariosRepo.horasPlanPorCurso(seccionId),
+      this.horariosRepo.findBySeccion(seccionId),
+    ]);
+
+    const necesidades: NecesidadCursoHorario[] = cursos
+      .map((c) => ({
+        cursoSeccionId: c.cursoSeccionId,
+        cursoNombre: c.cursoNombre,
+        docenteId: c.docenteId,
+        bloquesRequeridos: Math.max(0, Math.round(planPorCurso[c.cursoId]?.horasPlan ?? 0)),
+      }))
+      .filter((n) => n.bloquesRequeridos > 0);
+
+    const idsBloquesSeccion = new Set(bloquesActualesSeccion.map((b) => b.id));
+    const docentesUnicos = [
+      ...new Set(necesidades.map((n) => n.docenteId).filter((id): id is string => Boolean(id))),
+    ];
+
+    const ocupadoPorDocente = new Map<string, BloqueOcupadoDocente[]>();
+    await Promise.all(
+      docentesUnicos.map(async (docenteId) => {
+        const bloquesDocente = await this.horariosRepo.findByDocente(anio.id, docenteId);
+        ocupadoPorDocente.set(
+          docenteId,
+          bloquesDocente
+            .filter((b) => !idsBloquesSeccion.has(b.id))
+            .map((b) => ({
+              diaSemana: b.diaSemana,
+              horaInicio: b.horaInicio,
+              horaFin: b.horaFin,
+            })),
+        );
+      }),
+    );
+
+    let asignacionesIa: AsignacionIaPropuesta[] = [];
+    let usandoIa = false;
+
+    if (this.iaService?.estaHabilitada() && necesidades.length > 0) {
+      asignacionesIa = await this.solicitarAsignacionesIa({
+        grilla: grilla.bloques,
+        necesidades,
+        ocupadoPorDocente,
+        preferencias: dto.preferencias,
+      });
+      usandoIa = asignacionesIa.length > 0;
+    }
+
+    const { bloques, advertencias } = consolidarPropuestaHorario({
+      grillaBase: grilla.bloques,
+      necesidades,
+      ocupadoPorDocente,
+      asignacionesIa,
+    });
+
+    return {
+      horaEntrada: grilla.horaEntrada,
+      bloques,
+      usandoIa,
+      advertencias,
+    };
+  }
+
+  private async solicitarAsignacionesIa(params: {
+    grilla: GrillaPropuestaResponseDto["bloques"];
+    necesidades: NecesidadCursoHorario[];
+    ocupadoPorDocente: Map<string, BloqueOcupadoDocente[]>;
+    preferencias?: string;
+  }): Promise<AsignacionIaPropuesta[]> {
+    if (!this.iaService) return [];
+    try {
+      const slotsClase = params.grilla
+        .filter((b) => b.tipoBloque === "clase")
+        .map((b) => ({ diaSemana: b.diaSemana, horaInicio: b.horaInicio, horaFin: b.horaFin }));
+
+      const resumenOcupacion = [...params.ocupadoPorDocente.entries()].map(
+        ([docenteId, bloques]) => ({
+          docenteId,
+          ocupado: bloques.map((b) => `${b.diaSemana}:${b.horaInicio}-${b.horaFin}`),
+        }),
+      );
+
+      const respuesta = await this.iaService.generarEstructurado<{
+        asignaciones: AsignacionIaPropuesta[];
+      }>({
+        instruccionSistema: INSTRUCCION_SISTEMA_PROPONER_HORARIO,
+        prompt: construirPromptProponerHorario({
+          slotsDisponibles: slotsClase,
+          cursos: params.necesidades,
+          docentesOcupados: resumenOcupacion,
+          preferencias: params.preferencias,
+        }),
+      });
+
+      return Array.isArray(respuesta.datos?.asignaciones) ? respuesta.datos.asignaciones : [];
+    } catch {
+      return [];
+    }
   }
 
   async copiar(

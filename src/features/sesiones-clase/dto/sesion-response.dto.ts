@@ -71,6 +71,21 @@ export class SesionesKioskoResponseDto {
 export class FirmaSesionResponseDto {
   @ApiProperty() mensaje!: string;
   @ApiProperty({ type: SesionResponseDto }) sesion!: SesionResponseDto;
+  @ApiPropertyOptional({
+    description: "Indica si se creó un borrador en Aula Virtual al firmar ingreso",
+  })
+  aulaVirtualCreada?: boolean;
+}
+
+export class SugerirTemaResponseDto {
+  @ApiProperty({
+    type: [String],
+    example: [
+      "Resolución de ecuaciones cuadráticas por factorización",
+      "Fórmula general en ecuaciones de segundo grado",
+    ],
+  })
+  sugerencias!: string[];
 }
 
 export class TotalesSesionesDto {
@@ -117,6 +132,16 @@ export class MotivoJustificacionDto {
   aviso!: string | null;
 }
 
+export class TemaRecienteCursoDto {
+  @ApiProperty({ example: "Matemática" }) cursoNombre!: string;
+  @ApiProperty({ example: "5.° A" }) seccionNombre!: string;
+  @ApiProperty({
+    type: [String],
+    example: ["Ecuaciones cuadráticas", "Factorización"],
+  })
+  temas!: string[];
+}
+
 export class MiJornadaHoyResponseDto {
   @ApiProperty({ example: "2026-11-12" }) fecha!: string;
   @ApiProperty() docenteNombre!: string;
@@ -124,4 +149,6 @@ export class MiJornadaHoyResponseDto {
   @ApiProperty({ example: 10 }) minutosAntes!: number;
   @ApiProperty() firmaWebHabilitada!: boolean;
   @ApiProperty({ type: [SesionResponseDto] }) sesiones!: SesionResponseDto[];
+  @ApiProperty({ type: [TemaRecienteCursoDto] })
+  temasRecientes!: TemaRecienteCursoDto[];
 }

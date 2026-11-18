@@ -52,6 +52,8 @@ import {
   SesionesKioskoResponseDto,
   SolicitarJustificacionDto,
   SolicitudJustificacionDto,
+  SugerirTemaDto,
+  SugerirTemaResponseDto,
   TemaSesionDto,
 } from "./dto";
 import { SesionesClaseService } from "./sesiones-clase.service";
@@ -225,6 +227,20 @@ export class SesionesClaseController {
     @ClientInfo() clientInfo: ClientInfoData,
   ): Promise<FirmaSesionResponseDto> {
     return this.service.firmarIngresoWeb(id, dto, usuario, clientInfo.ip);
+  }
+
+  @Post(":id/sugerir-tema")
+  @HttpCode(200)
+  @Roles("Docente")
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Sugerir o pulir el tema de la sesión con IA" })
+  @ApiResponse({ status: 200, type: SugerirTemaResponseDto })
+  async sugerirTema(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: SugerirTemaDto,
+    @CurrentUser() usuario: AuthenticatedUser,
+  ): Promise<SugerirTemaResponseDto> {
+    return this.service.sugerirTema(id, dto, usuario);
   }
 
   @Post(":id/salida")
