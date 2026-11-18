@@ -13,6 +13,7 @@ import {
   StreamableFile,
 } from "@nestjs/common";
 import type { Response } from "express";
+import { Throttle } from "@nestjs/throttler";
 import {
   ApiBearerAuth,
   ApiHeader,
@@ -195,6 +196,7 @@ export class HorariosController {
 
   @Post("seccion/:seccionId/proponer-ia")
   @MenuAccess(MENU_HORARIOS)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @ApiOperation({
     summary: "Proponer distribución de cursos en la grilla usando IA + validador sin cruces",
   })

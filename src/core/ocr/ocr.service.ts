@@ -22,6 +22,7 @@ import {
   SolicitudOcr,
   SolicitudOcrEstructurada,
 } from "./interfaces";
+import { decodificarBufferOcr, validarMagicBytesOcr } from "./utils";
 
 /**
  * Servicio contexto del patrón Strategy para OCR.
@@ -158,9 +159,8 @@ export class OcrService {
       );
     }
 
-    const bytes = Buffer.isBuffer(archivo.contenido)
-      ? archivo.contenido.byteLength
-      : Buffer.byteLength(archivo.contenido.replace(/^data:[^;]+;base64,/, "").trim(), "base64");
+    const buffer = decodificarBufferOcr(archivo);
+    const bytes = buffer.byteLength;
 
     if (bytes === 0) {
       throw new BadRequestException("El archivo enviado para OCR está vacío.");
@@ -169,6 +169,12 @@ export class OcrService {
     if (bytes > this.maxBytes) {
       throw new BadRequestException(
         `El archivo para OCR supera el tamaño máximo permitido de ${Math.round(this.maxBytes / (1024 * 1024))} MB.`,
+      );
+    }
+
+    if (!validarMagicBytesOcr(buffer, archivo.mimeType)) {
+      throw new BadRequestException(
+        `El contenido binario del archivo no coincide con el tipo declarado (${archivo.mimeType}).`,
       );
     }
   }

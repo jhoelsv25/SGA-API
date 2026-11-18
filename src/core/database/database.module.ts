@@ -16,11 +16,12 @@ import * as schema from "./schema";
         const connectionString = configService.getOrThrow<string>("DATABASE_URL");
         const isLocal = /@(localhost|127\.0\.0\.1)[:/]/.test(connectionString);
 
+        const maxPool = configService.get<number>("DB_POOL_MAX", 20);
         const pool = new Pool({
           connectionString,
           // Supabase exige SSL; en local no
           ssl: isLocal ? false : { rejectUnauthorized: false },
-          max: 10,
+          max: maxPool,
           idleTimeoutMillis: 30_000,
           connectionTimeoutMillis: 10_000,
           keepAlive: true,

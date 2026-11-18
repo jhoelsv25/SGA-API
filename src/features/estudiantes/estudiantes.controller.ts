@@ -16,6 +16,7 @@ import {
   UseInterceptors,
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
+import { Throttle } from "@nestjs/throttler";
 import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { ClientInfo, type ClientInfoData, CurrentUser, Roles } from "../../common/decorators";
 import type { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface";
@@ -60,6 +61,7 @@ export class EstudiantesController {
   @Post("ocr-documento")
   @Roles("Administrador", "Secretaria")
   @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @UseInterceptors(FileInterceptor("archivo", { limits: { fileSize: 10 * 1024 * 1024 } }))
   @ApiConsumes("multipart/form-data")
   @ApiOperation({
@@ -68,8 +70,10 @@ export class EstudiantesController {
   @ApiResponse({ status: 200, type: OcrDocumentoEstudianteResponseDto })
   async leerDocumentoOcr(
     @UploadedFile() archivo: Express.Multer.File | undefined,
+    @CurrentUser() user: AuthenticatedUser,
+    @ClientInfo() client: ClientInfoData,
   ): Promise<OcrDocumentoEstudianteResponseDto> {
-    return this.estudiantesService.extraerDatosDocumentoOcr(archivo);
+    return this.estudiantesService.extraerDatosDocumentoOcr(archivo, user.id, client.ip);
   }
 
   @Post()

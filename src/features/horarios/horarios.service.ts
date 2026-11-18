@@ -245,8 +245,38 @@ export class HorariosService {
     }
     this.exigirSeccionAbierta(seccion);
 
-    const cursosSeccion = await this.horariosRepo.cursosSeccionPorSeccion(seccionId);
-    const cursosIds = new Set(cursosSeccion.map((c) => c.cursoSeccionId));
+    const [cursosSeccion, bloquesActualesSeccion] = await Promise.all([
+      this.horariosRepo.cursosSeccionPorSeccion(seccionId),
+      this.horariosRepo.findBySeccion(seccionId),
+    ]);
+    const cursoPorId = new Map(cursosSeccion.map((c) => [c.cursoSeccionId, c]));
+    const idsBloquesSeccion = new Set(bloquesActualesSeccion.map((b) => b.id));
+    const existentesSeccion = dto.reemplazarExistentes ? [] : bloquesActualesSeccion;
+
+    const docentesUnicos = [
+      ...new Set(cursosSeccion.map((c) => c.docenteId).filter((id): id is string => Boolean(id))),
+    ];
+    const ocupadoPorDocente = new Map<
+      string,
+      Array<{ diaSemana: number; horaInicio: string; horaFin: string; descripcion: string }>
+    >();
+    await Promise.all(
+      docentesUnicos.map(async (docenteId) => {
+        const bloquesDocente = await this.horariosRepo.findByDocente(anio.id, docenteId);
+        ocupadoPorDocente.set(
+          docenteId,
+          bloquesDocente
+            .filter((b) => !idsBloquesSeccion.has(b.id))
+            .map((b) => ({
+              diaSemana: b.diaSemana,
+              horaInicio: b.horaInicio,
+              horaFin: b.horaFin,
+              descripcion: `${b.gradoNumero}.° ${b.seccionNombre}`,
+            })),
+        );
+      }),
+    );
+
     const normalizados: Array<{
       diaSemana: number;
       horaInicio: string;
@@ -267,7 +297,7 @@ export class HorariosService {
       }
 
       const cursoSeccionId = item.tipoBloque === "receso" ? null : (item.cursoSeccionId ?? null);
-      if (cursoSeccionId && !cursosIds.has(cursoSeccionId)) {
+      if (cursoSeccionId && !cursoPorId.has(cursoSeccionId)) {
         throw new BadRequestException(MENSAJES_HORARIOS.CLASE_REQUIERE_CURSO);
       }
 
@@ -283,29 +313,31 @@ export class HorariosService {
         throw new ConflictException(MENSAJES_HORARIOS.BLOQUES_SUPERPUESTOS);
       }
 
-      if (!dto.reemplazarExistentes) {
-        const solapados = await this.horariosRepo.findSolapados(
-          seccionId,
-          item.diaSemana,
-          horaInicio,
-          horaFin,
-        );
-        if (solapados.length > 0) {
-          throw new ConflictException(MENSAJES_HORARIOS.BLOQUES_SUPERPUESTOS);
-        }
+      const chocaExistente = existentesSeccion.some(
+        (otro) =>
+          otro.diaSemana === item.diaSemana &&
+          inicioMin < convertirHoraAMinutos(otro.horaFin) &&
+          finMin > convertirHoraAMinutos(otro.horaInicio),
+      );
+      if (chocaExistente) {
+        throw new ConflictException(MENSAJES_HORARIOS.BLOQUES_SUPERPUESTOS);
       }
 
       if (cursoSeccionId) {
-        const cruce = await this.horariosRepo.findCruceDocente(
-          anio.id,
-          cursoSeccionId,
-          item.diaSemana,
-          horaInicio,
-          horaFin,
-          seccionId,
-        );
-        if (cruce) {
-          throw new ConflictException(construirMensajeCruceDocente(cruce));
+        const docenteId = cursoPorId.get(cursoSeccionId)?.docenteId;
+        if (docenteId) {
+          const ocupados = ocupadoPorDocente.get(docenteId) ?? [];
+          const cruce = ocupados.find(
+            (b) =>
+              b.diaSemana === item.diaSemana &&
+              inicioMin < convertirHoraAMinutos(b.horaFin) &&
+              finMin > convertirHoraAMinutos(b.horaInicio),
+          );
+          if (cruce) {
+            throw new ConflictException(
+              `El docente ya tiene clase asignada en ${cruce.descripcion} (${cruce.horaInicio}–${cruce.horaFin}).`,
+            );
+          }
         }
       }
 

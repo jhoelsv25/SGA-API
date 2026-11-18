@@ -13,7 +13,9 @@ import {
 } from "@nestjs/common";
 import { Queue } from "bullmq";
 import { MENU_JUSTIFICACIONES_SESION, MENU_SESIONES_HOY } from "../../common/constants";
+import { createHash } from "node:crypto";
 import { AuditService } from "../../common/services/audit.service";
+import { CacheService } from "../../core/cache/cache.service";
 import { IaService } from "../../core/ia/ia.service";
 import { QUEUES } from "../../core/queues/queues.constants";
 import type { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface";
@@ -89,6 +91,7 @@ import {
   INSTRUCCION_SISTEMA_SUGERIR_TEMA,
   INSTRUCCION_SISTEMA_UNIDAD_AULA_VIRTUAL,
 } from "./prompts";
+import type { TemaRecienteCurso } from "./interfaces";
 import { SesionesClaseRepository } from "./repositories";
 import {
   apellidoDeNombre,
@@ -145,6 +148,8 @@ export class SesionesClaseService implements OnModuleInit {
     private readonly aulaVirtualService?: AulaVirtualService,
     @Optional()
     private readonly iaService?: IaService,
+    @Optional()
+    private readonly cacheService?: CacheService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -618,7 +623,13 @@ export class SesionesClaseService implements OnModuleInit {
     const { fecha, hora } = ahoraEnColegio();
     await this.asegurarGeneracion(fecha);
     const sesiones = await this.repository.sesionesDeDocente(docenteId, fecha, fecha);
-    const temasRecientes = await this.repository.ultimosTemasDocente(docenteId, fecha);
+    const claveTemas = `sesiones:ultimos-temas:${docenteId}:${fecha}`;
+    const temasEnCache = await this.cacheService?.get<TemaRecienteCurso[]>(claveTemas);
+    const temasRecientes =
+      temasEnCache ?? (await this.repository.ultimosTemasDocente(docenteId, fecha));
+    if (!temasEnCache && temasRecientes.length > 0) {
+      await this.cacheService?.set(claveTemas, temasRecientes, 3600);
+    }
     const { minutosAntes } = await this.configuracion();
     const firmaWebHabilitada = await this.firmaWebHabilitada();
     return {
@@ -759,6 +770,15 @@ export class SesionesClaseService implements OnModuleInit {
     }
 
     try {
+      const claveCache = `ia:sugerir-tema:${sesion.id}:${createHash("sha256")
+        .update(borrador ?? "")
+        .digest("hex")
+        .slice(0, 16)}`;
+      const enCache = await this.cacheService?.get<string[]>(claveCache);
+      if (enCache && enCache.length > 0) {
+        return { sugerencias: enCache };
+      }
+
       const respuesta = await this.iaService.generarEstructurado<{
         sugerencias: string[];
       }>({
@@ -776,9 +796,11 @@ export class SesionesClaseService implements OnModuleInit {
         .filter((s) => s.length > 0)
         .slice(0, 3);
 
-      return {
-        sugerencias: sugerencias.length > 0 ? sugerencias : delCurso.slice(0, 3),
-      };
+      if (sugerencias.length > 0) {
+        await this.cacheService?.set(claveCache, sugerencias, 300);
+        return { sugerencias };
+      }
+      return { sugerencias: delCurso.slice(0, 3) };
     } catch {
       return {
         sugerencias: borrador ? [borrador, ...delCurso].slice(0, 3) : delCurso.slice(0, 3),
@@ -1191,7 +1213,12 @@ export class SesionesClaseService implements OnModuleInit {
   }
 
   private async asegurarGeneracion(fecha: string): Promise<void> {
+    const clave = `sesiones:generadas:${fecha}`;
+    if (await this.cacheService?.get<boolean>(clave)) {
+      return;
+    }
     await this.generarDelDia(fecha);
+    await this.cacheService?.set(clave, true, 600);
   }
 
   /** Lee de las variables de sistema; ningún valor de negocio va escrito en el código. */

@@ -1,5 +1,49 @@
 import { BadGatewayException, BadRequestException, GatewayTimeoutException } from "@nestjs/common";
+import { MimeTypeOcr } from "../constants";
 import { ArchivoOcr } from "../interfaces";
+
+export function decodificarBufferOcr(archivo: ArchivoOcr): Buffer {
+  if (Buffer.isBuffer(archivo.contenido)) {
+    return archivo.contenido;
+  }
+
+  const limpio = archivo.contenido.replace(/^data:[^;]+;base64,/, "").trim();
+  if (!limpio) {
+    throw new BadRequestException("El archivo para OCR está vacío.");
+  }
+  return Buffer.from(limpio, "base64");
+}
+
+export function validarMagicBytesOcr(buffer: Buffer, mimeType: MimeTypeOcr): boolean {
+  if (buffer.byteLength < 4) {
+    return false;
+  }
+
+  switch (mimeType) {
+    case "image/jpeg":
+      return buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
+    case "image/png":
+      return (
+        buffer.byteLength >= 8 &&
+        buffer[0] === 0x89 &&
+        buffer[1] === 0x50 &&
+        buffer[2] === 0x4e &&
+        buffer[3] === 0x47 &&
+        buffer[4] === 0x0d &&
+        buffer[5] === 0x0a &&
+        buffer[6] === 0x1a &&
+        buffer[7] === 0x0a
+      );
+    case "image/webp":
+      return (
+        buffer.byteLength >= 12 &&
+        buffer.subarray(0, 4).toString("ascii") === "RIFF" &&
+        buffer.subarray(8, 12).toString("ascii") === "WEBP"
+      );
+    case "application/pdf":
+      return buffer.byteLength >= 5 && buffer.subarray(0, 5).toString("ascii") === "%PDF-";
+  }
+}
 
 export function archivoOcrABase64(archivo: ArchivoOcr): string {
   if (Buffer.isBuffer(archivo.contenido)) {

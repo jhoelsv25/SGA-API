@@ -232,6 +232,7 @@ export class SesionesClaseController {
   @Post(":id/sugerir-tema")
   @HttpCode(200)
   @Roles("Docente")
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @ApiBearerAuth()
   @ApiOperation({ summary: "Sugerir o pulir el tema de la sesión con IA" })
   @ApiResponse({ status: 200, type: SugerirTemaResponseDto })

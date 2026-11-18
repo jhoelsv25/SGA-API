@@ -5,12 +5,14 @@ import {
   HttpCode,
   HttpStatus,
   Post,
+  Req,
   Res,
   UnauthorizedException,
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiCookieAuth, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { Throttle } from "@nestjs/throttler";
-import type { Response } from "express";
+import type { Request, Response } from "express";
+import { crearCsrfUtils } from "../../config";
 import {
   ClientInfo,
   type ClientInfoData,
@@ -33,6 +35,21 @@ import { clearAuthCookie, setAuthCookie } from "./utils";
 @Controller("auth")
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
+  @Public()
+  @Get("csrf-token")
+  @ApiOperation({ summary: "Obtener token CSRF para peticiones mutantes con cookies HttpOnly" })
+  @ApiResponse({ status: 200, description: "Token CSRF emitido" })
+  obtenerCsrfToken(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ): { csrfToken: string } {
+    const csrfToken = req.csrfToken
+      ? req.csrfToken()
+      : crearCsrfUtils().generateCsrfToken(req, res);
+    res.setHeader("x-csrf-token", csrfToken);
+    return { csrfToken };
+  }
 
   @Public()
   @Throttle({ default: { limit: 5, ttl: 60000 } })

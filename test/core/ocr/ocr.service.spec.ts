@@ -89,7 +89,7 @@ describe("OcrService", () => {
       await expect(
         servicio.extraerTexto({
           archivo: {
-            contenido: Buffer.from("img"),
+            contenido: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
             mimeType: "image/png",
           },
         }),
@@ -124,6 +124,17 @@ describe("OcrService", () => {
       ).rejects.toThrow(BadRequestException);
     });
 
+    it("debe rechazar archivos cuyo contenido binario no coincida con el MIME declarado", async () => {
+      await expect(
+        servicio.extraerTexto({
+          archivo: {
+            contenido: Buffer.from("contenido-falso-no-es-png"),
+            mimeType: "image/png",
+          },
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
     it("debe usar la estrategia mistral por defecto", async () => {
       const esperado = {
         textoExtraido: "ACTA",
@@ -134,7 +145,7 @@ describe("OcrService", () => {
 
       const resultado = await servicio.extraerTexto({
         archivo: {
-          contenido: Buffer.from("pdf"),
+          contenido: Buffer.from("%PDF-1.4 contenido"),
           mimeType: "application/pdf",
         },
       });
@@ -153,7 +164,7 @@ describe("OcrService", () => {
       estrategiaGlm.extraerTexto.mockResolvedValue(esperado);
 
       const resultado = await servicio.extraerTexto({
-        archivo: { contenido: Buffer.from("img"), mimeType: "image/jpeg" },
+        archivo: { contenido: Buffer.from([0xff, 0xd8, 0xff, 0xe0]), mimeType: "image/jpeg" },
         estrategia: TIPOS_ESTRATEGIA_OCR.GLM,
       });
 
@@ -174,7 +185,10 @@ describe("OcrService", () => {
       estrategiaGlm.extraerTexto.mockResolvedValue(esperadoGlm);
 
       const resultado = await servicio.extraerTexto({
-        archivo: { contenido: Buffer.from("img"), mimeType: "image/png" },
+        archivo: {
+          contenido: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+          mimeType: "image/png",
+        },
       });
 
       expect(estrategiaMistral.extraerTexto).toHaveBeenCalledTimes(1);
@@ -195,7 +209,7 @@ describe("OcrService", () => {
 
       const resultado = await servicio.extraerDatos<{ dni: string }>({
         archivo: {
-          contenido: Buffer.from("pdf"),
+          contenido: Buffer.from("%PDF-1.4 contenido"),
           mimeType: "application/pdf",
         },
         instruccion: "Extrae el DNI",

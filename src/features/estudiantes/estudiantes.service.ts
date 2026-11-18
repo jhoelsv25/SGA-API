@@ -59,6 +59,8 @@ export class EstudiantesService {
 
   async extraerDatosDocumentoOcr(
     archivo: Express.Multer.File | undefined,
+    actorId?: string,
+    ip?: string,
   ): Promise<OcrDocumentoEstudianteResponseDto> {
     if (!archivo) {
       throw new BadRequestException("Debe adjuntar una imagen o PDF del documento.");
@@ -79,6 +81,18 @@ export class EstudiantesService {
         mimeType: archivo.mimetype as MimeTypeOcr,
       },
       instruccion: INSTRUCCION_OCR_DOCUMENTO_ESTUDIANTE,
+    });
+
+    await this.auditService.log({
+      ...(actorId ? { usuarioId: actorId } : {}),
+      accion: "crear",
+      tabla: "estudiantes_ocr",
+      valorNuevo: {
+        estrategia: resultado.estrategia,
+        mimeType: archivo.mimetype,
+        bytes: archivo.size,
+      },
+      direccionIp: ip,
     });
 
     return {

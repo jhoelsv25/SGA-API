@@ -12,7 +12,7 @@ import helmet from "helmet";
 import { WinstonModule } from "nest-winston";
 import { AppModule } from "./app.module";
 import { GlobalHttpExceptionFilter, LoggingInterceptor } from "./common";
-import { getCorsConfig, getWinstonLoggerConfig, setupSwagger } from "./config";
+import { crearCsrfUtils, getCorsConfig, getWinstonLoggerConfig, setupSwagger } from "./config";
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -31,6 +31,10 @@ async function bootstrap() {
 
   // Parser de cookies (para HttpOnly cookies de autenticación)
   app.use(cookieParser());
+
+  // Protección CSRF (Double Submit Cookie) para peticiones con cookie de sesión
+  const { doubleCsrfProtection } = crearCsrfUtils(configService);
+  app.use(doubleCsrfProtection);
 
   // Prefijo global de API (/api)
   app.setGlobalPrefix("api");
