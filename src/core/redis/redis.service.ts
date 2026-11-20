@@ -15,6 +15,8 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     this.client = new Redis(redisUrl, {
       lazyConnect: true,
       maxRetriesPerRequest: 3,
+      // Upstash: el usuario no tiene permiso para INFO (ready check de ioredis)
+      enableReadyCheck: false,
     });
 
     this.client.on("connect", () => {

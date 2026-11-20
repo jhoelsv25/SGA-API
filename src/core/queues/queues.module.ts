@@ -13,6 +13,10 @@ import { QUEUES } from "./queues.constants";
         return {
           connection: {
             url: redisUrl,
+            // Upstash: el usuario no tiene permiso para INFO (ready check de ioredis)
+            enableReadyCheck: false,
+            // BullMQ ejecuta INFO para validar la versión; Upstash lo deniega a este usuario
+            skipVersionCheck: true,
           },
         };
       },
