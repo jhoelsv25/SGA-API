@@ -15,6 +15,7 @@ import {
   ApoderadosImportService,
   DocentesImportService,
   EstudiantesImportService,
+  FotosImportService,
   PersonasImportService,
 } from "./services";
 
@@ -37,6 +38,7 @@ import {
     EstudiantesImportService,
     DocentesImportService,
     ApoderadosImportService,
+    FotosImportService,
   ],
   exports: [
     ImportacionService,
@@ -44,6 +46,7 @@ import {
     EstudiantesImportService,
     DocentesImportService,
     ApoderadosImportService,
+    FotosImportService,
   ],
 })
 export class ImportacionModule {}
