@@ -8,8 +8,19 @@ import {
   Post,
   Res,
   StreamableFile,
+  UploadedFiles,
+  UseInterceptors,
 } from "@nestjs/common";
-import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from "@nestjs/swagger";
+import { AnyFilesInterceptor } from "@nestjs/platform-express";
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
+  ApiOperation,
+  ApiParam,
+  ApiResponse,
+  ApiTags,
+} from "@nestjs/swagger";
 import type { Response } from "express";
 import { nombreArchivoReporte } from "../../common/excel/reporte-excel.builder";
 import { ClientInfo, type ClientInfoData, CurrentUser, Roles } from "../../common/decorators";
@@ -17,13 +28,17 @@ import type { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface
 import { TIPO_IMPORTACION, type TipoImportacion } from "./constants";
 import {
   EjecutarImportacionDto,
+  EstadoFotosJobDto,
   EstadoImportacionJobDto,
+  IniciarFotosJobResponseDto,
   IniciarImportacionResponseDto,
   PrevisualizarImportacionDto,
+  SubirFotosMasivasDto,
   VistaPreviaResponseDto,
 } from "./dto";
 import { InstitucionService } from "../institucion/institucion.service";
 import { ImportacionService } from "./importacion.service";
+import { FotosImportService } from "./services/fotos-import.service";
 
 @ApiTags("Comunidad - Importación Masiva")
 @ApiBearerAuth()
@@ -32,6 +47,7 @@ export class ImportacionController {
   constructor(
     private readonly importacionService: ImportacionService,
     private readonly institucionService: InstitucionService,
+    private readonly fotosImportService: FotosImportService,
   ) {}
 
   @Get("plantilla/:tipo")
@@ -131,5 +147,63 @@ export class ImportacionController {
       `attachment; filename="${nombreArchivoReporte("credenciales")}"`,
     );
     res.send(buffer);
+  }
+
+  @Post("fotos-masivas")
+  @Roles("Administrador", "Secretaria")
+  @HttpCode(HttpStatus.OK)
+  @UseInterceptors(
+    AnyFilesInterceptor({
+      limits: {
+        fileSize: 50 * 1024 * 1024, // Máximo 50MB por archivo
+        files: 500, // Hasta 500 fotos individuales o 1 archivo .zip
+      },
+    }),
+  )
+  @ApiConsumes("multipart/form-data")
+  @ApiOperation({
+    summary: "Cargar fotos masivas para estudiantes o docentes (archivos individuales o .zip)",
+    description:
+      "Desempaqueta las imágenes, valida los magic bytes (JPEG/PNG/WEBP), encola el trabajo en BullMQ y devuelve el jobId para seguimiento en segundo plano.",
+  })
+  @ApiBody({
+    schema: {
+      type: "object",
+      properties: {
+        tipo: {
+          type: "string",
+          enum: ["estudiantes", "docentes"],
+          description: "Entidad destino para asociar las fotos por DNI o Código",
+        },
+        archivos: {
+          type: "array",
+          items: { type: "string", format: "binary" },
+          description: "Lista de imágenes o archivo .zip con las fotos",
+        },
+      },
+      required: ["tipo"],
+    },
+  })
+  @ApiResponse({ status: 200, type: IniciarFotosJobResponseDto })
+  async subirFotosMasivas(
+    @Body() dto: SubirFotosMasivasDto,
+    @UploadedFiles() files: Express.Multer.File[],
+    @CurrentUser() user: AuthenticatedUser,
+    @ClientInfo() clientInfo: ClientInfoData,
+  ): Promise<IniciarFotosJobResponseDto> {
+    return this.fotosImportService.prepararYEncolar(dto.tipo, files, user.id, clientInfo.ip);
+  }
+
+  @Get("fotos-masivas/jobs/:id")
+  @Roles("Administrador", "Secretaria")
+  @ApiOperation({
+    summary: "Consultar progreso y resultado de la asignación masiva de fotos en BullMQ",
+    description:
+      "Devuelve el estado, porcentaje de avance (0 a 100) y el detalle de fotos asignadas y omitidas.",
+  })
+  @ApiParam({ name: "id", description: "ID del trabajo en BullMQ" })
+  @ApiResponse({ status: 200, type: EstadoFotosJobDto })
+  async consultarEstadoFotosJob(@Param("id") id: string): Promise<EstadoFotosJobDto> {
+    return this.fotosImportService.consultarEstadoJob(id);
   }
 }
