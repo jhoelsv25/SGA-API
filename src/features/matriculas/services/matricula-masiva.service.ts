@@ -129,6 +129,7 @@ export class MatriculaMasivaService {
         codigo,
         fechaMatricula: fecha,
         tipo: "continuador",
+        esRepitente: dto.esRepitente ?? false,
         registradoPorId: actorId,
       });
 

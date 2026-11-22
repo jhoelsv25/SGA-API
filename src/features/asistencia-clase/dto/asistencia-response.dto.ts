@@ -101,7 +101,7 @@ export class SeccionConsultableDto {
   @ApiProperty({ example: "5.° A" }) nombre!: string;
 }
 
-export class EstudianteVinculadoDto {
+export class EstudianteVinculadoAsistenciaDto {
   @ApiProperty() estudianteId!: string;
   @ApiProperty() nombreCompleto!: string;
   @ApiPropertyOptional({ nullable: true }) seccion!: string | null;

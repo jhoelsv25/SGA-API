@@ -26,7 +26,7 @@ import type {
   AsistenciaSeccionResponseDto,
   ConsultaAsistenciaQueryDto,
   EstudianteListaAsistenciaDto,
-  EstudianteVinculadoDto,
+  EstudianteVinculadoAsistenciaDto,
   GuardarAsistenciaDto,
   GuardarAsistenciaResponseDto,
   JustificarFaltaDto,
@@ -171,7 +171,7 @@ export class AsistenciaClaseService {
   }
 
   /** Estudiantes que el usuario puede consultar: el propio o los hijos del apoderado. */
-  async misEstudiantes(usuario: AuthenticatedUser): Promise<EstudianteVinculadoDto[]> {
+  async misEstudiantes(usuario: AuthenticatedUser): Promise<EstudianteVinculadoAsistenciaDto[]> {
     return this.repository.estudiantesVinculados(usuario.personaId);
   }
 

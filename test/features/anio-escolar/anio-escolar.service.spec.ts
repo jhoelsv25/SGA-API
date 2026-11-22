@@ -92,6 +92,7 @@ describe("AniosAcademicosService (RF-005)", () => {
       update: jest.fn(),
       guardarBimestres: jest.fn(),
       cambiarEstadoAnio: jest.fn(),
+      culminarMatriculasDelAnio: jest.fn().mockResolvedValue(0),
       findBimestre: jest.fn(),
       cambiarEstadoBimestre: jest.fn(),
       hayOtroBimestreEnCurso: jest.fn(),
@@ -246,13 +247,17 @@ describe("AniosAcademicosService (RF-005)", () => {
       );
     });
 
-    it("cierra el año cuando los 4 bimestres están cerrados", async () => {
+    it("cierra el año cuando los 4 bimestres están cerrados y culmina las matrículas activas", async () => {
       const cerrados = [1, 2, 3, 4].map((numero) => bimestre(numero as 1 | 2 | 3 | 4, "cerrado"));
       repo.findById.mockResolvedValue(anio({ estado: "en_curso", bimestres: cerrados }));
       repo.cambiarEstadoAnio.mockResolvedValue(anio({ estado: "cerrado", bimestres: cerrados }));
+      repo.culminarMatriculasDelAnio.mockResolvedValue(42);
 
       const cerrado = await service.cerrar("anio-2027", ACTOR);
       expect(cerrado.estado).toBe("cerrado");
+      expect(repo.culminarMatriculasDelAnio).toHaveBeenCalledWith("anio-2027");
+      const [entrada] = audit.log.mock.calls[0];
+      expect(entrada.valorNuevo).toMatchObject({ estado: "cerrado", matriculasCulminadas: 42 });
     });
 
     it("impide cerrar el año si queda un bimestre abierto", async () => {

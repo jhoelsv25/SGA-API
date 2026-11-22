@@ -82,6 +82,17 @@ export interface MatriculaCursorPayload {
   id: string;
 }
 
+export interface ResumenSeccionPromocionRow {
+  seccionId: string;
+  gradoNumero: number;
+  gradoNombre: string;
+  nombre: string;
+  totalCulminados: number;
+  yaMatriculadosDestino: number;
+  yaEgresados: number;
+  pendientes: number;
+}
+
 export interface DbMatriculasProcedureExecutionResult {
   rows?: Array<{
     resultado?: {
