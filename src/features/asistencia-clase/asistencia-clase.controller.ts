@@ -16,7 +16,7 @@ import {
   AsistenciaEstudianteResponseDto,
   AsistenciaSeccionResponseDto,
   ConsultaAsistenciaQueryDto,
-  EstudianteVinculadoDto,
+  EstudianteVinculadoAsistenciaDto,
   GuardarAsistenciaDto,
   GuardarAsistenciaResponseDto,
   JustificarFaltaDto,
@@ -69,10 +69,10 @@ export class AsistenciaClaseController {
 
   @Get("mis-estudiantes")
   @ApiOperation({ summary: "Estudiantes cuya asistencia puedo consultar (propio o hijos)" })
-  @ApiResponse({ status: 200, type: [EstudianteVinculadoDto] })
+  @ApiResponse({ status: 200, type: [EstudianteVinculadoAsistenciaDto] })
   async misEstudiantes(
     @CurrentUser() usuario: AuthenticatedUser,
-  ): Promise<EstudianteVinculadoDto[]> {
+  ): Promise<EstudianteVinculadoAsistenciaDto[]> {
     return this.service.misEstudiantes(usuario);
   }
 

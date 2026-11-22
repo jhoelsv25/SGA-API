@@ -2,6 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import {
   ArrayNotEmpty,
   IsArray,
+  IsBoolean,
   IsDateString,
   IsNotEmpty,
   IsOptional,
@@ -43,4 +44,12 @@ export class MatriculaMasivaDto {
   @IsOptional()
   @IsDateString({}, { message: "Formato de fecha inválido" })
   fechaMatricula?: string;
+
+  @ApiPropertyOptional({
+    description: "Indica si los estudiantes matriculados repiten el grado en el nuevo año",
+    example: false,
+  })
+  @IsOptional()
+  @IsBoolean({ message: "esRepitente debe ser booleano" })
+  esRepitente?: boolean;
 }

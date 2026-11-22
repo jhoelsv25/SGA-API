@@ -19,6 +19,8 @@ import type { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface
 import {
   CambiarSeccionDto,
   CrearMatriculaDto,
+  EgresarSeccionDto,
+  EgresarSeccionResultadoDto,
   MatriculaCreatedResponseDto,
   MatriculaMasivaDto,
   MatriculaMasivaResultadoDto,
@@ -26,18 +28,28 @@ import {
   MatriculaQueryDto,
   MatriculaResponseDto,
   PaginatedMatriculasResponseDto,
+  PreviewEgresoDto,
+  PreviewEgresoResultadoDto,
+  PreviewPromocionDto,
+  PreviewPromocionResultadoDto,
+  ResumenPromocionQueryDto,
+  ResumenPromocionResultadoDto,
   RetirarMatriculaDto,
   TrasladarMatriculaDto,
 } from "./dto";
 
 import { MatriculasService } from "./matriculas.service";
+import { PromocionService } from "./services";
 
 @ApiTags("Matrícula - Matrícula, Retiro y Traslado")
 @ApiBearerAuth()
 @MenuAlternativo(MENU_MATRICULAS)
 @Controller("matriculas")
 export class MatriculasController {
-  constructor(private readonly matriculasService: MatriculasService) {}
+  constructor(
+    private readonly matriculasService: MatriculasService,
+    private readonly promocionService: PromocionService,
+  ) {}
 
   @Get()
   @Roles("Administrador", "Secretaria", "Director", "Subdirector", "Docente")
@@ -45,6 +57,54 @@ export class MatriculasController {
   @ApiResponse({ status: 200, type: PaginatedMatriculasResponseDto })
   async findAll(@Query() query: MatriculaQueryDto): Promise<PaginatedMatriculasResponseDto> {
     return this.matriculasService.findAll(query);
+  }
+
+  @Get("promocion/resumen")
+  @Roles("Administrador", "Secretaria")
+  @ApiOperation({
+    summary: "Resumen persistido del avance de promoción y egreso por sección del año cerrado",
+  })
+  @ApiResponse({ status: 200, type: ResumenPromocionResultadoDto })
+  async resumenPromocion(
+    @Query() query: ResumenPromocionQueryDto,
+  ): Promise<ResumenPromocionResultadoDto> {
+    return this.promocionService.obtenerResumenPromocion(query);
+  }
+
+  @Get("promocion/preview")
+  @Roles("Administrador", "Secretaria")
+  @ApiOperation({
+    summary: "Vista previa de estudiantes elegibles para promoción masiva entre secciones",
+  })
+  @ApiResponse({ status: 200, type: PreviewPromocionResultadoDto })
+  async previewPromocion(
+    @Query() query: PreviewPromocionDto,
+  ): Promise<PreviewPromocionResultadoDto> {
+    return this.promocionService.previewPromocion(query);
+  }
+
+  @Get("promocion/egreso-preview")
+  @Roles("Administrador", "Secretaria")
+  @ApiOperation({
+    summary: "Vista previa de estudiantes de 5.° grado listos para egresar",
+  })
+  @ApiResponse({ status: 200, type: PreviewEgresoResultadoDto })
+  async previewEgreso(@Query() query: PreviewEgresoDto): Promise<PreviewEgresoResultadoDto> {
+    return this.promocionService.previewEgreso(query);
+  }
+
+  @Post("promocion/egresar-seccion")
+  @Roles("Administrador", "Secretaria")
+  @ApiOperation({
+    summary: "Marcar como egresados a los estudiantes culminados de una sección de 5.° grado",
+  })
+  @ApiResponse({ status: 201, type: EgresarSeccionResultadoDto })
+  async egresarSeccion(
+    @Body() dto: EgresarSeccionDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @ClientInfo() client: ClientInfoData,
+  ): Promise<EgresarSeccionResultadoDto> {
+    return this.promocionService.egresarSeccion(dto, user.id, client.ip);
   }
 
   @Get(":id")

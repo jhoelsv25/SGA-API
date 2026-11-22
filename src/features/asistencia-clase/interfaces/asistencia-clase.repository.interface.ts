@@ -1,6 +1,6 @@
 import type { ResultadoMarcacion } from "../../marcaciones/constants";
 import type { EstadoAsistencia } from "../constants";
-import type { EstudianteListaAsistenciaDto, EstudianteVinculadoDto } from "../dto";
+import type { EstudianteListaAsistenciaDto, EstudianteVinculadoAsistenciaDto } from "../dto";
 
 export interface SesionParaAsistencia {
   id: string;
@@ -99,7 +99,7 @@ export interface IAsistenciaClaseRepository {
   ): Promise<void>;
   findEstudiante(estudianteId: string): Promise<EstudianteBasico | null>;
   esApoderadoDe(personaId: string, estudianteId: string): Promise<boolean>;
-  estudiantesVinculados(personaId: string): Promise<EstudianteVinculadoDto[]>;
+  estudiantesVinculados(personaId: string): Promise<EstudianteVinculadoAsistenciaDto[]>;
   matriculaParaConsulta(
     estudianteId: string,
     desde: string,

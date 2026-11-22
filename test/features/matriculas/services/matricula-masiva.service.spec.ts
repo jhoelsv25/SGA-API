@@ -162,4 +162,23 @@ describe("MatriculaMasivaService (RF-009: HU2 Matrícula masiva de continuadores
 
     expect(res.noMatriculados.some((n) => n.estudianteId === "est-2")).toBe(true);
   });
+
+  it("debe registrar esRepitente cuando se especifica en matrícula masiva", async () => {
+    await service.matricularMasivamente(
+      {
+        seccionOrigenId: "sec-orig",
+        seccionDestinoId: "sec-dest",
+        estudianteIds: ["est-2"],
+        esRepitente: true,
+      },
+      "user-1",
+    );
+
+    expect(repo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        estudianteId: "est-2",
+        esRepitente: true,
+      }),
+    );
+  });
 });

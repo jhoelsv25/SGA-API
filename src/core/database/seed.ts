@@ -18,6 +18,7 @@ import {
   MENU_MATERIALES_BIMESTRE,
   MENU_LIBRETAS,
   MENU_MIS_LIBRETAS,
+  MENU_REPORTES,
 } from "../../common/constants";
 import {
   CODIGO_INSTRUMENTO_INICIAL,
@@ -1187,6 +1188,33 @@ async function seed() {
     );
   }
   console.log("✔ Opciones de Libretas registradas.");
+
+  // Centro de Reportes unificado (solo roles de gestión: Dirección, Secretaría y Administración)
+  await pool.query(
+    `INSERT INTO menus (modulo_id, nombre, orden, es_contenedor)
+     SELECT m.id, 'Reportes', 20, true FROM modulos m
+     WHERE m.codigo = 'seguimiento-docente'
+       AND NOT EXISTS (
+         SELECT 1 FROM menus x
+         WHERE x.modulo_id = m.id AND x.es_contenedor AND x.nombre = 'Reportes'
+       );`,
+  );
+  await pool.query(
+    `INSERT INTO menus (modulo_id, menu_padre_id, nombre, ruta, icono, orden, es_contenedor)
+     SELECT c.modulo_id, c.id, 'Centro de Reportes', $1::varchar, 'ChartBarLineIcon', 1, false
+     FROM menus c JOIN modulos m ON m.id = c.modulo_id
+     WHERE m.codigo = 'seguimiento-docente' AND c.es_contenedor AND c.nombre = 'Reportes'
+       AND NOT EXISTS (SELECT 1 FROM menus x WHERE x.ruta = $1::varchar);`,
+    [MENU_REPORTES],
+  );
+  await pool.query(
+    `INSERT INTO rol_menus (rol_id, menu_id)
+     SELECT r.id, m.id FROM roles r, menus m
+     WHERE r.nombre = ANY($2::varchar[]) AND m.ruta = $1
+     ON CONFLICT DO NOTHING;`,
+    [MENU_REPORTES, ["Administrador", "Director", "Subdirector", "Secretaria"]],
+  );
+  console.log("✔ Opción 'Centro de Reportes' registrada (Dirección, Secretaría y Administrador).");
 
   // Aplicación de escritorio: configuración del reloj biométrico (solo escritorio; el portal web no la muestra)
   await pool.query(

@@ -6,3 +6,4 @@ export * from "./cambiar-seccion.dto";
 export * from "./matricula-query.dto";
 export * from "./matricula-response.dto";
 export * from "./matricula-lote.dto";
+export * from "./promocion.dto";

@@ -24,6 +24,7 @@ import {
   DbMatriculasProcedureExecutionResult,
   EstudianteParaMatricula,
   MatriculaCursorPayload,
+  ResumenSeccionPromocionRow,
   SeccionConVacantes,
 } from "../interfaces";
 import { MatriculaQueryDto, MatriculaResponseDto, PaginatedMatriculasResponseDto } from "../dto";
@@ -307,6 +308,92 @@ export class MatriculasRepository {
 
   async delete(id: string): Promise<void> {
     await this.db.delete(matriculas).where(eq(matriculas.id, id));
+  }
+
+  async actualizarEstadoEstudiante(
+    estudianteId: string,
+    nuevoEstado: "activo" | "retirado" | "trasladado" | "egresado",
+  ): Promise<void> {
+    await this.db
+      .update(estudiantes)
+      .set({ estado: nuevoEstado, actualizadoEn: sql`CURRENT_TIMESTAMP` })
+      .where(eq(estudiantes.id, estudianteId));
+  }
+
+  /**
+   * Marca al estudiante como egresado y anula sus credenciales físicas (QR/carné) activas,
+   * conservando su historial académico y acceso de consulta a libretas/constancias.
+   */
+  async egresarEstudianteYDesactivarCredenciales(estudianteId: string): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      const [est] = await tx
+        .update(estudiantes)
+        .set({ estado: "egresado", actualizadoEn: sql`CURRENT_TIMESTAMP` })
+        .where(eq(estudiantes.id, estudianteId))
+        .returning({ personaId: estudiantes.personaId });
+      if (!est) return;
+
+      await tx
+        .update(credenciales)
+        .set({
+          activa: false,
+          anuladaEn: sql`CURRENT_TIMESTAMP`,
+          motivoAnulacion: "Estudiante egresado de 5.° de secundaria",
+        })
+        .where(and(eq(credenciales.personaId, est.personaId), eq(credenciales.activa, true)));
+    });
+  }
+
+  async obtenerResumenPromocionPorAnio(
+    anioOrigenId: string,
+    anioDestinoId?: string,
+  ): Promise<ResumenSeccionPromocionRow[]> {
+    const yaMatriculadoExpr = anioDestinoId
+      ? sql<boolean>`EXISTS(
+          SELECT 1 FROM matriculas m2
+          WHERE m2.estudiante_id = ${estudiantes.id}
+            AND m2.anio_academico_id = ${anioDestinoId}
+        )`
+      : sql<boolean>`false`;
+
+    const rows = await this.db
+      .select({
+        seccionId: secciones.id,
+        gradoNumero: grados.numero,
+        gradoNombre: grados.nombre,
+        nombre: secciones.nombre,
+        totalCulminados: count(sql`CASE WHEN ${matriculas.estado} = 'culminado' THEN 1 END`),
+        yaMatriculadosDestino: count(
+          sql`CASE WHEN ${matriculas.estado} = 'culminado' AND (${yaMatriculadoExpr}) THEN 1 END`,
+        ),
+        yaEgresados: count(
+          sql`CASE WHEN ${matriculas.estado} = 'culminado' AND ${estudiantes.estado} = 'egresado' THEN 1 END`,
+        ),
+        pendientes: count(
+          sql`CASE WHEN ${matriculas.estado} = 'culminado' AND ${estudiantes.estado} = 'activo' AND NOT (${yaMatriculadoExpr}) THEN 1 END`,
+        ),
+      })
+      .from(secciones)
+      .innerJoin(grados, eq(secciones.gradoId, grados.id))
+      .leftJoin(
+        matriculas,
+        and(eq(matriculas.seccionId, secciones.id), eq(matriculas.estado, "culminado")),
+      )
+      .leftJoin(estudiantes, eq(matriculas.estudianteId, estudiantes.id))
+      .where(and(eq(secciones.anioAcademicoId, anioOrigenId), eq(secciones.estado, "activa")))
+      .groupBy(secciones.id, grados.numero, grados.nombre, secciones.nombre)
+      .orderBy(grados.numero, secciones.nombre);
+
+    return rows.map((r) => ({
+      seccionId: r.seccionId,
+      gradoNumero: r.gradoNumero,
+      gradoNombre: r.gradoNombre,
+      nombre: r.nombre,
+      totalCulminados: Number(r.totalCulminados) || 0,
+      yaMatriculadosDestino: Number(r.yaMatriculadosDestino) || 0,
+      yaEgresados: Number(r.yaEgresados) || 0,
+      pendientes: Number(r.pendientes) || 0,
+    }));
   }
 
   async desactivarEstudianteYCredenciales(

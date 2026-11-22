@@ -5,6 +5,7 @@ import {
   aniosAcademicos,
   cursosSeccion,
   docentes,
+  matriculas,
   periodosAcademicos,
   roles,
   secciones,
@@ -180,6 +181,17 @@ export class AniosAcademicosRepository implements IAniosAcademicosRepository {
 
     const [completo] = await this.conBimestres([anio]);
     return completo;
+  }
+
+  async culminarMatriculasDelAnio(anioAcademicoId: string): Promise<number> {
+    const actualizadas = await this.db
+      .update(matriculas)
+      .set({ estado: "culminado", actualizadoEn: sql`CURRENT_TIMESTAMP` })
+      .where(
+        and(eq(matriculas.anioAcademicoId, anioAcademicoId), eq(matriculas.estado, "matriculado")),
+      )
+      .returning({ id: matriculas.id });
+    return actualizadas.length;
   }
 
   async findBimestre(anioId: string, bimestreId: string): Promise<BimestrePersistido | null> {

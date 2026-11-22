@@ -240,7 +240,16 @@ export class AniosAcademicosService implements OnModuleInit {
       motivo: actual.motivoReapertura,
       hasta: null,
     });
-    await this.auditarEstado("anios_academicos", id, actual.estado, cerrado.estado, actorId, ip);
+    const matriculasCulminadas = await this.aniosRepository.culminarMatriculasDelAnio(id);
+    await this.auditService.log({
+      usuarioId: actorId,
+      accion: "actualizar",
+      tabla: "anios_academicos",
+      registroId: id,
+      valorAnterior: { estado: actual.estado },
+      valorNuevo: { estado: cerrado.estado, matriculasCulminadas },
+      direccionIp: ip,
+    });
     return cerrado;
   }
 

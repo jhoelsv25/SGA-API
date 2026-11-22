@@ -57,16 +57,23 @@ export class GlobalHttpExceptionFilter implements ExceptionFilter {
         }
       }
     } else if (exception instanceof Error) {
-      // Excepciones no controladas de JavaScript / base de datos / runtime
-      errorName = exception.name;
-      message = isProduction
-        ? "Error interno del servidor. Si el problema persiste, contacte a soporte."
-        : exception.message;
+      const errorConCodigo = exception as Error & { code?: string; status?: number };
+      if (errorConCodigo.code === "EBADCSRFTOKEN" || errorConCodigo.status === 403) {
+        statusCode = HttpStatus.FORBIDDEN;
+        errorName = "Forbidden";
+        message = "Token CSRF inválido o vencido.";
+      } else {
+        // Excepciones no controladas de JavaScript / base de datos / runtime
+        errorName = exception.name;
+        message = isProduction
+          ? "Error interno del servidor. Si el problema persiste, contacte a soporte."
+          : exception.message;
 
-      this.logger.error(
-        `Error no controlado [${request.method} ${request.url}]: ${exception.message}`,
-        exception.stack,
-      );
+        this.logger.error(
+          `Error no controlado [${request.method} ${request.url}]: ${exception.message}`,
+          exception.stack,
+        );
+      }
     }
 
     // Registra errores de validación en logs para diagnóstico rápido

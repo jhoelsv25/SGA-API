@@ -40,6 +40,7 @@ export interface IAniosAcademicosRepository {
     estado: EstadoAnio,
     reapertura?: { motivo: string | null; hasta: string | null },
   ): Promise<AnioPersistido>;
+  culminarMatriculasDelAnio(anioAcademicoId: string): Promise<number>;
   findBimestre(anioId: string, bimestreId: string): Promise<BimestrePersistido | null>;
   cambiarEstadoBimestre(id: string, estado: EstadoBimestre): Promise<BimestrePersistido>;
   hayOtroBimestreEnCurso(anioId: string, exceptoId?: string): Promise<boolean>;

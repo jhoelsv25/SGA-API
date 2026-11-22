@@ -32,6 +32,11 @@ export function crearCsrfUtils(configService?: ConfigService) {
       return undefined;
     },
     skipCsrfProtection: (req: Request) => {
+      const ruta = (req.originalUrl ?? req.url ?? "").split("?")[0];
+      const esAuthPublica =
+        ruta === "/api/auth/login" || ruta === "/api/auth/register" || ruta === "/api/auth/logout";
+      if (esAuthPublica) return true;
+
       const cookies = req.cookies as Record<string, string | undefined> | undefined;
       const tieneCookieSesion = Boolean(cookies?.access_token || cookies?.refresh_token);
       const usaBearer = req.headers.authorization?.startsWith("Bearer ");

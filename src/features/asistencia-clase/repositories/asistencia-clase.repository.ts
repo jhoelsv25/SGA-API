@@ -21,7 +21,7 @@ import {
   usuarios,
 } from "../../../core/database/schema";
 import type { EstadoAsistencia } from "../constants";
-import type { EstudianteListaAsistenciaDto, EstudianteVinculadoDto } from "../dto";
+import type { EstudianteListaAsistenciaDto, EstudianteVinculadoAsistenciaDto } from "../dto";
 import type {
   AsistenciaCursoFila,
   EntradaDePersona,
@@ -216,7 +216,7 @@ export class AsistenciaClaseRepository implements IAsistenciaClaseRepository {
     return Boolean(fila);
   }
 
-  async estudiantesVinculados(personaId: string): Promise<EstudianteVinculadoDto[]> {
+  async estudiantesVinculados(personaId: string): Promise<EstudianteVinculadoAsistenciaDto[]> {
     const seccionActual = sql<string | null>`(
       SELECT g.numero || '.° ' || s.nombre
       FROM ${matriculas} m
