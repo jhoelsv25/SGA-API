@@ -810,6 +810,75 @@ describe("RF-011: Registro de sesión de clase", () => {
       ]);
     });
 
+    describe("RF-024: planificación de la sesión al firmar", () => {
+      const conPlanificaciones = (plan: {
+        tituloDeSesion: jest.Mock;
+        vincularConSesion: jest.Mock;
+      }) =>
+        new SesionesClaseService(
+          repo as unknown as SesionesClaseRepository,
+          equipos as unknown as EquiposService,
+          marcaciones as unknown as MarcacionesService,
+          anios as unknown as AniosAcademicosService,
+          calendario as unknown as CalendarioService,
+          audit as unknown as AuditService,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          plan as never,
+        );
+
+      it("al firmar el ingreso vincula la planificación (pasa a ejecutada)", async () => {
+        const plan = {
+          tituloDeSesion: jest.fn().mockResolvedValue(null),
+          vincularConSesion: jest.fn().mockResolvedValue(undefined),
+        };
+        await conPlanificaciones(plan).firmarIngresoWeb(
+          "ses-1",
+          { tema: "Fracciones" },
+          docenteUsuario,
+        );
+        expect(plan.vincularConSesion).toHaveBeenCalledWith("ses-1");
+      });
+
+      it("sin tema escrito, toma el título de la planificación", async () => {
+        const plan = {
+          tituloDeSesion: jest.fn().mockResolvedValue("Juegos ancestrales"),
+          vincularConSesion: jest.fn().mockResolvedValue(undefined),
+        };
+        await conPlanificaciones(plan).firmarIngresoWeb("ses-1", { tema: " " }, docenteUsuario);
+        expect(repo.firmarIngreso).toHaveBeenCalledWith(
+          "ses-1",
+          "doc-1",
+          expect.objectContaining({ tema: "Juegos ancestrales" }),
+        );
+      });
+
+      it("sin tema y sin planificación sigue pidiendo el tema", async () => {
+        const plan = {
+          tituloDeSesion: jest.fn().mockResolvedValue(null),
+          vincularConSesion: jest.fn(),
+        };
+        await expect(
+          conPlanificaciones(plan).firmarIngresoWeb("ses-1", { tema: "" }, docenteUsuario),
+        ).rejects.toThrow("Ingrese el tema de la sesión para firmar el ingreso.");
+      });
+
+      it("un fallo al vincular no deshace la firma", async () => {
+        const plan = {
+          tituloDeSesion: jest.fn().mockResolvedValue(null),
+          vincularConSesion: jest.fn().mockRejectedValue(new Error("falla")),
+        };
+        await expect(
+          conPlanificaciones(plan).firmarIngresoWeb("ses-1", { tema: "x" }, docenteUsuario),
+        ).resolves.toBeDefined();
+      });
+    });
+
     it("permite firmar ingreso y salida desde la web sin equipoId", async () => {
       const ingreso = await service.firmarIngresoWeb(
         "ses-1",

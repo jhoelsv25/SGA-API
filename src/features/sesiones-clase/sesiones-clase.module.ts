@@ -9,6 +9,7 @@ import { CalendarioModule } from "../calendario/calendario.module";
 import { EquiposModule } from "../equipos/equipos.module";
 import { MarcacionesModule } from "../marcaciones/marcaciones.module";
 import { ConsolidadoDocenteModule } from "../consolidado-docente/consolidado-docente.module";
+import { PlanificacionSesionesModule } from "../planificacion-sesiones/planificacion-sesiones.module";
 import { NotificacionesModule } from "../notificaciones/notificaciones.module";
 import { VariablesSistemaModule } from "../variables-sistema/variables-sistema.module";
 import { SesionesClaseProcessor } from "./processors";
@@ -27,6 +28,7 @@ import { SesionesClaseService } from "./sesiones-clase.service";
     CalendarioModule,
     ConsolidadoDocenteModule,
     NotificacionesModule,
+    PlanificacionSesionesModule,
     VariablesSistemaModule,
   ],
   controllers: [SesionesClaseController],

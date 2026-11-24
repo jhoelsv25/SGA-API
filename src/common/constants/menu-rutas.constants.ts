@@ -89,3 +89,9 @@ export const MENU_APODERADOS = "/admin/apoderados";
 export const MENU_MATRICULAS = "/admin/enrollment";
 export const MENU_CURRICULO = "/admin/curriculum";
 export const MENU_REPORTES = "/admin/reportes";
+
+/**
+ * RF-024: planificación de la sesión de aprendizaje y catálogo curricular.
+ */
+export const MENU_PLANIFICACION_SESIONES = "/admin/planificacion-sesiones";
+export const MENU_CATALOGO_CURRICULAR = "/admin/catalogo-curricular";

@@ -26,6 +26,7 @@ import {
   FUENTE_INSTRUMENTO_INICIAL,
   NOMBRE_INSTRUMENTO_INICIAL,
 } from "./seed-instrumento-observacion";
+import { sembrarCatalogoCurricular } from "./seed-catalogo-curricular";
 import { MENUS_SEGUIMIENTO_DOCENTE } from "./seed-menu-seguimiento-docente";
 import { VARIABLES_SEGUIMIENTO_DOCENTE } from "./seed-variables-seguimiento-docente";
 
@@ -1086,6 +1087,10 @@ async function seed() {
     ],
   );
   console.log("✔ Instrumento de observación inicial (RF-023).");
+
+  // RF-024 V1: catálogo curricular (áreas, competencias, capacidades, desempeños, enfoques)
+  await sembrarCatalogoCurricular(pool);
+  console.log("✔ Catálogo curricular (RF-024).");
 
   // RF-015: menús del Aula virtual bajo el contenedor "Aula virtual"
   await pool.query(

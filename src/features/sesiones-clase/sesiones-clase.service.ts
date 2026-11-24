@@ -16,6 +16,7 @@ import { MENU_JUSTIFICACIONES_SESION, MENU_SESIONES_HOY } from "../../common/con
 import { createHash } from "node:crypto";
 import { AuditService } from "../../common/services/audit.service";
 import { CacheService } from "../../core/cache/cache.service";
+import { PlanificacionSesionesService } from "../planificacion-sesiones/planificacion-sesiones.service";
 import { IaService } from "../../core/ia/ia.service";
 import { QUEUES } from "../../core/queues/queues.constants";
 import type { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface";
@@ -150,6 +151,8 @@ export class SesionesClaseService implements OnModuleInit {
     private readonly iaService?: IaService,
     @Optional()
     private readonly cacheService?: CacheService,
+    @Optional()
+    private readonly planificacionesService?: PlanificacionSesionesService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -945,9 +948,13 @@ export class SesionesClaseService implements OnModuleInit {
 
   // --- privados ------------------------------------------------------------------
 
+  /**
+   * RF-011 V4: la firma es solo en el Kiosko de Sesiones. La firma web queda apagada salvo que
+   * `sesion.permitir_firma_web` se active expresamente.
+   */
   private async firmaWebHabilitada(): Promise<boolean> {
     if (!this.variablesService) return true;
-    return this.variablesService.isActiva(VARIABLES_SESION.PERMITIR_FIRMA_WEB, true);
+    return this.variablesService.isActiva(VARIABLES_SESION.PERMITIR_FIRMA_WEB, false);
   }
 
   private async ejecutarFirmaIngreso(params: {
@@ -967,7 +974,11 @@ export class SesionesClaseService implements OnModuleInit {
     if (sesion.fecha !== fecha) {
       throw new BadRequestException(MENSAJES_SESION.SESION_TERMINADA);
     }
-    const tema = params.temaRaw?.trim();
+    // RF-024: si el docente no escribe el tema, se toma el título de su planificación.
+    const tema =
+      params.temaRaw?.trim() ||
+      (await this.planificacionesService?.tituloDeSesion(sesion.id)) ||
+      "";
     if (!tema) {
       throw new BadRequestException(MENSAJES_SESION.FALTA_TEMA);
     }
@@ -1013,6 +1024,13 @@ export class SesionesClaseService implements OnModuleInit {
       },
       direccionIp: params.ip,
     });
+
+    // RF-024: la planificación del bloque pasa a «ejecutada»; un fallo no deshace la firma.
+    try {
+      await this.planificacionesService?.vincularConSesion(sesion.id);
+    } catch (error) {
+      this.logger.warn(`No se pudo vincular la planificación: ${(error as Error).message}`);
+    }
 
     const horaFirma = horaCorta(hora);
     return {

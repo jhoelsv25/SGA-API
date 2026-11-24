@@ -27,6 +27,7 @@ import {
   personas,
   roles,
   secciones,
+  planificacionesSesion,
   sesionesClase,
   usuarioRoles,
   usuarios,
@@ -91,6 +92,8 @@ export class SesionesClaseRepository implements ISesionesClaseRepository {
         justificacionComentario: sesionesClase.justificacionComentario,
         justificacionSolicitadaEn: sesionesClase.justificacionSolicitadaEn,
         justificacionRevisadaEn: sesionesClase.justificacionRevisadaEn,
+        planificacionId: planificacionesSesion.id,
+        planificacionEstado: planificacionesSesion.estado,
       })
       .from(sesionesClase)
       .innerJoin(horarios, eq(horarios.id, sesionesClase.horarioId))
@@ -101,7 +104,14 @@ export class SesionesClaseRepository implements ISesionesClaseRepository {
       .innerJoin(docentes, eq(docentes.id, sesionesClase.docenteId))
       .innerJoin(personaDocente, eq(personaDocente.id, docentes.personaId))
       .leftJoin(docenteTitular, eq(docenteTitular.id, sesionesClase.docenteTitularId))
-      .leftJoin(personaTitular, eq(personaTitular.id, docenteTitular.personaId));
+      .leftJoin(personaTitular, eq(personaTitular.id, docenteTitular.personaId))
+      .leftJoin(
+        planificacionesSesion,
+        and(
+          eq(planificacionesSesion.horarioId, sesionesClase.horarioId),
+          eq(planificacionesSesion.fecha, sesionesClase.fecha),
+        ),
+      );
   }
 
   private mapear(
@@ -135,6 +145,9 @@ export class SesionesClaseRepository implements ISesionesClaseRepository {
             solicitadaEn: fila.justificacionSolicitadaEn,
             revisadaEn: fila.justificacionRevisadaEn,
           }
+        : null,
+      planificacion: fila.planificacionId
+        ? { id: fila.planificacionId, estado: fila.planificacionEstado ?? "borrador" }
         : null,
     };
   }
