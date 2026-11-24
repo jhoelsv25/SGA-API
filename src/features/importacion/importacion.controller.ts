@@ -7,11 +7,14 @@ import {
   Param,
   Post,
   Res,
+  Sse,
   StreamableFile,
   UploadedFile,
   UploadedFiles,
   UseInterceptors,
+  type MessageEvent,
 } from "@nestjs/common";
+import { Observable } from "rxjs";
 import { AnyFilesInterceptor, FileInterceptor } from "@nestjs/platform-express";
 import {
   ApiBearerAuth,
@@ -61,7 +64,8 @@ export class ImportacionController {
   @ApiParam({
     name: "tipo",
     enum: Object.values(TIPO_IMPORTACION),
-    description: "Tipo de entidad a importar (personas, estudiantes, docentes, apoderados)",
+    description:
+      "Tipo de entidad a importar (personas, estudiantes, docentes, apoderados, matriculas)",
   })
   async descargarPlantilla(
     @Param("tipo") tipo: TipoImportacion,
@@ -133,6 +137,18 @@ export class ImportacionController {
   @ApiResponse({ status: 200, type: EstadoImportacionJobDto })
   async consultarEstadoJob(@Param("id") id: string): Promise<EstadoImportacionJobDto> {
     return this.importacionService.consultarEstadoJob(id);
+  }
+
+  @Sse("jobs/:id/progreso")
+  @Roles("Administrador", "Secretaria")
+  @ApiOperation({
+    summary: "Stream SSE de progreso del trabajo de importación masiva",
+    description:
+      "Emite eventos continuos con el estado y porcentaje de avance (0 a 100) en tiempo real mediante Server-Sent Events.",
+  })
+  @ApiParam({ name: "id", description: "ID del trabajo en BullMQ" })
+  streamProgresoJob(@Param("id") id: string): Observable<MessageEvent> {
+    return this.importacionService.streamProgresoJob(id);
   }
 
   @Get("jobs/:id/credenciales-excel")

@@ -1,7 +1,17 @@
 import { randomUUID } from "crypto";
-import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+  Optional,
+  type MessageEvent,
+} from "@nestjs/common";
+import { Observable, timer } from "rxjs";
+import { switchMap, takeWhile } from "rxjs/operators";
 import { InjectQueue } from "@nestjs/bullmq";
 import type { Queue, Job } from "bullmq";
+import { AnioLectivoCls } from "../../common/anio-lectivo";
 import { AuditService } from "../../common/services/audit.service";
 import { QUEUES } from "../../core/queues/queues.constants";
 import type { PersonaResponseDto } from "../personas/dto";
@@ -27,6 +37,7 @@ import {
   ApoderadosImportService,
   DocentesImportService,
   EstudiantesImportService,
+  MatriculasImportService,
   PersonasImportService,
 } from "./services";
 import {
@@ -81,6 +92,8 @@ export class ImportacionService {
     private readonly auditService: AuditService,
     @InjectQueue(QUEUES.IMPORTACION)
     private readonly importacionQueue: Queue,
+    @Optional() private readonly matriculasImportService?: MatriculasImportService,
+    @Optional() private readonly anioLectivoCls?: AnioLectivoCls,
   ) {}
 
   private obtenerHandler(tipo: TipoImportacion): IEntidadImportHandler {
@@ -201,6 +214,34 @@ export class ImportacionService {
 
     if (dto.filas.length > IMPORTACION_MAX_FILAS) {
       throw new BadRequestException(IMPORTACION_MESSAGES.LIMITE_FILAS_SUPERADO);
+    }
+
+    if (dto.tipo === TIPO_IMPORTACION.MATRICULAS) {
+      if (!this.matriculasImportService) {
+        throw new BadRequestException(
+          "El servicio de importación de matrículas no está disponible.",
+        );
+      }
+      const anioId = this.anioLectivoCls?.id();
+      const { filasAnalizadas, validasCount, omitidasCount, erroresCount } =
+        await this.matriculasImportService.previsualizarFilas(dto.filas, anioId);
+
+      let loteId: string | undefined;
+      if (validasCount > 0) {
+        const filasValidas = filasAnalizadas
+          .filter((f) => f.estado === "valida")
+          .map((f) => f.datos);
+        loteId = await this.guardarLoteTemporal(dto.tipo, filasValidas);
+      }
+
+      return {
+        loteId,
+        totalFilas: dto.filas.length,
+        validasCount,
+        omitidasCount,
+        erroresCount,
+        filas: filasAnalizadas,
+      };
     }
 
     const handler = this.obtenerHandler(dto.tipo);
@@ -327,10 +368,11 @@ export class ImportacionService {
     }
 
     const payloadDto: EjecutarImportacionDto = { tipo: dto.tipo, filas };
+    const anioAcademicoId = this.anioLectivoCls?.id();
 
     const job = await this.importacionQueue.add(
       "procesar-lote",
-      { dto: payloadDto, actorId, ip },
+      { dto: payloadDto, actorId, ip, anioAcademicoId },
       {
         attempts: 1,
         removeOnComplete: false,
@@ -382,13 +424,40 @@ export class ImportacionService {
     };
   }
 
+  streamProgresoJob(jobId: string): Observable<MessageEvent> {
+    return timer(0, 800).pipe(
+      switchMap(async () => {
+        try {
+          const estado = await this.consultarEstadoJob(jobId);
+          return { data: estado };
+        } catch (err: unknown) {
+          const mensaje = err instanceof Error ? err.message : "Error al consultar estado.";
+          return {
+            data: {
+              jobId,
+              estado: "fallido",
+              progreso: 0,
+              error: mensaje,
+            },
+          };
+        }
+      }),
+      takeWhile((evento) => {
+        const data = evento.data as EstadoImportacionJobDto | undefined;
+        return data?.estado !== "completado" && data?.estado !== "fallido";
+      }, true),
+    );
+  }
+
   async ejecutarProcesoLote(
     dto: EjecutarImportacionDto,
     actorId: string,
     ip?: string,
     job?: Job,
+    anioAcademicoId?: string,
   ): Promise<EjecutarImportacionResponseDto> {
-    const handler = this.obtenerHandler(dto.tipo);
+    const esMatriculas = dto.tipo === TIPO_IMPORTACION.MATRICULAS;
+    const handler = esMatriculas ? null : this.obtenerHandler(dto.tipo);
     const credencialesEmitidas: CredencialEmitidaDto[] = [];
     let importadosCount = 0;
     let omitidosCount = 0;
@@ -398,14 +467,30 @@ export class ImportacionService {
     for (let i = 0; i < totalFilas; i++) {
       const fila = filas[i];
       try {
-        const resultado = await this.procesarFila(handler, fila, actorId, ip);
-        if (resultado) {
-          importadosCount++;
-          if (resultado.credencial) {
-            credencialesEmitidas.push(resultado.credencial);
+        if (esMatriculas) {
+          if (!this.matriculasImportService) {
+            throw new BadRequestException(
+              "El servicio de importación de matrículas no está disponible.",
+            );
           }
+          const ok = await this.matriculasImportService.procesarFila(
+            fila,
+            anioAcademicoId,
+            actorId,
+            ip,
+          );
+          if (ok) importadosCount++;
+          else omitidosCount++;
         } else {
-          omitidosCount++;
+          const resultado = await this.procesarFila(handler!, fila, actorId, ip);
+          if (resultado) {
+            importadosCount++;
+            if (resultado.credencial) {
+              credencialesEmitidas.push(resultado.credencial);
+            }
+          } else {
+            omitidosCount++;
+          }
         }
       } catch (err: unknown) {
         const mensaje = err instanceof Error ? err.message : String(err);
