@@ -49,6 +49,15 @@ export class EstudiantesController {
     return this.estudiantesService.findAll(query);
   }
 
+  @Get("resumen")
+  @Roles("Administrador", "Director", "Subdirector", "Secretaria")
+  @ApiOperation({
+    summary: "Resumen de totales del padrón de estudiantes por estado",
+  })
+  async obtenerResumen(@Query() query: EstudianteQueryDto) {
+    return this.estudiantesService.obtenerResumen(query);
+  }
+
   @Get(":id")
   @Roles("Administrador", "Director", "Subdirector", "Secretaria")
   @ApiOperation({ summary: "Obtener detalle completo de un estudiante por ID" })

@@ -4,7 +4,7 @@ import {
   MATRICULA_TIPOS,
   type MatriculaTipo,
 } from "../../matriculas/constants";
-import type { SeccionConVacantes } from "../../matriculas/interfaces";
+import type { EstudianteParaMatricula, SeccionConVacantes } from "../../matriculas/interfaces";
 import { MatriculasService } from "../../matriculas/matriculas.service";
 import { MatriculasRepository } from "../../matriculas/repositories";
 import type { FilaPrevisualizadaDto } from "../dto";
@@ -71,19 +71,34 @@ function resolverSeccion(
   const seccionNorm = normalizarNombreSeccion(seccionTexto);
   if (!seccionNorm) return null;
 
-  const candidatas = secciones.filter((s) => normalizarNombreSeccion(s.nombre) === seccionNorm);
-  if (candidatas.length === 0) return null;
+  const buscarPorNombre = (nombreNorm: string): SeccionConVacantes | null => {
+    const candidatas = secciones.filter((s) => normalizarNombreSeccion(s.nombre) === nombreNorm);
+    if (candidatas.length === 0) return null;
 
-  if (numeroGrado !== null) {
-    const porNumero = candidatas.find((s) => s.gradoNumero === numeroGrado);
-    if (porNumero) return porNumero;
+    if (numeroGrado !== null) {
+      const porNumero = candidatas.find((s) => s.gradoNumero === numeroGrado);
+      if (porNumero) return porNumero;
+    }
+
+    return (
+      candidatas.find((s) => normalizarTexto(s.gradoNombre) === gradoNorm) ??
+      candidatas.find((s) => normalizarTexto(s.gradoNombre).includes(gradoNorm)) ??
+      null
+    );
+  };
+
+  const exacta = buscarPorNombre(seccionNorm);
+  if (exacta) return exacta;
+
+  // Fallback SIAGIE: si la sección viene prefijada con el número de grado (ej. "2 AP" -> "AP")
+  if (numeroGrado !== null && seccionNorm.startsWith(String(numeroGrado))) {
+    const sinPrefijoGrado = seccionNorm.slice(String(numeroGrado).length);
+    if (sinPrefijoGrado) {
+      return buscarPorNombre(sinPrefijoGrado);
+    }
   }
 
-  return (
-    candidatas.find((s) => normalizarTexto(s.gradoNombre) === gradoNorm) ??
-    candidatas.find((s) => normalizarTexto(s.gradoNombre).includes(gradoNorm)) ??
-    null
-  );
+  return null;
 }
 
 function normalizarTipoMatricula(raw?: string): MatriculaTipo | null {
@@ -153,25 +168,57 @@ export class MatriculasImportService {
       cuposRestantes.set(s.id, s.vacantesDisponibles);
     }
 
+    // Precarga en bloque (2 consultas en lugar de N+1) para previsualizar 500 filas en < 200 ms
+    const filasNormalizadas: Record<string, unknown>[] = filas.map((filaRaw) =>
+      Array.isArray(filaRaw) ? Object.assign({}, filaRaw) : filaRaw,
+    );
+
+    const identificadores = filasNormalizadas
+      .map((datos) =>
+        getStr(datos, "codigoSiagie", "codigo_siagie", "codigo", "numeroDocumento", "dni"),
+      )
+      .filter(Boolean);
+
+    const estudiantesEncontrados =
+      await this.matriculasRepository.findEstudiantesPorCodigosODocumentos(identificadores);
+
+    const mapaEstudiantes = new Map<string, EstudianteParaMatricula>();
+    for (const est of estudiantesEncontrados) {
+      if (est.codigo) mapaEstudiantes.set(est.codigo.trim(), est);
+      if (est.numeroDocumento) mapaEstudiantes.set(est.numeroDocumento.trim(), est);
+    }
+
+    const matriculasExistentes = await this.matriculasRepository.findMatriculasDeEstudiantesEnAnio(
+      estudiantesEncontrados.map((e) => e.id),
+      contexto.anioAcademicoId,
+    );
+    const mapaMatriculas = new Map<string, { id: string; codigo: string; estado: string }>();
+    for (const mat of matriculasExistentes) {
+      mapaMatriculas.set(mat.estudianteId, {
+        id: mat.id,
+        codigo: mat.codigo,
+        estado: mat.estado,
+      });
+    }
+
     const estudiantesEnLote = new Set<string>();
     const filasAnalizadas: FilaPrevisualizadaDto[] = [];
     let validasCount = 0;
     let omitidasCount = 0;
     let erroresCount = 0;
 
-    for (let i = 0; i < filas.length; i++) {
-      const filaRaw = filas[i];
-      const datos: Record<string, unknown> = Array.isArray(filaRaw)
-        ? Object.assign({}, filaRaw)
-        : filaRaw;
+    for (let i = 0; i < filasNormalizadas.length; i++) {
+      const datos = filasNormalizadas[i];
       const numeroFila = i + 2;
 
-      const analizada = await this.analizarFila(
+      const analizada = this.analizarFilaEnMemoria(
         datos,
         numeroFila,
         contexto,
         cuposRestantes,
         estudiantesEnLote,
+        mapaEstudiantes,
+        mapaMatriculas,
       );
 
       filasAnalizadas.push(analizada);
@@ -190,13 +237,15 @@ export class MatriculasImportService {
     };
   }
 
-  private async analizarFila(
+  private analizarFilaEnMemoria(
     datos: Record<string, unknown>,
     numeroFila: number,
     contexto: ContextoPrevisualizacionMatriculas,
     cuposRestantes: Map<string, number>,
     estudiantesEnLote: Set<string>,
-  ): Promise<FilaPrevisualizadaDto> {
+    mapaEstudiantes: Map<string, EstudianteParaMatricula>,
+    mapaMatriculas: Map<string, { id: string; codigo: string; estado: string }>,
+  ): FilaPrevisualizadaDto {
     const identificador = getStr(
       datos,
       "codigoSiagie",
@@ -228,8 +277,7 @@ export class MatriculasImportService {
       };
     }
 
-    const estudiante =
-      await this.matriculasRepository.findEstudiantePorCodigoODocumento(identificador);
+    const estudiante = mapaEstudiantes.get(identificador.trim()) ?? null;
     if (!estudiante) {
       return {
         numeroFila,
@@ -270,10 +318,7 @@ export class MatriculasImportService {
     }
     estudiantesEnLote.add(estudiante.id);
 
-    const yaMatriculado = await this.matriculasRepository.findMatriculaByEstudianteYAnio(
-      estudiante.id,
-      contexto.anioAcademicoId,
-    );
+    const yaMatriculado = mapaMatriculas.get(estudiante.id) ?? null;
     if (yaMatriculado) {
       return {
         numeroFila,
@@ -419,6 +464,7 @@ export class MatriculasImportService {
       },
       actorId,
       ip,
+      { silenciarNotificacion: true },
     );
 
     return true;

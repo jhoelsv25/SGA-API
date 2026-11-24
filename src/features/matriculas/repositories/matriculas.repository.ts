@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, count, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, count, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 
 import { Database, DRIZZLE } from "../../../core/database";
 import {
@@ -248,7 +248,17 @@ export class MatriculasRepository {
     const limpio = identificador.trim();
     if (!limpio) return null;
 
-    const [row] = await this.db
+    const lista = await this.findEstudiantesPorCodigosODocumentos([limpio]);
+    return lista[0] ?? null;
+  }
+
+  async findEstudiantesPorCodigosODocumentos(
+    identificadores: string[],
+  ): Promise<EstudianteParaMatricula[]> {
+    const unicos = Array.from(new Set(identificadores.map((i) => i.trim()).filter(Boolean)));
+    if (unicos.length === 0) return [];
+
+    return this.db
       .select({
         id: estudiantes.id,
         personaId: estudiantes.personaId,
@@ -265,12 +275,32 @@ export class MatriculasRepository {
       .where(
         and(
           isNull(estudiantes.eliminadoEn),
-          sql`(${estudiantes.codigo} = ${limpio} OR ${personas.numeroDocumento} = ${limpio})`,
+          or(inArray(estudiantes.codigo, unicos), inArray(personas.numeroDocumento, unicos)),
         ),
-      )
-      .limit(1);
+      );
+  }
 
-    return row ?? null;
+  async findMatriculasDeEstudiantesEnAnio(
+    estudianteIds: string[],
+    anioAcademicoId: string,
+  ): Promise<Array<{ estudianteId: string; id: string; codigo: string; estado: string }>> {
+    const unicos = Array.from(new Set(estudianteIds.filter(Boolean)));
+    if (unicos.length === 0) return [];
+
+    return this.db
+      .select({
+        estudianteId: matriculas.estudianteId,
+        id: matriculas.id,
+        codigo: matriculas.codigo,
+        estado: matriculas.estado,
+      })
+      .from(matriculas)
+      .where(
+        and(
+          eq(matriculas.anioAcademicoId, anioAcademicoId),
+          inArray(matriculas.estudianteId, unicos),
+        ),
+      );
   }
 
   async listarSeccionesActivasDeAnio(anioAcademicoId: string): Promise<SeccionConVacantes[]> {
@@ -310,6 +340,98 @@ export class MatriculasRepository {
         vacantesDisponibles: Math.max(0, row.vacantes - matriculados),
       };
     });
+  }
+
+  async obtenerResumen(
+    query?: MatriculaQueryDto,
+    anioClsId?: string,
+  ): Promise<{
+    totalMatriculados: number;
+    totalRetirados: number;
+    totalTrasladados: number;
+    vacantesTotales: number;
+    vacantesOcupadas: number;
+    vacantesDisponibles: number;
+  }> {
+    let anioId = query?.anioAcademicoId || anioClsId;
+    if (!anioId) {
+      const anio = await this.findAnioParaMatricula();
+      anioId = anio?.id;
+    }
+
+    if (!anioId) {
+      return {
+        totalMatriculados: 0,
+        totalRetirados: 0,
+        totalTrasladados: 0,
+        vacantesTotales: 0,
+        vacantesOcupadas: 0,
+        vacantesDisponibles: 0,
+      };
+    }
+
+    const condicionesMatricula = [eq(matriculas.anioAcademicoId, anioId)];
+    if (query?.gradoId) condicionesMatricula.push(eq(secciones.gradoId, query.gradoId));
+    if (query?.seccionId) condicionesMatricula.push(eq(matriculas.seccionId, query.seccionId));
+    if (query?.tipo) condicionesMatricula.push(eq(matriculas.tipo, query.tipo));
+    if (query?.search && query.search.trim().length >= 2) {
+      const patron = `%${query.search.trim()}%`;
+      condicionesMatricula.push(
+        sql`(
+          ${personas.nombres} ILIKE ${patron}
+          OR ${personas.apellidoPaterno} ILIKE ${patron}
+          OR ${personas.apellidoMaterno} ILIKE ${patron}
+          OR ${personas.numeroDocumento} ILIKE ${patron}
+          OR ${matriculas.codigo} ILIKE ${patron}
+          OR ${estudiantes.codigo} ILIKE ${patron}
+        )`,
+      );
+    }
+
+    const [conteos] = await this.db
+      .select({
+        totalMatriculados: sql<number>`COUNT(*) FILTER (WHERE ${matriculas.estado} = 'matriculado')::int`,
+        totalRetirados: sql<number>`COUNT(*) FILTER (WHERE ${matriculas.estado} = 'retirado')::int`,
+        totalTrasladados: sql<number>`COUNT(*) FILTER (WHERE ${matriculas.estado} = 'trasladado')::int`,
+      })
+      .from(matriculas)
+      .innerJoin(secciones, eq(matriculas.seccionId, secciones.id))
+      .innerJoin(estudiantes, eq(matriculas.estudianteId, estudiantes.id))
+      .innerJoin(personas, eq(estudiantes.personaId, personas.id))
+      .where(and(...condicionesMatricula));
+
+    const condicionesSeccion = [
+      eq(secciones.anioAcademicoId, anioId),
+      eq(secciones.estado, "activa"),
+    ];
+    if (query?.gradoId) condicionesSeccion.push(eq(secciones.gradoId, query.gradoId));
+    if (query?.seccionId) condicionesSeccion.push(eq(secciones.id, query.seccionId));
+
+    const seccionesRows = await this.db
+      .select({
+        vacantes: secciones.vacantes,
+        ocupadas: sql<number>`COUNT(*) FILTER (WHERE ${matriculas.estado} = 'matriculado')::int`,
+      })
+      .from(secciones)
+      .leftJoin(matriculas, eq(secciones.id, matriculas.seccionId))
+      .where(and(...condicionesSeccion))
+      .groupBy(secciones.id);
+
+    let vacantesTotales = 0;
+    let vacantesOcupadas = 0;
+    for (const s of seccionesRows) {
+      vacantesTotales += Number(s.vacantes ?? 0);
+      vacantesOcupadas += Number(s.ocupadas ?? 0);
+    }
+
+    return {
+      totalMatriculados: Number(conteos?.totalMatriculados ?? 0),
+      totalRetirados: Number(conteos?.totalRetirados ?? 0),
+      totalTrasladados: Number(conteos?.totalTrasladados ?? 0),
+      vacantesTotales,
+      vacantesOcupadas,
+      vacantesDisponibles: Math.max(0, vacantesTotales - vacantesOcupadas),
+    };
   }
 
   async hasApoderadoPrincipal(estudianteId: string): Promise<boolean> {

@@ -2,6 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import {
   IsBoolean,
+  IsIn,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -132,4 +133,17 @@ export class CreateEstudianteDto {
   @IsString()
   @MaxLength(100)
   seguroSalud?: string;
+
+  @ApiPropertyOptional({
+    description:
+      "Estado inicial de la ficha del estudiante (por defecto activo; útil para carga histórica)",
+    enum: ["activo", "retirado", "trasladado", "egresado"],
+    default: "activo",
+    example: "activo",
+  })
+  @IsOptional()
+  @IsIn(["activo", "retirado", "trasladado", "egresado"], {
+    message: "El estado debe ser activo, retirado, trasladado o egresado.",
+  })
+  estado?: "activo" | "retirado" | "trasladado" | "egresado";
 }

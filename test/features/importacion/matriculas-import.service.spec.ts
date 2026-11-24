@@ -8,8 +8,8 @@ describe("MatriculasImportService", () => {
   let matriculasRepository: {
     findAnioParaMatricula: jest.Mock;
     listarSeccionesActivasDeAnio: jest.Mock;
-    findEstudiantePorCodigoODocumento: jest.Mock;
-    findMatriculaByEstudianteYAnio: jest.Mock;
+    findEstudiantesPorCodigosODocumentos: jest.Mock;
+    findMatriculasDeEstudiantesEnAnio: jest.Mock;
   };
   let matriculasService: {
     matricular: jest.Mock;
@@ -19,8 +19,8 @@ describe("MatriculasImportService", () => {
     matriculasRepository = {
       findAnioParaMatricula: jest.fn(),
       listarSeccionesActivasDeAnio: jest.fn(),
-      findEstudiantePorCodigoODocumento: jest.fn(),
-      findMatriculaByEstudianteYAnio: jest.fn(),
+      findEstudiantesPorCodigosODocumentos: jest.fn(),
+      findMatriculasDeEstudiantesEnAnio: jest.fn(),
     };
     matriculasService = {
       matricular: jest.fn(),
@@ -53,18 +53,20 @@ describe("MatriculasImportService", () => {
         vacantesDisponibles: 25,
       },
     ]);
-    matriculasRepository.findEstudiantePorCodigoODocumento.mockResolvedValue({
-      id: "est-1",
-      personaId: "per-1",
-      codigo: "00000078360633",
-      estado: "activo",
-      nombres: "DANAE FERNANDA",
-      apellidoPaterno: "ANCALLE",
-      apellidoMaterno: "MARTINEZ",
-      numeroDocumento: "78360633",
-      tipoDocumento: "dni",
-    });
-    matriculasRepository.findMatriculaByEstudianteYAnio.mockResolvedValue(null);
+    matriculasRepository.findEstudiantesPorCodigosODocumentos.mockResolvedValue([
+      {
+        id: "est-1",
+        personaId: "per-1",
+        codigo: "00000078360633",
+        estado: "activo",
+        nombres: "DANAE FERNANDA",
+        apellidoPaterno: "ANCALLE",
+        apellidoMaterno: "MARTINEZ",
+        numeroDocumento: "78360633",
+        tipoDocumento: "dni",
+      },
+    ]);
+    matriculasRepository.findMatriculasDeEstudiantesEnAnio.mockResolvedValue([]);
 
     const resultado = await service.previsualizarFilas(
       [
@@ -86,6 +88,51 @@ describe("MatriculasImportService", () => {
     expect(resultado.filasAnalizadas[0].datos.gradoSeccion).toBe("2.° Secundaria - 2 AP");
   });
 
+  it("debe resolver secciones prefijadas con el número de grado en SIAGIE (ej. '2 AP' -> 'AP')", async () => {
+    matriculasRepository.findAnioParaMatricula.mockResolvedValue({
+      id: "anio-2026",
+      anio: 2026,
+      estado: "en_curso",
+    });
+    matriculasRepository.listarSeccionesActivasDeAnio.mockResolvedValue([
+      {
+        id: "sec-ap-2",
+        anioAcademicoId: "anio-2026",
+        anioNumero: 2026,
+        gradoId: "grado-2",
+        gradoNumero: 2,
+        gradoNombre: "2.° de secundaria",
+        nombre: "AP",
+        vacantes: 30,
+        estado: "activa",
+        matriculadosCount: 0,
+        vacantesDisponibles: 30,
+      },
+    ]);
+    matriculasRepository.findEstudiantesPorCodigosODocumentos.mockResolvedValue([
+      {
+        id: "est-2",
+        personaId: "per-2",
+        codigo: "00000077715242",
+        estado: "activo",
+        nombres: "LUCERO",
+        apellidoPaterno: "BELITO",
+        apellidoMaterno: "VILLANUEVA",
+        numeroDocumento: "77715242",
+        tipoDocumento: "dni",
+      },
+    ]);
+    matriculasRepository.findMatriculasDeEstudiantesEnAnio.mockResolvedValue([]);
+
+    const resultado = await service.previsualizarFilas([
+      { codigoSiagie: "00000077715242", grado: "SEGUNDO", seccion: "2 AP" },
+    ]);
+
+    expect(resultado.validasCount).toBe(1);
+    expect(resultado.filasAnalizadas[0].datos._seccionId).toBe("sec-ap-2");
+    expect(resultado.filasAnalizadas[0].datos.gradoSeccion).toBe("2.° de secundaria - AP");
+  });
+
   it("debe marcar como ya_registrada si el estudiante ya está matriculado en el año", async () => {
     matriculasRepository.findAnioParaMatricula.mockResolvedValue({
       id: "anio-2026",
@@ -93,22 +140,27 @@ describe("MatriculasImportService", () => {
       estado: "en_curso",
     });
     matriculasRepository.listarSeccionesActivasDeAnio.mockResolvedValue([]);
-    matriculasRepository.findEstudiantePorCodigoODocumento.mockResolvedValue({
-      id: "est-1",
-      personaId: "per-1",
-      codigo: "00000078360633",
-      estado: "activo",
-      nombres: "DANAE",
-      apellidoPaterno: "ANCALLE",
-      apellidoMaterno: null,
-      numeroDocumento: "78360633",
-      tipoDocumento: "dni",
-    });
-    matriculasRepository.findMatriculaByEstudianteYAnio.mockResolvedValue({
-      id: "mat-1",
-      codigo: "2026-000001",
-      estado: "matriculado",
-    });
+    matriculasRepository.findEstudiantesPorCodigosODocumentos.mockResolvedValue([
+      {
+        id: "est-1",
+        personaId: "per-1",
+        codigo: "00000078360633",
+        estado: "activo",
+        nombres: "DANAE",
+        apellidoPaterno: "ANCALLE",
+        apellidoMaterno: null,
+        numeroDocumento: "78360633",
+        tipoDocumento: "dni",
+      },
+    ]);
+    matriculasRepository.findMatriculasDeEstudiantesEnAnio.mockResolvedValue([
+      {
+        estudianteId: "est-1",
+        id: "mat-1",
+        codigo: "2026-000001",
+        estado: "matriculado",
+      },
+    ]);
 
     const resultado = await service.previsualizarFilas([
       { codigoSiagie: "00000078360633", grado: "1", seccion: "A" },
@@ -139,8 +191,8 @@ describe("MatriculasImportService", () => {
         vacantesDisponibles: 1,
       },
     ]);
-    matriculasRepository.findEstudiantePorCodigoODocumento
-      .mockResolvedValueOnce({
+    matriculasRepository.findEstudiantesPorCodigosODocumentos.mockResolvedValue([
+      {
         id: "est-1",
         personaId: "per-1",
         codigo: "COD-1",
@@ -150,8 +202,8 @@ describe("MatriculasImportService", () => {
         apellidoMaterno: null,
         numeroDocumento: "11111111",
         tipoDocumento: "dni",
-      })
-      .mockResolvedValueOnce({
+      },
+      {
         id: "est-2",
         personaId: "per-2",
         codigo: "COD-2",
@@ -161,8 +213,9 @@ describe("MatriculasImportService", () => {
         apellidoMaterno: null,
         numeroDocumento: "22222222",
         tipoDocumento: "dni",
-      });
-    matriculasRepository.findMatriculaByEstudianteYAnio.mockResolvedValue(null);
+      },
+    ]);
+    matriculasRepository.findMatriculasDeEstudiantesEnAnio.mockResolvedValue([]);
 
     const resultado = await service.previsualizarFilas([
       { codigoSiagie: "COD-1", grado: "PRIMERO", seccion: "A" },
@@ -213,6 +266,7 @@ describe("MatriculasImportService", () => {
       },
       "actor-1",
       "127.0.0.1",
+      { silenciarNotificacion: true },
     );
   });
 });
