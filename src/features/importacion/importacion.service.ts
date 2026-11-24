@@ -1,5 +1,13 @@
 import { randomUUID } from "crypto";
-import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+  type MessageEvent,
+} from "@nestjs/common";
+import { Observable, timer } from "rxjs";
+import { switchMap, takeWhile } from "rxjs/operators";
 import { InjectQueue } from "@nestjs/bullmq";
 import type { Queue, Job } from "bullmq";
 import { AuditService } from "../../common/services/audit.service";
@@ -380,6 +388,31 @@ export class ImportacionService {
           ? job.failedReason || "Error al procesar el archivo de importación."
           : undefined,
     };
+  }
+
+  streamProgresoJob(jobId: string): Observable<MessageEvent> {
+    return timer(0, 800).pipe(
+      switchMap(async () => {
+        try {
+          const estado = await this.consultarEstadoJob(jobId);
+          return { data: estado };
+        } catch (err: unknown) {
+          const mensaje = err instanceof Error ? err.message : "Error al consultar estado.";
+          return {
+            data: {
+              jobId,
+              estado: "fallido",
+              progreso: 0,
+              error: mensaje,
+            },
+          };
+        }
+      }),
+      takeWhile((evento) => {
+        const data = evento.data as EstadoImportacionJobDto | undefined;
+        return data?.estado !== "completado" && data?.estado !== "fallido";
+      }, true),
+    );
   }
 
   async ejecutarProcesoLote(
