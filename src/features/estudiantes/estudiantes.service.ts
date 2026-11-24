@@ -23,7 +23,6 @@ import {
   FICHA_MESSAGES,
 } from "../personas/utils/ficha-academica.util";
 import { RolesRepository } from "../roles/repositories/roles.repository";
-import { generateTemporaryPassword } from "../users/utils/password-generator.util";
 import { CARGO_ESTUDIANTE_DEFAULT, ESTUDIANTE_MESSAGES, ROL_ESTUDIANTE_DEFAULT } from "./constants";
 import type {
   CreateEstudianteDto,
@@ -194,6 +193,7 @@ export class EstudiantesService {
     validarDiscapacidadEstudiante(dto.tieneDiscapacidad, dto.detalleDiscapacidad);
 
     // 3. Validar persona y unicidad de ficha
+    let numeroDocumentoInicial: string;
     if (dto.personaId) {
       const persona = await this.personasRepository.findById(dto.personaId);
       if (!persona) {
@@ -201,12 +201,14 @@ export class EstudiantesService {
       }
 
       await this.assertSinFichaEstudianteVigente(dto.personaId);
+      numeroDocumentoInicial = persona.numeroDocumento.trim();
     } else if (dto.nuevaPersona) {
       validarFechaNacimiento(dto.nuevaPersona.fechaNacimiento);
+      numeroDocumentoInicial = dto.nuevaPersona.numeroDocumento.trim();
 
       const existingDoc = await this.personasRepository.findByDocumento(
         dto.nuevaPersona.tipoDocumento,
-        dto.nuevaPersona.numeroDocumento.trim(),
+        numeroDocumentoInicial,
       );
       if (existingDoc) {
         await this.assertSinFichaEstudianteVigente(existingDoc.id);
@@ -231,12 +233,12 @@ export class EstudiantesService {
       throw new NotFoundException(ESTUDIANTE_MESSAGES.ROL_NOT_FOUND);
     }
 
-    // 6. Generar credenciales de marcación y contraseña temporal
+    // 6. Generar credenciales de marcación y contraseña temporal inicial (DNI del estudiante)
     const pinPlano = generateCredencialPin();
     const pinHash = hashSha256(pinPlano);
     const codigoCredencial = generateCodigoCredencial(dto.codigo);
 
-    const tempPassword = generateTemporaryPassword(10);
+    const tempPassword = numeroDocumentoInicial;
     const contrasenaHash = await hashPassword(tempPassword);
 
     // 6b. Liberar la ficha de docente vigente (si la hay y se pidió la baja)

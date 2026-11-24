@@ -146,14 +146,17 @@ describe("EstudiantesService (RF-007 Historia de Usuario 2)", () => {
       } as RoleResponseDto);
       repository.create.mockResolvedValue({
         estudiante: mockEstudiante,
-        tempPassword: "TempPassword123*",
+        tempPassword: "71234567",
         credencial: { codigo: "CR-20261234567890", pin: "1234" },
       });
 
       const result = await service.create(createDto, "admin-1");
 
       expect(result.estudiante.codigo).toBe("20261234567890");
-      expect(result.tempPassword).toBeDefined();
+      expect(result.tempPassword).toBe("71234567");
+      expect(repository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ tempPassword: "71234567" }),
+      );
       expect(result.credencial.pin).toBe("1234");
       expect(auditService.log).toHaveBeenCalledWith(
         expect.objectContaining({ accion: "crear", tabla: "estudiantes" }),
