@@ -219,20 +219,22 @@ export class EstudiantesRepository implements IEstudiantesRepository {
         });
       }
 
-      // 5. Credencial de Marcación
-      const [credencialExistente] = await tx
-        .select({ id: credenciales.id })
-        .from(credenciales)
-        .where(and(eq(credenciales.personaId, personaId), eq(credenciales.activa, true)))
-        .limit(1);
+      // 5. Credencial de Marcación (solo para estudiantes activos; los históricos no requieren carné)
+      if (esActivo) {
+        const [credencialExistente] = await tx
+          .select({ id: credenciales.id })
+          .from(credenciales)
+          .where(and(eq(credenciales.personaId, personaId), eq(credenciales.activa, true)))
+          .limit(1);
 
-      if (!credencialExistente) {
-        await tx.insert(credenciales).values({
-          personaId,
-          codigo: data.codigoCredencial,
-          pinHash: data.pinHash,
-          activa: esActivo,
-        });
+        if (!credencialExistente) {
+          await tx.insert(credenciales).values({
+            personaId,
+            codigo: data.codigoCredencial,
+            pinHash: data.pinHash,
+            activa: true,
+          });
+        }
       }
 
       // Consultar el estudiante creado mediante fn_consultar_estudiantes
