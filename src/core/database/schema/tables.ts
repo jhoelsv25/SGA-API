@@ -3103,3 +3103,251 @@ export const observacionesAulaArchivos = pgTable(
   },
   (table) => [index("ix_observaciones_aula_archivos_obs").on(table.observacionId)],
 );
+
+// ─── RF-024 V1 / RF-011 V4: catálogo curricular y planificación de la sesión ───
+export const areasCurriculares = pgTable(
+  "areas_curriculares",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    codigo: varchar({ length: 30 }).notNull(),
+    nombre: varchar({ length: 100 }).notNull(),
+    orden: smallint().default(0).notNull(),
+  },
+  (table) => [unique("uq_areas_curriculares_codigo").on(table.codigo)],
+);
+
+export const competenciasCurriculares = pgTable(
+  "competencias_curriculares",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    numero: smallint().notNull(),
+    areaId: uuid("area_id").references(() => areasCurriculares.id),
+    tipo: varchar({ length: 12 }).default("area").notNull(),
+    nombre: varchar({ length: 500 }).notNull(),
+    activo: boolean().default(true).notNull(),
+  },
+  (table) => [
+    unique("uq_competencias_curriculares_numero").on(table.numero),
+    index("ix_competencias_curriculares_area").on(table.areaId),
+    check("ck_competencias_curriculares_tipo", sql`tipo IN ('area', 'transversal')`),
+    check("ck_competencias_curriculares_area", sql`(tipo = 'transversal') = (area_id IS NULL)`),
+  ],
+);
+
+export const capacidadesCurriculares = pgTable(
+  "capacidades_curriculares",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    competenciaId: uuid("competencia_id")
+      .notNull()
+      .references(() => competenciasCurriculares.id),
+    orden: smallint().notNull(),
+    nombre: varchar({ length: 500 }).notNull(),
+  },
+  (table) => [unique("uq_capacidades_curriculares_orden").on(table.competenciaId, table.orden)],
+);
+
+export const desempenosCurriculares = pgTable(
+  "desempenos_curriculares",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    competenciaId: uuid("competencia_id")
+      .notNull()
+      .references(() => competenciasCurriculares.id),
+    grado: smallint().notNull(),
+    orden: smallint().notNull(),
+    texto: text().notNull(),
+  },
+  (table) => [
+    unique("uq_desempenos_curriculares_orden").on(table.competenciaId, table.grado, table.orden),
+    check("ck_desempenos_curriculares_grado", sql`grado BETWEEN 1 AND 5`),
+  ],
+);
+
+export const enfoquesTransversales = pgTable(
+  "enfoques_transversales",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    orden: smallint().notNull(),
+    nombre: varchar({ length: 150 }).notNull(),
+  },
+  (table) => [unique("uq_enfoques_transversales_nombre").on(table.nombre)],
+);
+
+export const enfoquesValores = pgTable(
+  "enfoques_valores",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    enfoqueId: uuid("enfoque_id")
+      .notNull()
+      .references(() => enfoquesTransversales.id),
+    orden: smallint().notNull(),
+    nombre: varchar({ length: 150 }).notNull(),
+  },
+  (table) => [unique("uq_enfoques_valores_orden").on(table.enfoqueId, table.orden)],
+);
+
+export const enfoquesAccionesObservables = pgTable(
+  "enfoques_acciones_observables",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    valorId: uuid("valor_id")
+      .notNull()
+      .references(() => enfoquesValores.id),
+    orden: smallint().notNull(),
+    texto: text().notNull(),
+  },
+  (table) => [unique("uq_enfoques_acciones_orden").on(table.valorId, table.orden)],
+);
+
+export const catalogoSesionOpciones = pgTable(
+  "catalogo_sesion_opciones",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    tipo: varchar({ length: 30 }).notNull(),
+    codigo: varchar({ length: 60 }).notNull(),
+    nombre: varchar({ length: 300 }).notNull(),
+    orden: smallint().default(0).notNull(),
+    activo: boolean().default(true).notNull(),
+  },
+  (table) => [
+    unique("uq_catalogo_sesion_opciones").on(table.tipo, table.codigo),
+    check(
+      "ck_catalogo_sesion_opciones_tipo",
+      sql`tipo IN ('nivel_logro', 'instrumento_evaluacion', 'momento_didactico', 'tipo_material', 'referencia')`,
+    ),
+  ],
+);
+
+export const planificacionesSesion = pgTable(
+  "planificaciones_sesion",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    docenteId: uuid("docente_id")
+      .notNull()
+      .references(() => docentes.id),
+    cursoSeccionId: uuid("curso_seccion_id")
+      .notNull()
+      .references(() => cursosSeccion.id),
+    horarioId: uuid("horario_id")
+      .notNull()
+      .references(() => horarios.id),
+    sesionClaseId: uuid("sesion_clase_id").references(() => sesionesClase.id),
+    fecha: date().notNull(),
+    numero: smallint(),
+    unidad: varchar({ length: 50 }),
+    titulo: varchar({ length: 250 }).notNull(),
+    proposito: text(),
+    evidencia: text(),
+    criterios: jsonb().default([]).notNull(),
+    instrumentoCodigo: varchar("instrumento_codigo", { length: 60 }),
+    competenciasTransversales: jsonb("competencias_transversales").default([]).notNull(),
+    enfoques: jsonb().default([]).notNull(),
+    materiales: jsonb().default({}).notNull(),
+    referencias: jsonb().default([]).notNull(),
+    estado: varchar({ length: 12 }).default("borrador").notNull(),
+    copiadaDeId: uuid("copiada_de_id"),
+    creadoEn: timestamp("creado_en", { precision: 0, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    actualizadoEn: timestamp("actualizado_en", { precision: 0, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    unique("uq_planificaciones_sesion_bloque").on(table.horarioId, table.fecha),
+    index("ix_planificaciones_sesion_docente").on(table.docenteId, table.fecha),
+    index("ix_planificaciones_sesion_sesion").on(table.sesionClaseId),
+    check("ck_planificaciones_sesion_estado", sql`estado IN ('borrador', 'lista', 'ejecutada')`),
+  ],
+);
+
+export const planificacionesCompetencias = pgTable(
+  "planificaciones_competencias",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    planificacionId: uuid("planificacion_id")
+      .notNull()
+      .references(() => planificacionesSesion.id, { onDelete: "cascade" }),
+    orden: smallint().notNull(),
+    competenciaId: uuid("competencia_id")
+      .notNull()
+      .references(() => competenciasCurriculares.id),
+    competenciaTexto: varchar("competencia_texto", { length: 500 }).notNull(),
+    capacidades: jsonb().default([]).notNull(),
+    desempenos: jsonb().default([]).notNull(),
+    campoTematico: text("campo_tematico"),
+  },
+  (table) => [
+    unique("uq_planificaciones_competencias_orden").on(table.planificacionId, table.orden),
+  ],
+);
+
+export const planificacionesMomentos = pgTable(
+  "planificaciones_momentos",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    planificacionId: uuid("planificacion_id")
+      .notNull()
+      .references(() => planificacionesSesion.id, { onDelete: "cascade" }),
+    momento: varchar({ length: 12 }).notNull(),
+    actividades: text(),
+    minutos: smallint(),
+  },
+  (table) => [
+    unique("uq_planificaciones_momentos").on(table.planificacionId, table.momento),
+    check(
+      "ck_planificaciones_momentos_momento",
+      sql`momento IN ('inicio', 'desarrollo', 'cierre')`,
+    ),
+    check("ck_planificaciones_momentos_minutos", sql`minutos IS NULL OR minutos >= 0`),
+  ],
+);
+
+export const planificacionesComentarios = pgTable(
+  "planificaciones_comentarios",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    planificacionId: uuid("planificacion_id")
+      .notNull()
+      .references(() => planificacionesSesion.id, { onDelete: "cascade" }),
+    usuarioId: uuid("usuario_id")
+      .notNull()
+      .references(() => usuarios.id),
+    texto: varchar({ length: 2000 }).notNull(),
+    creadoEn: timestamp("creado_en", { precision: 0, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [index("ix_planificaciones_comentarios_plan").on(table.planificacionId)],
+);
+
+export const sesionesVerificacionAula = pgTable(
+  "sesiones_verificacion_aula",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    sesionClaseId: uuid("sesion_clase_id")
+      .notNull()
+      .references(() => sesionesClase.id),
+    enAula: boolean("en_aula").notNull(),
+    horaInicio: time("hora_inicio", { precision: 0 }),
+    horaFin: time("hora_fin", { precision: 0 }),
+    observacion: varchar({ length: 500 }),
+    usuarioId: uuid("usuario_id")
+      .notNull()
+      .references(() => usuarios.id),
+    creadoEn: timestamp("creado_en", { precision: 0, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    actualizadoEn: timestamp("actualizado_en", { precision: 0, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    unique("uq_sesiones_verificacion_aula_sesion").on(table.sesionClaseId),
+    check(
+      "ck_sesiones_verificacion_aula_horas",
+      sql`hora_inicio IS NULL OR hora_fin IS NULL OR hora_fin > hora_inicio`,
+    ),
+  ],
+);

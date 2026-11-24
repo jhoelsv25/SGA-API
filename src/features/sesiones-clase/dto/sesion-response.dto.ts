@@ -12,6 +12,11 @@ export class JustificacionSesionDto {
   @ApiPropertyOptional({ nullable: true }) revisadaEn!: string | null;
 }
 
+export class PlanificacionSesionResumenDto {
+  @ApiProperty() id!: string;
+  @ApiProperty({ enum: ["borrador", "lista", "ejecutada"] }) estado!: string;
+}
+
 export class SesionResponseDto {
   @ApiProperty() id!: string;
   @ApiProperty() fecha!: string;
@@ -24,6 +29,12 @@ export class SesionResponseDto {
   @ApiPropertyOptional({ nullable: true, description: "Titular si hubo reemplazo" })
   docenteTitularNombre!: string | null;
   @ApiProperty() estado!: EstadoSesion;
+  @ApiPropertyOptional({
+    type: PlanificacionSesionResumenDto,
+    nullable: true,
+    description: "RF-024: planificación de la sesión; null = «Sin planificación»",
+  })
+  planificacion?: PlanificacionSesionResumenDto | null;
   @ApiPropertyOptional({ nullable: true }) tema!: string | null;
   @ApiPropertyOptional({ nullable: true }) horaIngreso!: string | null;
   @ApiPropertyOptional({ nullable: true }) horaSalida!: string | null;

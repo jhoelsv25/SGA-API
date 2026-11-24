@@ -41,6 +41,7 @@ import { ConsolidadoDocenteModule } from "./consolidado-docente";
 import { IndicadoresModule } from "./indicadores";
 import { DashboardModule } from "./dashboard";
 import { ObservacionesAulaModule } from "./observaciones-aula";
+import { PlanificacionSesionesModule } from "./planificacion-sesiones";
 
 @Module({
   imports: [
@@ -83,6 +84,7 @@ import { ObservacionesAulaModule } from "./observaciones-aula";
     LibretasModule,
     ConsolidadoDocenteModule,
     ObservacionesAulaModule,
+    PlanificacionSesionesModule,
     IndicadoresModule,
     DashboardModule,
   ],

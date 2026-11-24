@@ -10,7 +10,9 @@ import {
   MENU_MIS_SESIONES,
   MENU_MI_SEGUIMIENTO,
   MENU_OBSERVACIONES_AULA,
+  MENU_CATALOGO_CURRICULAR,
   MENU_PENDIENTES_SEGUIMIENTO,
+  MENU_PLANIFICACION_SESIONES,
   MENU_SESIONES_HOY,
 } from "../../common/constants";
 
@@ -137,6 +139,22 @@ export const MENUS_SEGUIMIENTO_DOCENTE: readonly MenuSeguimientoDocente[] = [
     icono: "File02Icon",
     orden: 13,
     roles: ["Docente"],
+    habilitada: true,
+  },
+  {
+    nombre: "Planificación de sesiones",
+    ruta: MENU_PLANIFICACION_SESIONES,
+    icono: "BookOpen01Icon",
+    orden: 14,
+    roles: ["Docente"],
+    habilitada: true,
+  },
+  {
+    nombre: "Catálogo curricular",
+    ruta: MENU_CATALOGO_CURRICULAR,
+    icono: "BookOpen01Icon",
+    orden: 15,
+    roles: DIRECCION,
     habilitada: true,
   },
 ];
