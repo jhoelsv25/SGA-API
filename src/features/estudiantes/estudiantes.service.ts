@@ -170,6 +170,16 @@ export class EstudiantesService {
     return this.repository.findAll(query);
   }
 
+  async obtenerResumen(query?: EstudianteQueryDto): Promise<{
+    total: number;
+    activos: number;
+    trasladados: number;
+    retirados: number;
+    egresados: number;
+  }> {
+    return this.repository.obtenerResumen(query);
+  }
+
   async findById(id: string): Promise<EstudianteResponseDto> {
     const estudiante = await this.repository.findById(id);
     if (!estudiante) {

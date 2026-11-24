@@ -59,6 +59,15 @@ export class MatriculasController {
     return this.matriculasService.findAll(query);
   }
 
+  @Get("resumen")
+  @Roles("Administrador", "Secretaria", "Director", "Subdirector", "Docente")
+  @ApiOperation({
+    summary: "Resumen de totales de matrícula y vacantes respetando los filtros activos",
+  })
+  async obtenerResumen(@Query() query: MatriculaQueryDto) {
+    return this.matriculasService.obtenerResumen(query);
+  }
+
   @Get("promocion/resumen")
   @Roles("Administrador", "Secretaria")
   @ApiOperation({

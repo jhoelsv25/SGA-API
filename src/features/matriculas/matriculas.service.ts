@@ -5,6 +5,7 @@ import {
   NotFoundException,
   Optional,
 } from "@nestjs/common";
+import { AnioLectivoCls } from "../../common/anio-lectivo";
 import { AuditService } from "../../common/services/audit.service";
 import { NotificacionesService } from "../notificaciones/notificaciones.service";
 import { LibretasService } from "../libretas/libretas.service";
@@ -36,6 +37,7 @@ export class MatriculasService {
     private readonly auditService: AuditService,
     @Optional() private readonly notificacionesService?: NotificacionesService,
     @Optional() private readonly libretasService?: LibretasService,
+    @Optional() private readonly anioLectivoCls?: AnioLectivoCls,
   ) {}
 
   /**
@@ -48,6 +50,7 @@ export class MatriculasService {
     dto: CrearMatriculaDto,
     actorId: string,
     ip?: string,
+    opciones?: { silenciarNotificacion?: boolean },
   ): Promise<MatriculaCreatedResponseDto> {
     // 1. Validar que el estudiante exista y esté activo
     const estudiante = await this.matriculasRepository.findEstudianteById(dto.estudianteId);
@@ -133,8 +136,8 @@ export class MatriculasService {
       direccionIp: ip,
     });
 
-    // 10. Notificación (asíncrona vía BullMQ)
-    if (this.notificacionesService) {
+    // 10. Notificación (asíncrona vía BullMQ) — se silencia en importación masiva para evitar spam
+    if (this.notificacionesService && !opciones?.silenciarNotificacion) {
       await this.notificacionesService
         .enviar({
           usuarioId: actorId,
@@ -212,6 +215,17 @@ export class MatriculasService {
 
   async findAll(query?: MatriculaQueryDto): Promise<PaginatedMatriculasResponseDto> {
     return this.matriculasRepository.findMatriculas(query);
+  }
+
+  async obtenerResumen(query?: MatriculaQueryDto): Promise<{
+    totalMatriculados: number;
+    totalRetirados: number;
+    totalTrasladados: number;
+    vacantesTotales: number;
+    vacantesOcupadas: number;
+    vacantesDisponibles: number;
+  }> {
+    return this.matriculasRepository.obtenerResumen(query, this.anioLectivoCls?.id());
   }
 
   async findById(id: string): Promise<MatriculaResponseDto> {

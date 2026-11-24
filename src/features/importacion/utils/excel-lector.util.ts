@@ -78,6 +78,7 @@ function normalizarEncabezado(encabezado: string): string {
   if (limpio.includes("repitente")) return "esRepitente";
   if (limpio.includes("procedencia")) return "colegioProcedencia";
   if (limpio.includes("observacion")) return "observaciones";
+  if (limpio === "estado") return "estado";
 
   return encabezado.trim();
 }

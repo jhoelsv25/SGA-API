@@ -101,6 +101,11 @@ export class EstudiantesImportService implements IEntidadImportHandler {
     const codigoSiagie = getStr(datos, "codigoSiagie", "codigo_siagie", "codigo");
     const fechaIngreso = parsearFechaIngreso(datos);
     const tieneDiscapacidad = normalizarSiNo(getStr(datos, "tieneDiscapacidad")) ?? false;
+    const estadoRaw = getOptStr(datos, "estado")?.toLowerCase();
+    const estado =
+      estadoRaw === "retirado" || estadoRaw === "trasladado" || estadoRaw === "egresado"
+        ? estadoRaw
+        : "activo";
 
     const created = await this.estudiantesService.create(
       {
@@ -114,6 +119,7 @@ export class EstudiantesImportService implements IEntidadImportHandler {
         detalleDiscapacidad: tieneDiscapacidad
           ? getOptStr(datos, "detalleDiscapacidad", "detalle_discapacidad")
           : undefined,
+        estado,
       },
       actorId,
       ip,

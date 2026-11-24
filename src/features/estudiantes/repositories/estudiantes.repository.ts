@@ -127,6 +127,8 @@ export class EstudiantesRepository implements IEstudiantesRepository {
       }
 
       // 2. Ficha de Estudiante
+      const estadoInicial = data.dto.estado ?? "activo";
+      const esActivo = estadoInicial === "activo";
       const [nuevoEstudiante] = await tx
         .insert(estudiantes)
         .values({
@@ -143,7 +145,7 @@ export class EstudiantesRepository implements IEstudiantesRepository {
           alergias: data.dto.alergias?.trim() || null,
           condicionesMedicas: data.dto.condicionesMedicas?.trim() || null,
           seguroSalud: data.dto.seguroSalud?.trim() || null,
-          estado: "activo",
+          estado: estadoInicial,
         })
         .returning({ id: estudiantes.id });
 
@@ -204,7 +206,7 @@ export class EstudiantesRepository implements IEstudiantesRepository {
             nombreUsuario: data.dto.codigo.trim(),
             contrasenaHash: data.contrasenaHash!,
             debeCambiarContrasena: true,
-            estado: "activo",
+            estado: esActivo ? "activo" : "inactivo",
           })
           .returning({ id: usuarios.id });
 
@@ -217,20 +219,22 @@ export class EstudiantesRepository implements IEstudiantesRepository {
         });
       }
 
-      // 5. Credencial de Marcación
-      const [credencialExistente] = await tx
-        .select({ id: credenciales.id })
-        .from(credenciales)
-        .where(and(eq(credenciales.personaId, personaId), eq(credenciales.activa, true)))
-        .limit(1);
+      // 5. Credencial de Marcación (solo para estudiantes activos; los históricos no requieren carné)
+      if (esActivo) {
+        const [credencialExistente] = await tx
+          .select({ id: credenciales.id })
+          .from(credenciales)
+          .where(and(eq(credenciales.personaId, personaId), eq(credenciales.activa, true)))
+          .limit(1);
 
-      if (!credencialExistente) {
-        await tx.insert(credenciales).values({
-          personaId,
-          codigo: data.codigoCredencial,
-          pinHash: data.pinHash,
-          activa: true,
-        });
+        if (!credencialExistente) {
+          await tx.insert(credenciales).values({
+            personaId,
+            codigo: data.codigoCredencial,
+            pinHash: data.pinHash,
+            activa: true,
+          });
+        }
       }
 
       // Consultar el estudiante creado mediante fn_consultar_estudiantes
@@ -315,5 +319,48 @@ export class EstudiantesRepository implements IEstudiantesRepository {
       .returning({ id: estudiantes.id });
 
     return fila ? this.findById(id) : null;
+  }
+
+  async obtenerResumen(query?: EstudianteQueryDto): Promise<{
+    total: number;
+    activos: number;
+    trasladados: number;
+    retirados: number;
+    egresados: number;
+  }> {
+    const condiciones = [isNull(estudiantes.eliminadoEn)];
+
+    if (query?.search && query.search.trim().length > 0) {
+      const patron = `%${query.search.trim()}%`;
+      condiciones.push(
+        sql`(
+          ${personas.nombres} ILIKE ${patron}
+          OR ${personas.apellidoPaterno} ILIKE ${patron}
+          OR ${personas.apellidoMaterno} ILIKE ${patron}
+          OR ${personas.numeroDocumento} ILIKE ${patron}
+          OR ${estudiantes.codigo} ILIKE ${patron}
+        )`,
+      );
+    }
+
+    const [row] = await this.db
+      .select({
+        total: sql<number>`COUNT(*)::int`,
+        activos: sql<number>`COUNT(*) FILTER (WHERE ${estudiantes.estado} = 'activo')::int`,
+        trasladados: sql<number>`COUNT(*) FILTER (WHERE ${estudiantes.estado} = 'trasladado')::int`,
+        retirados: sql<number>`COUNT(*) FILTER (WHERE ${estudiantes.estado} = 'retirado')::int`,
+        egresados: sql<number>`COUNT(*) FILTER (WHERE ${estudiantes.estado} = 'egresado')::int`,
+      })
+      .from(estudiantes)
+      .innerJoin(personas, eq(estudiantes.personaId, personas.id))
+      .where(and(...condiciones));
+
+    return {
+      total: Number(row?.total ?? 0),
+      activos: Number(row?.activos ?? 0),
+      trasladados: Number(row?.trasladados ?? 0),
+      retirados: Number(row?.retirados ?? 0),
+      egresados: Number(row?.egresados ?? 0),
+    };
   }
 }
