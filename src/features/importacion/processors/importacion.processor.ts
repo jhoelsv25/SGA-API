@@ -14,6 +14,7 @@ export interface ImportacionJobPayload {
   dto: EjecutarImportacionDto;
   actorId: string;
   ip?: string;
+  anioAcademicoId?: string;
 }
 
 @Processor(QUEUES.IMPORTACION)
@@ -39,13 +40,14 @@ export class ImportacionProcessor extends WorkerHost {
     }
 
     this.logger.log(`Procesando trabajo de importación (${job.id}) en segundo plano (BullMQ)...`);
-    const { dto, actorId, ip } = job.data as ImportacionJobPayload;
+    const { dto, actorId, ip, anioAcademicoId } = job.data as ImportacionJobPayload;
     try {
       const resultado = await this.importacionService.ejecutarProcesoLote(
         dto,
         actorId,
         ip,
         job as Job<ImportacionJobPayload>,
+        anioAcademicoId,
       );
       this.logger.log(
         `Trabajo de importación (${job.id}) completado con éxito: ${resultado.importadosCount} importados, ${resultado.omitidosCount} omitidos`,

@@ -64,7 +64,8 @@ export class ImportacionController {
   @ApiParam({
     name: "tipo",
     enum: Object.values(TIPO_IMPORTACION),
-    description: "Tipo de entidad a importar (personas, estudiantes, docentes, apoderados)",
+    description:
+      "Tipo de entidad a importar (personas, estudiantes, docentes, apoderados, matriculas)",
   })
   async descargarPlantilla(
     @Param("tipo") tipo: TipoImportacion,

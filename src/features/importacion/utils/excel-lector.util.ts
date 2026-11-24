@@ -2,7 +2,7 @@ import { BadRequestException } from "@nestjs/common";
 import { Workbook, type CellValue } from "exceljs";
 import { IMPORTACION_MAX_FILAS, IMPORTACION_MESSAGES } from "../constants";
 
-const CAMPOS_FECHA = new Set(["fechaNacimiento", "fechaIngreso"]);
+const CAMPOS_FECHA = new Set(["fechaNacimiento", "fechaIngreso", "fechaMatricula"]);
 
 function dosDigitos(n: number): string {
   return String(n).padStart(2, "0");
@@ -71,6 +71,13 @@ function normalizarEncabezado(encabezado: string): string {
   if (limpio.includes("jornada") || limpio.includes("horas")) return "jornada";
   if (limpio.includes("parentesco")) return "parentesco";
   if (limpio.includes("principal")) return "esPrincipal";
+  if (limpio.includes("grado")) return "grado";
+  if (limpio.includes("seccion")) return "seccion";
+  if (limpio.includes("tipo") && limpio.includes("matricula")) return "tipoMatricula";
+  if (limpio.includes("fecha") && limpio.includes("matricula")) return "fechaMatricula";
+  if (limpio.includes("repitente")) return "esRepitente";
+  if (limpio.includes("procedencia")) return "colegioProcedencia";
+  if (limpio.includes("observacion")) return "observaciones";
 
   return encabezado.trim();
 }

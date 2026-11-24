@@ -19,6 +19,7 @@ export const LISTAS_PLANTILLA = {
     "otro",
   ],
   siNo: ["SI", "NO"],
+  tipoMatricula: ["nuevo", "continuador", "traslado"],
 } as const;
 
 export type NombreLista = keyof typeof LISTAS_PLANTILLA;
@@ -292,6 +293,83 @@ const CAMPOS_APODERADO: CampoPlantilla[] = [
   },
 ];
 
+const CAMPOS_MATRICULA: CampoPlantilla[] = [
+  {
+    key: "codigoSiagie",
+    header: "Código SIAGIE",
+    ancho: 22,
+    requerido: true,
+    tipo: "texto",
+    ayuda: "Código SIAGIE (o DNI) del estudiante ya registrado en el padrón.",
+    ejemplo: "00000078360633",
+  },
+  {
+    key: "grado",
+    header: "Grado",
+    ancho: 18,
+    requerido: true,
+    tipo: "texto",
+    ayuda: "Número o nombre del grado (ej: 1, PRIMERO, 2, SEGUNDO...).",
+    ejemplo: "PRIMERO",
+  },
+  {
+    key: "seccion",
+    header: "Sección",
+    ancho: 14,
+    requerido: true,
+    tipo: "texto",
+    ayuda: "Nombre exacto de la sección activa en el año escolar (ej: A, B, 2 AP).",
+    ejemplo: "A",
+  },
+  {
+    key: "tipoMatricula",
+    header: "Tipo de matrícula",
+    ancho: 18,
+    requerido: false,
+    tipo: "lista",
+    lista: "tipoMatricula",
+    ayuda: "nuevo, continuador o traslado. Si se deja vacío se usa continuador.",
+    ejemplo: "continuador",
+  },
+  {
+    key: "fechaMatricula",
+    header: "Fecha de matrícula",
+    ancho: 20,
+    requerido: false,
+    tipo: "fecha",
+    ayuda: "Formato día/mes/año. Si se deja vacío usa la fecha de hoy.",
+    ejemplo: "2026-03-02",
+  },
+  {
+    key: "esRepitente",
+    header: "¿Es repitente?",
+    ancho: 16,
+    requerido: false,
+    tipo: "lista",
+    lista: "siNo",
+    ayuda: "SI o NO. Por defecto NO.",
+    ejemplo: "NO",
+  },
+  {
+    key: "colegioProcedencia",
+    header: "Colegio de procedencia",
+    ancho: 28,
+    requerido: false,
+    tipo: "texto",
+    ayuda: "Obligatorio solo si el tipo de matrícula es traslado.",
+    ejemplo: "",
+  },
+  {
+    key: "observaciones",
+    header: "Observaciones",
+    ancho: 30,
+    requerido: false,
+    tipo: "texto",
+    ayuda: "Notas adicionales opcionales.",
+    ejemplo: "",
+  },
+];
+
 export interface DefinicionPlantilla {
   titulo: string;
   campos: CampoPlantilla[];
@@ -311,5 +389,9 @@ export const PLANTILLAS: Record<TipoImportacion, DefinicionPlantilla> = {
   [TIPO_IMPORTACION.APODERADOS]: {
     titulo: "Apoderados",
     campos: [...CAMPOS_APODERADO, ...CAMPOS_PERSONA],
+  },
+  [TIPO_IMPORTACION.MATRICULAS]: {
+    titulo: "Matrículas",
+    campos: [...CAMPOS_MATRICULA],
   },
 };
