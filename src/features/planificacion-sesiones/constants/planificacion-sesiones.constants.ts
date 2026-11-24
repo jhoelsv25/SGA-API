@@ -21,6 +21,7 @@ export const GRADO_MAXIMO = 5;
 
 export const MENSAJES_PLANIFICACION = {
   GUARDADA: "Planificación guardada como borrador.",
+  WORD_SOLO_LISTA: "Marque la sesión como lista para descargarla en Word.",
   LISTA: "Planificación lista. El supervisor ya puede verla.",
   NO_ENCONTRADA: "La planificación no existe.",
   BLOQUE_NO_ENCONTRADO: "El bloque del horario no existe o no es suyo.",

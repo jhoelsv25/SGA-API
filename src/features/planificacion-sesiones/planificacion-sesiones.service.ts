@@ -241,6 +241,7 @@ export class PlanificacionSesionesService {
 
   async documentoDocx(id: string, actor: ActorPlanificacion): Promise<Buffer> {
     const doc = await this.documento(id, actor);
+    if (doc.borrador) throw new BadRequestException(MENSAJES_PLANIFICACION.WORD_SOLO_LISTA);
     return await generarSesionDocx(doc);
   }
 
