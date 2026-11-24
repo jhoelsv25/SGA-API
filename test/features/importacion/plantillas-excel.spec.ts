@@ -59,10 +59,16 @@ describe("plantillas Excel estándar", () => {
       "direccion",
       "distrito",
     ];
-    Object.values(PLANTILLAS).forEach(({ campos }) => {
-      const keys = campos.map((c) => c.key);
+    const tiposConPersona = ["personas", "estudiantes", "docentes", "apoderados"] as const;
+    tiposConPersona.forEach((tipo) => {
+      const keys = PLANTILLAS[tipo].campos.map((c) => c.key);
       persona.forEach((k) => expect(keys).toContain(k));
     });
+
+    const matKeys = PLANTILLAS.matriculas.campos.map((c) => c.key);
+    expect(matKeys).toEqual(
+      expect.arrayContaining(["codigoSiagie", "grado", "seccion", "tipoMatricula"]),
+    );
   });
 
   it("estudiantes y docentes incluyen sus datos de ficha", () => {

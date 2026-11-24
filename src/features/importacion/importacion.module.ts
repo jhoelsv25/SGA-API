@@ -7,6 +7,7 @@ import { QueuesModule } from "../../core/queues/queues.module";
 import { ApoderadosModule } from "../apoderados/apoderados.module";
 import { DocentesModule } from "../docentes/docentes.module";
 import { EstudiantesModule } from "../estudiantes/estudiantes.module";
+import { MatriculasModule } from "../matriculas/matriculas.module";
 import { PersonasModule } from "../personas/personas.module";
 import { ImportacionController } from "./importacion.controller";
 import { ImportacionProcessor } from "./processors/importacion.processor";
@@ -16,6 +17,7 @@ import {
   DocentesImportService,
   EstudiantesImportService,
   FotosImportService,
+  MatriculasImportService,
   PersonasImportService,
 } from "./services";
 
@@ -25,6 +27,7 @@ import {
     EstudiantesModule,
     DocentesModule,
     ApoderadosModule,
+    MatriculasModule,
     QueuesModule,
     InstitucionModule,
     BullModule.registerQueue({ name: QUEUES.IMPORTACION }),
@@ -39,6 +42,7 @@ import {
     DocentesImportService,
     ApoderadosImportService,
     FotosImportService,
+    MatriculasImportService,
   ],
   exports: [
     ImportacionService,
@@ -47,6 +51,7 @@ import {
     DocentesImportService,
     ApoderadosImportService,
     FotosImportService,
+    MatriculasImportService,
   ],
 })
 export class ImportacionModule {}

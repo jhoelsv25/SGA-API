@@ -208,6 +208,110 @@ export class MatriculasRepository {
     return row ?? null;
   }
 
+  async findAnioParaMatricula(
+    anioId?: string,
+  ): Promise<{ id: string; anio: number; estado: string } | null> {
+    if (anioId) {
+      return this.findAnioById(anioId);
+    }
+
+    const [enCurso] = await this.db
+      .select({
+        id: aniosAcademicos.id,
+        anio: aniosAcademicos.anio,
+        estado: aniosAcademicos.estado,
+      })
+      .from(aniosAcademicos)
+      .where(sql`${aniosAcademicos.estado} IN ('en_curso', 'reabierto')`)
+      .orderBy(desc(aniosAcademicos.anio))
+      .limit(1);
+
+    if (enCurso) return enCurso;
+
+    const [planificado] = await this.db
+      .select({
+        id: aniosAcademicos.id,
+        anio: aniosAcademicos.anio,
+        estado: aniosAcademicos.estado,
+      })
+      .from(aniosAcademicos)
+      .where(eq(aniosAcademicos.estado, "planificado"))
+      .orderBy(desc(aniosAcademicos.anio))
+      .limit(1);
+
+    return planificado ?? null;
+  }
+
+  async findEstudiantePorCodigoODocumento(
+    identificador: string,
+  ): Promise<EstudianteParaMatricula | null> {
+    const limpio = identificador.trim();
+    if (!limpio) return null;
+
+    const [row] = await this.db
+      .select({
+        id: estudiantes.id,
+        personaId: estudiantes.personaId,
+        codigo: estudiantes.codigo,
+        estado: estudiantes.estado,
+        nombres: personas.nombres,
+        apellidoPaterno: personas.apellidoPaterno,
+        apellidoMaterno: personas.apellidoMaterno,
+        numeroDocumento: personas.numeroDocumento,
+        tipoDocumento: personas.tipoDocumento,
+      })
+      .from(estudiantes)
+      .innerJoin(personas, eq(estudiantes.personaId, personas.id))
+      .where(
+        and(
+          isNull(estudiantes.eliminadoEn),
+          sql`(${estudiantes.codigo} = ${limpio} OR ${personas.numeroDocumento} = ${limpio})`,
+        ),
+      )
+      .limit(1);
+
+    return row ?? null;
+  }
+
+  async listarSeccionesActivasDeAnio(anioAcademicoId: string): Promise<SeccionConVacantes[]> {
+    const rows = await this.db
+      .select({
+        id: secciones.id,
+        anioAcademicoId: secciones.anioAcademicoId,
+        anioNumero: aniosAcademicos.anio,
+        gradoId: secciones.gradoId,
+        gradoNumero: grados.numero,
+        gradoNombre: grados.nombre,
+        nombre: secciones.nombre,
+        vacantes: secciones.vacantes,
+        estado: secciones.estado,
+        matriculadosCount: count(sql`CASE WHEN ${matriculas.estado} = 'matriculado' THEN 1 END`),
+      })
+      .from(secciones)
+      .innerJoin(aniosAcademicos, eq(secciones.anioAcademicoId, aniosAcademicos.id))
+      .innerJoin(grados, eq(secciones.gradoId, grados.id))
+      .leftJoin(matriculas, eq(secciones.id, matriculas.seccionId))
+      .where(and(eq(secciones.anioAcademicoId, anioAcademicoId), eq(secciones.estado, "activa")))
+      .groupBy(secciones.id, aniosAcademicos.anio, grados.numero, grados.nombre);
+
+    return rows.map((row) => {
+      const matriculados = Number(row.matriculadosCount ?? 0);
+      return {
+        id: row.id,
+        anioAcademicoId: row.anioAcademicoId,
+        anioNumero: row.anioNumero,
+        gradoId: row.gradoId,
+        gradoNumero: row.gradoNumero,
+        gradoNombre: row.gradoNombre,
+        nombre: row.nombre,
+        vacantes: row.vacantes,
+        estado: row.estado,
+        matriculadosCount: matriculados,
+        vacantesDisponibles: Math.max(0, row.vacantes - matriculados),
+      };
+    });
+  }
+
   async hasApoderadoPrincipal(estudianteId: string): Promise<boolean> {
     const [row] = await this.db
       .select({ id: estudianteApoderados.apoderadoId })
