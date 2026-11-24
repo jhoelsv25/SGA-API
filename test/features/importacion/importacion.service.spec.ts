@@ -300,6 +300,50 @@ describe("ImportacionService", () => {
       expect(res.estado).toBe("en_cola");
     });
 
+    it("debe ejecutar usando el loteId generado en previsualizar sin reenviar filas", async () => {
+      estudiantesRepo.findByCodigo.mockResolvedValue(null);
+      personasRepo.findByDocumento.mockResolvedValue(null);
+
+      const filas = [
+        {
+          tipoDocumento: "dni",
+          numeroDocumento: "76543210",
+          apellidoPaterno: "Vargas",
+          apellidoMaterno: "Salas",
+          nombres: "Pedro",
+          sexo: "M",
+          fechaNacimiento: "2012-08-15",
+          codigoSiagie: "SIAGIE777",
+          fechaIngreso: "2026-11-23",
+        },
+      ];
+
+      const preview = await service.previsualizar({
+        tipo: TIPO_IMPORTACION.ESTUDIANTES,
+        filas,
+      });
+
+      expect(preview.loteId).toBeDefined();
+
+      const res = await service.ejecutar(
+        { tipo: TIPO_IMPORTACION.ESTUDIANTES, loteId: preview.loteId },
+        "user-admin-1",
+        "127.0.0.1",
+      );
+
+      expect(mockQueue.add).toHaveBeenCalledWith(
+        "procesar-lote",
+        {
+          dto: { tipo: TIPO_IMPORTACION.ESTUDIANTES, filas },
+          actorId: "user-admin-1",
+          ip: "127.0.0.1",
+        },
+        expect.objectContaining({ attempts: 1 }),
+      );
+      expect(res.jobId).toBe("job-101");
+      expect(res.estado).toBe("en_cola");
+    });
+
     it("debe propagar el error directamente si la cola BullMQ falla al encolar", async () => {
       mockQueue.add.mockRejectedValueOnce(new Error("Redis connection refused"));
 

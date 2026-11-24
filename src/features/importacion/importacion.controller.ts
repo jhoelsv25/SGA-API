@@ -8,10 +8,11 @@ import {
   Post,
   Res,
   StreamableFile,
+  UploadedFile,
   UploadedFiles,
   UseInterceptors,
 } from "@nestjs/common";
-import { AnyFilesInterceptor } from "@nestjs/platform-express";
+import { AnyFilesInterceptor, FileInterceptor } from "@nestjs/platform-express";
 import {
   ApiBearerAuth,
   ApiBody,
@@ -80,13 +81,27 @@ export class ImportacionController {
   @Post("previsualizar")
   @Roles("Administrador", "Secretaria")
   @HttpCode(HttpStatus.OK)
+  @UseInterceptors(
+    FileInterceptor("archivo", {
+      limits: {
+        fileSize: 10 * 1024 * 1024, // Máximo 10 MB para el archivo Excel (.xlsx)
+      },
+    }),
+  )
+  @ApiConsumes("multipart/form-data", "application/json")
   @ApiOperation({
     summary: "Previsualizar archivo de importación masiva",
     description:
-      "Valida hasta 500 filas del lote, clasifica cada fila con semáforo (válida, ya registrada, error) y detecta duplicados.",
+      "Recibe el archivo Excel (.xlsx) en multipart/form-data, lee hasta 500 filas en el backend, clasifica cada fila con semáforo y guarda el lote válido temporalmente en Redis.",
   })
   @ApiResponse({ status: 200, type: VistaPreviaResponseDto })
-  async previsualizar(@Body() dto: PrevisualizarImportacionDto): Promise<VistaPreviaResponseDto> {
+  async previsualizar(
+    @Body() dto: PrevisualizarImportacionDto,
+    @UploadedFile() archivo?: Express.Multer.File,
+  ): Promise<VistaPreviaResponseDto> {
+    if (archivo) {
+      return this.importacionService.previsualizarArchivo(dto.tipo, archivo);
+    }
     return this.importacionService.previsualizar(dto);
   }
 
