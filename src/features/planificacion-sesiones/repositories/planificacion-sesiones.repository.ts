@@ -345,6 +345,48 @@ export class PlanificacionSesionesRepository {
     )) as PlanificacionFila[];
   }
 
+  /** Planificaciones de cualquier día, con el bloque y el docente, de la más reciente a la más antigua. */
+  async historial(filtro: {
+    desde: string;
+    hasta: string;
+    docenteId?: string;
+    estado?: EstadoPlanificacion;
+  }) {
+    return await this.db
+      .select({
+        id: planificacionesSesion.id,
+        fecha: sql<string>`${planificacionesSesion.fecha}::text`,
+        numero: planificacionesSesion.numero,
+        titulo: planificacionesSesion.titulo,
+        estado: planificacionesSesion.estado,
+        docenteId: planificacionesSesion.docenteId,
+        docenteNombre: nombrePersona,
+        horaInicio: sql<string>`${horarios.horaInicio}::text`,
+        horaFin: sql<string>`${horarios.horaFin}::text`,
+        cursoNombre: cursos.nombre,
+        seccionNombre: secciones.nombre,
+        gradoNombre: grados.nombre,
+        comentarios: sql<number>`(select count(*)::int from ${planificacionesComentarios} c where c.planificacion_id = ${planificacionesSesion.id})`,
+      })
+      .from(planificacionesSesion)
+      .innerJoin(horarios, eq(horarios.id, planificacionesSesion.horarioId))
+      .innerJoin(cursosSeccion, eq(cursosSeccion.id, horarios.cursoSeccionId))
+      .innerJoin(cursos, eq(cursos.id, cursosSeccion.cursoId))
+      .innerJoin(secciones, eq(secciones.id, cursosSeccion.seccionId))
+      .innerJoin(grados, eq(grados.id, secciones.gradoId))
+      .innerJoin(docentes, eq(docentes.id, planificacionesSesion.docenteId))
+      .innerJoin(personas, eq(personas.id, docentes.personaId))
+      .where(
+        and(
+          between(planificacionesSesion.fecha, filtro.desde, filtro.hasta),
+          filtro.docenteId ? eq(planificacionesSesion.docenteId, filtro.docenteId) : undefined,
+          filtro.estado ? eq(planificacionesSesion.estado, filtro.estado) : undefined,
+        ),
+      )
+      .orderBy(sql`${planificacionesSesion.fecha} desc`, sql`${horarios.horaInicio} desc`)
+      .limit(500);
+  }
+
   async planificacionesDelDia(fecha: string) {
     return (await this.base().where(eq(planificacionesSesion.fecha, fecha))) as PlanificacionFila[];
   }

@@ -10,7 +10,8 @@ import { AuditService } from "../../common/services/audit.service";
 import { ahoraEnColegio } from "../marcaciones/utils/marcacion-reglas.util";
 import { NotificacionesService } from "../notificaciones/notificaciones.service";
 import { MENSAJES_PLANIFICACION } from "./constants";
-import type { VerificacionAulaDto } from "./dto";
+import type { HistorialSupervisionQueryDto, VerificacionAulaDto } from "./dto";
+import { rangoDe } from "./planificacion-sesiones.service";
 import type { ActorPlanificacion } from "./interfaces";
 import { PlanificacionSesionesService } from "./planificacion-sesiones.service";
 import { PlanificacionSesionesRepository } from "./repositories";
@@ -46,6 +47,15 @@ export class SupervisionPlanificacionService {
         sinPlanificacion: f.planificacionId === null,
       })),
     };
+  }
+
+  /** Planificaciones de cualquier día o docente, para revisar lo pasado y lo próximo. */
+  async historial(query: HistorialSupervisionQueryDto) {
+    return await this.repository.historial({
+      ...rangoDe(query),
+      docenteId: query.docenteId,
+      estado: query.estado,
+    });
   }
 
   async detalle(id: string) {

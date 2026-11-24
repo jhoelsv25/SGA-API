@@ -30,7 +30,7 @@ describe("RF-024 V1: cableado de rutas y accesos", () => {
     const metodos = Object.getOwnPropertyNames(SupervisionPlanificacionController.prototype).filter(
       (m) => m !== "constructor",
     );
-    expect(metodos.sort()).toEqual(["comentar", "detalle", "horasReales", "panel"]);
+    expect(metodos.sort()).toEqual(["comentar", "detalle", "historial", "horasReales", "panel"]);
   });
 
   it("solo la dirección ajusta el catálogo", () => {

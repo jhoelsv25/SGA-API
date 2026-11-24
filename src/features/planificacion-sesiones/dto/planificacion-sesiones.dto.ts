@@ -16,7 +16,12 @@ import {
   MinLength,
   ValidateNested,
 } from "class-validator";
-import { MOMENTOS, type Momento } from "../constants";
+import {
+  ESTADOS_PLANIFICACION,
+  MOMENTOS,
+  type EstadoPlanificacion,
+  type Momento,
+} from "../constants";
 
 const FECHA = /^\d{4}-\d{2}-\d{2}$/;
 const HORA = /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/;
@@ -225,4 +230,26 @@ export class CompetenciasQueryDto {
   @IsString()
   @MaxLength(30)
   area?: string;
+}
+
+export class HistorialQueryDto {
+  @ApiPropertyOptional({ example: "2026-09-01", description: "Por defecto, 60 días atrás" })
+  @IsOptional()
+  @Matches(FECHA, { message: MSG_FECHA })
+  desde?: string;
+  @ApiPropertyOptional({ example: "2026-12-19", description: "Por defecto, 30 días adelante" })
+  @IsOptional()
+  @Matches(FECHA, { message: MSG_FECHA })
+  hasta?: string;
+  @ApiPropertyOptional({ enum: ESTADOS_PLANIFICACION })
+  @IsOptional()
+  @IsIn(ESTADOS_PLANIFICACION)
+  estado?: EstadoPlanificacion;
+}
+
+export class HistorialSupervisionQueryDto extends HistorialQueryDto {
+  @ApiPropertyOptional({ description: "Solo las planificaciones de este docente" })
+  @IsOptional()
+  @IsUUID()
+  docenteId?: string;
 }

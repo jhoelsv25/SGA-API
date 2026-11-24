@@ -16,7 +16,12 @@ import { MENU_PLANIFICACION_SESIONES } from "../../common/constants";
 import { CurrentUser, MenuAccess } from "../../common/decorators";
 import type { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface";
 import { ahoraEnColegio } from "../marcaciones/utils/marcacion-reglas.util";
-import { CopiarPlanificacionDto, GuardarPlanificacionDto, SemanaQueryDto } from "./dto";
+import {
+  CopiarPlanificacionDto,
+  GuardarPlanificacionDto,
+  HistorialQueryDto,
+  SemanaQueryDto,
+} from "./dto";
 import type { ActorPlanificacion } from "./interfaces";
 import { PlanificacionSesionesService } from "./planificacion-sesiones.service";
 
@@ -41,6 +46,12 @@ export class PlanificacionSesionesController {
   @ApiOperation({ summary: "Mis bloques de lunes a viernes con el estado de su planificación" })
   semana(@Query() query: SemanaQueryDto, @CurrentUser() usuario: AuthenticatedUser) {
     return this.service.semana(actorDe(usuario), query.fecha ?? ahoraEnColegio().fecha);
+  }
+
+  @Get("historial")
+  @ApiOperation({ summary: "Todas mis planificaciones, pasadas y futuras, en un rango de fechas" })
+  historial(@Query() query: HistorialQueryDto, @CurrentUser() usuario: AuthenticatedUser) {
+    return this.service.historial(actorDe(usuario), query);
   }
 
   @Get(":id")

@@ -3,7 +3,12 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
 import { MENU_SESIONES_HOY } from "../../common/constants";
 import { CurrentUser, MenuAccess } from "../../common/decorators";
 import type { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface";
-import { ComentarioPlanificacionDto, SupervisionQueryDto, VerificacionAulaDto } from "./dto";
+import {
+  ComentarioPlanificacionDto,
+  HistorialSupervisionQueryDto,
+  SupervisionQueryDto,
+  VerificacionAulaDto,
+} from "./dto";
 import { actorDe } from "./planificacion-sesiones.controller";
 import { SupervisionPlanificacionService } from "./supervision-planificacion.service";
 
@@ -19,6 +24,12 @@ export class SupervisionPlanificacionController {
   @ApiOperation({ summary: "Sesiones del día con su planificación («Sin planificación» si falta)" })
   panel(@Query() query: SupervisionQueryDto) {
     return this.service.panel(query.fecha);
+  }
+
+  @Get("historial")
+  @ApiOperation({ summary: "Planificaciones de cualquier día o docente, en solo lectura" })
+  historial(@Query() query: HistorialSupervisionQueryDto) {
+    return this.service.historial(query);
   }
 
   @Get(":id")

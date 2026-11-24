@@ -8,7 +8,8 @@ import {
 import { AuditService } from "../../common/services/audit.service";
 import { InstitucionService } from "../institucion/institucion.service";
 import { MENSAJES_PLANIFICACION } from "./constants";
-import type { CopiarPlanificacionDto, GuardarPlanificacionDto } from "./dto";
+import { ahoraEnColegio } from "../marcaciones/utils/marcacion-reglas.util";
+import type { CopiarPlanificacionDto, GuardarPlanificacionDto, HistorialQueryDto } from "./dto";
 import type {
   ActorPlanificacion,
   BloqueDocente,
@@ -86,6 +87,12 @@ export class PlanificacionSesionesService {
           a.fecha.localeCompare(b.fecha) || a.bloque.horaInicio.localeCompare(b.bloque.horaInicio),
       );
     return { desde: lunes, hasta: viernes, bloques: dias };
+  }
+
+  /** Todas mis planificaciones, pasadas y futuras, en un rango de fechas. */
+  async historial(actor: ActorPlanificacion, query: HistorialQueryDto) {
+    const docenteId = await this.docenteDe(actor);
+    return await this.repository.historial({ ...rangoDe(query), docenteId, estado: query.estado });
   }
 
   async obtener(id: string, actor: ActorPlanificacion): Promise<PlanificacionCompleta> {
@@ -417,4 +424,16 @@ export class PlanificacionSesionesService {
       })),
     };
   }
+}
+
+/** Rango por defecto: 60 días atrás a 30 días adelante. */
+export function rangoDe(query: { desde?: string; hasta?: string }): {
+  desde: string;
+  hasta: string;
+} {
+  const hoy = ahoraEnColegio().fecha;
+  return {
+    desde: query.desde ?? sumarDiasFecha(hoy, -60),
+    hasta: query.hasta ?? sumarDiasFecha(hoy, 30),
+  };
 }
