@@ -1,6 +1,6 @@
-import { ApiProperty } from "@nestjs/swagger";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { ArrayMaxSize, ArrayMinSize, IsArray, IsIn, IsNotEmpty } from "class-validator";
+import { ArrayMaxSize, ArrayMinSize, IsArray, IsIn, IsNotEmpty, IsOptional } from "class-validator";
 import { IMPORTACION_MAX_FILAS, TIPO_IMPORTACION, type TipoImportacion } from "../constants";
 
 export class PrevisualizarImportacionDto {
@@ -16,15 +16,16 @@ export class PrevisualizarImportacionDto {
   @IsNotEmpty({ message: "El tipo de importación es obligatorio" })
   tipo: TipoImportacion;
 
-  @ApiProperty({
-    description: "Filas extraídas de la plantilla Excel",
+  @ApiPropertyOptional({
+    description: "Filas extraídas de la plantilla Excel (opcional si se envía el archivo .xlsx)",
     type: [Object],
   })
+  @IsOptional()
   @IsArray({ message: "Las filas deben ser un arreglo" })
   @ArrayMinSize(1, { message: "El archivo no contiene filas de datos para procesar." })
   @ArrayMaxSize(IMPORTACION_MAX_FILAS, {
     message: `El archivo supera las ${IMPORTACION_MAX_FILAS} filas. Divídalo en varios archivos.`,
   })
   @Type(() => Object)
-  filas: Record<string, unknown>[];
+  filas?: Record<string, unknown>[];
 }

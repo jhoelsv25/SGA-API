@@ -29,6 +29,12 @@ export class FilaPrevisualizadaDto {
 }
 
 export class VistaPreviaResponseDto {
+  @ApiPropertyOptional({
+    description: "Identificador temporal del lote previsualizado para confirmar la importación",
+    example: "550e8400-e29b-41d4-a716-446655440000",
+  })
+  loteId?: string;
+
   @ApiProperty({ description: "Total de filas leídas del archivo", example: 120 })
   totalFilas: number;
 
