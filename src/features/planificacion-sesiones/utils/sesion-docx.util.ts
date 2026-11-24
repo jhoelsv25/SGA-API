@@ -7,6 +7,7 @@ import {
   ShadingType,
   Table,
   TableCell,
+  TableLayoutType,
   TableRow,
   TextRun,
   WidthType,
@@ -19,36 +20,62 @@ const fechaLarga = (iso: string) => iso.slice(0, 10).split("-").reverse().join("
 const FUENTE = "Arial";
 const TAMANO = 20; // 10 pt, como en la plantilla del colegio
 const COLOR_ENCABEZADO = "D9E2F3";
+const ANCHO_PAGINA = 9906; // A4 con márgenes de 1000 twips
 const BORDE = { style: BorderStyle.SINGLE, size: 4, color: "808080" };
 const BORDES = { top: BORDE, bottom: BORDE, left: BORDE, right: BORDE };
 
+const dxa = (porcentaje: number) => Math.round((ANCHO_PAGINA * porcentaje) / 100);
 const texto = (t: string, negrita = false) =>
   new TextRun({ text: t, bold: negrita, font: FUENTE, size: TAMANO });
 const parrafo = (t: string, negrita = false) => new Paragraph({ children: [texto(t, negrita)] });
+const lineas = (t: string | null | undefined) => (t ?? "—").split("\n").map((l) => parrafo(l));
 const vinetas = (items: string[]) =>
   items.map(
     (i) => new Paragraph({ children: [texto(i)], bullet: { level: 0 }, spacing: { after: 40 } }),
   );
+
 /** Celda con borde; las de encabezado van sombreadas y centradas, como la plantilla. */
-const celda = (hijos: Paragraph[], ancho?: number, encabezado = false) =>
-  new TableCell({
+function celda(hijos: Paragraph[], porcentaje: number, esEncabezado = false): TableCell {
+  return new TableCell({
     children: hijos.length > 0 ? hijos : [parrafo("—")],
-    width: ancho ? { size: ancho, type: WidthType.PERCENTAGE } : undefined,
+    width: { size: dxa(porcentaje), type: WidthType.DXA },
     borders: BORDES,
     margins: { top: 60, bottom: 60, left: 100, right: 100 },
-    shading: encabezado
+    shading: esEncabezado
       ? { type: ShadingType.CLEAR, fill: COLOR_ENCABEZADO, color: "auto" }
       : undefined,
   });
-const encabezado = (t: string, ancho?: number) =>
+}
+const encabezado = (t: string, porcentaje: number) =>
   celda(
     [new Paragraph({ alignment: AlignmentType.CENTER, children: [texto(t, true)] })],
-    ancho,
+    porcentaje,
     true,
   );
-const fila = (...celdas: TableCell[]) => new TableRow({ children: celdas });
-const tabla = (filas: TableRow[]) =>
-  new Table({ rows: filas, width: { size: 100, type: WidthType.PERCENTAGE } });
+
+/** Tabla de ancho completo: `anchos` en porcentaje, `filas` con una lista de párrafos por celda. */
+function tabla(anchos: number[], titulos: string[] | null, filas: Paragraph[][][]): Table {
+  const cabecera = titulos
+    ? [
+        new TableRow({
+          tableHeader: true,
+          children: titulos.map((t, i) => encabezado(t, anchos[i])),
+        }),
+      ]
+    : [];
+  return new Table({
+    width: { size: ANCHO_PAGINA, type: WidthType.DXA },
+    columnWidths: anchos.map(dxa),
+    layout: TableLayoutType.FIXED,
+    rows: [
+      ...cabecera,
+      ...filas.map(
+        (f) => new TableRow({ cantSplit: false, children: f.map((c, i) => celda(c, anchos[i])) }),
+      ),
+    ],
+  });
+}
+
 const seccion = (t: string) =>
   new Paragraph({
     children: [new TextRun({ text: t, bold: true, font: FUENTE, size: 22 })],
@@ -89,124 +116,118 @@ export async function generarSesionDocx(d: DatosSesionPdf): Promise<Buffer> {
       children: [new TextRun({ text: `“${d.titulo}”`, bold: true, font: FUENTE, size: 24 })],
     }),
     seccion("I. DATOS INFORMATIVOS"),
-    tabla(datos.map(([k, v]) => fila(encabezado(k, 35), celda([parrafo(v)], 65)))),
+    tabla(
+      [30, 70],
+      null,
+      datos.map(([k, v]) => [[parrafo(k, true)], [parrafo(v)]]),
+    ),
     seccion("II. ACERCA DE LA SESIÓN DE APRENDIZAJE"),
     subseccion("2.1. PROPÓSITOS DE APRENDIZAJE"),
-    parrafo(`Propósito: ${d.proposito ?? "—"}`),
-    tabla([
-      fila(
-        encabezado("Competencia"),
-        encabezado("Capacidades"),
-        encabezado("Desempeños precisados"),
-        encabezado("Campo temático"),
-      ),
-      ...d.competencias.map((c) =>
-        fila(
-          celda([parrafo(c.competenciaTexto)]),
-          celda(vinetas(c.capacidades)),
-          celda(vinetas(c.desempenos.map((x) => x.texto))),
-          celda([parrafo(c.campoTematico ?? "—")]),
-        ),
-      ),
-    ]),
+    new Paragraph({
+      spacing: { after: 80 },
+      children: [texto("Propósito: ", true), texto(d.proposito ?? "—")],
+    }),
+    tabla(
+      [20, 22, 38, 20],
+      ["Competencia", "Capacidades", "Desempeños precisados", "Campo temático"],
+      d.competencias.map((c) => [
+        [parrafo(c.competenciaTexto)],
+        vinetas(c.capacidades),
+        vinetas(c.desempenos.map((x) => x.texto)),
+        [parrafo(c.campoTematico ?? "—")],
+      ]),
+    ),
     subseccion("2.2. EVALUACIÓN DE LOS APRENDIZAJES"),
-    tabla([
-      fila(encabezado("Evidencia"), encabezado("Criterios"), encabezado("Instrumento")),
-      fila(
-        celda([parrafo(d.evidencia ?? "—")]),
-        celda(vinetas(d.criterios)),
-        celda([parrafo(d.instrumento ?? "—")]),
-      ),
-    ]),
+    tabla(
+      [26, 48, 26],
+      ["Evidencia", "Criterios", "Instrumento"],
+      [[lineas(d.evidencia), vinetas(d.criterios), lineas(d.instrumento)]],
+    ),
     subseccion("2.3. COMPETENCIAS TRANSVERSALES"),
-    tabla([
-      fila(
-        encabezado("Competencia transversal"),
-        encabezado("Capacidades"),
-        encabezado("Desempeño precisado"),
-      ),
-      ...d.transversales.map((t) =>
-        fila(
-          celda([parrafo(t.competencia)]),
-          celda(vinetas(t.capacidades)),
-          celda([parrafo(t.desempeno ?? "—")]),
-        ),
-      ),
-    ]),
+    tabla(
+      [34, 33, 33],
+      ["Competencia transversal", "Capacidades", "Desempeño precisado"],
+      d.transversales.map((t) => [
+        [parrafo(t.competencia)],
+        vinetas(t.capacidades),
+        [parrafo(t.desempeno ?? "—")],
+      ]),
+    ),
     subseccion("2.4. ENFOQUES TRANSVERSALES"),
-    tabla([
-      fila(
-        encabezado("Enfoque transversal"),
-        encabezado("Valores"),
-        encabezado("Acciones observables"),
-      ),
-      ...d.enfoques.map((e) =>
-        fila(celda([parrafo(e.enfoque)]), celda(vinetas(e.valores)), celda(vinetas(e.acciones))),
-      ),
-    ]),
+    tabla(
+      [26, 24, 50],
+      ["Enfoque transversal", "Valores", "Acciones observables"],
+      d.enfoques.map((e) => [[parrafo(e.enfoque)], vinetas(e.valores), vinetas(e.acciones)]),
+    ),
     seccion("III. SECUENCIA DIDÁCTICA"),
     subseccion("3.1. MEDIACIÓN Y MATERIALES"),
-    tabla([
-      fila(
-        encabezado("Materiales impresos"),
-        encabezado("Materiales manipulativos"),
-        encabezado("Materiales digitales"),
-      ),
-      fila(
-        celda(vinetas(d.materiales.impresos)),
-        celda(vinetas(d.materiales.manipulativos)),
-        celda(vinetas(d.materiales.digitales)),
-      ),
-    ]),
+    tabla(
+      [34, 33, 33],
+      ["Materiales impresos", "Materiales manipulativos", "Materiales digitales"],
+      [
+        [
+          vinetas(d.materiales.impresos),
+          vinetas(d.materiales.manipulativos),
+          vinetas(d.materiales.digitales),
+        ],
+      ],
+    ),
     subseccion("3.2. MOMENTOS DIDÁCTICOS"),
-    tabla([
-      fila(
-        encabezado("MOMENTO", 15),
-        encabezado("ACTIVIDADES ESTRATÉGICAS", 70),
-        encabezado("TIEMPO", 15),
-      ),
-      ...(["inicio", "desarrollo", "cierre"] as const).map((m) => {
+    tabla(
+      [16, 70, 14],
+      ["MOMENTO", "ACTIVIDADES ESTRATÉGICAS", "TIEMPO"],
+      (["inicio", "desarrollo", "cierre"] as const).map((m) => {
         const x = d.momentos.find((y) => y.momento === m);
-        return fila(
-          celda([parrafo(NOMBRE_MOMENTO[m], true)]),
-          celda((x?.actividades ?? "—").split("\n").map((l) => parrafo(l))),
-          celda([parrafo(`${x?.minutos ?? 0}`)]),
-        );
+        return [
+          [parrafo(NOMBRE_MOMENTO[m], true)],
+          lineas(x?.actividades),
+          [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [texto(`${x?.minutos ?? 0} min`)],
+            }),
+          ],
+        ];
       }),
-    ]),
+    ),
     seccion("IV. REFERENCIAS BIBLIOGRÁFICAS"),
     ...vinetas(d.referencias),
     new Paragraph({ text: "", spacing: { before: 800 } }),
-    tabla([
-      fila(
-        celda([
-          new Paragraph({
-            alignment: AlignmentType.CENTER,
-            children: [texto("__________________________")],
-          }),
-          new Paragraph({ alignment: AlignmentType.CENTER, children: [texto("DOCENTE", true)] }),
-        ]),
-        celda([
-          new Paragraph({
-            alignment: AlignmentType.CENTER,
-            children: [texto("__________________________")],
-          }),
-          new Paragraph({
-            alignment: AlignmentType.CENTER,
-            children: [texto("SUBDIRECCIÓN", true)],
-          }),
-        ]),
-      ),
-    ]),
+    new Table({
+      width: { size: ANCHO_PAGINA, type: WidthType.DXA },
+      columnWidths: [dxa(50), dxa(50)],
+      layout: TableLayoutType.FIXED,
+      rows: [
+        new TableRow({
+          children: ["DOCENTE", "SUBDIRECCIÓN"].map(
+            (rol) =>
+              new TableCell({
+                width: { size: dxa(50), type: WidthType.DXA },
+                borders: {
+                  top: { style: BorderStyle.NONE },
+                  bottom: { style: BorderStyle.NONE },
+                  left: { style: BorderStyle.NONE },
+                  right: { style: BorderStyle.NONE },
+                },
+                children: [
+                  new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    children: [texto("__________________________")],
+                  }),
+                  new Paragraph({ alignment: AlignmentType.CENTER, children: [texto(rol, true)] }),
+                ],
+              }),
+          ),
+        }),
+      ],
+    }),
   );
 
   const documento = new Document({
     styles: { default: { document: { run: { font: FUENTE, size: TAMANO } } } },
     sections: [
       {
-        properties: {
-          page: { margin: { top: 1000, bottom: 1000, left: 1000, right: 1000 } },
-        },
+        properties: { page: { margin: { top: 1000, bottom: 1000, left: 1000, right: 1000 } } },
         children: hijos,
       },
     ],

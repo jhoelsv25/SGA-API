@@ -61,6 +61,8 @@ export async function sembrarCatalogoCurricular(pool: Pool): Promise<void> {
   }
 
   for (const [numero, grado, orden, texto] of DESEMPENOS_CURRICULARES_SEED) {
+    // «Cuando el estudiante … nivel esperado del ciclo VI…» es la frase de entrada, no un desempeño.
+    if (/nivel esperado del ciclo/i.test(texto)) continue;
     await pool.query(
       `INSERT INTO desempenos_curriculares (competencia_id, grado, orden, texto)
        SELECT id, $2, $3, $4 FROM competencias_curriculares WHERE numero = $1
