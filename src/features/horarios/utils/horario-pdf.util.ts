@@ -331,8 +331,175 @@ function dibujarBloqueReceso(
     });
 }
 
-/** Genera el PDF apaisado (A4) del horario semanal de una sección. */
-export async function generarHorarioPdfBuffer(datos: DatosHorarioPdf): Promise<Buffer> {
+function dibujarPaginaHorario(
+  doc: PDFKit.PDFDocument,
+  datos: DatosHorarioPdf,
+  logoPath: string | null,
+): void {
+  const margen = 28;
+  const anchoContenido = doc.page.width - margen * 2;
+  const yTabla = dibujarCabecera(doc, datos, logoPath, anchoContenido, margen);
+  const altoHeaderTabla = 24;
+  const yFooter = doc.page.height - margen - 14;
+  const altoDisponibleGrilla = yFooter - 10 - (yTabla + altoHeaderTabla);
+
+  const intervalos = construirIntervalos(datos.bloques, altoDisponibleGrilla);
+
+  if (intervalos.length === 0) {
+    doc
+      .roundedRect(margen, yTabla + 10, anchoContenido, 68, 6)
+      .strokeColor(COLOR_BORDE_FUERTE)
+      .lineWidth(1)
+      .stroke();
+    doc
+      .fillColor(COLOR_MUTED)
+      .font("Helvetica")
+      .fontSize(11)
+      .text("No hay bloques de horario registrados para esta sección.", margen, yTabla + 38, {
+        width: anchoContenido,
+        align: "center",
+      });
+    return;
+  }
+
+  const anchoHora = 76;
+  const anchoDia = (anchoContenido - anchoHora) / DIAS.length;
+  const altoTotalGrilla = intervalos.reduce((acc, item) => acc + item.alto, 0);
+
+  // Cabecera de columnas
+  doc
+    .rect(margen, yTabla, anchoContenido, altoHeaderTabla)
+    .fillAndStroke(COLOR_FONDO_HEADER_TABLA, COLOR_BORDE_FUERTE);
+
+  doc
+    .fillColor(COLOR_TEXTO)
+    .font("Helvetica-Bold")
+    .fontSize(8.5)
+    .text("HORA", margen + 4, yTabla + 8, { width: anchoHora - 8, align: "center" });
+
+  DIAS.forEach((dia, idx) => {
+    const x = margen + anchoHora + idx * anchoDia;
+    doc
+      .moveTo(x, yTabla)
+      .lineTo(x, yTabla + altoHeaderTabla + altoTotalGrilla)
+      .strokeColor(COLOR_BORDE)
+      .lineWidth(0.75)
+      .stroke();
+
+    doc
+      .fillColor(COLOR_TEXTO)
+      .font("Helvetica-Bold")
+      .fontSize(8.5)
+      .text(dia.nombre.toUpperCase(), x + 4, yTabla + 8, {
+        width: anchoDia - 8,
+        align: "center",
+      });
+  });
+
+  const yInicioCuerpo = yTabla + altoHeaderTabla;
+
+  // Filas base por intervalo horario (en orden cronológico estricto)
+  for (const intervalo of intervalos) {
+    const yFila = yInicioCuerpo + intervalo.y;
+
+    doc
+      .moveTo(margen, yFila + intervalo.alto)
+      .lineTo(margen + anchoContenido, yFila + intervalo.alto)
+      .strokeColor(COLOR_BORDE)
+      .lineWidth(0.6)
+      .stroke();
+
+    doc
+      .fillColor(COLOR_TEXTO_SEC)
+      .font("Helvetica-Bold")
+      .fontSize(7.5)
+      .text(
+        `${intervalo.inicio} - ${intervalo.fin}`,
+        margen + 4,
+        yFila + Math.max(2, (intervalo.alto - 8) / 2),
+        {
+          width: anchoHora - 8,
+          align: "center",
+          lineBreak: false,
+        },
+      );
+  }
+
+  // Contorno exterior de la grilla
+  doc
+    .rect(margen, yTabla, anchoContenido, altoHeaderTabla + altoTotalGrilla)
+    .strokeColor(COLOR_BORDE_FUERTE)
+    .lineWidth(0.9)
+    .stroke();
+
+  // Línea divisoria entre columna Hora y días
+  doc
+    .moveTo(margen + anchoHora, yTabla)
+    .lineTo(margen + anchoHora, yInicioCuerpo + altoTotalGrilla)
+    .strokeColor(COLOR_BORDE_FUERTE)
+    .lineWidth(0.8)
+    .stroke();
+
+  // Mapeo minuto -> coordenada Y exacta dentro de la grilla
+  const yDeMinuto = (minuto: number): number => {
+    for (const intervalo of intervalos) {
+      if (minuto === intervalo.minInicio) {
+        return yInicioCuerpo + intervalo.y;
+      }
+      if (minuto === intervalo.minFin) {
+        return yInicioCuerpo + intervalo.y + intervalo.alto;
+      }
+    }
+    return yInicioCuerpo;
+  };
+
+  // Dibujar tarjetas de bloque abarcando todos sus intervalos correspondientes
+  for (const bloque of datos.bloques) {
+    const idxDia = DIAS.findIndex((d) => d.dia === bloque.diaSemana);
+    if (idxDia === -1) {
+      continue;
+    }
+
+    const yTop = yDeMinuto(minutosDe(bloque.horaInicio));
+    const yBottom = yDeMinuto(minutosDe(bloque.horaFin));
+    const altoBloque = Math.max(18, yBottom - yTop - 4);
+    const xDia = margen + anchoHora + idxDia * anchoDia;
+
+    if (bloque.tipoBloque === "receso") {
+      dibujarBloqueReceso(doc, bloque, xDia + 3, yTop + 2, anchoDia - 6, altoBloque);
+    } else {
+      dibujarBloqueClase(doc, bloque, xDia + 3, yTop + 2, anchoDia - 6, altoBloque);
+    }
+  }
+
+  // Pie de página
+  doc
+    .moveTo(margen, yFooter - 4)
+    .lineTo(margen + anchoContenido, yFooter - 4)
+    .strokeColor(COLOR_BORDE)
+    .lineWidth(0.6)
+    .stroke();
+
+  doc
+    .fillColor(COLOR_MUTED)
+    .font("Helvetica")
+    .fontSize(7.5)
+    .text("Sistema de Gestión Académica · I.E. Nuestra Señora del Carmen", margen, yFooter, {
+      width: anchoContenido / 2,
+    });
+
+  doc
+    .fillColor(COLOR_MUTED)
+    .font("Helvetica")
+    .fontSize(7.5)
+    .text(`Total de bloques: ${datos.bloques.length}`, margen + anchoContenido / 2, yFooter, {
+      width: anchoContenido / 2,
+      align: "right",
+    });
+}
+
+/** Genera un PDF apaisado (A4) multipágina con uno o varios horarios semanales. */
+export async function generarHorariosPdfBuffer(listaDatos: DatosHorarioPdf[]): Promise<Buffer> {
   const logoPath = resolverLogoPath();
 
   return new Promise<Buffer>((resolve, reject) => {
@@ -342,168 +509,31 @@ export async function generarHorarioPdfBuffer(datos: DatosHorarioPdf): Promise<B
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     doc.on("error", reject);
 
-    const margen = 28;
-    const anchoContenido = doc.page.width - margen * 2;
-    const yTabla = dibujarCabecera(doc, datos, logoPath, anchoContenido, margen);
-    const altoHeaderTabla = 24;
-    const yFooter = doc.page.height - margen - 14;
-    const altoDisponibleGrilla = yFooter - 10 - (yTabla + altoHeaderTabla);
-
-    const intervalos = construirIntervalos(datos.bloques, altoDisponibleGrilla);
-
-    if (intervalos.length === 0) {
-      doc
-        .roundedRect(margen, yTabla + 10, anchoContenido, 68, 6)
-        .strokeColor(COLOR_BORDE_FUERTE)
-        .lineWidth(1)
-        .stroke();
+    if (listaDatos.length === 0) {
       doc
         .fillColor(COLOR_MUTED)
         .font("Helvetica")
-        .fontSize(11)
-        .text("No hay bloques de horario registrados para esta sección.", margen, yTabla + 38, {
-          width: anchoContenido,
+        .fontSize(12)
+        .text("No hay horarios registrados para los filtros seleccionados.", 28, 120, {
+          width: doc.page.width - 56,
           align: "center",
         });
       doc.end();
       return;
     }
 
-    const anchoHora = 76;
-    const anchoDia = (anchoContenido - anchoHora) / DIAS.length;
-    const altoTotalGrilla = intervalos.reduce((acc, item) => acc + item.alto, 0);
-
-    // Cabecera de columnas
-    doc
-      .rect(margen, yTabla, anchoContenido, altoHeaderTabla)
-      .fillAndStroke(COLOR_FONDO_HEADER_TABLA, COLOR_BORDE_FUERTE);
-
-    doc
-      .fillColor(COLOR_TEXTO)
-      .font("Helvetica-Bold")
-      .fontSize(8.5)
-      .text("HORA", margen + 4, yTabla + 8, { width: anchoHora - 8, align: "center" });
-
-    DIAS.forEach((dia, idx) => {
-      const x = margen + anchoHora + idx * anchoDia;
-      doc
-        .moveTo(x, yTabla)
-        .lineTo(x, yTabla + altoHeaderTabla + altoTotalGrilla)
-        .strokeColor(COLOR_BORDE)
-        .lineWidth(0.75)
-        .stroke();
-
-      doc
-        .fillColor(COLOR_TEXTO)
-        .font("Helvetica-Bold")
-        .fontSize(8.5)
-        .text(dia.nombre.toUpperCase(), x + 4, yTabla + 8, {
-          width: anchoDia - 8,
-          align: "center",
-        });
+    listaDatos.forEach((datos, idx) => {
+      if (idx > 0) {
+        doc.addPage({ size: "A4", layout: "landscape", margin: 28 });
+      }
+      dibujarPaginaHorario(doc, datos, logoPath);
     });
-
-    const yInicioCuerpo = yTabla + altoHeaderTabla;
-
-    // Filas base por intervalo horario (en orden cronológico estricto)
-    for (const intervalo of intervalos) {
-      const yFila = yInicioCuerpo + intervalo.y;
-
-      doc
-        .moveTo(margen, yFila + intervalo.alto)
-        .lineTo(margen + anchoContenido, yFila + intervalo.alto)
-        .strokeColor(COLOR_BORDE)
-        .lineWidth(0.6)
-        .stroke();
-
-      doc
-        .fillColor(COLOR_TEXTO_SEC)
-        .font("Helvetica-Bold")
-        .fontSize(7.5)
-        .text(
-          `${intervalo.inicio} - ${intervalo.fin}`,
-          margen + 4,
-          yFila + Math.max(2, (intervalo.alto - 8) / 2),
-          {
-            width: anchoHora - 8,
-            align: "center",
-            lineBreak: false,
-          },
-        );
-    }
-
-    // Contorno exterior de la grilla
-    doc
-      .rect(margen, yTabla, anchoContenido, altoHeaderTabla + altoTotalGrilla)
-      .strokeColor(COLOR_BORDE_FUERTE)
-      .lineWidth(0.9)
-      .stroke();
-
-    // Línea divisoria entre columna Hora y días
-    doc
-      .moveTo(margen + anchoHora, yTabla)
-      .lineTo(margen + anchoHora, yInicioCuerpo + altoTotalGrilla)
-      .strokeColor(COLOR_BORDE_FUERTE)
-      .lineWidth(0.8)
-      .stroke();
-
-    // Mapeo minuto -> coordenada Y exacta dentro de la grilla
-    const yDeMinuto = (minuto: number): number => {
-      for (const intervalo of intervalos) {
-        if (minuto === intervalo.minInicio) {
-          return yInicioCuerpo + intervalo.y;
-        }
-        if (minuto === intervalo.minFin) {
-          return yInicioCuerpo + intervalo.y + intervalo.alto;
-        }
-      }
-      return yInicioCuerpo;
-    };
-
-    // Dibujar tarjetas de bloque abarcando todos sus intervalos correspondientes
-    for (const bloque of datos.bloques) {
-      const idxDia = DIAS.findIndex((d) => d.dia === bloque.diaSemana);
-      if (idxDia === -1) {
-        continue;
-      }
-
-      const yTop = yDeMinuto(minutosDe(bloque.horaInicio));
-      const yBottom = yDeMinuto(minutosDe(bloque.horaFin));
-      const altoBloque = Math.max(18, yBottom - yTop - 4);
-      const xDia = margen + anchoHora + idxDia * anchoDia;
-
-      if (bloque.tipoBloque === "receso") {
-        dibujarBloqueReceso(doc, bloque, xDia + 3, yTop + 2, anchoDia - 6, altoBloque);
-      } else {
-        dibujarBloqueClase(doc, bloque, xDia + 3, yTop + 2, anchoDia - 6, altoBloque);
-      }
-    }
-
-    // Pie de página
-    doc
-      .moveTo(margen, yFooter - 4)
-      .lineTo(margen + anchoContenido, yFooter - 4)
-      .strokeColor(COLOR_BORDE)
-      .lineWidth(0.6)
-      .stroke();
-
-    doc
-      .fillColor(COLOR_MUTED)
-      .font("Helvetica")
-      .fontSize(7.5)
-      .text("Sistema de Gestión Académica · I.E. Nuestra Señora del Carmen", margen, yFooter, {
-        width: anchoContenido / 2,
-      });
-
-    doc
-      .fillColor(COLOR_MUTED)
-      .font("Helvetica")
-      .fontSize(7.5)
-      .text(`Total de bloques: ${datos.bloques.length}`, margen + anchoContenido / 2, yFooter, {
-        width: anchoContenido / 2,
-        align: "right",
-      });
 
     doc.end();
   });
+}
+
+/** Genera el PDF apaisado (A4) del horario semanal de una sección. */
+export async function generarHorarioPdfBuffer(datos: DatosHorarioPdf): Promise<Buffer> {
+  return generarHorariosPdfBuffer([datos]);
 }

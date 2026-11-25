@@ -19,7 +19,7 @@ export class EjecutarImportacionDto {
   })
   @IsIn(Object.values(TIPO_IMPORTACION), {
     message:
-      "Tipo de importación no válido. Debe ser personas, estudiantes, docentes, apoderados o matriculas.",
+      "Tipo de importación no válido. Debe ser personas, estudiantes, docentes, apoderados, matriculas, carga_academica o horarios.",
   })
   @IsNotEmpty({ message: "El tipo de importación es obligatorio" })
   tipo: TipoImportacion;

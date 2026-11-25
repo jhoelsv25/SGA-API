@@ -1,11 +1,11 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Post } from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
-import { MENU_MIS_OBSERVACIONES } from "../../common/constants";
-import { CurrentUser, MenuAccess } from "../../common/decorators";
-import type { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface";
-import { ComentarioDocenteDto } from "./dto";
-import { actorDe } from "./observaciones-aula.controller";
-import { MisObservacionesService } from "./mis-observaciones.service";
+import { MENU_MIS_OBSERVACIONES } from "../../../common/constants";
+import { CurrentUser, MenuAccess } from "../../../common/decorators";
+import type { AuthenticatedUser } from "../../auth/interfaces/jwt-payload.interface";
+import { ComentarioDocenteDto } from "../dto";
+import { MisObservacionesService } from "../services";
+import { actorDe } from "./observaciones-actor.helper";
 
 /** «Mis observaciones» del docente (RF-023, HU6). */
 @ApiTags("Mis observaciones")

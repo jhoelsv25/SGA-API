@@ -721,6 +721,13 @@ async function seed() {
       descripcion: "Área de Comunicación según el CNEB",
     },
     {
+      codigo: "QUE",
+      nombre: "Quechua",
+      areaCurricular: "quechua",
+      colorHex: "#F59E0B",
+      descripcion: "Área de Comunicación en Lengua Originaria - Quechua",
+    },
+    {
       codigo: "ING",
       nombre: "Inglés",
       areaCurricular: "ingles",

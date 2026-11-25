@@ -20,6 +20,7 @@ export interface CompetenciaSeed {
 export const AREAS_CURRICULARES = [
   { codigo: "matematica", nombre: "Matemática" },
   { codigo: "comunicacion", nombre: "Comunicación" },
+  { codigo: "quechua", nombre: "Quechua (Lengua Originaria)" },
   { codigo: "ingles", nombre: "Inglés" },
   { codigo: "arte_cultura", nombre: "Arte y Cultura" },
   { codigo: "ciencias_sociales", nombre: "Ciencias Sociales" },
@@ -308,6 +309,24 @@ export const COMPETENCIAS_SEED: CompetenciaSeed[] = [
       "Transforma su entorno desde el encuentro personal y comunitario con Dios y desde la fe que profesa",
       "Actúa coherentemente en razón de su fe según los principios de su conciencia moral en situaciones concretas de la vida",
     ],
+  },
+  {
+    numero: 32,
+    area: "quechua",
+    nombre: "Se comunica oralmente en Quechua como lengua originaria",
+    capacidades: ORAL,
+  },
+  {
+    numero: 33,
+    area: "quechua",
+    nombre: "Lee diversos tipos de textos escritos en Quechua como lengua originaria",
+    capacidades: LEE,
+  },
+  {
+    numero: 34,
+    area: "quechua",
+    nombre: "Escribe diversos tipos de textos en Quechua como lengua originaria",
+    capacidades: ESCRIBE,
   },
 ];
 

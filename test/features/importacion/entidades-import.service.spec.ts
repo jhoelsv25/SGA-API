@@ -123,16 +123,33 @@ describe("EntidadesImportServices (Especializados)", () => {
   });
 
   describe("DocentesImportService", () => {
-    it("debe rechazar fila sin codigoDocente", async () => {
+    it("debe permitir fila sin codigoDocente para autogenerarlo en el sistema", async () => {
       const res = await docentesImportService.analizar({
         numeroFila: 2,
-        datos: {},
+        datos: {
+          tipoContrato: "nombrado",
+          jornada: "30",
+          fechaIngreso: "2026-03-02",
+        },
         personaExistente: null,
         codigosEnLote: new Set(),
         principalesPorEstudiante: new Set(),
       });
+      expect(res.estado).toBe("valida");
+      expect(res.accion).toBe("crear");
+    });
+
+    it("debe rechazar código de docente duplicado en el mismo archivo", async () => {
+      const codigosEnLote = new Set(["20260000000001"]);
+      const res = await docentesImportService.analizar({
+        numeroFila: 3,
+        datos: { codigoDocente: "20260000000001" },
+        personaExistente: null,
+        codigosEnLote,
+        principalesPorEstudiante: new Set(),
+      });
       expect(res.estado).toBe("error");
-      expect(res.mensaje).toContain("código de docente es obligatorio");
+      expect(res.mensaje).toContain("duplicado");
     });
   });
 

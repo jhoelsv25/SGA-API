@@ -1,7 +1,7 @@
 import { ForbiddenException, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { MENU_MIS_OBSERVACIONES, MENU_OBSERVACIONES_AULA } from "../../common/constants";
-import { AuditService } from "../../common/services/audit.service";
-import { NotificacionesService } from "../notificaciones/notificaciones.service";
+import { MENU_MIS_OBSERVACIONES, MENU_OBSERVACIONES_AULA } from "../../../common/constants";
+import { AuditService } from "../../../common/services/audit.service";
+import { NotificacionesService } from "../../notificaciones/notificaciones.service";
 import {
   ANTICIPACION_POR_DEFECTO,
   CANTIDAD_OBJETIVO_POR_DEFECTO,
@@ -12,15 +12,15 @@ import {
   PLAZO_DESCARGO_POR_DEFECTO,
   ROL_ADMINISTRADOR,
   VARIABLES_OBSERVACION,
-} from "./constants";
+} from "../constants";
 import type {
   ActorObservacion,
   CalificacionFila,
   InstrumentoContenido,
   ObservacionFila,
-} from "./interfaces";
-import { ObservacionesAulaRepository } from "./repositories";
-import { sumarDias } from "./utils";
+} from "../interfaces";
+import { ObservacionesAulaRepository } from "../repositories";
+import { sumarDias } from "../utils";
 
 /** Piezas que comparten los servicios de observación de aula (RF-023). */
 @Injectable()

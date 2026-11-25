@@ -32,6 +32,36 @@ export interface InstitutionSummary {
   nombre: string;
 }
 
+export type UsuarioJwtRecord = Pick<
+  UsuarioRecord,
+  | "id"
+  | "nombreUsuario"
+  | "personaId"
+  | "rolId"
+  | "estado"
+  | "debeCambiarContrasena"
+  | "eliminadoEn"
+>;
+
+export interface ValidacionJwtSqlResult {
+  sesionCerrada: boolean;
+  usuario: UsuarioJwtRecord | null;
+  roles: UsuarioRolRecord[];
+}
+
+export interface ContextoSesionSqlResult {
+  usuario: Omit<UsuarioJwtRecord, "eliminadoEn">;
+  persona: Pick<
+    PersonaRecord,
+    "nombres" | "apellidoPaterno" | "apellidoMaterno" | "correo" | "fotoUrl"
+  > | null;
+  institucion: InstitutionSummary | null;
+  roles: UsuarioRolRecord[];
+  activeRole: UsuarioRolRecord | null;
+  modules: AuthModuleDto[];
+  menuRoutes: string[];
+}
+
 export interface IAuthRepository {
   findUserByUsername(username: string): Promise<UsuarioRecord | null>;
   findUserById(id: string): Promise<UsuarioRecord | null>;
@@ -40,6 +70,11 @@ export interface IAuthRepository {
   findRoleById(rolId: string): Promise<RolRecord | null>;
   findUserRoles(userId: string): Promise<UsuarioRolRecord[]>;
   findInstitution(): Promise<InstitutionSummary | null>;
+  validarJwtUsuario?(usuarioId: string, tokenHash: string | null): Promise<ValidacionJwtSqlResult>;
+  obtenerContextoSesion?(
+    usuarioId: string,
+    rolId?: string,
+  ): Promise<ContextoSesionSqlResult | null>;
   updateLoginAttempts(userId: string, attempts: number, blockAccount: boolean): Promise<void>;
   resetLoginAttempts(userId: string): Promise<void>;
   createSession(data: SessionData): Promise<void>;

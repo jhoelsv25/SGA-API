@@ -387,4 +387,64 @@ export class ApoderadosRepository implements IApoderadosRepository {
       creadoEn: row.creadoEn,
     };
   }
+
+  async obtenerResumen(query?: ApoderadoQueryDto): Promise<{
+    total: number;
+    conEstudiantes: number;
+    principales: number;
+    conCuenta: number;
+  }> {
+    const condiciones = [isNull(apoderados.eliminadoEn), isNull(personas.eliminadoEn)];
+
+    if (query?.gradoInstruccion) {
+      condiciones.push(eq(apoderados.gradoInstruccion, query.gradoInstruccion));
+    }
+    if (query?.estudianteId) {
+      condiciones.push(
+        sql`EXISTS (
+          SELECT 1 FROM estudiante_apoderados ea
+          WHERE ea.apoderado_id = ${apoderados.id}
+            AND ea.estudiante_id = ${query.estudianteId}::uuid
+        )`,
+      );
+    }
+    if (query?.search && query.search.trim().length > 0) {
+      const patron = `%${query.search.trim()}%`;
+      condiciones.push(
+        sql`(
+          ${personas.nombres} ILIKE ${patron}
+          OR ${personas.apellidoPaterno} ILIKE ${patron}
+          OR ${personas.apellidoMaterno} ILIKE ${patron}
+          OR ${personas.numeroDocumento} ILIKE ${patron}
+          OR ${personas.celular} ILIKE ${patron}
+          OR ${personas.telefono} ILIKE ${patron}
+          OR ${apoderados.ocupacion} ILIKE ${patron}
+        )`,
+      );
+    }
+
+    const [row] = await this.db
+      .select({
+        total: sql<number>`COUNT(*)::int`,
+        conEstudiantes: sql<number>`COUNT(*) FILTER (WHERE EXISTS (
+          SELECT 1 FROM estudiante_apoderados ea WHERE ea.apoderado_id = ${apoderados.id}
+        ))::int`,
+        principales: sql<number>`COUNT(*) FILTER (WHERE EXISTS (
+          SELECT 1 FROM estudiante_apoderados ea WHERE ea.apoderado_id = ${apoderados.id} AND ea.es_principal = true
+        ))::int`,
+        conCuenta: sql<number>`COUNT(*) FILTER (WHERE EXISTS (
+          SELECT 1 FROM usuarios u WHERE u.persona_id = ${apoderados.personaId} AND u.eliminado_en IS NULL
+        ))::int`,
+      })
+      .from(apoderados)
+      .innerJoin(personas, eq(apoderados.personaId, personas.id))
+      .where(and(...condiciones));
+
+    return {
+      total: Number(row?.total ?? 0),
+      conEstudiantes: Number(row?.conEstudiantes ?? 0),
+      principales: Number(row?.principales ?? 0),
+      conCuenta: Number(row?.conCuenta ?? 0),
+    };
+  }
 }

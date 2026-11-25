@@ -12,13 +12,18 @@ import { PersonasModule } from "../personas/personas.module";
 import { ImportacionController } from "./importacion.controller";
 import { ImportacionProcessor } from "./processors/importacion.processor";
 import { ImportacionService } from "./importacion.service";
+import { ImportacionAcademicaRepository } from "./repositories";
 import {
   ApoderadosImportService,
+  CargaAcademicaImportService,
   DocentesImportService,
   EstudiantesImportService,
   FotosImportService,
+  HorariosImportService,
+  LoteTemporalImportService,
   MatriculasImportService,
   PersonasImportService,
+  TrabajosImportService,
 } from "./services";
 
 @Module({
@@ -34,15 +39,20 @@ import {
   ],
   controllers: [ImportacionController],
   providers: [
+    LoteTemporalImportService,
+    TrabajosImportService,
     ImportacionService,
     ImportacionProcessor,
     AuditService,
+    ImportacionAcademicaRepository,
     PersonasImportService,
     EstudiantesImportService,
     DocentesImportService,
     ApoderadosImportService,
     FotosImportService,
     MatriculasImportService,
+    CargaAcademicaImportService,
+    HorariosImportService,
   ],
   exports: [
     ImportacionService,
@@ -52,6 +62,8 @@ import {
     ApoderadosImportService,
     FotosImportService,
     MatriculasImportService,
+    CargaAcademicaImportService,
+    HorariosImportService,
   ],
 })
 export class ImportacionModule {}

@@ -1,25 +1,15 @@
-import { sinFichaDocente } from "../../common/utils/ficha-docente.util";
-import {
-  BadRequestException,
-  ConflictException,
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-  Optional,
-} from "@nestjs/common";
+import { Injectable, Optional } from "@nestjs/common";
 import { AnioLectivoCls } from "../../common/anio-lectivo";
 import { AuditService } from "../../common/services/audit.service";
+import { CacheService } from "../../core/cache/cache.service";
 import { IaService } from "../../core/ia/ia.service";
 import { AniosAcademicosService } from "../anio-escolar/anios.service";
 import { DocentesRepository } from "../docentes";
 import { SeccionesRepository } from "../secciones";
 import { VariablesSistemaRepository } from "../variables-sistema/repositories";
-import { DIAS_SEMANA_CLASE, MENSAJES_HORARIOS, TABLA_HORARIOS } from "./constants";
-import {
-  BloqueHorarioResponseDto,
+import type {
   BloqueMutacionResponseDto,
   BloquesLoteResponseDto,
-  ConflictoHorarioCopiaDto,
   CopiarHorarioResponseDto,
   CreateBloqueHorarioDto,
   CrearBloquesLoteDto,
@@ -29,909 +19,173 @@ import {
   MiHorarioResponseDto,
   ProponerHorarioIaDto,
   PropuestaHorarioIaResponseDto,
-  ResumenHorasCursoDto,
   UpdateBloqueHorarioDto,
 } from "./dto";
-import { construirPromptProponerHorario, INSTRUCCION_SISTEMA_PROPONER_HORARIO } from "./prompts";
 import { HorariosRepository } from "./repositories";
 import {
-  AsignacionIaPropuesta,
-  BloqueOcupadoDocente,
-  consolidarPropuestaHorario,
-  generarHorarioPdfBuffer,
-  NecesidadCursoHorario,
-} from "./utils";
-import {
-  construirAdvertenciaHorasPlan,
-  construirMensajeCruceDocente,
-  convertirHoraAMinutos,
-  minutosAHora,
-  normalizarHora,
-} from "./utils";
+  HorariosBloquesService,
+  HorariosConsultaService,
+  HorariosPdfService,
+  HorariosPlanificacionService,
+  type UsuarioConsultaEstudiante,
+} from "./services";
 
-export interface UsuarioConsultaEstudiante {
-  id: string;
-  personaId?: string;
-  role?: string;
-  rol?: string;
-}
+export type { UsuarioConsultaEstudiante };
 
+/**
+ * Fachada cohesiva de horarios que delega en servicios especializados
+ * (bloques, consultas, PDF y planificación/IA), manteniendo compatibilidad con Nest DI y tests.
+ */
 @Injectable()
 export class HorariosService {
-  constructor(
-    private readonly horariosRepo: HorariosRepository,
-    private readonly seccionesRepo: SeccionesRepository,
-    private readonly docentesRepo: DocentesRepository,
-    private readonly aniosService: AniosAcademicosService,
-    private readonly anioLectivoCls: AnioLectivoCls,
-    private readonly auditService: AuditService,
-    @Optional() private readonly variablesSistemaRepo?: VariablesSistemaRepository,
-    @Optional() private readonly iaService?: IaService,
-  ) {}
+  private readonly consultaService: HorariosConsultaService;
+  private readonly pdfService: HorariosPdfService;
+  private readonly planificacionService: HorariosPlanificacionService;
+  private readonly bloquesService: HorariosBloquesService;
 
-  async crearBloque(
+  constructor(
+    horariosRepo: HorariosRepository,
+    seccionesRepo: SeccionesRepository,
+    docentesRepo: DocentesRepository,
+    aniosService: AniosAcademicosService,
+    anioLectivoCls: AnioLectivoCls,
+    auditService: AuditService,
+    @Optional() _variablesSistemaRepo?: VariablesSistemaRepository,
+    @Optional() iaService?: IaService,
+    @Optional() cacheService?: CacheService,
+    @Optional() consultaService?: HorariosConsultaService,
+    @Optional() pdfService?: HorariosPdfService,
+    @Optional() planificacionService?: HorariosPlanificacionService,
+    @Optional() bloquesService?: HorariosBloquesService,
+  ) {
+    this.consultaService =
+      consultaService ??
+      new HorariosConsultaService(horariosRepo, aniosService, anioLectivoCls, cacheService);
+    this.pdfService =
+      pdfService ??
+      new HorariosPdfService(
+        horariosRepo,
+        docentesRepo,
+        aniosService,
+        anioLectivoCls,
+        this.consultaService,
+      );
+    this.planificacionService =
+      planificacionService ??
+      new HorariosPlanificacionService(
+        horariosRepo,
+        seccionesRepo,
+        aniosService,
+        anioLectivoCls,
+        auditService,
+        this.consultaService,
+        iaService,
+      );
+    this.bloquesService =
+      bloquesService ??
+      new HorariosBloquesService(
+        horariosRepo,
+        seccionesRepo,
+        aniosService,
+        anioLectivoCls,
+        auditService,
+        this.consultaService,
+      );
+  }
+
+  crearBloque(
     seccionId: string,
     dto: CreateBloqueHorarioDto,
     actorId: string,
     ip?: string,
   ): Promise<BloqueMutacionResponseDto> {
-    const minInicio = convertirHoraAMinutos(dto.horaInicio);
-    const minFin = convertirHoraAMinutos(dto.horaFin);
-    if (minFin <= minInicio) {
-      throw new BadRequestException(MENSAJES_HORARIOS.FIN_DEBE_SER_POSTERIOR);
-    }
-
-    const anio = await this.resolverAnio(true);
-
-    const seccion = await this.seccionesRepo.findById(seccionId);
-    if (!seccion) {
-      throw new NotFoundException(MENSAJES_HORARIOS.SECCION_NO_ENCONTRADA);
-    }
-    this.exigirSeccionAbierta(seccion);
-
-    if (dto.tipoBloque === "clase" && !dto.cursoSeccionId) {
-      throw new BadRequestException(MENSAJES_HORARIOS.CLASE_REQUIERE_CURSO);
-    }
-
-    // 1. Validar superposición en la sección
-    const solapados = await this.horariosRepo.findSolapados(
-      seccionId,
-      dto.diaSemana,
-      dto.horaInicio,
-      dto.horaFin,
-    );
-    if (solapados.length > 0) {
-      throw new ConflictException(MENSAJES_HORARIOS.BLOQUES_SUPERPUESTOS);
-    }
-
-    // 2. Validar cruce de docente en otra sección del año escolar
-    if (dto.tipoBloque === "clase" && dto.cursoSeccionId) {
-      const cruceDocente = await this.horariosRepo.findCruceDocente(
-        anio.id,
-        dto.cursoSeccionId,
-        dto.diaSemana,
-        dto.horaInicio,
-        dto.horaFin,
-        seccionId,
-      );
-      if (cruceDocente) {
-        throw new ConflictException(construirMensajeCruceDocente(cruceDocente));
-      }
-    }
-
-    // 3. Crear bloque en base de datos
-    const bloqueCreado = await this.horariosRepo.create({
-      seccionId,
-      cursoSeccionId: dto.tipoBloque === "receso" ? null : dto.cursoSeccionId,
-      diaSemana: dto.diaSemana,
-      horaInicio: dto.horaInicio,
-      horaFin: dto.horaFin,
-      tipoBloque: dto.tipoBloque,
-      aula: dto.aula,
-    });
-
-    // 4. Registrar auditoría inmutable
-    await this.auditService.log({
-      usuarioId: actorId,
-      accion: "crear",
-      tabla: TABLA_HORARIOS,
-      registroId: bloqueCreado.id,
-      direccionIp: ip,
-      valorNuevo: this.serializarAuditoria(bloqueCreado),
-    });
-
-    // 5. Comparar horas frente al plan de estudios para emitir advertencias oficiales
-    const advertencias = await this.calcularAdvertencias(seccionId);
-    const mensaje =
-      anio.estado === "en_curso" ? MENSAJES_HORARIOS.HORARIO_GUARDADO_VIGENCIA : undefined;
-
-    return {
-      bloque: bloqueCreado,
-      advertencias,
-      mensaje,
-    };
+    return this.bloquesService.crearBloque(seccionId, dto, actorId, ip);
   }
 
-  async actualizarBloque(
+  actualizarBloque(
     id: string,
     dto: UpdateBloqueHorarioDto,
     actorId: string,
     ip?: string,
   ): Promise<BloqueMutacionResponseDto> {
-    const bloqueActual = await this.horariosRepo.findById(id);
-    if (!bloqueActual) {
-      throw new NotFoundException(MENSAJES_HORARIOS.BLOQUE_NO_ENCONTRADO);
-    }
-
-    const horaInicioEfectiva = dto.horaInicio ?? bloqueActual.horaInicio;
-    const horaFinEfectiva = dto.horaFin ?? bloqueActual.horaFin;
-    const diaSemanaEfectivo = dto.diaSemana ?? bloqueActual.diaSemana;
-    const tipoBloqueEfectivo = dto.tipoBloque ?? bloqueActual.tipoBloque;
-    const cursoSeccionIdEfectivo =
-      dto.cursoSeccionId !== undefined ? dto.cursoSeccionId : bloqueActual.cursoSeccionId;
-
-    const minInicio = convertirHoraAMinutos(horaInicioEfectiva);
-    const minFin = convertirHoraAMinutos(horaFinEfectiva);
-    if (minFin <= minInicio) {
-      throw new BadRequestException(MENSAJES_HORARIOS.FIN_DEBE_SER_POSTERIOR);
-    }
-
-    const anio = await this.resolverAnio(true);
-    this.exigirSeccionAbierta(await this.seccionesRepo.findById(bloqueActual.seccionId));
-
-    // 1. Validar superposición en la sección (excluyendo el bloque actual)
-    const solapados = await this.horariosRepo.findSolapados(
-      bloqueActual.seccionId,
-      diaSemanaEfectivo,
-      horaInicioEfectiva,
-      horaFinEfectiva,
-      id,
-    );
-    if (solapados.length > 0) {
-      throw new ConflictException(MENSAJES_HORARIOS.BLOQUES_SUPERPUESTOS);
-    }
-
-    // 2. Validar cruce de docente en otra sección del año escolar
-    if (tipoBloqueEfectivo === "clase" && cursoSeccionIdEfectivo) {
-      const cruceDocente = await this.horariosRepo.findCruceDocente(
-        anio.id,
-        cursoSeccionIdEfectivo,
-        diaSemanaEfectivo,
-        horaInicioEfectiva,
-        horaFinEfectiva,
-        bloqueActual.seccionId,
-      );
-      if (cruceDocente) {
-        throw new ConflictException(construirMensajeCruceDocente(cruceDocente));
-      }
-    }
-
-    // 3. Actualizar bloque
-    const bloqueActualizado = await this.horariosRepo.update(id, dto);
-
-    // 4. Registrar auditoría inmutable
-    await this.auditService.log({
-      usuarioId: actorId,
-      accion: "actualizar",
-      tabla: TABLA_HORARIOS,
-      registroId: id,
-      direccionIp: ip,
-      valorAnterior: this.serializarAuditoria(bloqueActual),
-      valorNuevo: this.serializarAuditoria(bloqueActualizado),
-    });
-
-    // 5. Comparar horas frente al plan de estudios para emitir advertencias
-    const advertencias = await this.calcularAdvertencias(bloqueActual.seccionId);
-    const mensaje =
-      anio.estado === "en_curso" ? MENSAJES_HORARIOS.HORARIO_GUARDADO_VIGENCIA : undefined;
-
-    return {
-      bloque: bloqueActualizado,
-      advertencias,
-      mensaje,
-    };
+    return this.bloquesService.actualizarBloque(id, dto, actorId, ip);
   }
 
-  async crearBloquesLote(
+  crearBloquesLote(
     seccionId: string,
     dto: CrearBloquesLoteDto,
     actorId: string,
     ip?: string,
   ): Promise<BloquesLoteResponseDto> {
-    const anio = await this.resolverAnio(true);
-    const seccion = await this.seccionesRepo.findById(seccionId);
-    if (!seccion) {
-      throw new NotFoundException(MENSAJES_HORARIOS.SECCION_NO_ENCONTRADA);
-    }
-    this.exigirSeccionAbierta(seccion);
-
-    const [cursosSeccion, bloquesActualesSeccion] = await Promise.all([
-      this.horariosRepo.cursosSeccionPorSeccion(seccionId),
-      this.horariosRepo.findBySeccion(seccionId),
-    ]);
-    const cursoPorId = new Map(cursosSeccion.map((c) => [c.cursoSeccionId, c]));
-    const idsBloquesSeccion = new Set(bloquesActualesSeccion.map((b) => b.id));
-    const existentesSeccion = dto.reemplazarExistentes ? [] : bloquesActualesSeccion;
-
-    const docentesUnicos = [
-      ...new Set(cursosSeccion.map((c) => c.docenteId).filter((id): id is string => Boolean(id))),
-    ];
-    const ocupadoPorDocente = new Map<
-      string,
-      Array<{ diaSemana: number; horaInicio: string; horaFin: string; descripcion: string }>
-    >();
-    await Promise.all(
-      docentesUnicos.map(async (docenteId) => {
-        const bloquesDocente = await this.horariosRepo.findByDocente(anio.id, docenteId);
-        ocupadoPorDocente.set(
-          docenteId,
-          bloquesDocente
-            .filter((b) => !idsBloquesSeccion.has(b.id))
-            .map((b) => ({
-              diaSemana: b.diaSemana,
-              horaInicio: b.horaInicio,
-              horaFin: b.horaFin,
-              descripcion: `${b.gradoNumero}.° ${b.seccionNombre}`,
-            })),
-        );
-      }),
-    );
-
-    const normalizados: Array<{
-      diaSemana: number;
-      horaInicio: string;
-      horaFin: string;
-      tipoBloque: "clase" | "receso";
-      cursoSeccionId: string | null;
-      aula: string | null;
-    }> = [];
-
-    for (const item of dto.bloques) {
-      const horaInicio = normalizarHora(item.horaInicio);
-      const horaFin = normalizarHora(item.horaFin);
-      if (convertirHoraAMinutos(horaFin) <= convertirHoraAMinutos(horaInicio)) {
-        throw new BadRequestException(MENSAJES_HORARIOS.FIN_DEBE_SER_POSTERIOR);
-      }
-      if (item.tipoBloque === "clase" && !item.cursoSeccionId) {
-        throw new BadRequestException(MENSAJES_HORARIOS.CLASE_REQUIERE_CURSO);
-      }
-
-      const cursoSeccionId = item.tipoBloque === "receso" ? null : (item.cursoSeccionId ?? null);
-      if (cursoSeccionId && !cursoPorId.has(cursoSeccionId)) {
-        throw new BadRequestException(MENSAJES_HORARIOS.CLASE_REQUIERE_CURSO);
-      }
-
-      const inicioMin = convertirHoraAMinutos(horaInicio);
-      const finMin = convertirHoraAMinutos(horaFin);
-      const chocaInterno = normalizados.some(
-        (otro) =>
-          otro.diaSemana === item.diaSemana &&
-          inicioMin < convertirHoraAMinutos(otro.horaFin) &&
-          finMin > convertirHoraAMinutos(otro.horaInicio),
-      );
-      if (chocaInterno) {
-        throw new ConflictException(MENSAJES_HORARIOS.BLOQUES_SUPERPUESTOS);
-      }
-
-      const chocaExistente = existentesSeccion.some(
-        (otro) =>
-          otro.diaSemana === item.diaSemana &&
-          inicioMin < convertirHoraAMinutos(otro.horaFin) &&
-          finMin > convertirHoraAMinutos(otro.horaInicio),
-      );
-      if (chocaExistente) {
-        throw new ConflictException(MENSAJES_HORARIOS.BLOQUES_SUPERPUESTOS);
-      }
-
-      if (cursoSeccionId) {
-        const docenteId = cursoPorId.get(cursoSeccionId)?.docenteId;
-        if (docenteId) {
-          const ocupados = ocupadoPorDocente.get(docenteId) ?? [];
-          const cruce = ocupados.find(
-            (b) =>
-              b.diaSemana === item.diaSemana &&
-              inicioMin < convertirHoraAMinutos(b.horaFin) &&
-              finMin > convertirHoraAMinutos(b.horaInicio),
-          );
-          if (cruce) {
-            throw new ConflictException(
-              `El docente ya tiene clase asignada en ${cruce.descripcion} (${cruce.horaInicio}–${cruce.horaFin}).`,
-            );
-          }
-        }
-      }
-
-      normalizados.push({
-        diaSemana: item.diaSemana,
-        horaInicio,
-        horaFin,
-        tipoBloque: item.tipoBloque,
-        cursoSeccionId,
-        aula: item.aula ?? null,
-      });
-    }
-
-    const bloques = await this.horariosRepo.crearLote(
-      seccionId,
-      normalizados.map((b) => ({ seccionId, ...b })),
-      Boolean(dto.reemplazarExistentes),
-    );
-
-    await this.auditService.log({
-      usuarioId: actorId,
-      accion: "crear",
-      tabla: TABLA_HORARIOS,
-      registroId: seccionId,
-      valorNuevo: {
-        seccionId,
-        totalCreados: normalizados.length,
-        reemplazarExistentes: Boolean(dto.reemplazarExistentes),
-      },
-      direccionIp: ip,
-    });
-
-    const advertencias = await this.calcularAdvertencias(seccionId);
-    return {
-      bloques,
-      totalCreados: normalizados.length,
-      advertencias,
-    };
+    return this.bloquesService.crearBloquesLote(seccionId, dto, actorId, ip);
   }
 
-  async eliminarBloque(id: string, actorId: string, ip?: string): Promise<void> {
-    await this.resolverAnio(true);
-
-    const bloque = await this.horariosRepo.findById(id);
-    if (!bloque) {
-      throw new NotFoundException(MENSAJES_HORARIOS.BLOQUE_NO_ENCONTRADO);
-    }
-    this.exigirSeccionAbierta(await this.seccionesRepo.findById(bloque.seccionId));
-
-    const tieneSesiones = await this.horariosRepo.tieneSesiones(id);
-    if (tieneSesiones) {
-      throw new ConflictException(MENSAJES_HORARIOS.ELIMINAR_CON_SESIONES);
-    }
-
-    await this.horariosRepo.delete(id);
-
-    await this.auditService.log({
-      usuarioId: actorId,
-      accion: "eliminar",
-      tabla: TABLA_HORARIOS,
-      registroId: id,
-      direccionIp: ip,
-      valorAnterior: this.serializarAuditoria(bloque),
-    });
+  eliminarBloque(id: string, actorId: string, ip?: string): Promise<void> {
+    return this.bloquesService.eliminarBloque(id, actorId, ip);
   }
 
-  async listarPorSeccion(seccionId: string): Promise<ListarPorSeccionResponseDto> {
-    const [bloques, horasPlanMap, horasHorarioMap] = await Promise.all([
-      this.horariosRepo.findBySeccion(seccionId),
-      this.horariosRepo.horasPlanPorCurso(seccionId),
-      this.horariosRepo.horasPorCurso(seccionId),
-    ]);
-
-    const advertencias: string[] = [];
-    const resumenHoras: ResumenHorasCursoDto[] = [];
-
-    for (const [cursoSeccionId, planInfo] of Object.entries(horasPlanMap)) {
-      const horasHorario = horasHorarioMap[cursoSeccionId] ?? 0;
-      resumenHoras.push({
-        cursoId: cursoSeccionId,
-        cursoNombre: planInfo.cursoNombre,
-        horasHorario,
-        horasPlan: planInfo.horasPlan,
-      });
-
-      if (horasHorario !== planInfo.horasPlan) {
-        advertencias.push(
-          construirAdvertenciaHorasPlan(planInfo.cursoNombre, horasHorario, planInfo.horasPlan),
-        );
-      }
-    }
-
-    return {
-      bloques,
-      resumenHoras,
-      advertencias,
-    };
+  listarPorSeccion(seccionId: string): Promise<ListarPorSeccionResponseDto> {
+    return this.consultaService.listarPorSeccion(seccionId);
   }
 
-  async generarHorarioSeccionPdf(
+  listarBloquesConsolidados(filtros?: { gradoId?: string; seccionId?: string }) {
+    return this.consultaService.listarBloquesConsolidados(filtros);
+  }
+
+  generarHorarioSeccionPdf(
     seccionId: string,
     docenteId?: string,
   ): Promise<{ buffer: Buffer; nombreArchivo: string }> {
-    const [info, data] = await Promise.all([
-      this.horariosRepo.infoSeccion(seccionId),
-      this.listarPorSeccion(seccionId),
-    ]);
-    if (!info) {
-      throw new NotFoundException(MENSAJES_HORARIOS.SECCION_NO_ENCONTRADA);
-    }
-
-    let bloquesFiltrados: BloqueHorarioResponseDto[] = data.bloques;
-    let docenteNombre: string | undefined;
-
-    if (docenteId) {
-      const cursosSeccion = await this.horariosRepo.cursosSeccionPorSeccion(seccionId);
-      const cursosDocente = new Set(
-        cursosSeccion.filter((c) => c.docenteId === docenteId).map((c) => c.cursoSeccionId),
-      );
-      bloquesFiltrados = data.bloques.filter(
-        (b) =>
-          b.tipoBloque === "receso" ||
-          (b.cursoSeccionId !== null &&
-            b.cursoSeccionId !== undefined &&
-            cursosDocente.has(b.cursoSeccionId)),
-      );
-      docenteNombre =
-        bloquesFiltrados.find((b) => b.tipoBloque === "clase")?.docenteNombre ?? undefined;
-    }
-
-    const buffer = await generarHorarioPdfBuffer({
-      titulo: `${info.gradoNombre} – Sección ${info.seccionNombre}`,
-      subtitulo: `Año académico ${info.anio}`,
-      filtroDocente: docenteNombre,
-      bloques: bloquesFiltrados,
-    });
-    const slug = `${info.gradoNombre}-${info.seccionNombre}-${info.anio}`
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "");
-    return { buffer, nombreArchivo: `horario-${slug || "seccion"}.pdf` };
+    return this.pdfService.generarHorarioSeccionPdf(seccionId, docenteId);
   }
 
-  async proponerGrilla(
-    seccionId: string,
-    horaEntrada?: string,
-  ): Promise<GrillaPropuestaResponseDto> {
-    const seccion = await this.seccionesRepo.findById(seccionId);
-    if (!seccion) {
-      throw new NotFoundException(MENSAJES_HORARIOS.SECCION_NO_ENCONTRADA);
-    }
-
-    const { minutosHoraPedagogica, horasPedagogicasDia, recreoDespuesDeHora, minutosRecreo } =
-      await this.horariosRepo.obtenerParametrosJornada();
-
-    const horaInicioBase = horaEntrada
-      ? normalizarHora(horaEntrada)
-      : await this.horariosRepo.horaEntradaEstudiantes();
-
-    const bloques: GrillaPropuestaResponseDto["bloques"] = [];
-
-    for (const diaSemana of DIAS_SEMANA_CLASE) {
-      let minutoActual = convertirHoraAMinutos(horaInicioBase);
-
-      for (let horaPedagogica = 1; horaPedagogica <= horasPedagogicasDia; horaPedagogica++) {
-        const horaInicioBloque = minutosAHora(minutoActual);
-        minutoActual += minutosHoraPedagogica;
-        const horaFinBloque = minutosAHora(minutoActual);
-
-        bloques.push({
-          diaSemana,
-          horaInicio: horaInicioBloque,
-          horaFin: horaFinBloque,
-          tipoBloque: "clase",
-        });
-
-        if (horaPedagogica === recreoDespuesDeHora) {
-          const horaInicioReceso = minutosAHora(minutoActual);
-          minutoActual += minutosRecreo;
-          const horaFinReceso = minutosAHora(minutoActual);
-
-          bloques.push({
-            diaSemana,
-            horaInicio: horaInicioReceso,
-            horaFin: horaFinReceso,
-            tipoBloque: "receso",
-          });
-        }
-      }
-    }
-
-    return {
-      horaEntrada: horaInicioBase,
-      bloques,
-    };
+  generarHorariosConsolidadoPdf(filtros?: {
+    gradoId?: string;
+    seccionId?: string;
+    docenteId?: string;
+  }): Promise<{ buffer: Buffer; nombreArchivo: string }> {
+    return this.pdfService.generarHorariosConsolidadoPdf(filtros);
   }
 
-  async proponerConIa(
+  proponerGrilla(seccionId: string, horaEntrada?: string): Promise<GrillaPropuestaResponseDto> {
+    return this.planificacionService.proponerGrilla(seccionId, horaEntrada);
+  }
+
+  proponerConIa(
     seccionId: string,
     dto: ProponerHorarioIaDto,
   ): Promise<PropuestaHorarioIaResponseDto> {
-    const grilla = await this.proponerGrilla(seccionId, dto.horaEntrada);
-    const anio = await this.resolverAnio(false);
-    const [cursos, planPorCurso, bloquesActualesSeccion] = await Promise.all([
-      this.horariosRepo.cursosSeccionPorSeccion(seccionId),
-      this.horariosRepo.horasPlanPorCurso(seccionId),
-      this.horariosRepo.findBySeccion(seccionId),
-    ]);
-
-    const necesidades: NecesidadCursoHorario[] = cursos
-      .map((c) => ({
-        cursoSeccionId: c.cursoSeccionId,
-        cursoNombre: c.cursoNombre,
-        docenteId: c.docenteId,
-        bloquesRequeridos: Math.max(0, Math.round(planPorCurso[c.cursoId]?.horasPlan ?? 0)),
-      }))
-      .filter((n) => n.bloquesRequeridos > 0);
-
-    const idsBloquesSeccion = new Set(bloquesActualesSeccion.map((b) => b.id));
-    const docentesUnicos = [
-      ...new Set(necesidades.map((n) => n.docenteId).filter((id): id is string => Boolean(id))),
-    ];
-
-    const ocupadoPorDocente = new Map<string, BloqueOcupadoDocente[]>();
-    await Promise.all(
-      docentesUnicos.map(async (docenteId) => {
-        const bloquesDocente = await this.horariosRepo.findByDocente(anio.id, docenteId);
-        ocupadoPorDocente.set(
-          docenteId,
-          bloquesDocente
-            .filter((b) => !idsBloquesSeccion.has(b.id))
-            .map((b) => ({
-              diaSemana: b.diaSemana,
-              horaInicio: b.horaInicio,
-              horaFin: b.horaFin,
-            })),
-        );
-      }),
-    );
-
-    let asignacionesIa: AsignacionIaPropuesta[] = [];
-    let usandoIa = false;
-
-    if (this.iaService?.estaHabilitada() && necesidades.length > 0) {
-      asignacionesIa = await this.solicitarAsignacionesIa({
-        grilla: grilla.bloques,
-        necesidades,
-        ocupadoPorDocente,
-        preferencias: dto.preferencias,
-      });
-      usandoIa = asignacionesIa.length > 0;
-    }
-
-    const { bloques, advertencias } = consolidarPropuestaHorario({
-      grillaBase: grilla.bloques,
-      necesidades,
-      ocupadoPorDocente,
-      asignacionesIa,
-    });
-
-    return {
-      horaEntrada: grilla.horaEntrada,
-      bloques,
-      usandoIa,
-      advertencias,
-    };
+    return this.planificacionService.proponerConIa(seccionId, dto);
   }
 
-  private async solicitarAsignacionesIa(params: {
-    grilla: GrillaPropuestaResponseDto["bloques"];
-    necesidades: NecesidadCursoHorario[];
-    ocupadoPorDocente: Map<string, BloqueOcupadoDocente[]>;
-    preferencias?: string;
-  }): Promise<AsignacionIaPropuesta[]> {
-    if (!this.iaService) return [];
-    try {
-      const slotsClase = params.grilla
-        .filter((b) => b.tipoBloque === "clase")
-        .map((b) => ({ diaSemana: b.diaSemana, horaInicio: b.horaInicio, horaFin: b.horaFin }));
-
-      const resumenOcupacion = [...params.ocupadoPorDocente.entries()].map(
-        ([docenteId, bloques]) => ({
-          docenteId,
-          ocupado: bloques.map((b) => `${b.diaSemana}:${b.horaInicio}-${b.horaFin}`),
-        }),
-      );
-
-      const respuesta = await this.iaService.generarEstructurado<{
-        asignaciones: AsignacionIaPropuesta[];
-      }>({
-        instruccionSistema: INSTRUCCION_SISTEMA_PROPONER_HORARIO,
-        prompt: construirPromptProponerHorario({
-          slotsDisponibles: slotsClase,
-          cursos: params.necesidades,
-          docentesOcupados: resumenOcupacion,
-          preferencias: params.preferencias,
-        }),
-      });
-
-      return Array.isArray(respuesta.datos?.asignaciones) ? respuesta.datos.asignaciones : [];
-    } catch {
-      return [];
-    }
-  }
-
-  async copiar(
+  copiar(
     origenId: string,
     destinoId: string,
     actorId: string,
     ip?: string,
   ): Promise<CopiarHorarioResponseDto> {
-    const anio = await this.resolverAnio(true);
-
-    const [seccionOrigen, seccionDestino] = await Promise.all([
-      this.seccionesRepo.findById(origenId),
-      this.seccionesRepo.findById(destinoId),
-    ]);
-
-    if (!seccionOrigen || !seccionDestino) {
-      throw new NotFoundException(MENSAJES_HORARIOS.SECCION_NO_ENCONTRADA);
-    }
-
-    this.exigirSeccionAbierta(seccionDestino);
-
-    if (seccionOrigen.gradoId !== seccionDestino.gradoId) {
-      throw new BadRequestException(MENSAJES_HORARIOS.COPIA_DISTINTO_GRADO);
-    }
-
-    const bloquesDestinoExistentes = await this.horariosRepo.findBySeccion(destinoId);
-    if (bloquesDestinoExistentes.length > 0) {
-      throw new ConflictException(MENSAJES_HORARIOS.COPIA_DESTINO_CON_BLOQUES);
-    }
-
-    const [bloquesOrigen, cursosOrigen, cursosDestino] = await Promise.all([
-      this.horariosRepo.findBySeccion(origenId),
-      this.horariosRepo.cursosSeccionPorSeccion(origenId),
-      this.horariosRepo.cursosSeccionPorSeccion(destinoId),
-    ]);
-
-    const mapaCursoOrigen = new Map<string, { cursoId: string; cursoNombre: string }>();
-    for (const co of cursosOrigen) {
-      mapaCursoOrigen.set(co.cursoSeccionId, { cursoId: co.cursoId, cursoNombre: co.cursoNombre });
-    }
-
-    const mapaCursoDestinoPorCursoId = new Map<
-      string,
-      { cursoSeccionId: string; cursoNombre: string; docenteId: string | null }
-    >();
-    for (const cd of cursosDestino) {
-      mapaCursoDestinoPorCursoId.set(cd.cursoId, {
-        cursoSeccionId: cd.cursoSeccionId,
-        cursoNombre: cd.cursoNombre,
-        docenteId: cd.docenteId,
-      });
-    }
-
-    let bloquesCreados = 0;
-    const conflictos: ConflictoHorarioCopiaDto[] = [];
-
-    for (const bo of bloquesOrigen) {
-      if (bo.tipoBloque === "receso") {
-        const bloqueCreado = await this.horariosRepo.create({
-          seccionId: destinoId,
-          cursoSeccionId: null,
-          diaSemana: bo.diaSemana,
-          horaInicio: bo.horaInicio,
-          horaFin: bo.horaFin,
-          tipoBloque: "receso",
-          aula: bo.aula,
-        });
-        bloquesCreados++;
-
-        await this.auditService.log({
-          usuarioId: actorId,
-          accion: "crear",
-          tabla: TABLA_HORARIOS,
-          registroId: bloqueCreado.id,
-          direccionIp: ip,
-          valorNuevo: this.serializarAuditoria(bloqueCreado),
-        });
-        continue;
-      }
-
-      if (!bo.cursoSeccionId) {
-        continue;
-      }
-
-      const cursoOrigen = mapaCursoOrigen.get(bo.cursoSeccionId);
-      if (!cursoOrigen) {
-        continue;
-      }
-
-      const cursoDestino = mapaCursoDestinoPorCursoId.get(cursoOrigen.cursoId);
-      if (!cursoDestino) {
-        continue;
-      }
-
-      if (cursoDestino.docenteId) {
-        const cruce = await this.horariosRepo.findCruceDocente(
-          anio.id,
-          cursoDestino.docenteId,
-          bo.diaSemana,
-          bo.horaInicio,
-          bo.horaFin,
-          destinoId,
-        );
-
-        if (cruce) {
-          conflictos.push({
-            diaSemana: bo.diaSemana,
-            horaInicio: normalizarHora(bo.horaInicio),
-            horaFin: normalizarHora(bo.horaFin),
-            cursoNombre: cursoDestino.cursoNombre,
-            mensaje: construirMensajeCruceDocente(cruce, true),
-          });
-        }
-      }
-
-      const bloqueCreado = await this.horariosRepo.create({
-        seccionId: destinoId,
-        cursoSeccionId: cursoDestino.cursoSeccionId,
-        diaSemana: bo.diaSemana,
-        horaInicio: bo.horaInicio,
-        horaFin: bo.horaFin,
-        tipoBloque: "clase",
-        aula: bo.aula,
-      });
-      bloquesCreados++;
-
-      await this.auditService.log({
-        usuarioId: actorId,
-        accion: "crear",
-        tabla: TABLA_HORARIOS,
-        registroId: bloqueCreado.id,
-        direccionIp: ip,
-        valorNuevo: this.serializarAuditoria(bloqueCreado),
-      });
-    }
-
-    return {
-      bloquesCreados,
-      conflictos,
-    };
+    return this.planificacionService.copiar(origenId, destinoId, actorId, ip);
   }
 
-  async miHorario(personaId: string): Promise<MiHorarioResponseDto> {
-    const anio = await this.resolverAnio(false);
-
-    const docente = await this.horariosRepo.docentePorPersonaId(personaId);
-    if (!docente) {
-      throw sinFichaDocente();
-    }
-
-    const bloques = await this.horariosRepo.findByDocente(anio.id, docente.id);
-
-    return {
-      docenteId: docente.id,
-      bloques,
-    };
+  miHorario(personaId: string): Promise<MiHorarioResponseDto> {
+    return this.consultaService.miHorario(personaId);
   }
 
-  async generarMiHorarioPdf(personaId: string): Promise<{ buffer: Buffer; nombreArchivo: string }> {
-    const anio = await this.resolverAnio(false);
-    const docente = await this.horariosRepo.docentePorPersonaId(personaId);
-    if (!docente) {
-      throw sinFichaDocente();
-    }
-    const bloquesDocente = await this.horariosRepo.findByDocente(anio.id, docente.id);
-    const bloques: BloqueHorarioResponseDto[] = bloquesDocente.map((b) => ({
-      id: b.id,
-      seccionId: "",
-      cursoSeccionId: null,
-      cursoNombre: b.cursoNombre,
-      docenteNombre: `${b.gradoNumero}.° · Sección ${b.seccionNombre}`,
-      diaSemana: b.diaSemana,
-      horaInicio: b.horaInicio,
-      horaFin: b.horaFin,
-      tipoBloque: b.cursoNombre ? "clase" : "receso",
-      aula: b.aula,
-      colorHex: b.colorHex,
-    }));
-
-    const buffer = await generarHorarioPdfBuffer({
-      titulo: "Mi Horario Docente",
-      subtitulo: `Año académico ${anio.anio}`,
-      bloques,
-    });
-    return { buffer, nombreArchivo: `mi-horario-docente-${anio.anio}.pdf` };
+  generarMiHorarioPdf(personaId: string): Promise<{ buffer: Buffer; nombreArchivo: string }> {
+    return this.pdfService.generarMiHorarioPdf(personaId);
   }
 
-  async generarHorarioEstudiantePdf(
+  generarHorarioEstudiantePdf(
     estudianteId: string,
     usuario: UsuarioConsultaEstudiante,
   ): Promise<{ buffer: Buffer; nombreArchivo: string }> {
-    const horario = await this.horarioDeEstudiante(estudianteId, usuario);
-    return this.generarHorarioSeccionPdf(horario.seccionId);
+    return this.pdfService.generarHorarioEstudiantePdf(estudianteId, usuario);
   }
 
-  async horarioDeEstudiante(
+  horarioDeEstudiante(
     estudianteId: string,
     usuario: UsuarioConsultaEstudiante,
   ): Promise<HorarioEstudianteResponseDto> {
-    const rol = (usuario.role ?? usuario.rol ?? "").trim().toLowerCase();
-    let idConsulta = estudianteId;
-
-    if (rol === "estudiante") {
-      const estudiantePersonaId = usuario.personaId ?? usuario.id;
-      if (estudiantePersonaId !== estudianteId && usuario.id !== estudianteId) {
-        throw new ForbiddenException(
-          "No tiene permiso para consultar el horario de otro estudiante.",
-        );
-      }
-      idConsulta = estudiantePersonaId;
-    } else if (rol === "apoderado") {
-      const apoderadoPersonaId = usuario.personaId ?? usuario.id;
-      const esVinculado = await this.horariosRepo.esApoderadoDeEstudiante(
-        apoderadoPersonaId,
-        estudianteId,
-      );
-      if (!esVinculado) {
-        throw new ForbiddenException(
-          "No tiene permiso para consultar el horario de este estudiante.",
-        );
-      }
-    }
-
-    const anio = await this.resolverAnio(false);
-
-    const matricula = await this.horariosRepo.matriculaEstudiante(anio.id, idConsulta);
-    if (!matricula || matricula.estado !== "matriculado") {
-      throw new NotFoundException(
-        "El estudiante no cuenta con matrícula activa en el año académico.",
-      );
-    }
-
-    const bloques = await this.horariosRepo.findBySeccion(matricula.seccionId);
-
-    return {
-      seccionId: matricula.seccionId,
-      bloques,
-    };
-  }
-
-  private async calcularAdvertencias(seccionId: string): Promise<string[]> {
-    const advertencias: string[] = [];
-    const [horasPlanMap, horasHorarioMap] = await Promise.all([
-      this.horariosRepo.horasPlanPorCurso(seccionId),
-      this.horariosRepo.horasPorCurso(seccionId),
-    ]);
-
-    if (!horasPlanMap || !horasHorarioMap) {
-      return advertencias;
-    }
-
-    for (const [cursoSeccionId, planInfo] of Object.entries(horasPlanMap)) {
-      const horasHorario = horasHorarioMap[cursoSeccionId] ?? 0;
-      if (horasHorario !== planInfo.horasPlan) {
-        advertencias.push(
-          construirAdvertenciaHorasPlan(planInfo.cursoNombre, horasHorario, planInfo.horasPlan),
-        );
-      }
-    }
-
-    return advertencias;
-  }
-
-  /** Una sección cerrada solo admite consulta: no se le crean, editan, borran ni copian bloques. */
-  private exigirSeccionAbierta(seccion: { estado: string } | null | undefined): void {
-    if (seccion?.estado === "cerrada") {
-      throw new BadRequestException(MENSAJES_HORARIOS.SECCION_CERRADA);
-    }
-  }
-
-  private async resolverAnio(requiereEscritura: boolean) {
-    const id = this.anioLectivoCls.id();
-    const anio = id ? await this.aniosService.findById(id) : await this.aniosService.findEnCurso();
-    if (requiereEscritura && anio.estado === "cerrado") {
-      throw new BadRequestException(MENSAJES_HORARIOS.ANIO_CERRADO);
-    }
-    return anio;
-  }
-
-  private serializarAuditoria(bloque: BloqueHorarioResponseDto): Record<string, unknown> {
-    return {
-      id: bloque.id,
-      seccionId: bloque.seccionId,
-      cursoSeccionId: bloque.cursoSeccionId,
-      cursoNombre: bloque.cursoNombre,
-      docenteNombre: bloque.docenteNombre,
-      diaSemana: bloque.diaSemana,
-      horaInicio: bloque.horaInicio,
-      horaFin: bloque.horaFin,
-      tipoBloque: bloque.tipoBloque,
-      aula: bloque.aula,
-    };
+    return this.consultaService.horarioDeEstudiante(estudianteId, usuario);
   }
 }

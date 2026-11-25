@@ -5,17 +5,25 @@ import { QUEUES } from "../../core/queues/queues.constants";
 import { QueuesModule } from "../../core/queues/queues.module";
 import { InstitucionModule } from "../institucion/institucion.module";
 import { NotificacionesModule } from "../notificaciones/notificaciones.module";
-import { InstrumentoObservacionService } from "./instrumento-observacion.service";
-import { InstrumentosObservacionController } from "./instrumentos-observacion.controller";
-import { MisObservacionesController } from "./mis-observaciones.controller";
-import { MisObservacionesService } from "./mis-observaciones.service";
+import { InstrumentosObservacionController, MisObservacionesController } from "./controllers";
 import { ObservacionesAulaController } from "./observaciones-aula.controller";
-import { ObservacionesComunService } from "./observaciones-comun.service";
-import { ObservacionesEjecucionService } from "./observaciones-ejecucion.service";
-import { ObservacionesProgramacionService } from "./observaciones-programacion.service";
-import { ObservacionesReporteService } from "./observaciones-reporte.service";
 import { ObservacionesAulaProcessor } from "./processors";
-import { ObservacionesAulaRepository } from "./repositories";
+import {
+  ObservacionesAulaRepository,
+  ObservacionesBaseRepository,
+  ObservacionesCatalogoRepository,
+  ObservacionesEvaluacionRepository,
+} from "./repositories";
+import {
+  InstrumentoObservacionService,
+  MisObservacionesService,
+  ObservacionesComunService,
+  ObservacionesEjecucionService,
+  ObservacionesNotasService,
+  ObservacionesProgramacionService,
+  ObservacionesReporteService,
+  ObservacionesRetroalimentacionService,
+} from "./services";
 
 @Module({
   imports: [
@@ -30,9 +38,14 @@ import { ObservacionesAulaRepository } from "./repositories";
     InstrumentosObservacionController,
   ],
   providers: [
+    ObservacionesBaseRepository,
+    ObservacionesEvaluacionRepository,
+    ObservacionesCatalogoRepository,
     ObservacionesAulaRepository,
     ObservacionesComunService,
     ObservacionesProgramacionService,
+    ObservacionesNotasService,
+    ObservacionesRetroalimentacionService,
     ObservacionesEjecucionService,
     ObservacionesReporteService,
     MisObservacionesService,

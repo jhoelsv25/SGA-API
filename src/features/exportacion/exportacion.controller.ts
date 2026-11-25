@@ -26,6 +26,7 @@ import type { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface
 import {
   ExportarAsistenciaPersonalQueryDto,
   ExportarAsistenciaSeccionQueryDto,
+  ExportarHorariosQueryDto,
   ExportarLibretasQueryDto,
   ExportarMarcacionesQueryDto,
   SolicitarReporteDto,
@@ -254,5 +255,19 @@ export class ExportacionController {
     @Res({ passthrough: true }) res: Response,
   ): Promise<StreamableFile> {
     return enviar(res, await this.servicio.asistenciaPersonalExcel(q, user));
+  }
+
+  @Get("horarios")
+  @Roles("Administrador", "Secretaria", "Director", "Subdirector")
+  @ApiOperation({
+    summary:
+      "Exportar a Excel todos los horarios escolares del año académico (o filtrados por grado/sección)",
+  })
+  async horarios(
+    @Query() q: ExportarHorariosQueryDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<StreamableFile> {
+    return enviar(res, await this.servicio.horariosExcel(q, user));
   }
 }

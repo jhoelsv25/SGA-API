@@ -11,7 +11,7 @@
 
 - **Propósito.** Organizar el año escolar en secciones, asignar qué docente dicta cada curso en cada sección y armar el horario semanal. El horario es la **planificación** de la que nacen las sesiones de clase (`RF-011`) y, por tanto, el denominador del CSP (`RF-020`).
 - **Secciones.** Cada sección pertenece a un año escolar y a un grado, y tiene nombre (A, B, Única…), aula, vacantes (mayor que 0) y un docente tutor (opcional). No puede haber dos secciones con el mismo nombre en el mismo grado y año.
-- **Tutor.** Debe ser un docente `activo`. Un docente puede ser tutor de una sola sección por año.
+- **Tutor.** Debe ser un docente `activo`. Un docente puede ser tutor de una o más secciones en el mismo año académico.
 - **Estados de la sección.** `activa` o `cerrada`. Solo se cierra una sección sin estudiantes matriculados vigentes (`RF-009`). Una sección cerrada queda **solo de consulta**: no se edita, no se le asignan docentes ni se cambia su horario (`P-26`).
 - **Carga académica automática.** Al crear una sección, el sistema crea su carga académica con **todos los cursos del plan de estudios de su grado** (`RF-006`), sin docente. Luego se asigna el docente de cada curso.
 - **Asignación de docentes.**
@@ -41,7 +41,6 @@
 | ------------------------ | -------------------------------------------------------------------- |
 | Sección repetida         | "Ya existe la sección A de 5.° en este año."                         |
 | Vacantes inválidas       | "Las vacantes deben ser mayores que 0."                              |
-| Tutor ocupado            | "Este docente ya es tutor de otra sección en este año."              |
 | Docente inactivo         | "Solo se pueden asignar docentes activos."                           |
 | Exceso de carga horaria  | "El docente supera su jornada: tendrá 34 horas asignadas de 30."     |
 | Sección con matriculados | "No se puede cerrar una sección con estudiantes matriculados."       |
@@ -90,9 +89,9 @@
 
 ### Escenario: Tutor de dos secciones
 
-**Dado** que el docente Pérez ya es tutor de 5.° A en 2027
+**Dado** que el docente Pérez está `activo` y ya es tutor de 5.° A en 2027
 **Cuando** lo asigno como tutor de 4.° B en 2027
-**Entonces** el sistema bloquea el guardado y muestra "Este docente ya es tutor de otra sección en este año."
+**Entonces** el sistema guarda 4.° B con el docente Pérez como tutor asignado.
 
 ### Escenario: Cerrar una sección con matriculados
 
@@ -210,7 +209,7 @@
 
 ## Reglas de validación y negocio (resumen)
 
-- **Secciones:** nombre único por grado y año; vacantes > 0; tutor docente activo, tutor de una sola sección por año; se cierra solo sin matriculados.
+- **Secciones:** nombre único por grado y año; vacantes > 0; tutor docente activo (puede tutelar una o más secciones); se cierra solo sin matriculados.
 - **Carga académica:** se crea con los cursos del plan del grado; solo docentes activos; aviso si se supera la jornada; el cambio de docente no altera sesiones firmadas.
 - **Horario:** lunes a viernes; fin posterior al inicio; sin superposición en la sección; sin cruce de docente; aviso si las horas no coinciden con el plan; cambios rigen desde el día siguiente.
 - **Jornada (parámetro):** 45 minutos por hora pedagógica, 7 al día.

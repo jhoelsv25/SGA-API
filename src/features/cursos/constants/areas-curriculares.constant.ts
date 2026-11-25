@@ -1,6 +1,7 @@
 export const AREAS_CURRICULARES = [
   "matematica",
   "comunicacion",
+  "quechua",
   "ingles",
   "arte_cultura",
   "ciencias_sociales",
@@ -18,6 +19,7 @@ export type AreaCurricular = (typeof AREAS_CURRICULARES)[number];
 export const AREA_CURRICULAR_LABELS: Record<AreaCurricular, string> = {
   matematica: "Matemática",
   comunicacion: "Comunicación",
+  quechua: "Quechua (Lengua Originaria)",
   ingles: "Inglés",
   arte_cultura: "Arte y Cultura",
   ciencias_sociales: "Ciencias Sociales",

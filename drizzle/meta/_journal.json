@@ -218,6 +218,13 @@
       "when": 1794655011900,
       "tag": "0031_rf024_v1_planificacion_sesion",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1794741411900,
+      "tag": "0033_interaccion_y_actividad_chat",
+      "breakpoints": true
     }
   ]
 }

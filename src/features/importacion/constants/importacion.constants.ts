@@ -6,6 +6,8 @@ export const TIPO_IMPORTACION = {
   DOCENTES: "docentes",
   APODERADOS: "apoderados",
   MATRICULAS: "matriculas",
+  CARGA_ACADEMICA: "carga_academica",
+  HORARIOS: "horarios",
 } as const;
 
 export type TipoImportacion = (typeof TIPO_IMPORTACION)[keyof typeof TIPO_IMPORTACION];

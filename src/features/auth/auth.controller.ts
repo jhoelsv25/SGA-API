@@ -4,6 +4,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Optional,
   Post,
   Req,
   Res,
@@ -17,6 +18,7 @@ import {
   ClientInfo,
   type ClientInfoData,
   CurrentUser,
+  ExtractRefreshToken,
   ExtractToken,
   Public,
   Roles,
@@ -29,12 +31,40 @@ import { ImpersonateDto } from "./dto/impersonate.dto";
 import { LoginDto } from "./dto/login.dto";
 import { SwitchRoleDto } from "./dto/switch-role.dto";
 import type { AuthenticatedUser } from "./interfaces/jwt-payload.interface";
+import { SessionService } from "./services";
 import { clearAuthCookie, setAuthCookie } from "./utils";
 
 @ApiTags("Autenticación")
 @Controller("auth")
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    @Optional() private readonly sessionService?: SessionService,
+  ) {}
+
+  private async emitirCookiesSesion(params: {
+    res: Response;
+    result: AuthResponseDto;
+    rememberMe?: boolean;
+    client?: ClientInfoData;
+  }): Promise<void> {
+    const { res, result, rememberMe = false, client } = params;
+    let refreshToken: string | undefined;
+
+    if (this.sessionService && result.accessToken && result.user?.id) {
+      const payload = this.sessionService.verifyAccessToken(result.accessToken);
+      refreshToken = this.sessionService.generateRefreshToken(payload, rememberMe);
+      await this.sessionService.recordSession({
+        userId: result.user.id,
+        token: refreshToken,
+        rememberMe,
+        ipAddress: client?.ip,
+        userAgent: client?.userAgent,
+      });
+    }
+
+    setAuthCookie({ res, token: result.accessToken, refreshToken, rememberMe });
+  }
 
   @Public()
   @Get("csrf-token")
@@ -68,7 +98,12 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ): Promise<AuthResponseDto> {
     const result = await this.authService.login(dto, client.ip, client.userAgent);
-    setAuthCookie({ res, token: result.accessToken, rememberMe: dto.rememberMe });
+    await this.emitirCookiesSesion({
+      res,
+      result,
+      rememberMe: dto.rememberMe,
+      client,
+    });
     return result;
   }
 
@@ -117,7 +152,7 @@ export class AuthController {
       client.ip,
       client.userAgent,
     );
-    setAuthCookie({ res, token: result.accessToken, rememberMe: false });
+    await this.emitirCookiesSesion({ res, result, rememberMe: false, client });
     return result;
   }
 
@@ -141,7 +176,7 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ): Promise<AuthResponseDto> {
     const result = await this.authService.stopImpersonate(user, token, client.ip, client.userAgent);
-    setAuthCookie({ res, token: result.accessToken, rememberMe: false });
+    await this.emitirCookiesSesion({ res, result, rememberMe: false, client });
     return result;
   }
 
@@ -176,7 +211,7 @@ export class AuthController {
       client.ip,
       client.userAgent,
     );
-    setAuthCookie({ res, token: result.accessToken, rememberMe: user.recordar });
+    await this.emitirCookiesSesion({ res, result, rememberMe: user.recordar, client });
     return result;
   }
 
@@ -189,12 +224,20 @@ export class AuthController {
     @ExtractToken() token: string | undefined,
     @Res({ passthrough: true }) res: Response,
     @ClientInfo() client?: ClientInfoData,
+    @ExtractRefreshToken() refreshToken?: string,
   ): Promise<{ message: string }> {
     if (token) {
       if (client?.ip) {
         await this.authService.logout(token, client.ip);
       } else {
         await this.authService.logout(token);
+      }
+    }
+    if (refreshToken && refreshToken !== token) {
+      if (client?.ip) {
+        await this.authService.logout(refreshToken, client.ip);
+      } else {
+        await this.authService.logout(refreshToken);
       }
     }
 
@@ -212,16 +255,25 @@ export class AuthController {
   })
   @ApiResponse({ status: 401, description: "Token inválido o expirado" })
   async refreshToken(
-    @ExtractToken() token: string | undefined,
+    @ExtractRefreshToken() token: string | undefined,
     @ClientInfo() client: ClientInfoData,
     @Res({ passthrough: true }) res: Response,
+    @ExtractToken() accessToken?: string,
   ): Promise<AuthResponseDto> {
     if (!token) {
       throw new UnauthorizedException("No se proporcionó token para renovación de sesión");
     }
 
     const result = await this.authService.refreshToken(token, client.ip, client.userAgent);
-    setAuthCookie({ res, token: result.accessToken, rememberMe: false });
+    if (accessToken && accessToken !== token && this.sessionService) {
+      await this.sessionService.revokeSession(accessToken);
+    }
+
+    const rememberMe =
+      this.sessionService && result.accessToken
+        ? this.sessionService.verifyAccessToken(result.accessToken).recordar === true
+        : false;
+    await this.emitirCookiesSesion({ res, result, rememberMe, client });
     return result;
   }
 

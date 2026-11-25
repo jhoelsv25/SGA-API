@@ -4,11 +4,11 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { MENSAJES_OBSERVACION } from "./constants";
-import type { CrearInstrumentoDto } from "./dto";
-import type { ActorObservacion } from "./interfaces";
+import { MENSAJES_OBSERVACION } from "../constants";
+import type { CrearInstrumentoDto } from "../dto";
+import type { ActorObservacion } from "../interfaces";
+import { contenidoInstrumentoCompleto, normalizarContenido } from "../utils";
 import { ObservacionesComunService } from "./observaciones-comun.service";
-import { contenidoInstrumentoCompleto, normalizarContenido } from "./utils";
 
 /** Catálogo de versiones del instrumento de observación (RF-023, HU8). */
 @Injectable()

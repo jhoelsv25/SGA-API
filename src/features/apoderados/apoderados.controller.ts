@@ -46,6 +46,15 @@ export class ApoderadosController {
     return this.apoderadosService.findAll(query);
   }
 
+  @Get("resumen")
+  @Roles("Administrador", "Director", "Subdirector", "Secretaria")
+  @ApiOperation({
+    summary: "Resumen de totales del padrón de apoderados",
+  })
+  async obtenerResumen(@Query() query: ApoderadoQueryDto) {
+    return this.apoderadosService.obtenerResumen(query);
+  }
+
   @Get("mis-estudiantes")
   @Roles("Apoderado")
   @ApiOperation({

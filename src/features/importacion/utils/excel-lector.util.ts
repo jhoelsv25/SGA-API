@@ -3,6 +3,7 @@ import { Workbook, type CellValue } from "exceljs";
 import { IMPORTACION_MAX_FILAS, IMPORTACION_MESSAGES } from "../constants";
 
 const CAMPOS_FECHA = new Set(["fechaNacimiento", "fechaIngreso", "fechaMatricula"]);
+const CAMPOS_HORA = new Set(["horaInicio", "horaFin"]);
 
 function dosDigitos(n: number): string {
   return String(n).padStart(2, "0");
@@ -66,6 +67,15 @@ function normalizarEncabezado(encabezado: string): string {
   }
   if (limpio.includes("correo") || limpio.includes("email")) return "correo";
   if (limpio.includes("ingreso") || limpio === "fec_ingreso") return "fechaIngreso";
+  if (limpio.includes("tipo") && limpio.includes("bloque")) return "tipoBloque";
+  if (limpio.includes("hora") && limpio.includes("inicio")) return "horaInicio";
+  if (limpio.includes("hora") && limpio.includes("fin")) return "horaFin";
+  if (limpio.includes("horas") && limpio.includes("semanal")) return "horasSemanales";
+  if (limpio.includes("dia")) return "diaSemana";
+  if (limpio.includes("tutor")) return "esTutor";
+  if (limpio === "curso" || limpio.includes("asignatura") || limpio === "area") return "curso";
+  if (limpio === "docente" || limpio === "profesor") return "docente";
+  if (limpio === "aula" || limpio === "ambiente") return "aula";
   if (limpio.includes("especialidad")) return "especialidad";
   if (limpio.includes("contrato")) return "tipoContrato";
   if (limpio.includes("jornada") || limpio.includes("horas")) return "jornada";
@@ -104,6 +114,25 @@ function convertirValorFechaIso(valor: CellValue): string {
   const dmy = /^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/.exec(texto);
   if (dmy) {
     return `${dmy[3]}-${dosDigitos(Number(dmy[2]))}-${dosDigitos(Number(dmy[1]))}`;
+  }
+  return texto;
+}
+
+function convertirValorHoraHHMM(valor: CellValue): string {
+  if (valor instanceof Date) {
+    return `${dosDigitos(valor.getUTCHours())}:${dosDigitos(valor.getUTCMinutes())}`;
+  }
+  if (typeof valor === "number" && Number.isFinite(valor)) {
+    const fraccion = valor - Math.floor(valor);
+    if (fraccion >= 0 && fraccion < 1) {
+      const totalMin = Math.round(fraccion * 1440) % 1440;
+      return `${dosDigitos(Math.floor(totalMin / 60))}:${dosDigitos(totalMin % 60)}`;
+    }
+  }
+  const texto = extraerTextoCelda(valor);
+  const match = /^(\d{1,2}):(\d{2})(?::\d{2})?$/.exec(texto);
+  if (match) {
+    return `${dosDigitos(Number(match[1]))}:${match[2]}`;
   }
   return texto;
 }
@@ -196,7 +225,9 @@ export async function leerFilasDesdeExcelBuffer(
       const valorRaw = fila.getCell(colNumber).value;
       const valor = CAMPOS_FECHA.has(clave)
         ? convertirValorFechaIso(valorRaw)
-        : extraerTextoCelda(valorRaw);
+        : CAMPOS_HORA.has(clave)
+          ? convertirValorHoraHHMM(valorRaw)
+          : extraerTextoCelda(valorRaw);
 
       if (valor !== "") {
         tieneContenido = true;

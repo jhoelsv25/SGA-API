@@ -7,6 +7,7 @@ import { ApoderadosModule } from "../apoderados/apoderados.module";
 import { AsistenciaClaseModule } from "../asistencia-clase/asistencia-clase.module";
 import { DocentesModule } from "../docentes/docentes.module";
 import { EstudiantesModule } from "../estudiantes/estudiantes.module";
+import { HorariosModule } from "../horarios/horarios.module";
 import { InstitucionModule } from "../institucion/institucion.module";
 import { LibretasModule } from "../libretas/libretas.module";
 import { MarcacionesModule } from "../marcaciones/marcaciones.module";
@@ -17,7 +18,13 @@ import { UsersModule } from "../users/users.module";
 import { ExportacionController } from "./exportacion.controller";
 import { ExportacionService } from "./exportacion.service";
 import { ReportesProcessor } from "./processors/reportes.processor";
-import { ReportesColaService } from "./services";
+import {
+  ExportacionAcademicaService,
+  ExportacionAsistenciaService,
+  ExportacionContextoHelper,
+  ExportacionPadronService,
+  ReportesColaService,
+} from "./services";
 
 @Module({
   imports: [
@@ -34,8 +41,18 @@ import { ReportesColaService } from "./services";
     LibretasModule,
     AsistenciaClaseModule,
     SeccionesModule,
+    HorariosModule,
   ],
   controllers: [ExportacionController],
-  providers: [ExportacionService, ReportesColaService, ReportesProcessor, AuditService],
+  providers: [
+    ExportacionContextoHelper,
+    ExportacionPadronService,
+    ExportacionAcademicaService,
+    ExportacionAsistenciaService,
+    ExportacionService,
+    ReportesColaService,
+    ReportesProcessor,
+    AuditService,
+  ],
 })
 export class ExportacionModule {}

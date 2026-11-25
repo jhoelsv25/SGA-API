@@ -127,6 +127,34 @@ export class HorariosController {
     return this.service.eliminarBloque(id, usuario.id, clientInfo.ip);
   }
 
+  @Get("pdf")
+  @ApiOperation({
+    summary: "Descargar horarios semanales consolidados en PDF (todas las secciones o filtrados)",
+  })
+  @ApiQuery({ name: "gradoId", required: false, description: "UUID del grado escolar (opcional)" })
+  @ApiQuery({ name: "seccionId", required: false, description: "UUID de la sección (opcional)" })
+  @ApiQuery({ name: "docenteId", required: false, description: "UUID del docente (opcional)" })
+  @ApiResponse({ status: 200, description: "Archivo PDF consolidado de horarios semanales" })
+  async descargarPdfConsolidado(
+    @Res({ passthrough: true }) res: Response,
+    @Query("gradoId", new ParseUUIDPipe({ optional: true })) gradoId?: string,
+    @Query("seccionId", new ParseUUIDPipe({ optional: true })) seccionId?: string,
+    @Query("docenteId", new ParseUUIDPipe({ optional: true })) docenteId?: string,
+  ): Promise<StreamableFile> {
+    const { buffer, nombreArchivo } = await this.service.generarHorariosConsolidadoPdf({
+      gradoId,
+      seccionId,
+      docenteId,
+    });
+    res.set({
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename="${nombreArchivo}"`,
+      "Access-Control-Expose-Headers": "Content-Disposition",
+      "Content-Length": buffer.length,
+    });
+    return new StreamableFile(buffer);
+  }
+
   @Get("seccion/:seccionId")
   @ApiOperation({
     summary: "Listar bloques de horario de una sección con resumen de horas vs plan",

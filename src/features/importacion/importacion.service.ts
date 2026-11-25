@@ -1,16 +1,13 @@
-import { randomUUID } from "crypto";
 import {
   BadRequestException,
   Injectable,
   Logger,
-  NotFoundException,
   Optional,
   type MessageEvent,
 } from "@nestjs/common";
-import { Observable, timer } from "rxjs";
-import { switchMap, takeWhile } from "rxjs/operators";
+import { Observable } from "rxjs";
 import { InjectQueue } from "@nestjs/bullmq";
-import type { Queue, Job } from "bullmq";
+import type { Job, Queue } from "bullmq";
 import { AnioLectivoCls } from "../../common/anio-lectivo";
 import { AuditService } from "../../common/services/audit.service";
 import { QUEUES } from "../../core/queues/queues.constants";
@@ -35,13 +32,16 @@ import type {
 import type { IEntidadImportHandler, ProcesarFilaResult } from "./interfaces";
 import {
   ApoderadosImportService,
+  CargaAcademicaImportService,
   DocentesImportService,
   EstudiantesImportService,
+  HorariosImportService,
+  LoteTemporalImportService,
   MatriculasImportService,
   PersonasImportService,
+  TrabajosImportService,
 } from "./services";
 import {
-  construirExcelCredenciales,
   type ContextoReporteCredenciales,
   generarPlantillaExcel as construirPlantillaExcel,
   leerFilasDesdeExcelBuffer,
@@ -50,38 +50,11 @@ import {
   type ValidacionFilaPersonaResultado,
 } from "./utils";
 
-interface LoteTemporalGuardado {
-  tipo: TipoImportacion;
-  filas: Record<string, unknown>[];
-  expiraEn: number;
-}
-
-interface ClienteRedisMinimo {
-  set: (clave: string, valor: string, modo: "EX", segundos: number) => Promise<unknown>;
-  get: (clave: string) => Promise<string | null>;
-  del: (clave: string) => Promise<unknown>;
-}
-
-function esClienteRedis(valor: unknown): valor is ClienteRedisMinimo {
-  return (
-    typeof valor === "object" &&
-    valor !== null &&
-    "set" in valor &&
-    typeof valor.set === "function" &&
-    "get" in valor &&
-    typeof valor.get === "function" &&
-    "del" in valor &&
-    typeof valor.del === "function"
-  );
-}
-
-const TTL_LOTE_SEGUNDOS = 1800; // 30 minutos
-const PREFIJO_CLAVE_LOTE = "importacion:lote:";
-
 @Injectable()
 export class ImportacionService {
   private readonly logger = new Logger(ImportacionService.name);
-  private readonly lotesEnMemoria = new Map<string, LoteTemporalGuardado>();
+  private readonly loteTemporalSvc: LoteTemporalImportService;
+  private readonly trabajosSvc: TrabajosImportService;
 
   constructor(
     private readonly personasRepository: PersonasRepository,
@@ -94,7 +67,14 @@ export class ImportacionService {
     private readonly importacionQueue: Queue,
     @Optional() private readonly matriculasImportService?: MatriculasImportService,
     @Optional() private readonly anioLectivoCls?: AnioLectivoCls,
-  ) {}
+    @Optional() private readonly cargaAcademicaImportService?: CargaAcademicaImportService,
+    @Optional() private readonly horariosImportService?: HorariosImportService,
+    @Optional() loteTemporalSvc?: LoteTemporalImportService,
+    @Optional() trabajosSvc?: TrabajosImportService,
+  ) {
+    this.loteTemporalSvc = loteTemporalSvc ?? new LoteTemporalImportService(importacionQueue);
+    this.trabajosSvc = trabajosSvc ?? new TrabajosImportService(importacionQueue);
+  }
 
   private obtenerHandler(tipo: TipoImportacion): IEntidadImportHandler {
     switch (tipo) {
@@ -109,90 +89,6 @@ export class ImportacionService {
       default:
         throw new BadRequestException("Tipo de importación no soportado.");
     }
-  }
-
-  private async obtenerClienteRedis(): Promise<ClienteRedisMinimo | null> {
-    const colaConCliente = this.importacionQueue as unknown as { client?: Promise<unknown> };
-    const cliente: unknown = await colaConCliente.client;
-    return esClienteRedis(cliente) ? cliente : null;
-  }
-
-  private async guardarLoteTemporal(
-    tipo: TipoImportacion,
-    filas: Record<string, unknown>[],
-  ): Promise<string> {
-    const loteId = randomUUID();
-    const clave = `${PREFIJO_CLAVE_LOTE}${loteId}`;
-    const payload = JSON.stringify({ tipo, filas });
-
-    try {
-      const redis = await this.obtenerClienteRedis();
-      if (redis) {
-        await redis.set(clave, payload, "EX", TTL_LOTE_SEGUNDOS);
-        return loteId;
-      }
-    } catch (err: unknown) {
-      this.logger.warn(
-        `No se pudo guardar el lote ${loteId} en Redis; usando memoria local: ${String(err)}`,
-      );
-    }
-
-    this.lotesEnMemoria.set(loteId, {
-      tipo,
-      filas,
-      expiraEn: Date.now() + TTL_LOTE_SEGUNDOS * 1000,
-    });
-    return loteId;
-  }
-
-  private async recuperarLoteTemporal(
-    loteId: string,
-    tipoEsperado: TipoImportacion,
-  ): Promise<Record<string, unknown>[]> {
-    const clave = `${PREFIJO_CLAVE_LOTE}${loteId}`;
-
-    try {
-      const redis = await this.obtenerClienteRedis();
-      if (redis) {
-        const raw = await redis.get(clave);
-        if (raw) {
-          await redis.del(clave);
-          const parsed = JSON.parse(raw) as {
-            tipo: TipoImportacion;
-            filas: Record<string, unknown>[];
-          };
-          if (parsed.tipo !== tipoEsperado) {
-            throw new BadRequestException(
-              "El lote previsualizado no corresponde al tipo de importación seleccionado.",
-            );
-          }
-          return parsed.filas;
-        }
-      }
-    } catch (err: unknown) {
-      if (err instanceof BadRequestException) throw err;
-      this.logger.warn(`Error al leer lote ${loteId} desde Redis: ${String(err)}`);
-    }
-
-    const enMemoria = this.lotesEnMemoria.get(loteId);
-    if (enMemoria) {
-      this.lotesEnMemoria.delete(loteId);
-      if (Date.now() > enMemoria.expiraEn) {
-        throw new BadRequestException(
-          "La vista previa expiró. Vuelva a subir el archivo Excel para continuar.",
-        );
-      }
-      if (enMemoria.tipo !== tipoEsperado) {
-        throw new BadRequestException(
-          "El lote previsualizado no corresponde al tipo de importación seleccionado.",
-        );
-      }
-      return enMemoria.filas;
-    }
-
-    throw new BadRequestException(
-      "El lote previsualizado no existe o expiró. Vuelva a subir el archivo Excel.",
-    );
   }
 
   async previsualizarArchivo(
@@ -216,31 +112,29 @@ export class ImportacionService {
       throw new BadRequestException(IMPORTACION_MESSAGES.LIMITE_FILAS_SUPERADO);
     }
 
-    if (dto.tipo === TIPO_IMPORTACION.MATRICULAS) {
-      if (!this.matriculasImportService) {
-        throw new BadRequestException(
-          "El servicio de importación de matrículas no está disponible.",
-        );
-      }
+    if (
+      dto.tipo === TIPO_IMPORTACION.MATRICULAS ||
+      dto.tipo === TIPO_IMPORTACION.CARGA_ACADEMICA ||
+      dto.tipo === TIPO_IMPORTACION.HORARIOS
+    ) {
       const anioId = this.anioLectivoCls?.id();
-      const { filasAnalizadas, validasCount, omitidasCount, erroresCount } =
-        await this.matriculasImportService.previsualizarFilas(dto.filas, anioId);
+      const resultado = await this.previsualizarAcademico(dto.tipo, dto.filas, anioId);
 
       let loteId: string | undefined;
-      if (validasCount > 0) {
-        const filasValidas = filasAnalizadas
+      if (resultado.validasCount > 0) {
+        const filasValidas = resultado.filasAnalizadas
           .filter((f) => f.estado === "valida")
           .map((f) => f.datos);
-        loteId = await this.guardarLoteTemporal(dto.tipo, filasValidas);
+        loteId = await this.loteTemporalSvc.guardarLote(dto.tipo, filasValidas);
       }
 
       return {
         loteId,
         totalFilas: dto.filas.length,
-        validasCount,
-        omitidasCount,
-        erroresCount,
-        filas: filasAnalizadas,
+        validasCount: resultado.validasCount,
+        omitidasCount: resultado.omitidasCount,
+        erroresCount: resultado.erroresCount,
+        filas: resultado.filasAnalizadas,
       };
     }
 
@@ -272,19 +166,15 @@ export class ImportacionService {
 
       filasAnalizadas.push(analizada);
 
-      if (analizada.estado === "valida") {
-        validasCount++;
-      } else if (analizada.estado === "ya_registrada") {
-        omitidasCount++;
-      } else if (analizada.estado === "error") {
-        erroresCount++;
-      }
+      if (analizada.estado === "valida") validasCount++;
+      else if (analizada.estado === "ya_registrada") omitidasCount++;
+      else if (analizada.estado === "error") erroresCount++;
     }
 
     let loteId: string | undefined;
     if (validasCount > 0) {
       const filasValidas = filasAnalizadas.filter((f) => f.estado === "valida").map((f) => f.datos);
-      loteId = await this.guardarLoteTemporal(dto.tipo, filasValidas);
+      loteId = await this.loteTemporalSvc.guardarLote(dto.tipo, filasValidas);
     }
 
     return {
@@ -297,22 +187,50 @@ export class ImportacionService {
     };
   }
 
+  private async previsualizarAcademico(
+    tipo: TipoImportacion,
+    filas: Record<string, unknown>[],
+    anioId?: string,
+  ): Promise<{
+    filasAnalizadas: FilaPrevisualizadaDto[];
+    validasCount: number;
+    omitidasCount: number;
+    erroresCount: number;
+  }> {
+    if (tipo === TIPO_IMPORTACION.MATRICULAS) {
+      if (!this.matriculasImportService) {
+        throw new BadRequestException(
+          "El servicio de importación de matrículas no está disponible.",
+        );
+      }
+      return this.matriculasImportService.previsualizarFilas(filas, anioId);
+    }
+
+    if (tipo === TIPO_IMPORTACION.CARGA_ACADEMICA) {
+      if (!this.cargaAcademicaImportService) {
+        throw new BadRequestException(
+          "El servicio de importación de carga académica no está disponible.",
+        );
+      }
+      return this.cargaAcademicaImportService.previsualizarFilas(filas, anioId);
+    }
+
+    if (!this.horariosImportService) {
+      throw new BadRequestException("El servicio de importación de horarios no está disponible.");
+    }
+    return this.horariosImportService.previsualizarFilas(filas, anioId);
+  }
+
   private async buscarPersonaCacheada(
     tipoDocumento: string,
     numeroDocumento: string,
     cache?: Map<string, PersonaResponseDto | null>,
   ): Promise<PersonaResponseDto | null> {
     const clave = `${tipoDocumento}:${numeroDocumento}`;
-    if (cache && cache.has(clave)) {
-      return cache.get(clave) ?? null;
-    }
+    if (cache && cache.has(clave)) return cache.get(clave) ?? null;
 
     const persona = await this.personasRepository.findByDocumento(tipoDocumento, numeroDocumento);
-
-    if (cache) {
-      cache.set(clave, persona);
-    }
-
+    if (cache) cache.set(clave, persona);
     return persona;
   }
 
@@ -326,13 +244,7 @@ export class ImportacionService {
   ): Promise<FilaPrevisualizadaDto> {
     const validacion: ValidacionFilaPersonaResultado = validarPersonaFila(datos);
     if (!validacion.esValida) {
-      return {
-        numeroFila,
-        datos,
-        estado: "error",
-        accion: "omitir",
-        mensaje: validacion.mensaje,
-      };
+      return { numeroFila, datos, estado: "error", accion: "omitir", mensaje: validacion.mensaje };
     }
 
     const personaExistente = await this.buscarPersonaCacheada(
@@ -356,13 +268,10 @@ export class ImportacionService {
     ip?: string,
   ): Promise<IniciarImportacionResponseDto> {
     const filas = dto.loteId
-      ? await this.recuperarLoteTemporal(dto.loteId, dto.tipo)
+      ? await this.loteTemporalSvc.recuperarLote(dto.loteId, dto.tipo)
       : (dto.filas ?? []);
 
-    if (filas.length === 0) {
-      throw new BadRequestException(IMPORTACION_MESSAGES.SIN_FILAS);
-    }
-
+    if (filas.length === 0) throw new BadRequestException(IMPORTACION_MESSAGES.SIN_FILAS);
     if (filas.length > IMPORTACION_MAX_FILAS) {
       throw new BadRequestException(IMPORTACION_MESSAGES.LIMITE_FILAS_SUPERADO);
     }
@@ -373,11 +282,7 @@ export class ImportacionService {
     const job = await this.importacionQueue.add(
       "procesar-lote",
       { dto: payloadDto, actorId, ip, anioAcademicoId },
-      {
-        attempts: 1,
-        removeOnComplete: false,
-        removeOnFail: false,
-      },
+      { attempts: 1, removeOnComplete: false, removeOnFail: false },
     );
 
     return {
@@ -387,66 +292,41 @@ export class ImportacionService {
     };
   }
 
-  async consultarEstadoJob(jobId: string): Promise<EstadoImportacionJobDto> {
-    const job = await this.importacionQueue.getJob(jobId);
-    if (!job) {
-      throw new NotFoundException(`Trabajo de importación con ID ${jobId} no encontrado.`);
-    }
-
-    const rawState = await job.getState();
-    const progreso = typeof job.progress === "number" ? job.progress : 0;
-
-    let estado: "en_cola" | "procesando" | "completado" | "fallido" = "en_cola";
-    if (rawState === "active") estado = "procesando";
-    else if (rawState === "completed") estado = "completado";
-    else if (rawState === "failed") estado = "fallido";
-
-    const returnvalue = job.returnvalue as EjecutarImportacionResponseDto | undefined;
-    const mensaje =
-      estado === "completado"
-        ? returnvalue?.mensaje || "Importación masiva completada con éxito."
-        : estado === "procesando"
-          ? `Procesando registros (${progreso}%)...`
-          : estado === "fallido"
-            ? job.failedReason || "Error en el procesamiento del lote."
-            : "En cola de espera BullMQ...";
-
-    return {
-      jobId: String(job.id),
-      estado,
-      progreso,
-      mensaje,
-      resultado: rawState === "completed" ? returnvalue : undefined,
-      error:
-        rawState === "failed"
-          ? job.failedReason || "Error al procesar el archivo de importación."
-          : undefined,
-    };
+  consultarEstadoJob(jobId: string): Promise<EstadoImportacionJobDto> {
+    return this.trabajosSvc.consultarEstadoJob(jobId);
   }
 
   streamProgresoJob(jobId: string): Observable<MessageEvent> {
-    return timer(0, 800).pipe(
-      switchMap(async () => {
-        try {
-          const estado = await this.consultarEstadoJob(jobId);
-          return { data: estado };
-        } catch (err: unknown) {
-          const mensaje = err instanceof Error ? err.message : "Error al consultar estado.";
-          return {
-            data: {
-              jobId,
-              estado: "fallido",
-              progreso: 0,
-              error: mensaje,
-            },
-          };
-        }
-      }),
-      takeWhile((evento) => {
-        const data = evento.data as EstadoImportacionJobDto | undefined;
-        return data?.estado !== "completado" && data?.estado !== "fallido";
-      }, true),
-    );
+    return this.trabajosSvc.streamProgresoJob(jobId);
+  }
+
+  private async procesarFilaAcademica(
+    tipo: TipoImportacion,
+    fila: Record<string, unknown>,
+    anioAcademicoId: string | undefined,
+    actorId: string,
+    ip?: string,
+  ): Promise<boolean> {
+    if (tipo === TIPO_IMPORTACION.MATRICULAS) {
+      if (!this.matriculasImportService) {
+        throw new BadRequestException(
+          "El servicio de importación de matrículas no está disponible.",
+        );
+      }
+      return this.matriculasImportService.procesarFila(fila, anioAcademicoId, actorId, ip);
+    }
+    if (tipo === TIPO_IMPORTACION.CARGA_ACADEMICA) {
+      if (!this.cargaAcademicaImportService) {
+        throw new BadRequestException(
+          "El servicio de importación de carga académica no está disponible.",
+        );
+      }
+      return this.cargaAcademicaImportService.procesarFila(fila, anioAcademicoId, actorId, ip);
+    }
+    if (!this.horariosImportService) {
+      throw new BadRequestException("El servicio de importación de horarios no está disponible.");
+    }
+    return this.horariosImportService.procesarFila(fila, actorId, ip);
   }
 
   async ejecutarProcesoLote(
@@ -456,8 +336,11 @@ export class ImportacionService {
     job?: Job,
     anioAcademicoId?: string,
   ): Promise<EjecutarImportacionResponseDto> {
-    const esMatriculas = dto.tipo === TIPO_IMPORTACION.MATRICULAS;
-    const handler = esMatriculas ? null : this.obtenerHandler(dto.tipo);
+    const esAcademico =
+      dto.tipo === TIPO_IMPORTACION.MATRICULAS ||
+      dto.tipo === TIPO_IMPORTACION.CARGA_ACADEMICA ||
+      dto.tipo === TIPO_IMPORTACION.HORARIOS;
+    const handler = esAcademico ? null : this.obtenerHandler(dto.tipo);
     const credencialesEmitidas: CredencialEmitidaDto[] = [];
     let importadosCount = 0;
     let omitidosCount = 0;
@@ -467,27 +350,15 @@ export class ImportacionService {
     for (let i = 0; i < totalFilas; i++) {
       const fila = filas[i];
       try {
-        if (esMatriculas) {
-          if (!this.matriculasImportService) {
-            throw new BadRequestException(
-              "El servicio de importación de matrículas no está disponible.",
-            );
-          }
-          const ok = await this.matriculasImportService.procesarFila(
-            fila,
-            anioAcademicoId,
-            actorId,
-            ip,
-          );
+        if (esAcademico) {
+          const ok = await this.procesarFilaAcademica(dto.tipo, fila, anioAcademicoId, actorId, ip);
           if (ok) importadosCount++;
           else omitidosCount++;
         } else {
           const resultado = await this.procesarFila(handler!, fila, actorId, ip);
           if (resultado) {
             importadosCount++;
-            if (resultado.credencial) {
-              credencialesEmitidas.push(resultado.credencial);
-            }
+            if (resultado.credencial) credencialesEmitidas.push(resultado.credencial);
           } else {
             omitidosCount++;
           }
@@ -508,24 +379,14 @@ export class ImportacionService {
       usuarioId: actorId,
       accion: "crear",
       tabla: "importaciones",
-      valorNuevo: {
-        tipo: dto.tipo,
-        importados: importadosCount,
-        omitidos: omitidosCount,
-      },
+      valorNuevo: { tipo: dto.tipo, importados: importadosCount, omitidos: omitidosCount },
       direccionIp: ip,
     });
-
-    const mensaje = IMPORTACION_MESSAGES.IMPORTACION_EXITO(
-      importadosCount,
-      dto.tipo,
-      omitidosCount,
-    );
 
     return {
       importadosCount,
       omitidosCount,
-      mensaje,
+      mensaje: IMPORTACION_MESSAGES.IMPORTACION_EXITO(importadosCount, dto.tipo, omitidosCount),
       credenciales: credencialesEmitidas,
     };
   }
@@ -537,44 +398,21 @@ export class ImportacionService {
     ip?: string,
   ): Promise<ProcesarFilaResult | null> {
     const basePersona = parsearPersonaDeFila(datos);
-
     const personaExistente = await this.personasRepository.findByDocumento(
       basePersona.tipoDocumento,
       basePersona.numeroDocumento,
     );
-
-    return handler.procesar({
-      datos,
-      basePersona,
-      personaExistente,
-      actorId,
-      ip,
-    });
+    return handler.procesar({ datos, basePersona, personaExistente, actorId, ip });
   }
 
   async generarPlantillaExcel(tipo: TipoImportacion): Promise<Buffer> {
     return construirPlantillaExcel(tipo);
   }
 
-  async generarReporteCredencialesExcel(
+  generarReporteCredencialesExcel(
     jobId: string,
     contexto: ContextoReporteCredenciales,
   ): Promise<Buffer> {
-    const job = await this.importacionQueue.getJob(jobId);
-    if (!job) {
-      throw new NotFoundException(`Trabajo de importación con ID ${jobId} no encontrado.`);
-    }
-
-    const estado = await job.getState();
-    if (estado !== "completed") {
-      throw new BadRequestException(
-        `El trabajo de importación no ha finalizado (estado actual: ${estado}).`,
-      );
-    }
-
-    const returnvalue = job.returnvalue as EjecutarImportacionResponseDto | undefined;
-    const credenciales = returnvalue?.credenciales || [];
-
-    return construirExcelCredenciales(credenciales, contexto);
+    return this.trabajosSvc.generarReporteCredencialesExcel(jobId, contexto);
   }
 }

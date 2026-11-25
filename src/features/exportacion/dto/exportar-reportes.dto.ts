@@ -122,3 +122,15 @@ export class ExportarAsistenciaPersonalQueryDto {
   })
   tipoPersona?: TipoPersonalAsistencia;
 }
+
+export class ExportarHorariosQueryDto {
+  @ApiPropertyOptional({ description: "Filtrar por grado (todas sus secciones)" })
+  @IsOptional()
+  @IsUUID("all", { message: "ID de grado inválido." })
+  gradoId?: string;
+
+  @ApiPropertyOptional({ description: "Filtrar a una sección específica" })
+  @IsOptional()
+  @IsUUID("all", { message: "ID de sección inválido." })
+  seccionId?: string;
+}

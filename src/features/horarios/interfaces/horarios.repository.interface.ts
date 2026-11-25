@@ -1,4 +1,22 @@
-import type { BloqueDocenteResponseDto, BloqueHorarioResponseDto } from "../dto";
+import type {
+  BloqueDocenteResponseDto,
+  BloqueHorarioResponseDto,
+  ResumenHorasCursoDto,
+} from "../dto";
+
+export interface HorarioSeccionSqlResult {
+  bloques: BloqueHorarioResponseDto[];
+  resumenHoras: ResumenHorasCursoDto[];
+}
+
+export interface SeccionHorariosConsolidado {
+  seccionId: string;
+  gradoId: string;
+  gradoNumero: number;
+  gradoNombre: string;
+  seccionNombre: string;
+  bloques: Array<BloqueHorarioResponseDto & { docenteId: string | null }>;
+}
 
 export interface CruceDocenteResultado {
   docenteNombre: string;
@@ -110,4 +128,9 @@ export interface IHorariosRepository {
     estudianteId: string,
   ): Promise<MatriculaEstudianteResultado | null>;
   esApoderadoDeEstudiante(apoderadoPersonaId: string, estudianteId: string): Promise<boolean>;
+  consultarHorarioSeccionSql?(seccionId: string): Promise<HorarioSeccionSqlResult>;
+  listarSeccionesYBloquesDeAnio?(
+    anioId: string,
+    filtros?: { gradoId?: string; seccionId?: string },
+  ): Promise<SeccionHorariosConsolidado[]>;
 }

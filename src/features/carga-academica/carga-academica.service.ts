@@ -3,9 +3,11 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  Optional,
 } from "@nestjs/common";
 import { AnioLectivoCls } from "../../common/anio-lectivo";
 import { AuditService } from "../../common/services/audit.service";
+import { CacheService } from "../../core/cache/cache.service";
 import { AniosAcademicosService } from "../anio-escolar/anios.service";
 import { DocentesRepository } from "../docentes";
 import { MENSAJES_CARGA_ACADEMICA, TABLA_CURSOS_SECCION } from "./constants";
@@ -26,6 +28,7 @@ export class CargaAcademicaService {
     private readonly aniosService: AniosAcademicosService,
     private readonly anioLectivoCls: AnioLectivoCls,
     private readonly auditService: AuditService,
+    @Optional() private readonly cacheService?: CacheService,
   ) {}
 
   async asignarDocente(
@@ -67,6 +70,7 @@ export class CargaAcademicaService {
       }
 
       const item = await this.cargaRepo.updateDocente(cursoSeccionId, dto.docenteId);
+      await this.cacheService?.del(`horarios:seccion:${cursoSeccion.seccionId}`);
 
       await this.auditService.log({
         usuarioId: actorId,
@@ -90,6 +94,7 @@ export class CargaAcademicaService {
 
     // Desasignación de docente (docenteId: null)
     const item = await this.cargaRepo.updateDocente(cursoSeccionId, null);
+    await this.cacheService?.del(`horarios:seccion:${cursoSeccion.seccionId}`);
 
     await this.auditService.log({
       usuarioId: actorId,

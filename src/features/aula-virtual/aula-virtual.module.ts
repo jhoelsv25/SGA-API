@@ -5,13 +5,34 @@ import { QUEUES } from "../../core/queues/queues.constants";
 import { QueuesModule } from "../../core/queues/queues.module";
 import { AnioEscolarModule } from "../anio-escolar/anio-escolar.module";
 import { AuthModule } from "../auth/auth.module";
+import { InstitucionModule } from "../institucion/institucion.module";
 import { NotificacionesModule } from "../notificaciones/notificaciones.module";
 import { AulaVirtualController } from "./aula-virtual.controller";
-import { InstitucionModule } from "../institucion/institucion.module";
 import { AulaVirtualService } from "./aula-virtual.service";
+import { AulaInteraccionController, AulaTareasController } from "./controllers";
 import { ChatAulaGateway } from "./gateways/chat-aula.gateway";
 import { RecordatorioTareasProcessor } from "./processors";
-import { AulaVirtualRepository } from "./repositories";
+import {
+  AulaAccesoRepository,
+  AulaActividadRepository,
+  AulaEntregasRepository,
+  AulaInteraccionRepository,
+  AulaMaterialesRepository,
+  AulaTareasRepository,
+  AulaVirtualRepository,
+} from "./repositories";
+import {
+  AulaActividadService,
+  AulaCalificacionesService,
+  AulaContextoHelper,
+  AulaEntregasService,
+  AulaInteraccionService,
+  AulaMaterialesService,
+  AulaRecordatoriosService,
+  AulaSolicitudesService,
+  AulaTareasService,
+  AulaUnidadesService,
+} from "./services";
 
 @Module({
   imports: [
@@ -22,14 +43,42 @@ import { AulaVirtualRepository } from "./repositories";
     NotificacionesModule,
     InstitucionModule,
   ],
-  controllers: [AulaVirtualController],
+  controllers: [AulaVirtualController, AulaTareasController, AulaInteraccionController],
   providers: [
-    AulaVirtualService,
+    AulaAccesoRepository,
+    AulaMaterialesRepository,
+    AulaTareasRepository,
+    AulaEntregasRepository,
+    AulaInteraccionRepository,
+    AulaActividadRepository,
     AulaVirtualRepository,
+    AulaContextoHelper,
+    AulaUnidadesService,
+    AulaMaterialesService,
+    AulaSolicitudesService,
+    AulaTareasService,
+    AulaEntregasService,
+    AulaCalificacionesService,
+    AulaRecordatoriosService,
+    AulaInteraccionService,
+    AulaActividadService,
+    AulaVirtualService,
     RecordatorioTareasProcessor,
     AuditService,
     ChatAulaGateway,
   ],
-  exports: [AulaVirtualService, ChatAulaGateway],
+  exports: [
+    AulaVirtualService,
+    AulaUnidadesService,
+    AulaMaterialesService,
+    AulaSolicitudesService,
+    AulaTareasService,
+    AulaEntregasService,
+    AulaCalificacionesService,
+    AulaRecordatoriosService,
+    AulaInteraccionService,
+    AulaActividadService,
+    ChatAulaGateway,
+  ],
 })
 export class AulaVirtualModule {}

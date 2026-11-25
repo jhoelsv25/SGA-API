@@ -30,6 +30,7 @@ function crearServicio(mocks: {
   libretasDetalle?: jest.Mock;
   asistenciaConsultarSeccion?: jest.Mock;
   seccionesFindAll?: jest.Mock;
+  horariosConsolidados?: jest.Mock;
 }) {
   const inst = { get: jest.fn().mockResolvedValue({ nombre: "I.E. Nuestra Señora del Carmen" }) };
   const anios = {
@@ -55,6 +56,7 @@ function crearServicio(mocks: {
     anioLectivo as never,
     { consultarSeccion: mocks.asistenciaConsultarSeccion ?? jest.fn() } as never,
     { findAll: mocks.seccionesFindAll ?? jest.fn() } as never,
+    { listarBloquesConsolidados: mocks.horariosConsolidados ?? jest.fn() } as never,
   );
 }
 
@@ -360,5 +362,81 @@ describe("ExportacionService (estándar de reportes Excel)", () => {
     expect(hoja.getCell("M2").value).toBe(50); // % puntualidad
     expect(hoja.getCell("C3").value).toBe("Vargas, Elena"); // sin "null"
     expect(hoja.getCell("F3").value).toBe(0); // 0 días asistidos
+  });
+
+  it("horariosExcel: exporta bloques consolidados siguiendo las columnas de la plantilla y hoja Información", async () => {
+    const horariosConsolidados = jest.fn().mockResolvedValue({
+      anio: 2026,
+      secciones: [
+        {
+          seccionId: "sec-1a",
+          gradoId: "grado-1",
+          gradoNumero: 1,
+          gradoNombre: "1.° de secundaria",
+          seccionNombre: "A",
+          bloques: [
+            {
+              id: "b1",
+              seccionId: "sec-1a",
+              cursoSeccionId: "cs-1",
+              cursoNombre: "Matemática",
+              colorHex: "#2563EB",
+              docenteNombre: "Andrés Avelino",
+              diaSemana: 1,
+              horaInicio: "08:00",
+              horaFin: "09:30",
+              tipoBloque: "clase",
+              aula: "101",
+              docenteId: "doc-1",
+            },
+            {
+              id: "b2",
+              seccionId: "sec-1a",
+              cursoSeccionId: null,
+              cursoNombre: null,
+              colorHex: null,
+              docenteNombre: null,
+              diaSemana: 1,
+              horaInicio: "09:30",
+              horaFin: "09:40",
+              tipoBloque: "receso",
+              aula: null,
+              docenteId: null,
+            },
+          ],
+        },
+      ],
+    });
+
+    const { buffer, nombreArchivo, totalFilas } = await crearServicio({
+      horariosConsolidados,
+    }).horariosExcel({}, user);
+
+    expect(nombreArchivo).toMatch(/^sga_horarios_\d{4}-\d{2}-\d{2}\.xlsx$/);
+    expect(totalFilas).toBe(2);
+    const wb = new Workbook();
+    await wb.xlsx.load(buffer as unknown as ArrayBuffer);
+    expect(wb.worksheets.map((w) => w.name)).toEqual(["Reporte", "Información"]);
+
+    const hoja = wb.getWorksheet("Reporte")!;
+    expect(hoja.getRow(1).values).toEqual([
+      undefined,
+      "Grado",
+      "Sección",
+      "Día de semana",
+      "Hora de inicio",
+      "Hora de fin",
+      "Tipo de bloque",
+      "Curso",
+      "Aula",
+      "Docente",
+    ]);
+    expect(hoja.getCell("A2").value).toBe("1.° de secundaria");
+    expect(hoja.getCell("C2").value).toBe("Lunes");
+    expect(hoja.getCell("F2").value).toBe("clase");
+    expect(hoja.getCell("G2").value).toBe("Matemática");
+    expect(hoja.getCell("I2").value).toBe("Andrés Avelino");
+    expect(hoja.getCell("F3").value).toBe("receso");
+    expect(hoja.getCell("G3").value).toBeNull();
   });
 });

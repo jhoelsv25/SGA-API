@@ -87,6 +87,7 @@ describe("AuthService (RF-001: Acceso al Sistema)", () => {
       resetLoginAttempts: jest.fn(),
       createSession: jest.fn(),
       closeSession: jest.fn(),
+      isSessionClosed: jest.fn().mockResolvedValue(false),
       closeOtherSessions: jest.fn(),
       updatePassword: jest.fn(),
       getUserModules: jest.fn(),
@@ -409,6 +410,39 @@ describe("AuthService (RF-001: Acceso al Sistema)", () => {
         expect(result.accessToken).toBe("new_fresh_token");
         expect(result.message).toBe("Token renovado exitosamente");
       });
+
+      it("debe conservar recordar=true al renovar el token y rechazar si la sesión fue cerrada", async () => {
+        sessionService.verifyAccessToken.mockReturnValue({
+          sub: mockUser.id,
+          username: mockUser.nombreUsuario,
+          roleId: mockUser.rolId,
+          role: "Docente",
+          personaId: mockUser.personaId,
+          recordar: true,
+        });
+        sessionService.hashToken.mockReturnValue("hash_old");
+        authRepository.findUserById.mockResolvedValue(mockUser);
+        authRepository.findPersonaById.mockResolvedValue(mockPersona);
+        authRepository.findRoleById.mockResolvedValue(mockRole);
+        authRepository.findInstitution.mockResolvedValue(mockInstitution);
+        authRepository.getUserModules.mockResolvedValue([]);
+        sessionService.generateAccessToken.mockReturnValue("new_30d_token");
+
+        await authService.refreshToken("old_30d_token", "127.0.0.1", "JestTest");
+
+        expect(sessionService.generateAccessToken).toHaveBeenCalledWith(
+          expect.objectContaining({ recordar: true }),
+          true,
+        );
+        expect(sessionService.recordSession).toHaveBeenCalledWith(
+          expect.objectContaining({ rememberMe: true }),
+        );
+
+        authRepository.isSessionClosed.mockResolvedValueOnce(true);
+        await expect(authService.refreshToken("old_30d_token")).rejects.toThrow(
+          new UnauthorizedException("La sesión fue cerrada o renovada. Ingrese nuevamente."),
+        );
+      });
     });
 
     describe("Escenario: logout", () => {
@@ -686,6 +720,82 @@ describe("AuthService (RF-001: Acceso al Sistema)", () => {
       expect(res.accessToken).toBe("token_admin_restaurado");
       expect(res.user.impersonatedBy).toBeUndefined();
       expect(sessionService.revokeSession).toHaveBeenCalledWith("token_simulado");
+    });
+  });
+
+  describe("Optimización SQL y caché Redis en checkToken", () => {
+    it("usa fn_obtener_contexto_sesion en un solo viaje SQL y cachea sin contaminar impersonatedBy", async () => {
+      const obtenerContextoSesion = jest.fn().mockResolvedValue({
+        usuario: {
+          id: mockUser.id,
+          nombreUsuario: mockUser.nombreUsuario,
+          personaId: mockUser.personaId,
+          rolId: mockUser.rolId,
+          estado: "activo",
+          debeCambiarContrasena: false,
+        },
+        persona: {
+          nombres: mockPersona.nombres,
+          apellidoPaterno: mockPersona.apellidoPaterno,
+          apellidoMaterno: mockPersona.apellidoMaterno,
+          correo: mockPersona.correo,
+          fotoUrl: mockPersona.fotoUrl,
+        },
+        institucion: mockInstitution,
+        roles: [
+          { rolId: mockRole.id, nombre: mockRole.nombre, esSistema: false, esPrincipal: true },
+        ],
+        activeRole: {
+          rolId: mockRole.id,
+          nombre: mockRole.nombre,
+          esSistema: false,
+          esPrincipal: true,
+        },
+        modules: [
+          { id: "mod-1", name: "Horarios", code: "horarios", icon: "cal", path: "/horarios" },
+        ],
+        menuRoutes: ["/admin/horarios"],
+      });
+
+      const cacheStore = new Map<string, unknown>();
+      const mockCache = {
+        getOrSet: jest.fn(async <T>(key: string, factory: () => Promise<T>): Promise<T> => {
+          if (cacheStore.has(key)) return cacheStore.get(key) as T;
+          const val = await factory();
+          cacheStore.set(key, val);
+          return val;
+        }),
+        del: jest.fn(),
+        delByPattern: jest.fn(),
+      };
+
+      const servicioOptimizado = new AuthService(
+        { obtenerContextoSesion } as unknown as AuthRepository,
+        sessionService,
+        new AuthPasswordService(
+          authRepository,
+          sessionService,
+          undefined,
+          variablesRepository as unknown as VariablesSistemaRepository,
+        ),
+        undefined,
+        undefined,
+        undefined,
+        mockCache as unknown as import("@/core/cache/cache.service").CacheService,
+      );
+
+      const primera = await servicioOptimizado.checkToken(mockUser.id, mockRole.id, {
+        userId: "admin-1",
+        username: "admin",
+        roleId: "rol-admin",
+        role: "Administrador",
+      });
+      const segunda = await servicioOptimizado.checkToken(mockUser.id, mockRole.id);
+
+      expect(obtenerContextoSesion).toHaveBeenCalledTimes(1);
+      expect(primera.user.impersonatedBy?.username).toBe("admin");
+      expect(segunda.user.impersonatedBy).toBeUndefined();
+      expect(segunda.modules?.[0]?.path).toBe("/horarios");
     });
   });
 });

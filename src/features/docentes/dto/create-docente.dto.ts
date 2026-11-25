@@ -44,14 +44,15 @@ export class CreateDocenteDto {
   @Type(() => DarBajaFichaActualDto)
   darBajaFichaActual?: DarBajaFichaActualDto;
 
-  @ApiProperty({
-    description: "Código único de identificación del docente en la institución",
-    example: "DOC015",
+  @ApiPropertyOptional({
+    description:
+      "Código único de identificación del docente en la institución. Si se omite, el sistema genera uno de 14 dígitos (YYYYMMDD + 6 dígitos de orden).",
+    example: "20261124000001",
   })
-  @IsNotEmpty({ message: "El código de docente es obligatorio." })
+  @IsOptional()
   @IsString()
   @MaxLength(20)
-  codigo: string;
+  codigo?: string;
 
   @ApiPropertyOptional({
     description: "Especialidad pedagógica o materia principal",

@@ -316,4 +316,68 @@ export class PersonasRepository implements IPersonasRepository {
       });
     });
   }
+
+  async obtenerResumen(query?: PersonaQueryDto): Promise<{
+    total: number;
+    conFicha: number;
+    conCuenta: number;
+    provisionales: number;
+  }> {
+    const tipoDoc = query?.tipoDocumento?.trim() || null;
+    const search = query?.search?.trim() || null;
+    const pattern = search ? `%${search}%` : null;
+    const esProvisional = query?.esProvisional ?? null;
+
+    const result = (await this.db.execute(sql`
+      WITH base AS (
+        SELECT
+          p.id,
+          (
+            EXISTS (SELECT 1 FROM docentes d WHERE d.persona_id = p.id AND d.eliminado_en IS NULL)
+            OR EXISTS (SELECT 1 FROM estudiantes e WHERE e.persona_id = p.id AND e.eliminado_en IS NULL)
+            OR EXISTS (SELECT 1 FROM apoderados a WHERE a.persona_id = p.id AND a.eliminado_en IS NULL)
+          ) AS tiene_ficha,
+          EXISTS (SELECT 1 FROM usuarios u WHERE u.persona_id = p.id AND u.eliminado_en IS NULL) AS tiene_usuario
+        FROM personas p
+        WHERE p.eliminado_en IS NULL
+          AND (${tipoDoc}::text IS NULL OR p.tipo_documento = ${tipoDoc})
+          AND (
+            ${pattern}::text IS NULL
+            OR p.numero_documento ILIKE ${pattern}
+            OR p.nombres ILIKE ${pattern}
+            OR p.apellido_paterno ILIKE ${pattern}
+            OR p.apellido_materno ILIKE ${pattern}
+          )
+      ),
+      clasificadas AS (
+        SELECT
+          tiene_ficha,
+          tiene_usuario,
+          NOT (tiene_ficha OR tiene_usuario) AS es_provisional
+        FROM base
+      )
+      SELECT
+        COUNT(*)::int AS total,
+        COUNT(*) FILTER (WHERE tiene_ficha)::int AS con_ficha,
+        COUNT(*) FILTER (WHERE tiene_usuario)::int AS con_cuenta,
+        COUNT(*) FILTER (WHERE es_provisional)::int AS provisionales
+      FROM clasificadas
+      WHERE (${esProvisional}::boolean IS NULL OR es_provisional = ${esProvisional})
+    `)) as unknown as {
+      rows?: Array<{
+        total?: number;
+        con_ficha?: number;
+        con_cuenta?: number;
+        provisionales?: number;
+      }>;
+    };
+
+    const row = result.rows?.[0];
+    return {
+      total: Number(row?.total ?? 0),
+      conFicha: Number(row?.con_ficha ?? 0),
+      conCuenta: Number(row?.con_cuenta ?? 0),
+      provisionales: Number(row?.provisionales ?? 0),
+    };
+  }
 }

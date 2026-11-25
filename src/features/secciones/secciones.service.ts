@@ -57,11 +57,6 @@ export class SeccionesService {
       if (!docente || docente.estado !== "activo") {
         throw new BadRequestException(MENSAJES_SECCIONES.TUTOR_DOCENTE_INACTIVO);
       }
-
-      const tutorOcupado = await this.seccionesRepo.tutorOcupado(anio.id, dto.tutorId);
-      if (tutorOcupado) {
-        throw new ConflictException(MENSAJES_SECCIONES.TUTOR_OCUPADO);
-      }
     }
 
     const creada = await this.seccionesRepo.createConCarga({
@@ -127,15 +122,6 @@ export class SeccionesService {
       const docente = await this.docentesRepo.findById(dto.tutorId);
       if (!docente || docente.estado !== "activo") {
         throw new BadRequestException(MENSAJES_SECCIONES.TUTOR_DOCENTE_INACTIVO);
-      }
-
-      const tutorOcupado = await this.seccionesRepo.tutorOcupado(
-        seccion.anioAcademicoId,
-        dto.tutorId,
-        id,
-      );
-      if (tutorOcupado) {
-        throw new ConflictException(MENSAJES_SECCIONES.TUTOR_OCUPADO);
       }
     }
 
@@ -240,11 +226,8 @@ export class SeccionesService {
       if (dto.copiarTutores && sec.tutor?.id) {
         const docente = await this.docentesRepo.findById(sec.tutor.id);
         if (docente && docente.estado === "activo") {
-          const tutorOcupado = await this.seccionesRepo.tutorOcupado(anioDestino.id, sec.tutor.id);
-          if (!tutorOcupado) {
-            tutorId = sec.tutor.id;
-            tutorAsignado = true;
-          }
+          tutorId = sec.tutor.id;
+          tutorAsignado = true;
         }
       }
 

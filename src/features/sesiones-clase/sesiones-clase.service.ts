@@ -1,25 +1,10 @@
-import { sinFichaDocente } from "../../common/utils/ficha-docente.util";
 import { InjectQueue } from "@nestjs/bullmq";
-import {
-  BadRequestException,
-  ConflictException,
-  ForbiddenException,
-  Injectable,
-  InternalServerErrorException,
-  Logger,
-  NotFoundException,
-  OnModuleInit,
-  Optional,
-} from "@nestjs/common";
+import { Injectable, Logger, OnModuleInit, Optional } from "@nestjs/common";
 import { Queue } from "bullmq";
-import { MENU_JUSTIFICACIONES_SESION, MENU_SESIONES_HOY } from "../../common/constants";
-import { createHash } from "node:crypto";
 import { AuditService } from "../../common/services/audit.service";
 import { CacheService } from "../../core/cache/cache.service";
-import { PlanificacionSesionesService } from "../planificacion-sesiones/planificacion-sesiones.service";
 import { IaService } from "../../core/ia/ia.service";
 import { QUEUES } from "../../core/queues/queues.constants";
-import type { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface";
 import { AniosAcademicosService } from "../anio-escolar/anios.service";
 import { AulaVirtualService } from "../aula-virtual/aula-virtual.service";
 import { CalendarioService } from "../calendario/calendario.service";
@@ -27,133 +12,78 @@ import { ConsolidadoDocenteService } from "../consolidado-docente/consolidado-do
 import { EquiposService } from "../equipos/equipos.service";
 import { MarcacionesService } from "../marcaciones/marcaciones.service";
 import { NotificacionesService } from "../notificaciones/notificaciones.service";
+import { PlanificacionSesionesService } from "../planificacion-sesiones/planificacion-sesiones.service";
 import { VariablesSistemaService } from "../variables-sistema/variables-sistema.service";
-import { ahoraEnColegio, diaIsoDeFecha, horaCorta } from "../marcaciones/utils";
 import {
-  CRON_CERRAR_SESIONES,
-  CRON_GENERAR_SESIONES,
-  JOB_CERRAR_SESIONES,
   CRON_AVISAR_JUSTIFICACIONES_VENCIDAS,
+  CRON_CERRAR_SESIONES,
   CRON_EVALUAR_ALERTAS,
+  CRON_GENERAR_SESIONES,
   JOB_AVISAR_JUSTIFICACIONES_VENCIDAS,
+  JOB_CERRAR_SESIONES,
   JOB_EVALUAR_ALERTAS,
   JOB_GENERAR_SESIONES,
-  MENSAJES_SESION,
-  ROLES_ALERTA_SESION,
-  ROLES_APROBADOR_JUSTIFICACION,
-  mensajeSolicitudVencida,
-  VARIABLES_ALERTA,
-  mensajeAlertaMinutos,
-  mensajeAlertaSalida,
-  MOTIVOS_CON_AVISO_NORMA,
-  MOTIVOS_JUSTIFICACION,
-  MOTIVO_OTRO,
-  MOTIVO_PERMISO_PERSONAL,
-  VARIABLES_JUSTIFICACION,
-  mensajeContadorPermisos,
-  mensajeTopePermisosSuperado,
-  OBSERVACION_SIN_SALIDA,
-  PROPOSITO_EQUIPO_SESIONES,
-  VARIABLES_SESION,
-  mensajeAntesDeVentana,
-  mensajeIngreso,
-  mensajeIngresoConRetraso,
-  mensajeSalidaCumplida,
-  mensajeSalidaParcial,
 } from "./constants";
-import type {
-  AlertaMinutosDocenteDto,
-  AprobarJustificacionDto,
-  ContadorPermisosDto,
-  CredencialesKioskoDto,
-  DetalleSolicitudJustificacionDto,
-  FiltrosBandejaJustificacionesDto,
-  MotivoJustificacionDto,
-  SolicitudJustificacionDto,
-  FirmaSesionResponseDto,
-  FirmarIngresoDto,
-  MensajeSesionResponseDto,
-  MiJornadaHoyResponseDto,
-  MisSesionesResponseDto,
-  PanelSesionesResponseDto,
-  RangoSesionesQueryDto,
-  RechazarJustificacionDto,
-  ReemplazoSesionDto,
-  SesionResponseDto,
-  SesionesKioskoResponseDto,
-  SolicitarJustificacionDto,
-  SugerirTemaDto,
-  SugerirTemaResponseDto,
-  TemaSesionDto,
-} from "./dto";
-import {
-  construirPromptSugerirTema,
-  construirPromptUnidadAulaVirtual,
-  INSTRUCCION_SISTEMA_SUGERIR_TEMA,
-  INSTRUCCION_SISTEMA_UNIDAD_AULA_VIRTUAL,
-} from "./prompts";
-import type { TemaRecienteCurso } from "./interfaces";
 import { SesionesClaseRepository } from "./repositories";
 import {
-  apellidoDeNombre,
-  diasHabilesTranscurridos,
-  lunesDeLaSemana,
-  viernesDeLaSemana,
-  elegirDestacada,
-  evaluarIngreso,
-  minutosSalidaAnticipada,
-  planificarSesiones,
-} from "./utils";
-import { minutosDelDia } from "../marcaciones/utils";
+  SesionesCicloService,
+  SesionesFirmasService,
+  SesionesIaService,
+  SesionesJustificacionesService,
+  SesionesPanelService,
+  inicializarSubServiciosSesiones,
+  type SubServiciosSesiones,
+} from "./services";
 
-interface ConfiguracionAlertas {
-  salidaMinutos: number | null;
-  umbralDia: number | null;
-  umbralSemana: number | null;
-}
-
-interface ConfiguracionSesion {
-  minutosAntes: number;
-  toleranciaIngreso: number;
-  toleranciaSalida: number;
-  salidaAutomatica: boolean;
-}
-
-interface DocenteEnKiosko {
-  docenteId: string;
-  nombre: string;
-  equipoId: string;
-}
-
+/**
+ * Fachada cohesiva de Sesiones de Clase que conserva compatibilidad con controladores,
+ * colas y pruebas unitarias, delegando en servicios especializados por dominio.
+ */
 @Injectable()
 export class SesionesClaseService implements OnModuleInit {
   private readonly logger = new Logger(SesionesClaseService.name);
+  private readonly subs: SubServiciosSesiones;
 
   constructor(
-    private readonly repository: SesionesClaseRepository,
-    private readonly equiposService: EquiposService,
-    private readonly marcacionesService: MarcacionesService,
-    private readonly aniosService: AniosAcademicosService,
-    private readonly calendarioService: CalendarioService,
-    private readonly auditService: AuditService,
-    @Optional()
-    private readonly consolidadoService?: ConsolidadoDocenteService,
-    @Optional()
-    @InjectQueue(QUEUES.SESIONES_CLASE)
-    private readonly cola?: Queue,
-    @Optional()
-    private readonly notificacionesService?: NotificacionesService,
-    @Optional()
-    private readonly variablesService?: VariablesSistemaService,
-    @Optional()
-    private readonly aulaVirtualService?: AulaVirtualService,
-    @Optional()
-    private readonly iaService?: IaService,
-    @Optional()
-    private readonly cacheService?: CacheService,
-    @Optional()
-    private readonly planificacionesService?: PlanificacionSesionesService,
-  ) {}
+    repository: SesionesClaseRepository,
+    equiposService: EquiposService,
+    marcacionesService: MarcacionesService,
+    aniosService: AniosAcademicosService,
+    calendarioService: CalendarioService,
+    auditService: AuditService,
+    @Optional() consolidadoService?: ConsolidadoDocenteService,
+    @Optional() @InjectQueue(QUEUES.SESIONES_CLASE) private readonly cola?: Queue,
+    @Optional() notificacionesService?: NotificacionesService,
+    @Optional() variablesService?: VariablesSistemaService,
+    @Optional() aulaVirtualService?: AulaVirtualService,
+    @Optional() iaService?: IaService,
+    @Optional() cacheService?: CacheService,
+    @Optional() planificacionesService?: PlanificacionSesionesService,
+    @Optional() cicloSvc?: SesionesCicloService,
+    @Optional() iaSvc?: SesionesIaService,
+    @Optional() firmasSvc?: SesionesFirmasService,
+    @Optional() panelSvc?: SesionesPanelService,
+    @Optional() justificacionesSvc?: SesionesJustificacionesService,
+  ) {
+    this.subs = inicializarSubServiciosSesiones(
+      {
+        repository,
+        equiposService,
+        marcacionesService,
+        aniosService,
+        calendarioService,
+        auditService,
+        consolidadoService,
+        notificacionesService,
+        variablesService,
+        aulaVirtualService,
+        iaService,
+        cacheService,
+        planificacionesService,
+      },
+      { cicloSvc, iaSvc, firmasSvc, panelSvc, justificacionesSvc },
+    );
+  }
 
   async onModuleInit(): Promise<void> {
     if (!this.cola) return;
@@ -183,1084 +113,95 @@ export class SesionesClaseService implements OnModuleInit {
     }
   }
 
-  // --- HU1: generación y cierre ------------------------------------------------
-
-  /** Crea las sesiones `pendiente` del día. Idempotente: no duplica las existentes. */
-  async generarDelDia(fecha = ahoraEnColegio().fecha): Promise<number> {
-    const anio = await this.aniosService.anioVigente();
-    if (!anio || anio.estado !== "en_curso") return 0;
-    const enBimestre = anio.bimestres.some(
-      (b) => b.fechaInicio.slice(0, 10) <= fecha && fecha <= b.fechaFin.slice(0, 10),
-    );
-    if (!enBimestre) return 0;
-    if (await this.calendarioService.suspendeClasesEn(fecha)) return 0;
-
-    const bloques = await this.repository.bloquesDelDia(anio.id, diaIsoDeFecha(fecha));
-    const creadas = await this.repository.insertarSesiones(fecha, planificarSesiones(bloques));
-    if (creadas > 0) {
-      await this.auditService.log({
-        accion: "crear",
-        tabla: "sesiones_clase",
-        valorNuevo: { proceso: "generacion_diaria", fecha, sesiones: creadas },
-      });
-    }
-    return creadas;
+  generarDelDia(...args: Parameters<SesionesCicloService["generarDelDia"]>) {
+    return this.subs.cicloSvc.generarDelDia(...args);
   }
 
-  /** Cierre del día: pendiente → no_cumplida; en_curso → parcial "Sin firma de salida". */
-  async cerrarDelDia(fecha = ahoraEnColegio().fecha): Promise<void> {
-    const { salidaAutomatica } = await this.configuracion();
-    const resultado = await this.repository.cerrarDia(
-      fecha,
-      salidaAutomatica,
-      OBSERVACION_SIN_SALIDA,
-    );
-    if (resultado.noCumplidas + resultado.parciales > 0) {
-      await this.auditService.log({
-        accion: "actualizar",
-        tabla: "sesiones_clase",
-        valorNuevo: { proceso: "cierre_diario", fecha, salidaAutomatica, ...resultado },
-      });
-
-      if (resultado.docentesAfectados && resultado.docentesAfectados.length > 0) {
-        await this.notificarDocentesSesionesCerradas(resultado.docentesAfectados, fecha);
-      }
-    }
+  cerrarDelDia(...args: Parameters<SesionesCicloService["cerrarDelDia"]>) {
+    return this.subs.cicloSvc.cerrarDelDia(...args);
   }
 
-  /**
-   * Notifica a los docentes si el switch 'notificacion.recordatorio_sesiones_docente'
-   * está habilitado en la base de datos (RF-011 / RF-004).
-   */
-  private async notificarDocentesSesionesCerradas(
-    docenteIds: string[],
-    fecha: string,
-  ): Promise<void> {
-    if (!this.notificacionesService || !this.variablesService || docenteIds.length === 0) return;
-
-    try {
-      const activo = await this.variablesService.isActiva(
-        "notificacion.recordatorio_sesiones_docente",
-        true,
-      );
-      if (!activo) return;
-
-      const userIds = await this.repository.findUsuariosDeDocentes(docenteIds);
-      for (const usuarioId of userIds) {
-        await this.notificacionesService.enviar({
-          usuarioId,
-          titulo: "Cierre de jornada escolar",
-          mensaje: `Se ha registrado el cierre de tus sesiones de clase correspondientes al ${fecha}. Recuerda registrar y firmar tus sesiones a tiempo.`,
-          tipo: "recordatorio",
-          enlaceUrl: "/admin/mis-sesiones",
-        });
-      }
-    } catch {
-      // Silenciar para no frenar el cierre automático
-    }
+  sesionesEnKiosko(...args: Parameters<SesionesFirmasService["sesionesEnKiosko"]>) {
+    return this.subs.firmasSvc.sesionesEnKiosko(...args);
   }
 
-  // --- HU2: kiosko de sesiones ---------------------------------------------------
-
-  async sesionesEnKiosko(
-    token: string | undefined,
-    dto: CredencialesKioskoDto,
-  ): Promise<SesionesKioskoResponseDto> {
-    const docente = await this.identificarEnKiosko(token, dto);
-    const { fecha, hora } = ahoraEnColegio();
-    await this.asegurarGeneracion(fecha);
-    const sesiones = await this.repository.sesionesDeDocente(docente.docenteId, fecha, fecha);
-    const { minutosAntes } = await this.configuracion();
-    return {
-      docenteNombre: docente.nombre,
-      sesiones,
-      destacadaId: elegirDestacada(sesiones, hora, minutosAntes),
-      ...(sesiones.length === 0 ? { mensaje: MENSAJES_SESION.SIN_SESIONES_HOY } : {}),
-    };
+  firmarIngreso(...args: Parameters<SesionesFirmasService["firmarIngreso"]>) {
+    return this.subs.firmasSvc.firmarIngreso(...args);
   }
 
-  async firmarIngreso(
-    token: string | undefined,
-    sesionId: string,
-    dto: FirmarIngresoDto,
-    ip?: string,
-  ): Promise<FirmaSesionResponseDto> {
-    const docente = await this.identificarEnKiosko(token, dto);
-    return this.ejecutarFirmaIngreso({
-      sesionId,
-      docenteId: docente.docenteId,
-      temaRaw: dto.tema,
-      equipoId: docente.equipoId,
-      canal: "kiosko",
-      ip,
-    });
+  firmarSalida(...args: Parameters<SesionesFirmasService["firmarSalida"]>) {
+    return this.subs.firmasSvc.firmarSalida(...args);
   }
 
-  async firmarSalida(
-    token: string | undefined,
-    sesionId: string,
-    dto: CredencialesKioskoDto,
-    ip?: string,
-  ): Promise<FirmaSesionResponseDto> {
-    const docente = await this.identificarEnKiosko(token, dto);
-    return this.ejecutarFirmaSalida({
-      sesionId,
-      docenteId: docente.docenteId,
-      equipoId: docente.equipoId,
-      canal: "kiosko",
-      ip,
-    });
+  panelDeHoy() {
+    return this.subs.panelSvc.panelDeHoy();
   }
 
-  // --- HU3: seguimiento del subdirector -------------------------------------------
-
-  async panelDeHoy(): Promise<PanelSesionesResponseDto> {
-    const panel = await this.calcularPanel();
-    // Mirar el panel también dispara el aviso; la clave de cada alerta evita repetirlo.
-    await this.notificarAlertas(panel);
-    return panel;
+  evaluarAlertas() {
+    return this.subs.panelSvc.evaluarAlertas();
   }
 
-  /** Tarea periódica: avisa aunque nadie tenga abierto el panel. */
-  async evaluarAlertas(): Promise<void> {
-    await this.notificarAlertas(await this.calcularPanel());
+  avisarSolicitudesVencidas() {
+    return this.subs.justificacionesSvc.avisarSolicitudesVencidas();
   }
 
-  private async calcularPanel(): Promise<PanelSesionesResponseDto> {
-    const { fecha, hora } = ahoraEnColegio();
-    await this.asegurarGeneracion(fecha);
-    const { toleranciaIngreso } = await this.configuracion();
-    const alertas = await this.configuracionAlertas();
-    const minutoActual = minutosDelDia(hora);
-    const sesiones = (await this.repository.sesionesDelDia(fecha)).map((s) => ({
-      ...s,
-      alerta:
-        s.estado === "pendiente" && minutoActual > minutosDelDia(s.horaInicio) + toleranciaIngreso,
-      alertaSalida: this.alertaDeSalida(s, minutoActual, alertas.salidaMinutos),
-    }));
-    const alertasMinutos = await this.alertasDeMinutos(fecha, alertas);
-    const totalAlertas =
-      sesiones.filter((s) => s.alerta || s.alertaSalida).length + alertasMinutos.length;
-    return { fecha, sesiones, alertasMinutos, totalAlertas };
+  asignarReemplazo(...args: Parameters<SesionesPanelService["asignarReemplazo"]>) {
+    return this.subs.panelSvc.asignarReemplazo(...args);
   }
 
-  /** Sesión `en_curso` a `alerta_salida_minutos` o menos de terminar sin firma de salida. */
-  private alertaDeSalida(
-    s: SesionResponseDto,
-    minutoActual: number,
-    anticipacion: number | null,
-  ): string | null {
-    if (anticipacion === null || s.estado !== "en_curso" || s.horaSalida) return null;
-    const faltan = minutosDelDia(s.horaFin) - minutoActual;
-    if (faltan > anticipacion) return null;
-    return mensajeAlertaSalida(
-      s.cursoNombre,
-      s.seccionNombre,
-      apellidoDeNombre(s.docenteNombre),
-      Math.max(0, faltan),
-    );
+  justificacionesSolicitadas(
+    ...args: Parameters<SesionesJustificacionesService["justificacionesSolicitadas"]>
+  ) {
+    return this.subs.justificacionesSvc.justificacionesSolicitadas(...args);
   }
 
-  /** Docentes con minutos perdidos sobre el umbral del día y de la semana (0 desactiva). */
-  private async alertasDeMinutos(
-    fecha: string,
-    cfg: ConfiguracionAlertas,
-  ): Promise<AlertaMinutosDocenteDto[]> {
-    const resultado: AlertaMinutosDocenteDto[] = [];
-    const periodos = [
-      { periodo: "dia" as const, umbral: cfg.umbralDia, desde: fecha, hasta: fecha },
-      {
-        periodo: "semana" as const,
-        umbral: cfg.umbralSemana,
-        desde: lunesDeLaSemana(fecha),
-        hasta: viernesDeLaSemana(fecha),
-      },
-    ];
-    for (const { periodo, umbral, desde, hasta } of periodos) {
-      if (!umbral) continue;
-      const filas = await this.repository.minutosPerdidosPorDocente(desde, hasta);
-      for (const f of filas.filter((x) => x.minutos >= umbral)) {
-        resultado.push({
-          docenteId: f.docenteId,
-          docenteNombre: f.docenteNombre,
-          periodo,
-          minutos: f.minutos,
-          umbral,
-          mensaje: mensajeAlertaMinutos(
-            apellidoDeNombre(f.docenteNombre),
-            f.minutos,
-            umbral,
-            periodo,
-          ),
-        });
-      }
-    }
-    return resultado;
+  detalleSolicitud(...args: Parameters<SesionesJustificacionesService["detalleSolicitud"]>) {
+    return this.subs.justificacionesSvc.detalleSolicitud(...args);
   }
 
-  /**
-   * Revisión diaria: avisa al aprobador de cada solicitud vencida, una sola vez por solicitud.
-   * Si el sistema estuvo caído, el aviso sale al reanudarse aunque la fecha ya haya pasado (P-72).
-   */
-  async avisarSolicitudesVencidas(): Promise<number> {
-    if (!this.notificacionesService) return 0;
-    const vencidas = await this.justificacionesSolicitadas({ vencidas: "true" });
-    if (vencidas.length === 0) return 0;
-    const aprobadores = [
-      ...new Set(await this.repository.usuariosConRol(ROLES_APROBADOR_JUSTIFICACION)),
-    ];
-    let avisadas = 0;
-    for (const s of vencidas) {
-      // La fecha de solicitud entra en la clave: una nueva solicitud de la misma sesión vuelve a avisar.
-      const clave = `justificacion-vencida:${s.id}:${s.justificacion?.solicitadaEn ?? ""}`;
-      if (!(await this.repository.registrarAlertaEnviada(clave))) continue;
-      const [, mes, dia] = s.fecha.split("-");
-      const mensaje = mensajeSolicitudVencida(
-        apellidoDeNombre(s.docenteNombre),
-        s.cursoNombre,
-        s.seccionNombre,
-        `${dia}/${mes}`,
-        s.antiguedadDias,
-      );
-      for (const usuarioId of aprobadores) {
-        await this.notificacionesService.enviar({
-          usuarioId,
-          titulo: "Justificación sin respuesta",
-          mensaje,
-          tipo: "alerta",
-          enlaceUrl: MENU_JUSTIFICACIONES_SESION,
-          sesionClaseId: s.id,
-        });
-      }
-      avisadas += 1;
-    }
-    return avisadas;
+  motivosJustificacion() {
+    return this.subs.justificacionesSvc.motivosJustificacion();
   }
 
-  /** Una notificación por alerta al Subdirector y al Director; la clave evita duplicarla. */
-  private async notificarAlertas(panel: PanelSesionesResponseDto): Promise<void> {
-    if (!this.notificacionesService) return;
-    try {
-      const pendientes: { clave: string; mensaje: string; sesionId: string | null }[] = [];
-      for (const s of panel.sesiones) {
-        if (s.alertaSalida) {
-          pendientes.push({ clave: `salida:${s.id}`, mensaje: s.alertaSalida, sesionId: s.id });
-        }
-      }
-      for (const a of panel.alertasMinutos) {
-        const inicio = a.periodo === "dia" ? panel.fecha : lunesDeLaSemana(panel.fecha);
-        pendientes.push({
-          clave: `minutos-${a.periodo}:${a.docenteId}:${inicio}`,
-          mensaje: a.mensaje,
-          sesionId: null,
-        });
-      }
-      if (pendientes.length === 0) return;
-      // Una persona con dos roles recibe una sola notificación por alerta (P-72).
-      const destinatarios = [...new Set(await this.repository.usuariosConRol(ROLES_ALERTA_SESION))];
-      for (const p of pendientes) {
-        if (!(await this.repository.registrarAlertaEnviada(p.clave))) continue;
-        for (const usuarioId of destinatarios) {
-          await this.notificacionesService.enviar({
-            usuarioId,
-            titulo: "Alerta de seguimiento docente",
-            mensaje: p.mensaje,
-            tipo: "alerta",
-            enlaceUrl: MENU_SESIONES_HOY,
-            sesionClaseId: p.sesionId,
-          });
-        }
-      }
-    } catch (error) {
-      // Una falla al avisar no debe romper el panel ni la tarea periódica.
-      this.logger.warn(
-        `No se pudieron enviar las alertas de sesiones: ${(error as Error).message}`,
-      );
-    }
+  aprobarJustificacion(
+    ...args: Parameters<SesionesJustificacionesService["aprobarJustificacion"]>
+  ) {
+    return this.subs.justificacionesSvc.aprobarJustificacion(...args);
   }
 
-  /** Variables de las alertas; si faltan en la base, la alerta queda desactivada (no rompe el panel). */
-  private async configuracionAlertas(): Promise<ConfiguracionAlertas> {
-    const valores = await this.repository.valoresVariables(Object.values(VARIABLES_ALERTA));
-    const entero = (codigo: string): number | null => {
-      const n = Number.parseInt(valores.get(codigo) ?? "", 10);
-      return Number.isNaN(n) || n < 0 ? null : n;
-    };
-    return {
-      salidaMinutos: entero(VARIABLES_ALERTA.SALIDA_MINUTOS),
-      umbralDia: entero(VARIABLES_ALERTA.UMBRAL_DIA),
-      umbralSemana: entero(VARIABLES_ALERTA.UMBRAL_SEMANA),
-    };
+  rechazarJustificacion(
+    ...args: Parameters<SesionesJustificacionesService["rechazarJustificacion"]>
+  ) {
+    return this.subs.justificacionesSvc.rechazarJustificacion(...args);
   }
 
-  async asignarReemplazo(
-    sesionId: string,
-    dto: ReemplazoSesionDto,
-    actorId: string,
-    ip?: string,
-  ): Promise<SesionResponseDto> {
-    const sesion = await this.requireSesion(sesionId);
-    if (sesion.estado !== "pendiente") {
-      throw new BadRequestException(MENSAJES_SESION.REEMPLAZO_SOLO_PENDIENTE);
-    }
-    if (sesion.docenteId === dto.docenteId) {
-      throw new BadRequestException(MENSAJES_SESION.REEMPLAZO_MISMO_DOCENTE);
-    }
-    await this.exigirBimestreAbierto(sesion.fecha, sesion.docenteId);
-    if (!(await this.repository.docenteActivo(dto.docenteId))) {
-      throw new BadRequestException(MENSAJES_SESION.DOCENTE_NO_DISPONIBLE);
-    }
-    if (!(await this.repository.reemplazar(sesionId, dto.docenteId))) {
-      throw new BadRequestException(MENSAJES_SESION.REEMPLAZO_SOLO_PENDIENTE);
-    }
-    await this.auditService.log({
-      usuarioId: actorId,
-      accion: "actualizar",
-      tabla: "sesiones_clase",
-      registroId: sesionId,
-      valorAnterior: { docenteId: sesion.docenteId },
-      valorNuevo: { docenteId: dto.docenteId, motivo: "reemplazo" },
-      direccionIp: ip,
-    });
-    return this.requireSesion(sesionId);
+  miJornadaHoy(...args: Parameters<SesionesFirmasService["miJornadaHoy"]>) {
+    return this.subs.firmasSvc.miJornadaHoy(...args);
   }
 
-  /** Bandeja del aprobador: de la más antigua a la más reciente, con antigüedad y "vencida". */
-  async justificacionesSolicitadas(
-    filtros: FiltrosBandejaJustificacionesDto = {},
-  ): Promise<SolicitudJustificacionDto[]> {
-    const solicitadas = await this.repository.justificacionesPorEstado("solicitada");
-    const conAntiguedad = await this.conAntiguedad(solicitadas);
-    const soloVencidas = filtros.vencidas === "true";
-    return conAntiguedad
-      .filter((s) => !filtros.motivo || s.justificacion?.motivoCodigo === filtros.motivo)
-      .filter((s) => !soloVencidas || s.vencida)
-      .sort((a, b) => b.antiguedadDias - a.antiguedadDias);
+  firmarIngresoWeb(...args: Parameters<SesionesFirmasService["firmarIngresoWeb"]>) {
+    return this.subs.firmasSvc.firmarIngresoWeb(...args);
   }
 
-  async detalleSolicitud(sesionId: string): Promise<DetalleSolicitudJustificacionDto> {
-    const sesion = await this.requireJustificacionSolicitada(sesionId);
-    const [solicitud] = await this.conAntiguedad([sesion]);
-    return { solicitud, permisosPersonales: await this.contadorPermisos(sesion) };
+  sugerirTema(...args: Parameters<SesionesIaService["sugerirTema"]>) {
+    return this.subs.iaSvc.sugerirTema(...args);
   }
 
-  /** Catálogo de motivos con la regla del documento y el aviso de la norma. */
-  async motivosJustificacion(): Promise<MotivoJustificacionDto[]> {
-    const conDocumento = await this.motivosConDocumento();
-    return MOTIVOS_JUSTIFICACION.map((m) => ({
-      codigo: m.codigo,
-      etiqueta: m.etiqueta,
-      requiereDocumento: conDocumento.has(m.codigo),
-      requiereObservacion: m.codigo === MOTIVO_OTRO,
-      aviso: MOTIVOS_CON_AVISO_NORMA.includes(m.codigo) ? MENSAJES_SESION.AVISO_NORMA : null,
-    }));
+  firmarSalidaWeb(...args: Parameters<SesionesFirmasService["firmarSalidaWeb"]>) {
+    return this.subs.firmasSvc.firmarSalidaWeb(...args);
   }
 
-  async aprobarJustificacion(
-    sesionId: string,
-    actorId: string,
-    ip?: string,
-    dto: AprobarJustificacionDto = {},
-  ): Promise<MensajeSesionResponseDto> {
-    const sesion = await this.requireJustificacionSolicitada(sesionId);
-    await this.exigirBimestreAbierto(sesion.fecha, sesion.docenteId);
-    const superaTope = await this.superaTopePermisos(sesion);
-    if (superaTope && !dto.confirmarTope) {
-      throw new ConflictException({
-        message: mensajeTopePermisosSuperado(superaTope.tope),
-        requiereConfirmacion: true,
-      });
-    }
-    await this.repository.resolverJustificacion(sesionId, "aprobada", actorId, null);
-    await this.auditService.log({
-      usuarioId: actorId,
-      accion: "actualizar",
-      tabla: "sesiones_clase",
-      registroId: sesionId,
-      valorAnterior: { estado: sesion.estado, justificacion: "solicitada" },
-      valorNuevo: {
-        estado: "justificada",
-        justificacion: "aprobada",
-        ...(superaTope ? { topePermisosSuperado: true, tope: superaTope.tope } : {}),
-      },
-      direccionIp: ip,
-    });
-    return {
-      mensaje: MENSAJES_SESION.JUSTIFICACION_APROBADA,
-      sesion: await this.requireSesion(sesionId),
-    };
+  misSesiones(...args: Parameters<SesionesFirmasService["misSesiones"]>) {
+    return this.subs.firmasSvc.misSesiones(...args);
   }
 
-  async rechazarJustificacion(
-    sesionId: string,
-    dto: RechazarJustificacionDto,
-    actorId: string,
-    ip?: string,
-  ): Promise<MensajeSesionResponseDto> {
-    const comentario = dto.comentario?.trim();
-    if (!comentario) {
-      throw new BadRequestException(MENSAJES_SESION.RECHAZO_SIN_COMENTARIO);
-    }
-    const sesion = await this.requireJustificacionSolicitada(sesionId);
-    await this.exigirBimestreAbierto(sesion.fecha, sesion.docenteId);
-    await this.repository.resolverJustificacion(sesionId, "rechazada", actorId, comentario);
-    await this.auditService.log({
-      usuarioId: actorId,
-      accion: "actualizar",
-      tabla: "sesiones_clase",
-      registroId: sesionId,
-      valorAnterior: { justificacion: "solicitada" },
-      valorNuevo: { justificacion: "rechazada", comentario },
-      direccionIp: ip,
-    });
-    return {
-      mensaje: MENSAJES_SESION.JUSTIFICACION_RECHAZADA,
-      sesion: await this.requireSesion(sesionId),
-    };
+  corregirTema(...args: Parameters<SesionesFirmasService["corregirTema"]>) {
+    return this.subs.firmasSvc.corregirTema(...args);
   }
 
-  // --- HU4: mis sesiones, firma web y justificación --------------------------------
-
-  async miJornadaHoy(usuario: AuthenticatedUser): Promise<MiJornadaHoyResponseDto> {
-    const docenteId = await this.docenteDelUsuario(usuario);
-    const { fecha, hora } = ahoraEnColegio();
-    await this.asegurarGeneracion(fecha);
-    const sesiones = await this.repository.sesionesDeDocente(docenteId, fecha, fecha);
-    const claveTemas = `sesiones:ultimos-temas:${docenteId}:${fecha}`;
-    const temasEnCache = await this.cacheService?.get<TemaRecienteCurso[]>(claveTemas);
-    const temasRecientes =
-      temasEnCache ?? (await this.repository.ultimosTemasDocente(docenteId, fecha));
-    if (!temasEnCache && temasRecientes.length > 0) {
-      await this.cacheService?.set(claveTemas, temasRecientes, 3600);
-    }
-    const { minutosAntes } = await this.configuracion();
-    const firmaWebHabilitada = await this.firmaWebHabilitada();
-    return {
-      fecha,
-      docenteNombre: sesiones[0]?.docenteNombre ?? usuario.username,
-      destacadaId: elegirDestacada(sesiones, hora, minutosAntes),
-      minutosAntes,
-      firmaWebHabilitada,
-      sesiones,
-      temasRecientes,
-    };
-  }
-
-  async firmarIngresoWeb(
-    sesionId: string,
-    dto: TemaSesionDto,
-    usuario: AuthenticatedUser,
-    ip?: string,
-  ): Promise<FirmaSesionResponseDto> {
-    if (usuario.impersonatedBy) {
-      throw new ForbiddenException(MENSAJES_SESION.FIRMA_BLOQUEADA_SIMULACION);
-    }
-    if (!(await this.firmaWebHabilitada())) {
-      throw new ForbiddenException(MENSAJES_SESION.FIRMA_WEB_DESHABILITADA);
-    }
-    const docenteId = await this.docenteDelUsuario(usuario);
-    const respuesta = await this.ejecutarFirmaIngreso({
-      sesionId,
-      docenteId,
-      temaRaw: dto.tema,
-      equipoId: null,
-      actorId: usuario.id,
-      canal: "web",
-      ip,
-    });
-    if (dto.crearEnAulaVirtual) {
-      const aulaVirtualCreada = await this.crearBorradorEnAulaVirtual(
-        respuesta.sesion,
-        dto.tema.trim(),
-        usuario,
-        ip,
-      );
-      return { ...respuesta, aulaVirtualCreada };
-    }
-    return respuesta;
-  }
-
-  private async crearBorradorEnAulaVirtual(
-    sesion: SesionResponseDto,
-    tema: string,
-    usuario: AuthenticatedUser,
-    ip?: string,
-  ): Promise<boolean> {
-    if (!this.aulaVirtualService) return false;
-    try {
-      const cursoSeccionId = await this.repository.cursoSeccionDeSesion(sesion.id);
-      if (!cursoSeccionId) return false;
-      const anio = await this.aniosService.anioVigente();
-      if (!anio) return false;
-      const bimestre =
-        anio.bimestres.find(
-          (b) =>
-            b.fechaInicio.slice(0, 10) <= sesion.fecha && sesion.fecha <= b.fechaFin.slice(0, 10),
-        ) ?? anio.bimestres[0];
-      if (!bimestre) return false;
-
-      const contenido = await this.construirContenidoUnidad(sesion, tema);
-      await this.aulaVirtualService.crearUnidad(
-        cursoSeccionId,
-        {
-          titulo: contenido.titulo.slice(0, 150),
-          descripcion: contenido.descripcion.slice(0, 1000),
-          periodoId: bimestre.id,
-          fechaInicio: bimestre.fechaInicio.slice(0, 10),
-          fechaFin: bimestre.fechaFin.slice(0, 10),
-          publicada: false,
-        },
-        usuario,
-        ip,
-      );
-      return true;
-    } catch (error) {
-      this.logger.warn(
-        `No se pudo crear borrador en Aula Virtual para sesión ${sesion.id}: ${(error as Error).message}`,
-      );
-      return false;
-    }
-  }
-
-  private async construirContenidoUnidad(
-    sesion: SesionResponseDto,
-    tema: string,
-  ): Promise<{ titulo: string; descripcion: string }> {
-    const respaldo = {
-      titulo: tema.slice(0, 150),
-      descripcion: `Sesión de clase del ${sesion.fecha}: ${tema}`,
-    };
-    if (!this.iaService?.estaHabilitada()) return respaldo;
-    try {
-      const resultado = await this.iaService.generarEstructurado<{
-        titulo: string;
-        descripcion: string;
-      }>({
-        instruccionSistema: INSTRUCCION_SISTEMA_UNIDAD_AULA_VIRTUAL,
-        prompt: construirPromptUnidadAulaVirtual({
-          cursoNombre: sesion.cursoNombre,
-          seccionNombre: sesion.seccionNombre,
-          tema,
-        }),
-      });
-      return {
-        titulo: resultado.datos.titulo?.trim() || respaldo.titulo,
-        descripcion: resultado.datos.descripcion?.trim() || respaldo.descripcion,
-      };
-    } catch {
-      return respaldo;
-    }
-  }
-
-  async sugerirTema(
-    sesionId: string,
-    dto: SugerirTemaDto,
-    usuario: AuthenticatedUser,
-  ): Promise<SugerirTemaResponseDto> {
-    const docenteId = await this.docenteDelUsuario(usuario);
-    const sesion = await this.sesionDelDocente(sesionId, docenteId);
-    const recientes = await this.repository.ultimosTemasDocente(docenteId, sesion.fecha);
-    const delCurso =
-      recientes.find(
-        (r) => r.cursoNombre === sesion.cursoNombre && r.seccionNombre === sesion.seccionNombre,
-      )?.temas ?? [];
-
-    const borrador = dto.borrador?.trim();
-    if (!this.iaService?.estaHabilitada()) {
-      return {
-        sugerencias: borrador ? [borrador, ...delCurso].slice(0, 3) : delCurso.slice(0, 3),
-      };
-    }
-
-    try {
-      const claveCache = `ia:sugerir-tema:${sesion.id}:${createHash("sha256")
-        .update(borrador ?? "")
-        .digest("hex")
-        .slice(0, 16)}`;
-      const enCache = await this.cacheService?.get<string[]>(claveCache);
-      if (enCache && enCache.length > 0) {
-        return { sugerencias: enCache };
-      }
-
-      const respuesta = await this.iaService.generarEstructurado<{
-        sugerencias: string[];
-      }>({
-        instruccionSistema: INSTRUCCION_SISTEMA_SUGERIR_TEMA,
-        prompt: construirPromptSugerirTema({
-          cursoNombre: sesion.cursoNombre,
-          seccionNombre: sesion.seccionNombre,
-          temasRecientes: delCurso,
-          borrador,
-        }),
-      });
-
-      const sugerencias = (respuesta.datos.sugerencias ?? [])
-        .map((s) => s.trim())
-        .filter((s) => s.length > 0)
-        .slice(0, 3);
-
-      if (sugerencias.length > 0) {
-        await this.cacheService?.set(claveCache, sugerencias, 300);
-        return { sugerencias };
-      }
-      return { sugerencias: delCurso.slice(0, 3) };
-    } catch {
-      return {
-        sugerencias: borrador ? [borrador, ...delCurso].slice(0, 3) : delCurso.slice(0, 3),
-      };
-    }
-  }
-
-  async firmarSalidaWeb(
-    sesionId: string,
-    usuario: AuthenticatedUser,
-    ip?: string,
-  ): Promise<FirmaSesionResponseDto> {
-    if (usuario.impersonatedBy) {
-      throw new ForbiddenException(MENSAJES_SESION.FIRMA_BLOQUEADA_SIMULACION);
-    }
-    if (!(await this.firmaWebHabilitada())) {
-      throw new ForbiddenException(MENSAJES_SESION.FIRMA_WEB_DESHABILITADA);
-    }
-    const docenteId = await this.docenteDelUsuario(usuario);
-    return this.ejecutarFirmaSalida({
-      sesionId,
-      docenteId,
-      equipoId: null,
-      actorId: usuario.id,
-      canal: "web",
-      ip,
-    });
-  }
-
-  async misSesiones(
-    usuario: AuthenticatedUser,
-    query: RangoSesionesQueryDto,
-  ): Promise<MisSesionesResponseDto> {
-    if (query.hasta < query.desde) {
-      throw new BadRequestException(MENSAJES_SESION.RANGO_INVALIDO);
-    }
-    const docenteId = await this.docenteDelUsuario(usuario);
-    const { fecha: hoy } = ahoraEnColegio();
-    if (hoy >= query.desde && hoy <= query.hasta) {
-      await this.asegurarGeneracion(hoy);
-    }
-    const sesiones = await this.repository.sesionesDeDocente(docenteId, query.desde, query.hasta);
-    const cuenta = (estado: string) => sesiones.filter((s) => s.estado === estado).length;
-    return {
-      sesiones,
-      totales: {
-        cumplidas: cuenta("cumplida"),
-        parciales: cuenta("parcial"),
-        noCumplidas: cuenta("no_cumplida"),
-        justificadas: cuenta("justificada"),
-        pendientes: cuenta("pendiente") + cuenta("en_curso"),
-      },
-    };
-  }
-
-  async corregirTema(
-    sesionId: string,
-    dto: TemaSesionDto,
-    usuario: AuthenticatedUser,
-    ip?: string,
-  ): Promise<SesionResponseDto> {
-    const tema = dto.tema?.trim();
-    if (!tema) {
-      throw new BadRequestException(MENSAJES_SESION.FALTA_TEMA);
-    }
-    const docenteId = await this.docenteDelUsuario(usuario);
-    const sesion = await this.requireSesion(sesionId);
-    if (sesion.docenteId !== docenteId) {
-      throw new ForbiddenException(MENSAJES_SESION.SESION_NO_ES_SUYA);
-    }
-    await this.exigirBimestreAbierto(sesion.fecha, sesion.docenteId);
-    if (sesion.estado !== "pendiente" && sesion.estado !== "en_curso") {
-      throw new BadRequestException(MENSAJES_SESION.TEMA_CERRADO);
-    }
-    await this.repository.actualizarTema(sesionId, tema);
-    await this.auditService.log({
-      usuarioId: usuario.id,
-      accion: "actualizar",
-      tabla: "sesiones_clase",
-      registroId: sesionId,
-      valorAnterior: { tema: sesion.tema },
-      valorNuevo: { tema },
-      direccionIp: ip,
-    });
-    return this.requireSesion(sesionId);
-  }
-
-  async solicitarJustificacion(
-    sesionId: string,
-    dto: SolicitarJustificacionDto,
-    usuario: AuthenticatedUser,
-    ip?: string,
-  ): Promise<MensajeSesionResponseDto> {
-    const catalogo = MOTIVOS_JUSTIFICACION.find((m) => m.codigo === dto.motivo);
-    if (!catalogo) {
-      throw new BadRequestException(MENSAJES_SESION.JUSTIFICACION_SIN_MOTIVO);
-    }
-    const documentoUrl = dto.documentoUrl?.trim() || null;
-    const observacion = dto.observacion?.trim() || null;
-    if (catalogo.codigo === MOTIVO_OTRO && !observacion) {
-      throw new BadRequestException(MENSAJES_SESION.JUSTIFICACION_SIN_OBSERVACION);
-    }
-    if (!documentoUrl && (await this.motivosConDocumento()).has(catalogo.codigo)) {
-      throw new BadRequestException(MENSAJES_SESION.JUSTIFICACION_SIN_DOCUMENTO);
-    }
-    const motivo = catalogo.codigo === MOTIVO_OTRO ? (observacion as string) : catalogo.etiqueta;
-    const docenteId = await this.docenteDelUsuario(usuario);
-    const sesion = await this.requireSesion(sesionId);
-    if (sesion.docenteId !== docenteId) {
-      throw new ForbiddenException(MENSAJES_SESION.SESION_NO_ES_SUYA);
-    }
-    await this.exigirBimestreAbierto(sesion.fecha, sesion.docenteId);
-    if (sesion.estado !== "no_cumplida") {
-      throw new BadRequestException(MENSAJES_SESION.SOLO_NO_CUMPLIDA);
-    }
-    if (sesion.justificacion?.estado === "solicitada") {
-      throw new ConflictException(MENSAJES_SESION.JUSTIFICACION_EN_CURSO);
-    }
-    await this.repository.solicitarJustificacion(sesionId, {
-      motivoCodigo: catalogo.codigo,
-      motivo,
-      documentoUrl,
-    });
-    await this.auditService.log({
-      usuarioId: usuario.id,
-      accion: "actualizar",
-      tabla: "sesiones_clase",
-      registroId: sesionId,
-      valorNuevo: {
-        justificacion: "solicitada",
-        motivoCodigo: catalogo.codigo,
-        motivo,
-        documentoUrl,
-      },
-      direccionIp: ip,
-    });
-    return {
-      mensaje: MENSAJES_SESION.JUSTIFICACION_ENVIADA,
-      sesion: await this.requireSesion(sesionId),
-    };
-  }
-
-  // --- privados ------------------------------------------------------------------
-
-  /**
-   * RF-011 V4: la firma es solo en el Kiosko de Sesiones. La firma web queda apagada salvo que
-   * `sesion.permitir_firma_web` se active expresamente.
-   */
-  private async firmaWebHabilitada(): Promise<boolean> {
-    if (!this.variablesService) return true;
-    return this.variablesService.isActiva(VARIABLES_SESION.PERMITIR_FIRMA_WEB, false);
-  }
-
-  private async ejecutarFirmaIngreso(params: {
-    sesionId: string;
-    docenteId: string;
-    temaRaw: string | undefined;
-    equipoId: string | null;
-    actorId?: string;
-    canal: "kiosko" | "web";
-    ip?: string;
-  }): Promise<FirmaSesionResponseDto> {
-    const sesion = await this.sesionDelDocente(params.sesionId, params.docenteId);
-    const { fecha, hora } = ahoraEnColegio();
-    if (sesion.estado !== "pendiente") {
-      throw new ConflictException(MENSAJES_SESION.INGRESO_YA_FIRMADO);
-    }
-    if (sesion.fecha !== fecha) {
-      throw new BadRequestException(MENSAJES_SESION.SESION_TERMINADA);
-    }
-    // RF-024: si el docente no escribe el tema, se toma el título de su planificación.
-    const tema =
-      params.temaRaw?.trim() ||
-      (await this.planificacionesService?.tituloDeSesion(sesion.id)) ||
-      "";
-    if (!tema) {
-      throw new BadRequestException(MENSAJES_SESION.FALTA_TEMA);
-    }
-
-    const config = await this.configuracion();
-    const evaluacion = evaluarIngreso({
-      horaInicio: sesion.horaInicio,
-      horaFin: sesion.horaFin,
-      ahora: hora,
-      minutosAntes: config.minutosAntes,
-      toleranciaIngreso: config.toleranciaIngreso,
-    });
-    if (evaluacion.tipo === "antes") {
-      throw new BadRequestException(mensajeAntesDeVentana(evaluacion.habilitaA));
-    }
-    if (evaluacion.tipo === "despues") {
-      throw new BadRequestException(MENSAJES_SESION.SESION_TERMINADA);
-    }
-
-    const firmada = await this.repository.firmarIngreso(sesion.id, params.docenteId, {
-      hora,
-      tema,
-      minutosRetraso: evaluacion.minutosRetraso,
-      equipoId: params.equipoId,
-    });
-    if (!firmada) {
-      throw new ConflictException(MENSAJES_SESION.INGRESO_YA_FIRMADO);
-    }
-    await this.auditService.log({
-      ...(params.actorId ? { usuarioId: params.actorId } : {}),
-      accion: "actualizar",
-      tabla: "sesiones_clase",
-      registroId: sesion.id,
-      valorAnterior: { estado: "pendiente" },
-      valorNuevo: {
-        estado: "en_curso",
-        firma: "ingreso",
-        canal: params.canal,
-        hora,
-        tema,
-        minutosRetraso: evaluacion.minutosRetraso,
-        equipoId: params.equipoId,
-      },
-      direccionIp: params.ip,
-    });
-
-    // RF-024: la planificación del bloque pasa a «ejecutada»; un fallo no deshace la firma.
-    try {
-      await this.planificacionesService?.vincularConSesion(sesion.id);
-    } catch (error) {
-      this.logger.warn(`No se pudo vincular la planificación: ${(error as Error).message}`);
-    }
-
-    const horaFirma = horaCorta(hora);
-    return {
-      mensaje:
-        evaluacion.minutosRetraso > 0
-          ? mensajeIngresoConRetraso(horaFirma, evaluacion.minutosRetraso)
-          : mensajeIngreso(horaFirma, sesion.cursoNombre, sesion.seccionNombre),
-      sesion: await this.requireSesion(sesion.id),
-    };
-  }
-
-  private async ejecutarFirmaSalida(params: {
-    sesionId: string;
-    docenteId: string;
-    equipoId: string | null;
-    actorId?: string;
-    canal: "kiosko" | "web";
-    ip?: string;
-  }): Promise<FirmaSesionResponseDto> {
-    const sesion = await this.sesionDelDocente(params.sesionId, params.docenteId);
-    if (sesion.estado === "pendiente") {
-      throw new BadRequestException(MENSAJES_SESION.SALIDA_SIN_INGRESO);
-    }
-    if (sesion.estado !== "en_curso") {
-      throw new ConflictException(MENSAJES_SESION.SALIDA_YA_FIRMADA);
-    }
-
-    const { hora } = ahoraEnColegio();
-    const { toleranciaSalida } = await this.configuracion();
-    const salidaAntes = minutosSalidaAnticipada(sesion.horaFin, hora, toleranciaSalida);
-    const minutosPerdidos = sesion.minutosRetraso + salidaAntes;
-    const estado = minutosPerdidos === 0 ? "cumplida" : "parcial";
-
-    const firmada = await this.repository.firmarSalida(sesion.id, params.docenteId, {
-      hora,
-      minutosPerdidos,
-      estado,
-      equipoId: params.equipoId,
-    });
-    if (!firmada) {
-      throw new ConflictException(MENSAJES_SESION.SALIDA_YA_FIRMADA);
-    }
-    await this.auditService.log({
-      ...(params.actorId ? { usuarioId: params.actorId } : {}),
-      accion: "actualizar",
-      tabla: "sesiones_clase",
-      registroId: sesion.id,
-      valorAnterior: { estado: "en_curso" },
-      valorNuevo: {
-        estado,
-        firma: "salida",
-        canal: params.canal,
-        hora,
-        minutosPerdidos,
-        equipoId: params.equipoId,
-      },
-      direccionIp: params.ip,
-    });
-
-    const horaFirma = horaCorta(hora);
-    return {
-      mensaje:
-        estado === "cumplida"
-          ? mensajeSalidaCumplida(horaFirma)
-          : mensajeSalidaParcial(horaFirma, minutosPerdidos),
-      sesion: await this.requireSesion(sesion.id),
-    };
-  }
-
-  private async identificarEnKiosko(
-    token: string | undefined,
-    dto: CredencialesKioskoDto,
-  ): Promise<DocenteEnKiosko> {
-    const { equipo } = await this.equiposService.validarKiosko(token);
-    if (!equipo || equipo.proposito !== PROPOSITO_EQUIPO_SESIONES) {
-      throw new ForbiddenException(MENSAJES_SESION.EQUIPO_NO_AUTORIZADO);
-    }
-    const { persona } = await this.marcacionesService.autenticarCredencial(dto.codigo, dto.pin);
-    if (persona.tipoPersona !== "docentes") {
-      throw new ForbiddenException(MENSAJES_SESION.SOLO_DOCENTES);
-    }
-    const docente = await this.repository.docenteDePersona(persona.personaId);
-    if (!docente?.activo) {
-      throw new ForbiddenException(MENSAJES_SESION.SOLO_DOCENTES);
-    }
-    return { docenteId: docente.id, nombre: persona.nombreCompleto, equipoId: equipo.id };
-  }
-
-  private async sesionDelDocente(sesionId: string, docenteId: string): Promise<SesionResponseDto> {
-    const sesion = await this.requireSesion(sesionId);
-    if (sesion.docenteId !== docenteId) {
-      throw new ForbiddenException(MENSAJES_SESION.SESION_AJENA);
-    }
-    await this.exigirBimestreAbierto(sesion.fecha, sesion.docenteId);
-    return sesion;
-  }
-
-  private async requireSesion(sesionId: string): Promise<SesionResponseDto> {
-    const sesion = await this.repository.findById(sesionId);
-    if (!sesion) {
-      throw new NotFoundException(MENSAJES_SESION.SESION_NO_ENCONTRADA);
-    }
-    return sesion;
-  }
-
-  private async conAntiguedad(sesiones: SesionResponseDto[]): Promise<SolicitudJustificacionDto[]> {
-    if (sesiones.length === 0) return [];
-    const hoy = ahoraEnColegio().fecha;
-    const desdes = sesiones.map((s) => (s.justificacion?.solicitadaEn ?? hoy).slice(0, 10));
-    const masAntigua = desdes.reduce((a, b) => (a < b ? a : b));
-    const sinClases = new Set(await this.repository.diasSinClases(masAntigua, hoy));
-    const { avisoDias } = await this.variablesJustificacion();
-    return sesiones.map((s, i) => {
-      const antiguedadDias = diasHabilesTranscurridos(desdes[i], hoy, sinClases);
-      return { ...s, antiguedadDias, vencida: antiguedadDias > avisoDias };
-    });
-  }
-
-  /** Contador del año lectivo; solo aplica al motivo «Permiso personal». */
-  private async contadorPermisos(sesion: SesionResponseDto): Promise<ContadorPermisosDto | null> {
-    if (sesion.justificacion?.motivoCodigo !== MOTIVO_PERMISO_PERSONAL) return null;
-    const { permisosMax } = await this.variablesJustificacion();
-    const usados = (await this.repository.diasPermisoPersonal(sesion.docenteId, sesion.fecha))
-      .length;
-    return { usados, tope: permisosMax, mensaje: mensajeContadorPermisos(usados, permisosMax) };
-  }
-
-  /** Si aprobar esta sesión haría pasar el tope de días de permiso personal del año. */
-  private async superaTopePermisos(sesion: SesionResponseDto): Promise<{ tope: number } | null> {
-    if (sesion.justificacion?.motivoCodigo !== MOTIVO_PERMISO_PERSONAL) return null;
-    const { permisosMax } = await this.variablesJustificacion();
-    const dias = await this.repository.diasPermisoPersonal(sesion.docenteId, sesion.fecha);
-    // Varias sesiones del mismo día cuentan un solo día.
-    const total = dias.includes(sesion.fecha) ? dias.length : dias.length + 1;
-    return total > permisosMax ? { tope: permisosMax } : null;
-  }
-
-  private async motivosConDocumento(): Promise<Set<string>> {
-    const { motivosConDocumento } = await this.variablesJustificacion();
-    return motivosConDocumento;
-  }
-
-  private async variablesJustificacion(): Promise<{
-    avisoDias: number;
-    permisosMax: number;
-    motivosConDocumento: Set<string>;
-  }> {
-    const valores = await this.repository.valoresVariables(Object.values(VARIABLES_JUSTIFICACION));
-    const leer = (codigo: string): string => {
-      const valor = valores.get(codigo);
-      if (valor === undefined) {
-        throw new InternalServerErrorException(MENSAJES_SESION.VARIABLE_FALTANTE(codigo));
-      }
-      return valor;
-    };
-    const entero = (codigo: string): number => {
-      const n = Number.parseInt(leer(codigo), 10);
-      if (Number.isNaN(n) || n < 0) {
-        throw new InternalServerErrorException(MENSAJES_SESION.VARIABLE_FALTANTE(codigo));
-      }
-      return n;
-    };
-    return {
-      avisoDias: entero(VARIABLES_JUSTIFICACION.AVISO_DIAS),
-      permisosMax: entero(VARIABLES_JUSTIFICACION.PERMISOS_MAX_ANIO),
-      motivosConDocumento: new Set(
-        leer(VARIABLES_JUSTIFICACION.MOTIVOS_CON_DOCUMENTO)
-          .split(",")
-          .map((m) => m.trim())
-          .filter(Boolean),
-      ),
-    };
-  }
-
-  private async requireJustificacionSolicitada(sesionId: string): Promise<SesionResponseDto> {
-    const sesion = await this.requireSesion(sesionId);
-    if (sesion.justificacion?.estado !== "solicitada") {
-      throw new BadRequestException(MENSAJES_SESION.SIN_JUSTIFICACION_SOLICITADA);
-    }
-    return sesion;
-  }
-
-  private async exigirBimestreAbierto(fecha: string, docenteId?: string): Promise<void> {
-    if (await this.aniosService.sesionesBloqueadasEn(fecha)) {
-      throw new ForbiddenException(MENSAJES_SESION.BIMESTRE_CERRADO);
-    }
-    if (docenteId && this.consolidadoService) {
-      await this.consolidadoService.validarModificacionPermitida(docenteId, fecha);
-    }
-  }
-
-  private async docenteDelUsuario(usuario: AuthenticatedUser): Promise<string> {
-    const docente = await this.repository.docenteDePersona(usuario.personaId);
-    if (!docente) {
-      throw sinFichaDocente();
-    }
-    return docente.id;
-  }
-
-  private async asegurarGeneracion(fecha: string): Promise<void> {
-    const clave = `sesiones:generadas:${fecha}`;
-    if (await this.cacheService?.get<boolean>(clave)) {
-      return;
-    }
-    await this.generarDelDia(fecha);
-    await this.cacheService?.set(clave, true, 600);
-  }
-
-  /** Lee de las variables de sistema; ningún valor de negocio va escrito en el código. */
-  private async configuracion(): Promise<ConfiguracionSesion> {
-    const codigos = Object.values(VARIABLES_SESION);
-    const valores = await this.repository.valoresVariables(codigos);
-    const entero = (codigo: string): number => {
-      const valor = Number.parseInt(valores.get(codigo) ?? "", 10);
-      if (Number.isNaN(valor) || valor < 0) {
-        throw new InternalServerErrorException(MENSAJES_SESION.VARIABLE_FALTANTE(codigo));
-      }
-      return valor;
-    };
-    const booleano = valores.get(VARIABLES_SESION.SALIDA_AUTOMATICA);
-    if (booleano === undefined) {
-      throw new InternalServerErrorException(
-        MENSAJES_SESION.VARIABLE_FALTANTE(VARIABLES_SESION.SALIDA_AUTOMATICA),
-      );
-    }
-    return {
-      minutosAntes: entero(VARIABLES_SESION.MINUTOS_ANTES_FIRMA_INGRESO),
-      toleranciaIngreso: entero(VARIABLES_SESION.TOLERANCIA_INGRESO),
-      toleranciaSalida: entero(VARIABLES_SESION.TOLERANCIA_SALIDA),
-      salidaAutomatica: booleano.trim().toLowerCase() === "true",
-    };
+  solicitarJustificacion(
+    ...args: Parameters<SesionesJustificacionesService["solicitarJustificacion"]>
+  ) {
+    return this.subs.justificacionesSvc.solicitarJustificacion(...args);
   }
 }

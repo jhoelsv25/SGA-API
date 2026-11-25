@@ -49,6 +49,18 @@ export class DocentesService {
     return this.repository.findAll(query);
   }
 
+  async obtenerResumen(query?: DocenteQueryDto): Promise<{
+    total: number;
+    activos: number;
+    licencia: number;
+    cesados: number;
+    nombrados: number;
+    contratados: number;
+    practicantes: number;
+  }> {
+    return this.repository.obtenerResumen(query);
+  }
+
   async findById(id: string): Promise<DocenteResponseDto> {
     const docente = await this.repository.findById(id);
     if (!docente) {
@@ -120,11 +132,17 @@ export class DocentesService {
     actorId: string,
     ip?: string,
   ): Promise<CreateDocenteResponseDto> {
-    // 1. Validar código único de docente
-    const existingCodigo = await this.repository.findByCodigo(dto.codigo);
-    if (existingCodigo) {
-      throw new ConflictException(DOCENTE_MESSAGES.CODIGO_DUPLICADO);
+    // 1. Validar código único o autogenerar código institucional de 14 dígitos (YYYYMMDD + orden)
+    let codigoFinal = dto.codigo?.trim();
+    if (codigoFinal) {
+      const existingCodigo = await this.repository.findByCodigo(codigoFinal);
+      if (existingCodigo) {
+        throw new ConflictException(DOCENTE_MESSAGES.CODIGO_DUPLICADO);
+      }
+    } else {
+      codigoFinal = await this.repository.generarSiguienteCodigo();
     }
+    dto.codigo = codigoFinal;
 
     // 2. Validar persona y unicidad de ficha
     let numeroDocumento: string;

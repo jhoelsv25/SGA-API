@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, desc, eq, isNull, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import { Database, DRIZZLE } from "../../../core/database";
 import {
   institucion,
@@ -14,6 +14,7 @@ import {
 } from "../../../core/database/schema";
 import { AuthModuleDto } from "../dto/auth-response.dto";
 import type {
+  ContextoSesionSqlResult,
   IAuthRepository,
   InstitutionSummary,
   UsuarioRolRecord,
@@ -22,6 +23,7 @@ import type {
   SessionData,
   UsuarioRecord,
   UserWithPersonaBirthdate,
+  ValidacionJwtSqlResult,
 } from "../interfaces";
 
 @Injectable()
@@ -168,91 +170,107 @@ export class AuthRepository implements IAuthRepository {
     return Boolean(row?.cerradaEn);
   }
 
-  async getUserModules(rolId: string, esSistema: boolean): Promise<AuthModuleDto[]> {
-    if (esSistema) {
-      const allModules = await this.db
-        .select({
-          id: modulos.id,
-          nombre: modulos.nombre,
-          codigo: modulos.codigo,
-          icono: modulos.icono,
-        })
-        .from(modulos)
-        .where(eq(modulos.vigente, true))
-        .orderBy(modulos.orden);
+  async validarJwtUsuario(
+    usuarioId: string,
+    tokenHash: string | null,
+  ): Promise<ValidacionJwtSqlResult> {
+    const payload = { usuarioId, tokenHash };
+    const result = (await this.db.execute(sql`
+      SELECT fn_validar_jwt_usuario(${JSON.stringify(payload)}::jsonb) AS resultado
+    `)) as unknown as { rows?: Array<{ resultado?: ValidacionJwtSqlResult }> };
 
-      const moduleList: AuthModuleDto[] = [];
-      for (const mod of allModules) {
-        const [firstMenu] = await this.db
-          .select({ ruta: menus.ruta })
-          .from(menus)
-          .where(
-            and(
-              eq(menus.moduloId, mod.id),
-              eq(menus.vigente, true),
-              sql`'web' = ANY(${menus.aplicaciones})`,
-            ),
-          )
-          .orderBy(menus.orden)
-          .limit(1);
-
-        moduleList.push({
-          id: mod.id,
-          name: mod.nombre,
-          code: mod.codigo,
-          icon: mod.icono ?? undefined,
-          path: firstMenu?.ruta ?? `/${mod.codigo}`,
-        });
+    return (
+      result.rows?.[0]?.resultado ?? {
+        sesionCerrada: false,
+        usuario: null,
+        roles: [],
       }
-      return moduleList;
-    }
+    );
+  }
 
-    const permittedModules = await this.db
-      .selectDistinct({
-        id: modulos.id,
-        nombre: modulos.nombre,
-        codigo: modulos.codigo,
-        icono: modulos.icono,
-        orden: modulos.orden,
-      })
-      .from(rolMenus)
-      .innerJoin(menus, eq(rolMenus.menuId, menus.id))
-      .innerJoin(modulos, eq(menus.moduloId, modulos.id))
+  async obtenerContextoSesion(
+    usuarioId: string,
+    rolId?: string,
+  ): Promise<ContextoSesionSqlResult | null> {
+    const payload = { usuarioId, rolId: rolId ?? null };
+    const result = (await this.db.execute(sql`
+      SELECT fn_obtener_contexto_sesion(${JSON.stringify(payload)}::jsonb) AS resultado
+    `)) as unknown as { rows?: Array<{ resultado?: ContextoSesionSqlResult | null }> };
+
+    return result.rows?.[0]?.resultado ?? null;
+  }
+
+  private async obtenerPrimerasRutasWebPorModulo(
+    moduloIds: string[],
+  ): Promise<Map<string, string>> {
+    const rutasPorModulo = new Map<string, string>();
+    if (moduloIds.length === 0) return rutasPorModulo;
+
+    const rows = await this.db
+      .select({ moduloId: menus.moduloId, ruta: menus.ruta })
+      .from(menus)
       .where(
         and(
-          eq(rolMenus.rolId, rolId),
+          inArray(menus.moduloId, moduloIds),
           eq(menus.vigente, true),
-          eq(modulos.vigente, true),
           sql`'web' = ANY(${menus.aplicaciones})`,
         ),
       )
-      .orderBy(modulos.orden);
+      .orderBy(asc(menus.orden));
 
-    const result: AuthModuleDto[] = [];
-    for (const mod of permittedModules) {
-      const [firstMenu] = await this.db
-        .select({ ruta: menus.ruta })
-        .from(menus)
-        .where(
-          and(
-            eq(menus.moduloId, mod.id),
-            eq(menus.vigente, true),
-            sql`'web' = ANY(${menus.aplicaciones})`,
-          ),
-        )
-        .orderBy(menus.orden)
-        .limit(1);
-
-      result.push({
-        id: mod.id,
-        name: mod.nombre,
-        code: mod.codigo,
-        icon: mod.icono ?? undefined,
-        path: firstMenu?.ruta ?? `/${mod.codigo}`,
-      });
+    for (const row of rows) {
+      if (row.ruta && !rutasPorModulo.has(row.moduloId)) {
+        rutasPorModulo.set(row.moduloId, row.ruta);
+      }
     }
 
-    return result;
+    return rutasPorModulo;
+  }
+
+  async getUserModules(rolId: string, esSistema: boolean): Promise<AuthModuleDto[]> {
+    const baseModules = esSistema
+      ? await this.db
+          .select({
+            id: modulos.id,
+            nombre: modulos.nombre,
+            codigo: modulos.codigo,
+            icono: modulos.icono,
+          })
+          .from(modulos)
+          .where(eq(modulos.vigente, true))
+          .orderBy(modulos.orden)
+      : await this.db
+          .selectDistinct({
+            id: modulos.id,
+            nombre: modulos.nombre,
+            codigo: modulos.codigo,
+            icono: modulos.icono,
+            orden: modulos.orden,
+          })
+          .from(rolMenus)
+          .innerJoin(menus, eq(rolMenus.menuId, menus.id))
+          .innerJoin(modulos, eq(menus.moduloId, modulos.id))
+          .where(
+            and(
+              eq(rolMenus.rolId, rolId),
+              eq(menus.vigente, true),
+              eq(modulos.vigente, true),
+              sql`'web' = ANY(${menus.aplicaciones})`,
+            ),
+          )
+          .orderBy(modulos.orden);
+
+    const rutasPorModulo = await this.obtenerPrimerasRutasWebPorModulo(
+      baseModules.map((mod) => mod.id),
+    );
+
+    return baseModules.map((mod) => ({
+      id: mod.id,
+      name: mod.nombre,
+      code: mod.codigo,
+      icon: mod.icono ?? undefined,
+      path: rutasPorModulo.get(mod.id) ?? `/${mod.codigo}`,
+    }));
   }
 
   async getMenuRoutes(rolId: string, _esSistema?: boolean): Promise<string[]> {

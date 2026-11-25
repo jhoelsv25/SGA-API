@@ -2,14 +2,18 @@ import {
   Injectable,
   InternalServerErrorException,
   Logger,
+  Optional,
   UnauthorizedException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import { hashSha256 } from "../../../common/utils";
+import { CacheService } from "../../../core/cache/cache.service";
 import { getJwtSecret } from "../utils/jwt-secret.util";
 import type { JwtPayload } from "../interfaces/jwt-payload.interface";
 import { AuthRepository } from "../repositories/auth.repository";
+
+const TTL_TOKEN_REVOCADO_SEGUNDOS = 86_400;
 
 @Injectable()
 export class SessionService {
@@ -19,6 +23,7 @@ export class SessionService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly authRepository: AuthRepository,
+    @Optional() private readonly cacheService?: CacheService,
   ) {}
 
   generateAccessToken(payload: JwtPayload, rememberMe = false): string {
@@ -31,6 +36,25 @@ export class SessionService {
     } catch (error) {
       this.logger.error(`Error al firmar token JWT: ${(error as Error).message}`);
       throw new InternalServerErrorException("No se pudo generar el token de acceso");
+    }
+  }
+
+  /**
+   * Genera un JWT de renovación con mayor vigencia (7 días, o 30 días con "Recordarme")
+   * para almacenarse exclusivamente en cookie HttpOnly.
+   */
+  generateRefreshToken(payload: JwtPayload, rememberMe = false): string {
+    try {
+      const expiresIn = (rememberMe ? "30d" : "7d") as unknown as number;
+      const {
+        iat: _iat,
+        exp: _exp,
+        ...payloadLimpio
+      } = payload as JwtPayload & { iat?: number; exp?: number };
+      return this.jwtService.sign(payloadLimpio, { expiresIn });
+    } catch (error) {
+      this.logger.error(`Error al firmar token de renovación JWT: ${(error as Error).message}`);
+      throw new InternalServerErrorException("No se pudo generar el token de renovación");
     }
   }
 
@@ -74,7 +98,10 @@ export class SessionService {
   async revokeSession(token: string): Promise<void> {
     try {
       const tokenHash = hashSha256(token);
-      await this.authRepository.closeSession(tokenHash);
+      await Promise.all([
+        this.authRepository.closeSession(tokenHash),
+        this.cacheService?.set(`auth:revoked:${tokenHash}`, true, TTL_TOKEN_REVOCADO_SEGUNDOS),
+      ]);
     } catch (error) {
       this.logger.warn(`Error al revocar sesión en BD: ${(error as Error).message}`);
     }

@@ -46,22 +46,17 @@ import {
   ReprogramarObservacionDto,
   ResumenConsolidadoQueryDto,
 } from "./dto";
-import type { ActorObservacion } from "./interfaces";
-import { ObservacionesEjecucionService } from "./observaciones-ejecucion.service";
-import { ObservacionesProgramacionService } from "./observaciones-programacion.service";
-import { ObservacionesReporteService } from "./observaciones-reporte.service";
+import { actorDe } from "./controllers";
+import {
+  ObservacionesEjecucionService,
+  ObservacionesProgramacionService,
+  ObservacionesReporteService,
+} from "./services";
 
 const XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 const LIMITE_DURO_SUBIDA_BYTES = 20 * 1024 * 1024;
 
-export function actorDe(usuario: AuthenticatedUser): ActorObservacion {
-  return {
-    id: usuario.id,
-    roleId: usuario.roleId,
-    role: usuario.role,
-    personaId: usuario.personaId,
-  };
-}
+export { actorDe };
 
 /** Observaciones de aula (RF-023): cronograma, ficha de notas, calificación y retroalimentación. */
 @ApiTags("Observaciones de aula")

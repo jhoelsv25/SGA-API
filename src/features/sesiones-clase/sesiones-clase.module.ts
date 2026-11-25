@@ -6,14 +6,27 @@ import { QueuesModule } from "../../core/queues/queues.module";
 import { AnioEscolarModule } from "../anio-escolar/anio-escolar.module";
 import { AulaVirtualModule } from "../aula-virtual/aula-virtual.module";
 import { CalendarioModule } from "../calendario/calendario.module";
+import { ConsolidadoDocenteModule } from "../consolidado-docente/consolidado-docente.module";
 import { EquiposModule } from "../equipos/equipos.module";
 import { MarcacionesModule } from "../marcaciones/marcaciones.module";
-import { ConsolidadoDocenteModule } from "../consolidado-docente/consolidado-docente.module";
-import { PlanificacionSesionesModule } from "../planificacion-sesiones/planificacion-sesiones.module";
 import { NotificacionesModule } from "../notificaciones/notificaciones.module";
+import { PlanificacionSesionesModule } from "../planificacion-sesiones/planificacion-sesiones.module";
 import { VariablesSistemaModule } from "../variables-sistema/variables-sistema.module";
 import { SesionesClaseProcessor } from "./processors";
-import { SesionesClaseRepository } from "./repositories";
+import {
+  SesionesClaseRepository,
+  SesionesFirmasRepository,
+  SesionesJustificacionesRepository,
+  SesionesLecturaRepository,
+} from "./repositories";
+import {
+  SesionesCicloService,
+  SesionesContextoHelper,
+  SesionesFirmasService,
+  SesionesIaService,
+  SesionesJustificacionesService,
+  SesionesPanelService,
+} from "./services";
 import { SesionesClaseController } from "./sesiones-clase.controller";
 import { SesionesClaseService } from "./sesiones-clase.service";
 
@@ -32,7 +45,21 @@ import { SesionesClaseService } from "./sesiones-clase.service";
     VariablesSistemaModule,
   ],
   controllers: [SesionesClaseController],
-  providers: [SesionesClaseService, SesionesClaseRepository, SesionesClaseProcessor, AuditService],
+  providers: [
+    SesionesLecturaRepository,
+    SesionesFirmasRepository,
+    SesionesJustificacionesRepository,
+    SesionesClaseRepository,
+    SesionesContextoHelper,
+    SesionesCicloService,
+    SesionesIaService,
+    SesionesFirmasService,
+    SesionesPanelService,
+    SesionesJustificacionesService,
+    SesionesClaseService,
+    SesionesClaseProcessor,
+    AuditService,
+  ],
   exports: [SesionesClaseService],
 })
 export class SesionesClaseModule {}

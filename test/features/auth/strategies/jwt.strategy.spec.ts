@@ -145,5 +145,76 @@ describe("JwtStrategy (RF-001: Validación de Token y Sesión)", () => {
       );
       expect(authRepository.findUserById).not.toHaveBeenCalled();
     });
+
+    it("debe validar en una sola consulta usando fn_validar_jwt_usuario y cachear el resultado en Redis", async () => {
+      const cacheGet = jest.fn().mockResolvedValue(null);
+      const cacheSet = jest.fn().mockResolvedValue(true);
+      const validarJwtUsuario = jest.fn().mockResolvedValue({
+        sesionCerrada: false,
+        usuario: mockUserRecord,
+        roles: [
+          { rolId: mockPayload.roleId, nombre: "Docente", esSistema: false, esPrincipal: true },
+        ],
+      });
+
+      const estrategiaConCache = new JwtStrategy(
+        { get: jest.fn().mockReturnValue("sga_test_secret_key") } as unknown as ConfigService,
+        { validarJwtUsuario } as unknown as AuthRepository,
+        {
+          get: cacheGet,
+          set: cacheSet,
+        } as unknown as import("@/core/cache/cache.service").CacheService,
+      );
+
+      const res = await estrategiaConCache.validate(mockRequest, mockPayload);
+
+      expect(res.id).toBe(mockUserRecord.id);
+      expect(validarJwtUsuario).toHaveBeenCalledTimes(1);
+      expect(cacheSet).toHaveBeenCalledWith(
+        `auth:jwt:${mockPayload.sub}`,
+        expect.objectContaining({ usuario: mockUserRecord }),
+        60,
+      );
+    });
+
+    it("debe evitar consultas a BD cuando Redis ya tiene la sesión cacheada y rechazar tokens revocados en Redis", async () => {
+      const validarJwtUsuario = jest.fn();
+      const cacheServiceHit = {
+        get: jest.fn().mockImplementation((key: string) => {
+          if (key.startsWith("auth:revoked:")) return Promise.resolve(null);
+          return Promise.resolve({
+            usuario: mockUserRecord,
+            roles: [
+              { rolId: mockPayload.roleId, nombre: "Docente", esSistema: false, esPrincipal: true },
+            ],
+          });
+        }),
+        set: jest.fn(),
+      };
+
+      const estrategiaCacheada = new JwtStrategy(
+        { get: jest.fn().mockReturnValue("sga_test_secret_key") } as unknown as ConfigService,
+        { validarJwtUsuario } as unknown as AuthRepository,
+        cacheServiceHit as unknown as import("@/core/cache/cache.service").CacheService,
+      );
+
+      const res = await estrategiaCacheada.validate(mockRequest, mockPayload);
+      expect(res.role).toBe("Docente");
+      expect(validarJwtUsuario).not.toHaveBeenCalled();
+
+      const estrategiaRevocada = new JwtStrategy(
+        { get: jest.fn().mockReturnValue("sga_test_secret_key") } as unknown as ConfigService,
+        { validarJwtUsuario } as unknown as AuthRepository,
+        {
+          get: jest.fn().mockResolvedValue(true),
+          set: jest.fn(),
+        } as unknown as import("@/core/cache/cache.service").CacheService,
+      );
+
+      await expect(estrategiaRevocada.validate(mockRequest, mockPayload)).rejects.toThrow(
+        new UnauthorizedException("La sesión fue cerrada. Ingrese nuevamente."),
+      );
+      expect(validarJwtUsuario).not.toHaveBeenCalled();
+    });
   });
 });

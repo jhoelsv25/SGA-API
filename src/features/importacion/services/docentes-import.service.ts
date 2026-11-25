@@ -38,36 +38,28 @@ export class DocentesImportService implements IEntidadImportHandler {
       "cod",
     );
 
-    if (!codigoDocente) {
-      return {
-        numeroFila,
-        datos,
-        estado: "error",
-        accion: "omitir",
-        mensaje: "El código de docente es obligatorio.",
-      };
-    }
+    if (codigoDocente) {
+      if (codigosEnLote.has(codigoDocente)) {
+        return {
+          numeroFila,
+          datos,
+          estado: "error",
+          accion: "omitir",
+          mensaje: "Código de docente duplicado en el mismo archivo.",
+        };
+      }
+      codigosEnLote.add(codigoDocente);
 
-    if (codigosEnLote.has(codigoDocente)) {
-      return {
-        numeroFila,
-        datos,
-        estado: "error",
-        accion: "omitir",
-        mensaje: "Código de docente duplicado en el mismo archivo.",
-      };
-    }
-    codigosEnLote.add(codigoDocente);
-
-    const docenteExistente = await this.docentesRepository.findByCodigo(codigoDocente);
-    if (docenteExistente) {
-      return {
-        numeroFila,
-        datos,
-        estado: "ya_registrada",
-        accion: "omitir",
-        mensaje: IMPORTACION_MESSAGES.YA_REGISTRADO("docente"),
-      };
+      const docenteExistente = await this.docentesRepository.findByCodigo(codigoDocente);
+      if (docenteExistente) {
+        return {
+          numeroFila,
+          datos,
+          estado: "ya_registrada",
+          accion: "omitir",
+          mensaje: IMPORTACION_MESSAGES.YA_REGISTRADO("docente"),
+        };
+      }
     }
 
     const validacion = validarCamposDocenteFila(datos);
@@ -124,7 +116,7 @@ export class DocentesImportService implements IEntidadImportHandler {
       {
         personaId: personaExistente?.id,
         nuevaPersona: personaExistente ? undefined : basePersona,
-        codigo: codigoDocente,
+        codigo: codigoDocente || undefined,
         especialidad,
         tituloProfesional,
         tipoContrato,
@@ -140,7 +132,7 @@ export class DocentesImportService implements IEntidadImportHandler {
         nombreCompleto: created.docente.persona.nombreCompleto,
         numeroDocumento: basePersona.numeroDocumento,
         tipoRol: "Docente",
-        nombreUsuario: created.docente.usuario?.nombreUsuario || codigoDocente,
+        nombreUsuario: created.docente.usuario?.nombreUsuario || created.docente.codigo,
         tempPassword: created.tempPassword || undefined,
         codigoCredencial: created.credencial.codigo,
         pin: created.credencial.pin,
