@@ -39,6 +39,19 @@ export class PersonasService {
     }
   }
 
+  async obtenerResumen(query?: PersonaQueryDto): Promise<{
+    total: number;
+    conFicha: number;
+    conCuenta: number;
+    provisionales: number;
+  }> {
+    try {
+      return await this.repository.obtenerResumen(query);
+    } catch (error) {
+      handlePersonaDatabaseError(error, this.logger);
+    }
+  }
+
   async findById(id: string): Promise<PersonaResponseDto> {
     try {
       const persona = await this.repository.findById(id);

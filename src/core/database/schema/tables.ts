@@ -651,7 +651,7 @@ export const cursos = pgTable(
       .where(sql`(eliminado_en IS NULL)`),
     check(
       "ck_cursos_area",
-      sql`(area_curricular)::text = ANY ((ARRAY['matematica'::character varying, 'comunicacion'::character varying, 'ingles'::character varying, 'arte_cultura'::character varying, 'ciencias_sociales'::character varying, 'dpcc'::character varying, 'educacion_fisica'::character varying, 'educacion_religiosa'::character varying, 'ciencia_tecnologia'::character varying, 'ept'::character varying, 'taller'::character varying, 'tutoria'::character varying])::text[])`,
+      sql`(area_curricular)::text = ANY ((ARRAY['matematica'::character varying, 'comunicacion'::character varying, 'quechua'::character varying, 'ingles'::character varying, 'arte_cultura'::character varying, 'ciencias_sociales'::character varying, 'dpcc'::character varying, 'educacion_fisica'::character varying, 'educacion_religiosa'::character varying, 'ciencia_tecnologia'::character varying, 'ept'::character varying, 'taller'::character varying, 'tutoria'::character varying])::text[])`,
     ),
     check("ck_cursos_color", sql`(color_hex IS NULL) OR (color_hex ~ '^#[0-9A-Fa-f]{6}$'::text)`),
   ],

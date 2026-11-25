@@ -43,6 +43,15 @@ export class DocentesController {
     return this.docentesService.findAll(query);
   }
 
+  @Get("resumen")
+  @Roles("Administrador", "Director", "Subdirector", "Secretaria")
+  @ApiOperation({
+    summary: "Resumen de totales de la plana docente por estado y régimen laboral",
+  })
+  async obtenerResumen(@Query() query: DocenteQueryDto) {
+    return this.docentesService.obtenerResumen(query);
+  }
+
   @Get(":id")
   @Roles("Administrador", "Director", "Subdirector", "Secretaria")
   @ApiOperation({ summary: "Obtener detalle completo de un docente por ID" })

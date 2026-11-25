@@ -41,6 +41,15 @@ export class ApoderadosService {
     return this.repository.findAll(query);
   }
 
+  async obtenerResumen(query?: ApoderadoQueryDto): Promise<{
+    total: number;
+    conEstudiantes: number;
+    principales: number;
+    conCuenta: number;
+  }> {
+    return this.repository.obtenerResumen(query);
+  }
+
   async findById(id: string): Promise<ApoderadoResponseDto> {
     const apoderado = await this.repository.findById(id);
     if (!apoderado) {

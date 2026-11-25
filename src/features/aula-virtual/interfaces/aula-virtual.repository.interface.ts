@@ -1,166 +1,44 @@
 import type {
   AccionActividadAula,
-  CalculoNotaIntentos,
   EstadoEntrega,
   EstadoSolicitudFecha,
-  EstadoTarea,
-  RevelarRespuestas,
-  TipoMaterial,
   TipoModeracion,
   TipoPregunta,
   TipoTarea,
 } from "../constants";
+import type {
+  ActividadEstudianteMaterial,
+  ActividadEstudianteTarea,
+  ComentarioMuroFila,
+  HistorialModeracionFila,
+  MensajeChatFila,
+  PublicacionMuroFila,
+} from "./aula-interaccion.interface";
+import type {
+  CambioFechaHistorial,
+  ContenidoMaterial,
+  CursoAula,
+  CursoAulaResumen,
+  FilaSeguimiento,
+  HorarioBloque,
+  MaterialFila,
+  NuevaUnidad,
+  NuevoMaterial,
+  PeriodoAula,
+  SesionEnlazada,
+  SolicitudFila,
+  UnidadFila,
+} from "./aula-materiales.interface";
+import type {
+  EntregaFila,
+  NuevaTarea,
+  TareaConPreguntas,
+  TareaFila,
+} from "./aula-tareas.interface";
 
-export interface CursoAula {
-  id: string;
-  docenteId: string | null;
-  seccionId: string;
-  anioAcademicoId: string;
-  cursoNombre: string;
-  seccionNombre: string;
-}
-
-export interface PeriodoAula {
-  id: string;
-  anioAcademicoId: string;
-  nombre: string;
-  fechaInicio: string;
-  fechaFin: string;
-  estado: string;
-}
-
-export interface UnidadFila {
-  id: string;
-  cursoSeccionId: string;
-  periodoId: string | null;
-  titulo: string;
-  descripcion: string | null;
-  orden: number;
-  fechaInicio: string | null;
-  fechaFin: string | null;
-  publicada: boolean;
-}
-
-export interface MaterialFila {
-  id: string;
-  unidadId: string;
-  cursoSeccionId: string;
-  periodoId: string | null;
-  docenteId: string;
-  titulo: string;
-  descripcion: string | null;
-  tipo: TipoMaterial;
-  url: string | null;
-  archivoNombre: string | null;
-  archivoTamanoBytes: number | null;
-  horarioId: string | null;
-  esPlanificado: boolean;
-  fechaCongelada: boolean;
-  vigente: boolean;
-  visible: boolean;
-  orden: number;
-  fechaProgramada: string | null;
-  publicadoEn: string | null;
-  sesionClaseId: string | null;
-}
-
-export interface HorarioBloque {
-  id: string;
-  cursoSeccionId: string | null;
-  diaSemana: number;
-  horaInicio: string;
-  horaFin: string;
-  tipoBloque: string;
-}
-
-export interface SesionEnlazada {
-  id: string;
-  fecha: string;
-  tema: string | null;
-}
-
-export interface NuevaUnidad {
-  cursoSeccionId: string;
-  periodoId: string;
-  titulo: string;
-  descripcion: string | null;
-  orden: number;
-  fechaInicio: string;
-  fechaFin: string;
-  publicada: boolean;
-}
-
-export interface NuevoMaterial {
-  unidadId: string;
-  docenteId: string;
-  titulo: string;
-  descripcion: string | null;
-  tipo: TipoMaterial;
-  horarioId: string | null;
-  esPlanificado: boolean;
-  fechaCongelada: boolean;
-  fechaProgramada: string | null;
-  orden: number;
-}
-
-export interface ContenidoMaterial {
-  url: string;
-  archivoNombre: string | null;
-  archivoTamanoBytes: number | null;
-}
-
-export interface SolicitudFila {
-  id: string;
-  materialId: string;
-  materialTitulo: string;
-  cursoSeccionId: string;
-  cursoNombre: string;
-  seccionNombre: string;
-  docenteNombre: string;
-  fechaAnterior: string;
-  fechaSolicitada: string;
-  motivo: string;
-  estado: EstadoSolicitudFecha;
-  solicitadoPorId: string;
-  solicitadoEn: string;
-  resueltoEn: string | null;
-  respuesta: string | null;
-}
-
-export interface CambioFechaHistorial {
-  id: string;
-  fechaAnterior: string;
-  fechaSolicitada: string;
-  motivo: string;
-  estado: EstadoSolicitudFecha;
-  solicitadoEn: string;
-  resueltoEn: string | null;
-  respuesta: string | null;
-}
-
-export interface FilaSeguimiento {
-  docenteId: string;
-  docenteNombre: string;
-  cursoSeccionId: string;
-  cursoNombre: string;
-  seccionNombre: string;
-  planificados: number;
-  aTiempo: number;
-  fueraDePlazo: number;
-  noPublicados: number;
-  solicitudesPendientes: number;
-}
-
-export interface CursoAulaResumen {
-  cursoSeccionId: string;
-  cursoNombre: string;
-  seccionNombre: string;
-  docenteNombre: string | null;
-  colorHex?: string | null;
-  areaCurricular?: string | null;
-  gradoNombre?: string | null;
-  totalEstudiantes?: number;
-}
+export * from "./aula-materiales.interface";
+export * from "./aula-tareas.interface";
+export * from "./aula-interaccion.interface";
 
 export interface IAulaVirtualRepository {
   findDocenteIdPorPersona(personaId: string): Promise<string | null>;
@@ -256,10 +134,8 @@ export interface IAulaVirtualRepository {
 
   usuariosConRol(roles: readonly string[]): Promise<string[]>;
   usuariosEstudiantesDeSeccion(seccionId: string, anioAcademicoId: string): Promise<string[]>;
-
   seguimiento(periodoId: string, hoy: string): Promise<FilaSeguimiento[]>;
 
-  /* === RF-016: Tareas, Entregas y Calificación === */
   listarTareas(
     cursoSeccionId: string,
     opciones: { soloPublicadas?: boolean; unidadId?: string; periodoId?: string },
@@ -332,7 +208,6 @@ export interface IAulaVirtualRepository {
   >;
   obtenerPesosVariables(): Promise<Record<TipoTarea, number>>;
 
-  // RF-017: Interacción y Actividad del Curso
   obtenerAnioPorCursoSeccion(
     cursoSeccionId: string,
   ): Promise<{ id: string; anio: number; estado: string } | null>;
@@ -355,10 +230,7 @@ export interface IAulaVirtualRepository {
   }): Promise<PublicacionMuroFila>;
   actualizarPublicacion(
     id: string,
-    datos: {
-      contenido?: string | null;
-      adjuntoUrl?: string | null;
-    },
+    datos: { contenido?: string | null; adjuntoUrl?: string | null },
   ): Promise<PublicacionMuroFila>;
   fijarPublicacion(id: string, fijada: boolean): Promise<PublicacionMuroFila>;
   listarComentarios(publicacionId: string, verOcultos: boolean): Promise<ComentarioMuroFila[]>;
@@ -432,165 +304,4 @@ export interface IAulaVirtualRepository {
     anioAcademicoId: string,
   ): Promise<Array<{ usuarioId: string; matriculaId: string }>>;
   yaSeNotifico(usuarioId: string, enlaceUrl: string): Promise<boolean>;
-}
-
-export interface TareaFila {
-  id: string;
-  cursoSeccionId: string;
-  periodoId: string | null;
-  unidadId: string | null;
-  sesionClaseId: string | null;
-  titulo: string;
-  instrucciones: string | null;
-  tipo: TipoTarea;
-  puntajeMaximo: number;
-  publicadaEn: string | null;
-  fechaLimite: string;
-  permiteEntregaTardia: boolean;
-  intentosMaximos: number;
-  limiteTiempoMinutos: number | null;
-  calculoNotaIntentos: CalculoNotaIntentos;
-  revelarRespuestas: RevelarRespuestas;
-  tiposArchivo: string | null;
-  estado: EstadoTarea;
-  creadoEn: string;
-  actualizadoEn: string;
-}
-
-export interface PreguntaConOpciones {
-  id: string;
-  tareaId: string;
-  enunciado: string;
-  tipo: TipoPregunta;
-  puntaje: number;
-  orden: number;
-  opciones: Array<{ id: string; texto: string; esCorrecta: boolean; orden: number }>;
-}
-
-export interface TareaConPreguntas extends TareaFila {
-  preguntas: PreguntaConOpciones[];
-}
-
-export interface EntregaFila {
-  id: string;
-  tareaId: string;
-  matriculaId: string;
-  estudianteId?: string;
-  estudianteNombre?: string;
-  intento: number;
-  iniciadoEn: string;
-  entregadaEn: string | null;
-  texto: string | null;
-  archivoUrl: string | null;
-  archivoNombre: string | null;
-  archivoTamanoBytes: number | null;
-  enlaceUrl: string | null;
-  respuestas: Record<string, unknown> | null;
-  esTardia: boolean;
-  estado: EstadoEntrega;
-  nota: number | null;
-  retroalimentacion: string | null;
-  calificadaPorId: string | null;
-  calificadaEn: string | null;
-}
-
-export interface NuevaTarea {
-  cursoSeccionId: string;
-  periodoId?: string | null;
-  unidadId?: string | null;
-  sesionClaseId?: string | null;
-  titulo: string;
-  instrucciones?: string | null;
-  tipo: TipoTarea;
-  fechaLimite: string;
-  permiteEntregaTardia?: boolean;
-  intentosMaximos?: number;
-  limiteTiempoMinutos?: number | null;
-  calculoNotaIntentos?: CalculoNotaIntentos;
-  revelarRespuestas?: RevelarRespuestas;
-  tiposArchivo?: string | null;
-  estado?: EstadoTarea;
-}
-
-export interface PublicacionMuroFila {
-  id: string;
-  cursoSeccionId: string;
-  autorId: string;
-  autorNombre: string;
-  autorRol?: string;
-  contenido: string;
-  adjuntoUrl: string | null;
-  fijada: boolean;
-  vigente: boolean;
-  creadoEn: string;
-  actualizadoEn: string;
-  ocultadoPorId: string | null;
-  ocultadoEn: string | null;
-  motivoOcultamiento: string | null;
-  comentariosCount?: number;
-}
-
-export interface ComentarioMuroFila {
-  id: string;
-  publicacionId: string;
-  autorId: string;
-  autorNombre: string;
-  autorRol?: string;
-  contenido: string;
-  vigente: boolean;
-  creadoEn: string;
-  actualizadoEn: string;
-  ocultadoPorId: string | null;
-  ocultadoEn: string | null;
-  motivoOcultamiento: string | null;
-}
-
-export interface MensajeChatFila {
-  id: string;
-  cursoSeccionId: string;
-  emisorId: string;
-  emisorNombre: string;
-  emisorRol?: string;
-  contenido: string;
-  adjuntoUrl: string | null;
-  vigente: boolean;
-  enviadoEn: string;
-  actualizadoEn?: string | null;
-  ocultadoPorId: string | null;
-  ocultadoEn: string | null;
-  motivoOcultamiento: string | null;
-}
-
-export interface HistorialModeracionFila {
-  id: string;
-  tipo: TipoModeracion;
-  cursoSeccionId: string;
-  contenido: string | null;
-  adjuntoUrl: string | null;
-  autorNombre: string;
-  ocultadoPorNombre: string;
-  ocultadoEn: string;
-  motivoOcultamiento: string;
-}
-
-export interface ActividadEstudianteMaterial {
-  matriculaId: string;
-  estudianteId: string;
-  codigo: string;
-  nombreCompleto: string;
-  visualizo: boolean;
-  visualizoEn: string | null;
-  descargo: boolean;
-  descargoEn: string | null;
-}
-
-export interface ActividadEstudianteTarea {
-  matriculaId: string;
-  estudianteId: string;
-  codigo: string;
-  nombreCompleto: string;
-  abrio: boolean;
-  abrioEn: string | null;
-  completo: boolean;
-  completoEn: string | null;
 }

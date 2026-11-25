@@ -76,6 +76,7 @@ describe("DocentesService (RF-007 Historia de Usuario 1)", () => {
       findById: jest.fn(),
       findByPersonaId: jest.fn(),
       findByCodigo: jest.fn(),
+      generarSiguienteCodigo: jest.fn().mockResolvedValue("20261124000001"),
       create: jest.fn(),
       update: jest.fn(),
       cesar: jest.fn(),
@@ -157,6 +158,24 @@ describe("DocentesService (RF-007 Historia de Usuario 1)", () => {
       expect(auditService.log).toHaveBeenCalledWith(
         expect.objectContaining({ accion: "crear", tabla: "docentes" }),
       );
+    });
+
+    it("debe autogenerar un código de 14 dígitos (YYYYMMDD + orden) cuando se omite el código", async () => {
+      repository.generarSiguienteCodigo.mockResolvedValue("20261124000001");
+      personasRepository.findByDocumento.mockResolvedValue(null);
+      cargosRepository.findByName.mockResolvedValue({ id: "cargo-doc-aula" });
+      rolesRepository.findByName.mockResolvedValue(mockRolDocente);
+      repository.create.mockResolvedValue({
+        docente: { ...mockDocente, codigo: "20261124000001" },
+        tempPassword: "TempPassword123*",
+        credencial: { codigo: "CR-45678912", pin: "1234" },
+      });
+
+      const sinCodigo: CreateDocenteDto = { ...createDto, codigo: undefined };
+      const result = await service.create(sinCodigo, "admin-1");
+
+      expect(repository.generarSiguienteCodigo).toHaveBeenCalledTimes(1);
+      expect(result.docente.codigo).toBe("20261124000001");
     });
 
     it("debe reutilizar persona existente en padrón si ya existía sin ficha docente", async () => {

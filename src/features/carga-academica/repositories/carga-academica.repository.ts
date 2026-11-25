@@ -50,65 +50,12 @@ export class CargaAcademicaRepository implements ICargaAcademicaRepository {
   }
 
   async findBySeccion(seccionId: string): Promise<CargaAcademicaItemDto[]> {
-    const rows = await this.db
-      .select({
-        id: cursosSeccion.id,
-        cursoId: cursosSeccion.cursoId,
-        cursoNombre: cursos.nombre,
-        colorHex: cursos.colorHex,
-        horasPlan: sql<number>`COALESCE(${planEstudios.horasSemanales}, 0)`.mapWith(Number),
-        horasHorario: sql<number>`COALESCE((
-          SELECT SUM(
-            ROUND(
-              EXTRACT(EPOCH FROM (${horarios.horaFin}::time - ${horarios.horaInicio}::time)) / 2700
-            )
-          )::int
-          FROM ${horarios}
-          WHERE ${horarios.cursoSeccionId} = ${cursosSeccion.id}
-            AND ${horarios.tipoBloque} = 'clase'
-        ), 0)`.mapWith(Number),
-        docenteId: docentes.id,
-        docenteCodigo: docentes.codigo,
-        docentePersonaNombres: personas.nombres,
-        docentePersonaApellidoPaterno: personas.apellidoPaterno,
-        docentePersonaApellidoMaterno: personas.apellidoMaterno,
-      })
-      .from(cursosSeccion)
-      .innerJoin(secciones, eq(cursosSeccion.seccionId, secciones.id))
-      .innerJoin(cursos, eq(cursosSeccion.cursoId, cursos.id))
-      .leftJoin(
-        planEstudios,
-        and(
-          eq(planEstudios.gradoId, secciones.gradoId),
-          eq(planEstudios.cursoId, cursosSeccion.cursoId),
-          eq(planEstudios.activo, true),
-        ),
-      )
-      .leftJoin(docentes, eq(cursosSeccion.docenteId, docentes.id))
-      .leftJoin(personas, eq(docentes.personaId, personas.id))
-      .where(eq(cursosSeccion.seccionId, seccionId))
-      .orderBy(asc(cursos.nombre));
+    const payload = { seccionId };
+    const result = (await this.db.execute(sql`
+      SELECT fn_consultar_carga_seccion(${JSON.stringify(payload)}::jsonb) AS resultado
+    `)) as unknown as { rows?: Array<{ resultado?: { items?: CargaAcademicaItemDto[] } }> };
 
-    return rows.map((row) => ({
-      id: row.id,
-      cursoId: row.cursoId,
-      cursoNombre: row.cursoNombre,
-      colorHex: row.colorHex,
-      horasPlan: row.horasPlan,
-      horasHorario: row.horasHorario,
-      docente:
-        row.docenteId && row.docenteCodigo
-          ? {
-              id: row.docenteId,
-              codigo: row.docenteCodigo,
-              nombreCompleto: formatearNombreCompleto(
-                row.docentePersonaNombres,
-                row.docentePersonaApellidoPaterno,
-                row.docentePersonaApellidoMaterno,
-              ),
-            }
-          : null,
-    }));
+    return result.rows?.[0]?.resultado?.items ?? [];
   }
 
   async findCargaItemById(id: string): Promise<CargaAcademicaItemDto | null> {

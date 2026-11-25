@@ -1,12 +1,12 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post } from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
-import { MENU_OBSERVACIONES_AULA } from "../../common/constants";
-import { CurrentUser, MenuAccess, Roles } from "../../common/decorators";
-import type { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface";
-import { ROL_ADMINISTRADOR } from "./constants";
-import { CrearInstrumentoDto } from "./dto";
-import { InstrumentoObservacionService } from "./instrumento-observacion.service";
-import { actorDe } from "./observaciones-aula.controller";
+import { MENU_OBSERVACIONES_AULA } from "../../../common/constants";
+import { CurrentUser, MenuAccess, Roles } from "../../../common/decorators";
+import type { AuthenticatedUser } from "../../auth/interfaces/jwt-payload.interface";
+import { ROL_ADMINISTRADOR } from "../constants";
+import { CrearInstrumentoDto } from "../dto";
+import { InstrumentoObservacionService } from "../services";
+import { actorDe } from "./observaciones-actor.helper";
 
 /** Versiones del instrumento de observación (RF-023, HU8). Las altas son del Administrador. */
 @ApiTags("Instrumento de observación")

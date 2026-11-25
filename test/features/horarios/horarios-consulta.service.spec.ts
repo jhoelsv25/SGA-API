@@ -276,5 +276,112 @@ describe("RF-008: Horario Semanal — Consultas (HU3)", () => {
         NotFoundException,
       );
     });
+
+    it("debe consultar listarPorSeccion vía función SQL en un solo viaje, cachear en Redis e invalidar al crear bloque", async () => {
+      const consultarHorarioSeccionSql = jest.fn().mockResolvedValue({
+        bloques: [mockBloqueMatematica],
+        resumenHoras: [
+          { cursoId: "cs-mat-5a", cursoNombre: "Matemática", horasHorario: 3, horasPlan: 5 },
+        ],
+      });
+      const cacheMap = new Map<string, unknown>();
+      const mockCache = {
+        getOrSet: jest.fn(async <T>(key: string, factory: () => Promise<T>): Promise<T> => {
+          if (cacheMap.has(key)) return cacheMap.get(key) as T;
+          const val = await factory();
+          cacheMap.set(key, val);
+          return val;
+        }),
+        del: jest.fn((key: string) => Promise.resolve(cacheMap.delete(key))),
+      };
+
+      const servicioOptimizado = new HorariosService(
+        {
+          ...(mockHorariosRepo as unknown as HorariosRepository),
+          consultarHorarioSeccionSql,
+        } as unknown as HorariosRepository,
+        {
+          findById: jest.fn().mockResolvedValue({ id: "sec-5a", estado: "activa" }),
+        } as unknown as SeccionesRepository,
+        mockDocentesRepo as unknown as DocentesRepository,
+        mockAniosService as unknown as AniosAcademicosService,
+        mockAnioLectivoCls as unknown as AnioLectivoCls,
+        mockAuditService as unknown as AuditService,
+        undefined,
+        undefined,
+        mockCache as unknown as import("@/core/cache/cache.service").CacheService,
+      );
+
+      const primera = await servicioOptimizado.listarPorSeccion("sec-5a");
+      const segunda = await servicioOptimizado.listarPorSeccion("sec-5a");
+
+      expect(consultarHorarioSeccionSql).toHaveBeenCalledTimes(1);
+      expect(primera.bloques).toHaveLength(1);
+      expect(primera.advertencias).toHaveLength(1);
+      expect(segunda).toEqual(primera);
+
+      await servicioOptimizado.crearBloque(
+        "sec-5a",
+        {
+          diaSemana: 2,
+          horaInicio: "08:00",
+          horaFin: "09:30",
+          tipoBloque: "clase",
+          cursoSeccionId: "cs-mat-5a",
+        },
+        "usr-admin",
+      );
+
+      expect(mockCache.del).toHaveBeenCalledWith("horarios:seccion:sec-5a");
+    });
+
+    it("debe generar PDF consolidado multipágina con todas las secciones del año o filtradas por grado", async () => {
+      const listarSeccionesYBloquesDeAnio = jest.fn().mockResolvedValue([
+        {
+          seccionId: "sec-1a",
+          gradoId: "grado-1",
+          gradoNumero: 1,
+          gradoNombre: "1.° de secundaria",
+          seccionNombre: "A",
+          bloques: [{ ...mockBloqueMatematica, seccionId: "sec-1a", docenteId: "doc-quispe" }],
+        },
+        {
+          seccionId: "sec-1b",
+          gradoId: "grado-1",
+          gradoNumero: 1,
+          gradoNombre: "1.° de secundaria",
+          seccionNombre: "B",
+          bloques: [
+            {
+              ...mockBloqueMatematica,
+              id: "bloque-2",
+              seccionId: "sec-1b",
+              docenteId: "doc-quispe",
+            },
+          ],
+        },
+      ]);
+
+      const servicioPdf = new HorariosService(
+        {
+          ...(mockHorariosRepo as unknown as HorariosRepository),
+          listarSeccionesYBloquesDeAnio,
+        } as unknown as HorariosRepository,
+        mockSeccionesRepo as unknown as SeccionesRepository,
+        mockDocentesRepo as unknown as DocentesRepository,
+        mockAniosService as unknown as AniosAcademicosService,
+        mockAnioLectivoCls as unknown as AnioLectivoCls,
+        mockAuditService as unknown as AuditService,
+      );
+
+      const { buffer, nombreArchivo } = await servicioPdf.generarHorariosConsolidadoPdf();
+
+      expect(listarSeccionesYBloquesDeAnio).toHaveBeenCalledWith("anio-2027", {
+        gradoId: undefined,
+        seccionId: undefined,
+      });
+      expect(nombreArchivo).toBe("horarios-colegio-2027.pdf");
+      expect(buffer.subarray(0, 4).toString("utf8")).toBe("%PDF");
+    });
   });
 });

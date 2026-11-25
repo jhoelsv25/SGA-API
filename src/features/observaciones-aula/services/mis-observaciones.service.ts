@@ -4,10 +4,10 @@ import {
   ForbiddenException,
   Injectable,
 } from "@nestjs/common";
-import { ahoraEnColegio } from "../marcaciones/utils";
-import { MENSAJES_OBSERVACION, mensajePlazoVencido } from "./constants";
-import type { ComentarioDocenteDto } from "./dto";
-import type { ActorObservacion, ObservacionFila } from "./interfaces";
+import { ahoraEnColegio } from "../../marcaciones/utils";
+import { MENSAJES_OBSERVACION, mensajePlazoVencido } from "../constants";
+import type { ComentarioDocenteDto } from "../dto";
+import type { ActorObservacion, ObservacionFila } from "../interfaces";
 import { ObservacionesComunService } from "./observaciones-comun.service";
 
 /** «Mis observaciones» del docente: solo lo propio y solo tras la retroalimentación (RF-023, HU6). */

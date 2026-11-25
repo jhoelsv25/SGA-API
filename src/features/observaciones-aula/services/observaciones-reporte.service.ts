@@ -1,13 +1,16 @@
 import { BadRequestException, ForbiddenException, Injectable } from "@nestjs/common";
-import { AnioLectivoCls } from "../../common/anio-lectivo";
-import { generarReporteExcel, type ColumnaReporte } from "../../common/excel/reporte-excel.builder";
-import { InstitucionService } from "../institucion/institucion.service";
-import { MENSAJES_OBSERVACION, NIVEL_NOMBRE, NIVEL_ROMANO, type Nivel } from "./constants";
-import type { MatrizQueryDto } from "./dto";
-import type { ActorObservacion, FilaMatriz } from "./interfaces";
+import { AnioLectivoCls } from "../../../common/anio-lectivo";
+import {
+  generarReporteExcel,
+  type ColumnaReporte,
+} from "../../../common/excel/reporte-excel.builder";
+import { InstitucionService } from "../../institucion/institucion.service";
+import { MENSAJES_OBSERVACION, NIVEL_NOMBRE, NIVEL_ROMANO, type Nivel } from "../constants";
+import type { MatrizQueryDto } from "../dto";
+import type { ActorObservacion, FilaMatriz } from "../interfaces";
+import { evolucionDeNivel, generarProtocoloPdf, type Evolucion } from "../utils";
 import { ObservacionesComunService } from "./observaciones-comun.service";
 import { ObservacionesProgramacionService } from "./observaciones-programacion.service";
-import { evolucionDeNivel, generarProtocoloPdf, type Evolucion } from "./utils";
 
 /** Historial, matriz de desempeños, cobertura, protocolo en PDF y resumen del consolidado (RF-023). */
 @Injectable()

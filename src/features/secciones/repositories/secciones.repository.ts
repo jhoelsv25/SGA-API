@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, asc, eq, isNull, ne, sql } from "drizzle-orm";
+import { and, eq, isNull, ne, sql } from "drizzle-orm";
 import { Database, DRIZZLE } from "../../../core/database";
 import {
   cursos,
@@ -119,26 +119,17 @@ export class SeccionesRepository implements ISeccionesRepository {
   }
 
   async findAll(anioId: string, filtros?: SeccionQueryDto): Promise<SeccionResponseDto[]> {
-    const condiciones = [eq(secciones.anioAcademicoId, anioId)];
+    const payload = {
+      anioAcademicoId: anioId,
+      gradoId: filtros?.gradoId ?? null,
+      estado: filtros?.estado ?? null,
+    };
 
-    if (filtros?.gradoId) {
-      condiciones.push(eq(secciones.gradoId, filtros.gradoId));
-    }
+    const result = (await this.db.execute(sql`
+      SELECT fn_consultar_secciones(${JSON.stringify(payload)}::jsonb) AS resultado
+    `)) as unknown as { rows?: Array<{ resultado?: { data?: SeccionResponseDto[] } }> };
 
-    if (filtros?.estado) {
-      condiciones.push(eq(secciones.estado, filtros.estado));
-    }
-
-    const rows = await this.db
-      .select(this.getSeccionesSelect())
-      .from(secciones)
-      .innerJoin(grados, eq(secciones.gradoId, grados.id))
-      .leftJoin(docentes, eq(secciones.tutorId, docentes.id))
-      .leftJoin(personas, eq(docentes.personaId, personas.id))
-      .where(and(...condiciones))
-      .orderBy(asc(grados.numero), asc(secciones.nombre));
-
-    return rows.map((r) => this.mapearFilaAResponseDto(r));
+    return result.rows?.[0]?.resultado?.data ?? [];
   }
 
   async findPorNombre(

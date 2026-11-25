@@ -86,6 +86,21 @@ describe("SessionService (RF-001: HU 4 - Sesiones y Tokens)", () => {
     });
   });
 
+  describe("generateRefreshToken", () => {
+    it("debe generar un refresh token de 7 días por defecto y 30 días con rememberMe limpiando iat/exp", () => {
+      jwtService.sign.mockReturnValueOnce("jwt_refresh_7d").mockReturnValueOnce("jwt_refresh_30d");
+
+      const decodedConExp = { ...mockPayload, iat: 1700000000, exp: 1700086400 } as JwtPayload;
+      const t7 = sessionService.generateRefreshToken(decodedConExp, false);
+      const t30 = sessionService.generateRefreshToken(decodedConExp, true);
+
+      expect(jwtService.sign).toHaveBeenNthCalledWith(1, mockPayload, { expiresIn: "7d" });
+      expect(jwtService.sign).toHaveBeenNthCalledWith(2, mockPayload, { expiresIn: "30d" });
+      expect(t7).toBe("jwt_refresh_7d");
+      expect(t30).toBe("jwt_refresh_30d");
+    });
+  });
+
   describe("verifyAccessToken", () => {
     it("debe retornar el payload decodificado si el token es válido", () => {
       configService.get.mockReturnValue("secret_key");

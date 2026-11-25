@@ -3,7 +3,7 @@ import { Logger } from "@nestjs/common";
 import { Job } from "bullmq";
 import { QUEUES } from "../../../core/queues/queues.constants";
 import { QUEUE_JOB_RECORDAR_COMPROMISOS_OBS } from "../constants";
-import { ObservacionesEjecucionService } from "../observaciones-ejecucion.service";
+import { ObservacionesEjecucionService } from "../services";
 
 @Processor(QUEUES.OBSERVACIONES_AULA)
 export class ObservacionesAulaProcessor extends WorkerHost {

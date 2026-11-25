@@ -280,9 +280,17 @@ describe("RF-008: Secciones (HU1)", () => {
       expect(mockSeccionesRepo.createConCarga).not.toHaveBeenCalled();
     });
 
-    it("CP-RF008-04: debe bloquear el guardado si el docente ya es tutor de otra sección en el año", async () => {
-      // Dado que el docente Pérez ya es tutor de 5.° A en 2027
+    it("CP-RF008-04: debe permitir asignar como tutor a un docente activo aunque ya tutele otra sección en el año", async () => {
+      // Dado que el docente Pérez está activo y ya es tutor de 5.° A en 2027
       mockSeccionesRepo.tutorOcupado = jest.fn().mockResolvedValue(true);
+      const creada = {
+        ...mockSeccion5A,
+        id: "sec-4b",
+        gradoId: "grado-4",
+        nombre: "B",
+        tutor: { id: "doc-perez", codigo: "DOC001", nombreCompleto: "Pérez, Juan" },
+      };
+      mockSeccionesRepo.createConCarga = jest.fn().mockResolvedValue(creada);
 
       const dto: CreateSeccionDto = {
         gradoId: "grado-4",
@@ -292,11 +300,13 @@ describe("RF-008: Secciones (HU1)", () => {
       };
 
       // Cuando lo asigno como tutor de 4.° B en 2027
-      // Entonces el sistema bloquea el guardado y muestra "Este docente ya es tutor de otra sección en este año."
-      await expect(service.create(dto, "user-admin")).rejects.toThrow(
-        new ConflictException("Este docente ya es tutor de otra sección en este año."),
+      const resultado = await service.create(dto, "user-admin");
+
+      // Entonces el sistema guarda 4.° B con el docente Pérez como tutor asignado
+      expect(resultado.tutor?.id).toBe("doc-perez");
+      expect(mockSeccionesRepo.createConCarga).toHaveBeenCalledWith(
+        expect.objectContaining({ tutorId: "doc-perez" }),
       );
-      expect(mockSeccionesRepo.createConCarga).not.toHaveBeenCalled();
     });
 
     it("debe rechazar la asignación de un tutor que no se encuentre activo", async () => {

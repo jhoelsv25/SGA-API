@@ -46,6 +46,14 @@ export class PersonasController {
     return this.personasService.findAll(query);
   }
 
+  @Get("resumen")
+  @ApiOperation({
+    summary: "Resumen de totales del padrón único de personas",
+  })
+  async obtenerResumen(@Query() query: PersonaQueryDto) {
+    return this.personasService.obtenerResumen(query);
+  }
+
   @Get("buscar")
   @ApiOperation({
     summary: "Búsqueda preventiva de personas por documento o nombre antes de crear una ficha",

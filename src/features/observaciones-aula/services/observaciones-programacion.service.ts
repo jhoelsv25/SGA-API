@@ -4,26 +4,26 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { AnioLectivoCls } from "../../common/anio-lectivo";
-import { MENU_OBSERVACIONES_AULA } from "../../common/constants";
-import { ahoraEnColegio } from "../marcaciones/utils";
+import { AnioLectivoCls } from "../../../common/anio-lectivo";
+import { MENU_OBSERVACIONES_AULA } from "../../../common/constants";
+import { ahoraEnColegio } from "../../marcaciones/utils";
 import {
   MENSAJES_OBSERVACION,
   mensajeAvisoProgramada,
   mensajeProgramada,
   mensajeReprogramada,
   type EstadoObservacion,
-} from "./constants";
+} from "../constants";
 import type {
   CancelarObservacionDto,
   FiltroObservacionesQueryDto,
   ProgramarObservacionDto,
   ReobservacionDto,
   ReprogramarObservacionDto,
-} from "./dto";
-import type { ActorObservacion, CoberturaDocente, ObservacionFila } from "./interfaces";
+} from "../dto";
+import type { ActorObservacion, CoberturaDocente, ObservacionFila } from "../interfaces";
+import { diaSemanaIso, diasEntre, intervalosSeCruzan } from "../utils";
 import { ObservacionesComunService } from "./observaciones-comun.service";
-import { diaSemanaIso, diasEntre, intervalosSeCruzan } from "./utils";
 
 interface DatosProgramacion {
   docenteId: string;

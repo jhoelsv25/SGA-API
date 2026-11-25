@@ -57,6 +57,31 @@ export class DocentesRepository implements IDocentesRepository {
     return data[0] ?? null;
   }
 
+  async generarSiguienteCodigo(fecha: Date = new Date()): Promise<string> {
+    const fechaLima = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Lima",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(fecha);
+    const prefijo = fechaLima.replace(/-/g, "");
+    const patron = `^${prefijo}[0-9]{6}$`;
+    const rows = await this.db
+      .select({ codigo: docentes.codigo })
+      .from(docentes)
+      .where(sql`${docentes.codigo} ~ ${patron}`);
+
+    let maxCorrelativo = 0;
+    for (const r of rows) {
+      const sufijo = Number(r.codigo.slice(8));
+      if (Number.isFinite(sufijo) && sufijo > maxCorrelativo) {
+        maxCorrelativo = sufijo;
+      }
+    }
+
+    return `${prefijo}${String(maxCorrelativo + 1).padStart(6, "0")}`;
+  }
+
   async findByPersonaId(personaId: string): Promise<DocenteResponseDto | null> {
     const payload = { personaId, limit: 1 };
     const result = (await this.db.execute(sql`
@@ -135,12 +160,14 @@ export class DocentesRepository implements IDocentesRepository {
         personaId = creada.id;
       }
 
+      const codigoFinal = data.dto.codigo?.trim() || (await this.generarSiguienteCodigo());
+
       // 2. Ficha de Docente
       const [nuevoDocente] = await tx
         .insert(docentes)
         .values({
           personaId,
-          codigo: data.dto.codigo.trim(),
+          codigo: codigoFinal,
           especialidad: data.dto.especialidad?.trim() || null,
           tituloProfesional: data.dto.tituloProfesional?.trim() || null,
           tipoContrato: data.dto.tipoContrato,
@@ -462,5 +489,60 @@ export class DocentesRepository implements IDocentesRepository {
 
       return this.findById(id);
     });
+  }
+
+  async obtenerResumen(query?: DocenteQueryDto): Promise<{
+    total: number;
+    activos: number;
+    licencia: number;
+    cesados: number;
+    nombrados: number;
+    contratados: number;
+    practicantes: number;
+  }> {
+    const condiciones = [isNull(docentes.eliminadoEn)];
+
+    if (query?.tipoContrato) {
+      condiciones.push(eq(docentes.tipoContrato, query.tipoContrato));
+    }
+    if (query?.estado) {
+      condiciones.push(eq(docentes.estado, query.estado));
+    }
+    if (query?.search && query.search.trim().length > 0) {
+      const patron = `%${query.search.trim()}%`;
+      condiciones.push(
+        sql`(
+          ${personas.nombres} ILIKE ${patron}
+          OR ${personas.apellidoPaterno} ILIKE ${patron}
+          OR ${personas.apellidoMaterno} ILIKE ${patron}
+          OR ${personas.numeroDocumento} ILIKE ${patron}
+          OR ${docentes.codigo} ILIKE ${patron}
+        )`,
+      );
+    }
+
+    const [row] = await this.db
+      .select({
+        total: sql<number>`COUNT(*)::int`,
+        activos: sql<number>`COUNT(*) FILTER (WHERE ${docentes.estado} = 'activo')::int`,
+        licencia: sql<number>`COUNT(*) FILTER (WHERE ${docentes.estado} = 'licencia')::int`,
+        cesados: sql<number>`COUNT(*) FILTER (WHERE ${docentes.estado} = 'cesado')::int`,
+        nombrados: sql<number>`COUNT(*) FILTER (WHERE ${docentes.tipoContrato} = 'nombrado')::int`,
+        contratados: sql<number>`COUNT(*) FILTER (WHERE ${docentes.tipoContrato} = 'contratado')::int`,
+        practicantes: sql<number>`COUNT(*) FILTER (WHERE ${docentes.tipoContrato} = 'practicante')::int`,
+      })
+      .from(docentes)
+      .innerJoin(personas, eq(docentes.personaId, personas.id))
+      .where(and(...condiciones));
+
+    return {
+      total: Number(row?.total ?? 0),
+      activos: Number(row?.activos ?? 0),
+      licencia: Number(row?.licencia ?? 0),
+      cesados: Number(row?.cesados ?? 0),
+      nombrados: Number(row?.nombrados ?? 0),
+      contratados: Number(row?.contratados ?? 0),
+      practicantes: Number(row?.practicantes ?? 0),
+    };
   }
 }
