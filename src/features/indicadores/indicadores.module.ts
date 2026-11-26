@@ -1,4 +1,5 @@
 import { Module } from "@nestjs/common";
+import { AnioEscolarModule } from "../anio-escolar/anio-escolar.module";
 import { AuditService } from "@/common/services/audit.service";
 import { IndicadoresController } from "./indicadores.controller";
 import { IndicadoresService } from "./indicadores.service";
@@ -21,6 +22,7 @@ import {
 } from "./services";
 
 @Module({
+  imports: [AnioEscolarModule],
   controllers: [IndicadoresController],
   providers: [
     // Repositorios

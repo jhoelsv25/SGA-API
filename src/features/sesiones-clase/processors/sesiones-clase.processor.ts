@@ -2,6 +2,7 @@ import { Processor, WorkerHost } from "@nestjs/bullmq";
 import { Logger } from "@nestjs/common";
 import { Job } from "bullmq";
 import { QUEUES } from "../../../core/queues/queues.constants";
+import { fechaEnColegio } from "../../marcaciones/utils/marcacion-reglas.util";
 import {
   JOB_AVISAR_JUSTIFICACIONES_VENCIDAS,
   JOB_CERRAR_SESIONES,
@@ -29,7 +30,8 @@ export class SesionesClaseProcessor extends WorkerHost {
       } else if (job.name === JOB_EVALUAR_ALERTAS) {
         await this.service.evaluarAlertas();
       } else if (job.name === JOB_CERRAR_SESIONES) {
-        await this.service.cerrarDelDia();
+        // La fecha es la programada: si el trabajo corre atrasado, no cierra el día en curso.
+        await this.service.cerrarDelDia(fechaEnColegio(job.opts.prevMillis));
         this.logger.log("Sesiones del día cerradas.");
       }
     } catch (error) {

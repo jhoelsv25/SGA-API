@@ -1,5 +1,5 @@
 import { BadRequestException } from "@nestjs/common";
-import { Workbook, type CellValue } from "exceljs";
+import { Workbook, type CellFormulaValue, type CellValue } from "exceljs";
 import { IMPORTACION_MAX_FILAS, IMPORTACION_MESSAGES } from "../constants";
 
 const CAMPOS_FECHA = new Set(["fechaNacimiento", "fechaIngreso", "fechaMatricula"]);
@@ -137,7 +137,7 @@ function convertirValorHoraHHMM(valor: CellValue): string {
   return texto;
 }
 
-function extraerTextoCelda(valor: CellValue): string {
+function extraerTextoCelda(valor: CellValue | CellFormulaValue["result"]): string {
   if (valor === null || valor === undefined) return "";
   if (typeof valor === "string") return valor.trim();
   if (typeof valor === "number") return String(valor).trim();

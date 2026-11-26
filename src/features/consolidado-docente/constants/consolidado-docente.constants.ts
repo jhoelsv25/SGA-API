@@ -5,6 +5,7 @@ export const MENSAJES_CONSOLIDADO = {
     "Solo se puede generar el consolidado en la última semana del bimestre o después de cerrarlo.",
   CONSOLIDADO_REABIERTO:
     "Consolidado reabierto. Ya se pueden corregir las sesiones y ausencias del docente en este bimestre.",
+  CIERRE_SIN_REAPERTURA: "Solo se puede cerrar la versión vigente de un consolidado reabierto.",
   NUEVO_CIERRE_SIN_MOTIVO: "Indique el motivo del cambio.",
   SOLICITUD_ENVIADA: "Su solicitud de revisión fue enviada al Director.",
   SOLICITUD_SIN_MOTIVO: "Indique el motivo de su solicitud.",
