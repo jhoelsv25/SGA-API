@@ -8,11 +8,11 @@ import { QUEUES } from "../../core/queues/queues.constants";
 import { AniosAcademicosService } from "../anio-escolar/anios.service";
 import { AulaVirtualService } from "../aula-virtual/aula-virtual.service";
 import { CalendarioService } from "../calendario/calendario.service";
-import { ConsolidadoDocenteService } from "../consolidado-docente/consolidado-docente.service";
+import { ConsolidadoDocenteService } from "../consolidado-docente/services/consolidado-docente.service";
 import { EquiposService } from "../equipos/equipos.service";
-import { MarcacionesService } from "../marcaciones/marcaciones.service";
+import { MarcacionesService } from "../marcaciones/services/marcaciones.service";
 import { NotificacionesService } from "../notificaciones/notificaciones.service";
-import { PlanificacionSesionesService } from "../planificacion-sesiones/planificacion-sesiones.service";
+import { PlanificacionSesionesService } from "../planificacion-sesiones/services/planificacion-sesiones.service";
 import { VariablesSistemaService } from "../variables-sistema/variables-sistema.service";
 import {
   CRON_AVISAR_JUSTIFICACIONES_VENCIDAS,

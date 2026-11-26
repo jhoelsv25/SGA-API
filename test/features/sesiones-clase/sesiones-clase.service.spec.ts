@@ -4,7 +4,7 @@ import { AniosAcademicosService } from "@/features/anio-escolar/anios.service";
 import type { AuthenticatedUser } from "@/features/auth/interfaces/jwt-payload.interface";
 import { CalendarioService } from "@/features/calendario/calendario.service";
 import { EquiposService } from "@/features/equipos/equipos.service";
-import { MarcacionesService } from "@/features/marcaciones/marcaciones.service";
+import { MarcacionesService } from "@/features/marcaciones/services/marcaciones.service";
 import { NotificacionesService } from "@/features/notificaciones/notificaciones.service";
 import {
   SesionesClaseRepository,

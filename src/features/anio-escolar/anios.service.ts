@@ -1,23 +1,8 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-  Logger,
-  NotFoundException,
-  OnModuleInit,
-  Optional,
-} from "@nestjs/common";
+import { Injectable, Logger, OnModuleInit, Optional } from "@nestjs/common";
 import { InjectQueue } from "@nestjs/bullmq";
 import { Queue } from "bullmq";
-import dayjs from "dayjs";
 import { AuditService } from "../../common/services/audit.service";
 import { QUEUES } from "../../core/queues/queues.constants";
-import {
-  CRON_AVISO_FIN_BIMESTRE,
-  JOB_AVISO_FIN_BIMESTRE,
-  MENSAJES,
-  ZONA_HORARIA_COLEGIO,
-} from "./constants";
 import {
   AnioAcademicoResponseDto,
   BimestreFechaDto,
@@ -29,15 +14,13 @@ import {
 import { AnioPersistido } from "./interfaces";
 import { NotificacionesService } from "../notificaciones/notificaciones.service";
 import { AniosAcademicosRepository } from "./repositories/anios.repository";
-import {
-  esFechaIso,
-  hoyEnColegio,
-  mensajeSiRangoInvalido,
-  nombreBimestre,
-  validarBimestres,
-} from "./utils";
-
-const JOB_CERRAR_REAPERTURAS = "cerrar-reaperturas";
+import { hoyEnColegio } from "./utils";
+import type {
+  AniosAcademicosServiceDeps,
+  AniosAcademicosServiceCalls,
+} from "./services/anios/deps";
+import * as parte1 from "./services/anios/on-module-init";
+import * as parte2 from "./services/anios/verificar-fin-bimestre";
 
 @Injectable()
 export class AniosAcademicosService implements OnModuleInit {
@@ -53,44 +36,44 @@ export class AniosAcademicosService implements OnModuleInit {
     private readonly notificacionesService?: NotificacionesService,
   ) {}
 
+  private dependencias(): AniosAcademicosServiceDeps {
+    return {
+      aniosRepository: this.aniosRepository,
+      auditService: this.auditService,
+      cola: this.cola,
+      notificacionesService: this.notificacionesService,
+      logger: this.logger,
+    };
+  }
+
+  private llamadas(): AniosAcademicosServiceCalls {
+    return {
+      cerrarReaperturasVencidas: (hoy) => this.cerrarReaperturasVencidas(hoy),
+      anioVigente: () => this.anioVigente(),
+      requireAnio: (id) => this.requireAnio(id),
+      assertPlanificado: (anio) => this.assertPlanificado(anio),
+      assertRangoAnio: (inicio, fin) => this.assertRangoAnio(inicio, fin),
+      assertBimestres: (anio, bimestres) => this.assertBimestres(anio, bimestres),
+      resumen: (anio) => this.resumen(anio),
+      auditarEstado: (tabla, registroId, anterior, nuevo, actorId, ip) =>
+        this.auditarEstado(tabla, registroId, anterior, nuevo, actorId, ip),
+    };
+  }
+
   async onModuleInit(): Promise<void> {
-    if (!this.cola) return;
-    try {
-      await this.cola.upsertJobScheduler(
-        "cerrar-reaperturas-anio",
-        { pattern: "5 0 * * *", tz: ZONA_HORARIA_COLEGIO },
-        { name: JOB_CERRAR_REAPERTURAS, data: {} },
-      );
-      await this.cola.upsertJobScheduler(
-        JOB_AVISO_FIN_BIMESTRE,
-        { pattern: CRON_AVISO_FIN_BIMESTRE, tz: ZONA_HORARIA_COLEGIO },
-        { name: JOB_AVISO_FIN_BIMESTRE, data: {} },
-      );
-    } catch (error) {
-      this.logger.warn(
-        `No se pudo programar las tareas del año escolar: ${(error as Error).message}`,
-      );
-    }
+    return parte1.onModuleInit(this.dependencias());
   }
 
   async findAll(): Promise<AnioAcademicoResponseDto[]> {
-    await this.cerrarReaperturasVencidas();
-    return this.aniosRepository.findAll();
+    return parte1.findAll(this.dependencias(), this.llamadas());
   }
 
   async findEnCurso(): Promise<AnioAcademicoResponseDto> {
-    await this.cerrarReaperturasVencidas();
-    const vigente = await this.anioVigente();
-    if (!vigente) {
-      throw new NotFoundException("No hay un año escolar en curso.");
-    }
-    return vigente;
+    return parte1.findEnCurso(this.llamadas());
   }
 
   async findById(id: string): Promise<AnioAcademicoResponseDto> {
-    const anio = await this.aniosRepository.findById(id);
-    if (!anio) throw new NotFoundException("Año escolar no encontrado.");
-    return anio;
+    return parte1.findById(this.dependencias(), id);
   }
 
   async create(
@@ -98,41 +81,7 @@ export class AniosAcademicosService implements OnModuleInit {
     actorId: string,
     ip?: string,
   ): Promise<AnioAcademicoResponseDto> {
-    this.assertRangoAnio(dto.fechaInicio, dto.fechaFin);
-
-    const existente = await this.aniosRepository.findByAnio(dto.anio);
-    if (existente) {
-      throw new ConflictException(MENSAJES.anioRepetido(dto.anio));
-    }
-
-    const bimestres = dto.bimestres ?? [];
-    if (bimestres.length > 0) {
-      this.assertBimestres({ fechaInicio: dto.fechaInicio, fechaFin: dto.fechaFin }, bimestres);
-    }
-
-    const creado = await this.aniosRepository.create({
-      anio: dto.anio,
-      nombre: dto.nombre?.trim() || null,
-      fechaInicio: dto.fechaInicio,
-      fechaFin: dto.fechaFin,
-      bimestres: bimestres.map((bimestre) => ({
-        numero: bimestre.numero,
-        nombre: nombreBimestre(bimestre.numero),
-        fechaInicio: bimestre.fechaInicio,
-        fechaFin: bimestre.fechaFin,
-      })),
-    });
-
-    await this.auditService.log({
-      usuarioId: actorId,
-      accion: "crear",
-      tabla: "anios_academicos",
-      registroId: creado.id,
-      valorNuevo: this.resumen(creado),
-      direccionIp: ip,
-    });
-
-    return creado;
+    return parte1.create(this.dependencias(), this.llamadas(), dto, actorId, ip);
   }
 
   async update(
@@ -141,34 +90,7 @@ export class AniosAcademicosService implements OnModuleInit {
     actorId: string,
     ip?: string,
   ): Promise<AnioAcademicoResponseDto> {
-    const actual = await this.requireAnio(id);
-    this.assertPlanificado(actual);
-
-    const fechaInicio = dto.fechaInicio ?? actual.fechaInicio;
-    const fechaFin = dto.fechaFin ?? actual.fechaFin;
-    this.assertRangoAnio(fechaInicio, fechaFin);
-
-    if (actual.bimestres.length > 0) {
-      this.assertBimestres({ fechaInicio, fechaFin }, actual.bimestres);
-    }
-
-    const actualizado = await this.aniosRepository.update(id, {
-      ...(dto.nombre !== undefined ? { nombre: dto.nombre.trim() || null } : {}),
-      fechaInicio,
-      fechaFin,
-    });
-
-    await this.auditService.log({
-      usuarioId: actorId,
-      accion: "actualizar",
-      tabla: "anios_academicos",
-      registroId: id,
-      valorAnterior: this.resumen(actual),
-      valorNuevo: this.resumen(actualizado),
-      direccionIp: ip,
-    });
-
-    return actualizado;
+    return parte1.update(this.dependencias(), this.llamadas(), id, dto, actorId, ip);
   }
 
   async guardarBimestres(
@@ -177,80 +99,22 @@ export class AniosAcademicosService implements OnModuleInit {
     actorId: string,
     ip?: string,
   ): Promise<AnioAcademicoResponseDto> {
-    const actual = await this.requireAnio(id);
-    this.assertPlanificado(actual);
-    this.assertBimestres(actual, bimestres);
-
-    const guardado = await this.aniosRepository.guardarBimestres(
+    return parte1.guardarBimestres(
+      this.dependencias(),
+      this.llamadas(),
       id,
-      bimestres.map((bimestre) => ({
-        numero: bimestre.numero,
-        nombre: nombreBimestre(bimestre.numero),
-        fechaInicio: bimestre.fechaInicio,
-        fechaFin: bimestre.fechaFin,
-      })),
+      bimestres,
+      actorId,
+      ip,
     );
-
-    await this.auditService.log({
-      usuarioId: actorId,
-      accion: "actualizar",
-      tabla: "periodos_academicos",
-      registroId: id,
-      valorAnterior: { bimestres: actual.bimestres },
-      valorNuevo: { bimestres: guardado.bimestres },
-      direccionIp: ip,
-    });
-
-    return guardado;
   }
 
   async iniciar(id: string, actorId: string, ip?: string): Promise<AnioAcademicoResponseDto> {
-    const actual = await this.requireAnio(id);
-    if (actual.estado !== "planificado") {
-      throw new BadRequestException("Solo se puede iniciar un año escolar planificado.");
-    }
-
-    if (actual.bimestres.length !== 4) {
-      throw new BadRequestException(MENSAJES.bimestresIncompletos);
-    }
-    this.assertBimestres(actual, actual.bimestres);
-
-    const enCurso = await this.aniosRepository.findEnCurso();
-    if (enCurso && enCurso.id !== id) {
-      throw new ConflictException(MENSAJES.otroAnioEnCurso);
-    }
-
-    const iniciado = await this.aniosRepository.cambiarEstadoAnio(id, "en_curso");
-    await this.auditarEstado("anios_academicos", id, actual.estado, iniciado.estado, actorId, ip);
-    return iniciado;
+    return parte1.iniciar(this.dependencias(), this.llamadas(), id, actorId, ip);
   }
 
   async cerrar(id: string, actorId: string, ip?: string): Promise<AnioAcademicoResponseDto> {
-    const actual = await this.requireAnio(id);
-    if (actual.estado !== "en_curso" && actual.estado !== "reabierto") {
-      throw new BadRequestException("No se puede cerrar un año que no está en curso.");
-    }
-
-    const abiertos = actual.bimestres.filter((bimestre) => bimestre.estado !== "cerrado");
-    if (actual.bimestres.length !== 4 || abiertos.length > 0) {
-      throw new BadRequestException(MENSAJES.anioConBimestresAbiertos);
-    }
-
-    const cerrado = await this.aniosRepository.cambiarEstadoAnio(id, "cerrado", {
-      motivo: actual.motivoReapertura,
-      hasta: null,
-    });
-    const matriculasCulminadas = await this.aniosRepository.culminarMatriculasDelAnio(id);
-    await this.auditService.log({
-      usuarioId: actorId,
-      accion: "actualizar",
-      tabla: "anios_academicos",
-      registroId: id,
-      valorAnterior: { estado: actual.estado },
-      valorNuevo: { estado: cerrado.estado, matriculasCulminadas },
-      direccionIp: ip,
-    });
-    return cerrado;
+    return parte1.cerrar(this.dependencias(), this.llamadas(), id, actorId, ip);
   }
 
   async reabrir(
@@ -259,36 +123,7 @@ export class AniosAcademicosService implements OnModuleInit {
     actorId: string,
     ip?: string,
   ): Promise<AnioAcademicoResponseDto> {
-    const motivo = dto.motivo?.trim() ?? "";
-    if (!motivo || !dto.fechaLimite || !esFechaIso(dto.fechaLimite)) {
-      throw new BadRequestException(MENSAJES.reaperturaIncompleta);
-    }
-
-    const actual = await this.requireAnio(id);
-    if (actual.estado !== "cerrado") {
-      throw new BadRequestException("Solo se puede reabrir un año escolar cerrado.");
-    }
-
-    const reabierto = await this.aniosRepository.cambiarEstadoAnio(id, "reabierto", {
-      motivo,
-      hasta: `${dto.fechaLimite} 23:59:59`,
-    });
-
-    await this.auditService.log({
-      usuarioId: actorId,
-      accion: "actualizar",
-      tabla: "anios_academicos",
-      registroId: id,
-      valorAnterior: { estado: actual.estado },
-      valorNuevo: {
-        estado: reabierto.estado,
-        motivoReapertura: motivo,
-        reabiertoHasta: reabierto.reabiertoHasta,
-      },
-      direccionIp: ip,
-    });
-
-    return reabierto;
+    return parte1.reabrir(this.dependencias(), this.llamadas(), id, dto, actorId, ip);
   }
 
   async iniciarBimestre(
@@ -297,37 +132,14 @@ export class AniosAcademicosService implements OnModuleInit {
     actorId: string,
     ip?: string,
   ): Promise<BimestreResponseDto> {
-    const anio = await this.requireAnio(anioId);
-    if (anio.estado !== "en_curso" && anio.estado !== "reabierto") {
-      throw new BadRequestException("Inicie el año escolar antes de iniciar un bimestre.");
-    }
-
-    const bimestre = anio.bimestres.find((item) => item.id === bimestreId);
-    if (!bimestre) throw new NotFoundException("Bimestre no encontrado.");
-    if (bimestre.estado !== "planificado") {
-      throw new BadRequestException("Solo se puede iniciar un bimestre planificado.");
-    }
-
-    const anterior = anio.bimestres.find((item) => item.numero === bimestre.numero - 1);
-    if (anterior && anterior.estado !== "cerrado") {
-      throw new BadRequestException(MENSAJES.bimestreFueraDeOrden);
-    }
-
-    const otroEnCurso = await this.aniosRepository.hayOtroBimestreEnCurso(anioId, bimestreId);
-    if (otroEnCurso) {
-      throw new BadRequestException(MENSAJES.bimestreFueraDeOrden);
-    }
-
-    const iniciado = await this.aniosRepository.cambiarEstadoBimestre(bimestreId, "en_curso");
-    await this.auditarEstado(
-      "periodos_academicos",
+    return parte1.iniciarBimestre(
+      this.dependencias(),
+      this.llamadas(),
+      anioId,
       bimestreId,
-      bimestre.estado,
-      iniciado.estado,
       actorId,
       ip,
     );
-    return iniciado;
   }
 
   async cerrarBimestre(
@@ -336,43 +148,23 @@ export class AniosAcademicosService implements OnModuleInit {
     actorId: string,
     ip?: string,
   ): Promise<BimestreResponseDto> {
-    const anio = await this.requireAnio(anioId);
-    const bimestre = anio.bimestres.find((item) => item.id === bimestreId);
-    if (!bimestre) throw new NotFoundException("Bimestre no encontrado.");
-    if (bimestre.estado !== "en_curso") {
-      throw new BadRequestException("Solo se puede cerrar un bimestre en curso.");
-    }
-
-    const cerrado = await this.aniosRepository.cambiarEstadoBimestre(bimestreId, "cerrado");
-    await this.auditarEstado(
-      "periodos_academicos",
+    return parte1.cerrarBimestre(
+      this.dependencias(),
+      this.llamadas(),
+      anioId,
       bimestreId,
-      bimestre.estado,
-      cerrado.estado,
       actorId,
       ip,
     );
-    return cerrado;
   }
 
   /** Lo consulta RF-011: un bimestre cerrado bloquea sesiones y ausencias de sus fechas. */
   async sesionesBloqueadasEn(fecha: string): Promise<boolean> {
-    return this.aniosRepository.bimestreCerradoEn(fecha);
+    return parte1.sesionesBloqueadasEn(this.dependencias(), fecha);
   }
 
   async cerrarReaperturasVencidas(hoy = hoyEnColegio()): Promise<number> {
-    const vencidos = await this.aniosRepository.cerrarReaperturasVencidas(hoy);
-    for (const anio of vencidos) {
-      await this.auditService.log({
-        usuarioId: null,
-        accion: "actualizar",
-        tabla: "anios_academicos",
-        registroId: anio.id,
-        valorAnterior: { estado: "reabierto" },
-        valorNuevo: { estado: "cerrado", vencidoEl: hoy },
-      });
-    }
-    return vencidos.length;
+    return parte1.cerrarReaperturasVencidas(this.dependencias(), hoy);
   }
 
   /**
@@ -385,124 +177,34 @@ export class AniosAcademicosService implements OnModuleInit {
     docentesNotificados: number;
     directivosNotificados: number;
   }> {
-    if (!this.notificacionesService) {
-      return { docentesNotificados: 0, directivosNotificados: 0 };
-    }
-
-    const anio = await this.anioVigente();
-    if (!anio || anio.estado !== "en_curso") {
-      return { docentesNotificados: 0, directivosNotificados: 0 };
-    }
-
-    const bimestreEnCurso = anio.bimestres.find((b) => b.estado === "en_curso");
-    if (!bimestreEnCurso) {
-      return { docentesNotificados: 0, directivosNotificados: 0 };
-    }
-
-    const fechaFinStr = bimestreEnCurso.fechaFin.slice(0, 10);
-    const diasRestantes = dayjs(fechaFinStr).diff(dayjs(hoy), "day");
-
-    let docentesNotificados = 0;
-    let directivosNotificados = 0;
-
-    // Caso 1: Faltan 5 días o 2 días -> Notificación preventiva a docentes
-    if (diasRestantes === 5 || diasRestantes === 2) {
-      const docentesUsuarios = await this.aniosRepository.findDocentesUsuariosConCarga(anio.id);
-      const esUrgente = diasRestantes === 2;
-      const titulo = esUrgente
-        ? `¡Atención! Faltan 48 horas para el cierre del Bimestre ${bimestreEnCurso.nombre}`
-        : `Aviso preventivo: Cierre del Bimestre ${bimestreEnCurso.nombre} en ${diasRestantes} días`;
-
-      const mensaje = `El Bimestre ${bimestreEnCurso.nombre} finaliza el ${fechaFinStr}. Recuerde registrar la asistencia de sus sesiones de clase, calificar las tareas y verificar sus materiales antes del cierre formal del periodo.`;
-
-      for (const usuarioId of docentesUsuarios) {
-        await this.notificacionesService.enviar({
-          usuarioId,
-          titulo,
-          mensaje,
-          tipo: esUrgente ? "alerta" : "recordatorio",
-          enlaceUrl: "/admin/aula-virtual",
-          canales: ["in_app", "push"],
-        });
-        docentesNotificados++;
-      }
-    }
-
-    // Caso 2: El día de la fecha de término -> Alerta a Directivos
-    if (diasRestantes === 0) {
-      const directivosUsuarios = await this.aniosRepository.findDirectivosUsuarios();
-      const titulo = `Bimestre ${bimestreEnCurso.nombre} culminado según calendario`;
-      const mensaje = `El Bimestre ${bimestreEnCurso.nombre} ha cumplido su fecha programada (${fechaFinStr}). Puede revisar el consolidado docente y proceder con el cierre del periodo escolar desde el módulo de Año Escolar.`;
-
-      for (const usuarioId of directivosUsuarios) {
-        await this.notificacionesService.enviar({
-          usuarioId,
-          titulo,
-          mensaje,
-          tipo: "alerta",
-          enlaceUrl: "/admin/anio-escolar",
-          canales: ["in_app", "push"],
-        });
-        directivosNotificados++;
-      }
-    }
-
-    return { docentesNotificados, directivosNotificados };
+    return parte2.verificarYNotificarFinBimestre(this.dependencias(), this.llamadas(), hoy);
   }
 
   async anioVigente(): Promise<AnioPersistido | null> {
-    return (
-      (await this.aniosRepository.findEnCurso()) ?? (await this.aniosRepository.findReabierto())
-    );
+    return parte2.anioVigente(this.dependencias());
   }
 
   private async requireAnio(id: string): Promise<AnioPersistido> {
-    const anio = await this.aniosRepository.findById(id);
-    if (!anio) throw new NotFoundException("Año escolar no encontrado.");
-    return anio;
+    return parte2.requireAnio(this.dependencias(), id);
   }
 
   private assertPlanificado(anio: AnioPersistido): void {
-    if (anio.estado !== "planificado") {
-      throw new BadRequestException("Solo se pueden modificar las fechas de un año planificado.");
-    }
+    return parte2.assertPlanificado(anio);
   }
 
   private assertRangoAnio(inicio: string, fin: string): void {
-    if (!esFechaIso(inicio) || !esFechaIso(fin)) {
-      throw new BadRequestException("Indique una fecha válida (AAAA-MM-DD).");
-    }
-    const mensaje = mensajeSiRangoInvalido(inicio, fin, false);
-    if (mensaje) throw new BadRequestException(mensaje);
+    return parte2.assertRangoAnio(inicio, fin);
   }
 
   private assertBimestres(
     anio: { fechaInicio: string; fechaFin: string },
     bimestres: { numero: number; fechaInicio: string; fechaFin: string }[],
   ): void {
-    for (const bimestre of bimestres) {
-      if (!esFechaIso(bimestre.fechaInicio) || !esFechaIso(bimestre.fechaFin)) {
-        throw new BadRequestException("Indique una fecha válida (AAAA-MM-DD).");
-      }
-    }
-    const mensaje = validarBimestres(anio, bimestres);
-    if (mensaje) throw new BadRequestException(mensaje);
+    return parte2.assertBimestres(anio, bimestres);
   }
 
   private resumen(anio: AnioPersistido): Record<string, unknown> {
-    return {
-      anio: anio.anio,
-      nombre: anio.nombre,
-      fechaInicio: anio.fechaInicio,
-      fechaFin: anio.fechaFin,
-      estado: anio.estado,
-      bimestres: anio.bimestres.map((bimestre) => ({
-        numero: bimestre.numero,
-        fechaInicio: bimestre.fechaInicio,
-        fechaFin: bimestre.fechaFin,
-        estado: bimestre.estado,
-      })),
-    };
+    return parte2.resumen(anio);
   }
 
   private async auditarEstado(
@@ -513,14 +215,14 @@ export class AniosAcademicosService implements OnModuleInit {
     actorId: string,
     ip?: string,
   ): Promise<void> {
-    await this.auditService.log({
-      usuarioId: actorId,
-      accion: "actualizar",
+    return parte2.auditarEstado(
+      this.dependencias(),
       tabla,
       registroId,
-      valorAnterior: { estado: anterior },
-      valorNuevo: { estado: nuevo },
-      direccionIp: ip,
-    });
+      anterior,
+      nuevo,
+      actorId,
+      ip,
+    );
   }
 }

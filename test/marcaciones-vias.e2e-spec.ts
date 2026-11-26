@@ -29,8 +29,8 @@ import {
   personas,
   usuarios,
 } from "../src/core/database/schema";
-import { MarcacionesService } from "../src/features/marcaciones/marcaciones.service";
-import { MarcacionesBiometricasService } from "../src/features/marcaciones/marcaciones-biometricas.service";
+import { MarcacionesService } from "../src/features/marcaciones/services/marcaciones.service";
+import { MarcacionesBiometricasService } from "../src/features/marcaciones/services/marcaciones-biometricas.service";
 import { ahoraEnColegio } from "../src/features/marcaciones/utils/marcacion-reglas.util";
 
 const habilitado = process.env.E2E_BD_REAL === "si";

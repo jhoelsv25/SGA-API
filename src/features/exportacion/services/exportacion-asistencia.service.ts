@@ -9,7 +9,7 @@ import { AsistenciaClaseService } from "../../asistencia-clase/asistencia-clase.
 import type { AuthenticatedUser } from "../../auth/interfaces/jwt-payload.interface";
 import { DocentesService } from "../../docentes/docentes.service";
 import { InstitucionService } from "../../institucion/institucion.service";
-import { MarcacionesService } from "../../marcaciones/marcaciones.service";
+import { MarcacionesService } from "../../marcaciones/services/marcaciones.service";
 import { SeccionesService } from "../../secciones/secciones.service";
 import type {
   ExportarAsistenciaPersonalQueryDto,

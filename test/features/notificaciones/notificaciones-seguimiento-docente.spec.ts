@@ -7,7 +7,7 @@ import type { AuditService } from "@/common/services/audit.service";
 import type { AniosAcademicosService } from "@/features/anio-escolar/anios.service";
 import type { CalendarioService } from "@/features/calendario/calendario.service";
 import type { EquiposService } from "@/features/equipos/equipos.service";
-import type { MarcacionesService } from "@/features/marcaciones/marcaciones.service";
+import type { MarcacionesService } from "@/features/marcaciones/services/marcaciones.service";
 import { NotificacionesService } from "@/features/notificaciones/notificaciones.service";
 import type { NotificacionesRepository } from "@/features/notificaciones/repositories";
 import {
