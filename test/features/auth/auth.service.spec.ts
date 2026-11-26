@@ -336,7 +336,11 @@ describe("AuthService (RF-001: Acceso al Sistema)", () => {
             username: "nonexistent",
             birthdate: "1990-05-15",
           }),
-        ).rejects.toThrow(new BadRequestException("Los datos no coinciden con ningún registro."));
+        ).rejects.toThrow(
+          new BadRequestException(
+            "No se pudo verificar la identidad. Revisa el usuario y la fecha de nacimiento.",
+          ),
+        );
       });
 
       it("debe lanzar BadRequestException si la fecha de nacimiento no coincide", async () => {
@@ -354,7 +358,7 @@ describe("AuthService (RF-001: Acceso al Sistema)", () => {
           }),
         ).rejects.toThrow(
           new BadRequestException(
-            "No se pudo procesar la solicitud. Verifica el usuario y tu fecha de nacimiento.",
+            "No se pudo verificar la identidad. Revisa el usuario y la fecha de nacimiento.",
           ),
         );
       });

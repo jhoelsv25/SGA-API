@@ -123,6 +123,7 @@ export interface IAulaVirtualRepository {
   listarSolicitudes(filtro: {
     estado?: EstadoSolicitudFecha;
     solicitadoPorId?: string;
+    anioAcademicoId?: string;
   }): Promise<SolicitudFila[]>;
   historialCambiosFecha(materialId: string): Promise<CambioFechaHistorial[]>;
   aprobarSolicitud(

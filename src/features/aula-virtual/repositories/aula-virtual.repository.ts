@@ -249,6 +249,7 @@ export class AulaVirtualRepository implements IAulaVirtualRepository {
   listarSolicitudes(filtro: {
     estado?: EstadoSolicitudFecha;
     solicitadoPorId?: string;
+    anioAcademicoId?: string;
   }): Promise<SolicitudFila[]> {
     return this.materialesRepo.listarSolicitudes(filtro);
   }

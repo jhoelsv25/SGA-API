@@ -151,14 +151,12 @@ export class AuthPasswordService {
     const userWithPersona =
       await this.authRepository.findUserWithPersonaByUsername(normalizedUsername);
 
-    if (!userWithPersona) {
-      throw new BadRequestException("Los datos no coinciden con ningún registro.");
-    }
+    const identidadNoVerificada = new BadRequestException(
+      "No se pudo verificar la identidad. Revisa el usuario y la fecha de nacimiento.",
+    );
 
-    if (userWithPersona.fechaNacimiento !== dto.birthdate) {
-      throw new BadRequestException(
-        "No se pudo procesar la solicitud. Verifica el usuario y tu fecha de nacimiento.",
-      );
+    if (!userWithPersona || userWithPersona.fechaNacimiento !== dto.birthdate) {
+      throw identidadNoVerificada;
     }
 
     return {
