@@ -664,7 +664,11 @@ async function seed() {
 
   // 7. Persona Administrador
   const personaRes = await pool.query<{ id: string }>(`
-    SELECT id FROM personas WHERE numero_documento = '70123456'
+    SELECT p.id FROM personas p
+    LEFT JOIN usuarios u ON u.persona_id = p.id AND u.nombre_usuario = 'admin'
+    WHERE u.id IS NOT NULL OR p.numero_documento = '70123456'
+    ORDER BY (u.id IS NOT NULL) DESC
+    LIMIT 1
   `);
   let personaId: string;
   if (personaRes.rows.length === 0) {
@@ -801,8 +805,10 @@ async function seed() {
 
   for (const c of CURSOS_BASE_SEED) {
     const existing = await pool.query(
-      `SELECT id FROM cursos WHERE UPPER(codigo) = UPPER($1) AND eliminado_en IS NULL`,
-      [c.codigo],
+      // También por nombre: el colegio pudo crear el curso con otro código (p. ej. QCH).
+      `SELECT id FROM cursos
+       WHERE (UPPER(codigo) = UPPER($1) OR LOWER(nombre) = LOWER($2)) AND eliminado_en IS NULL`,
+      [c.codigo, c.nombre],
     );
     if (existing.rows.length === 0) {
       await pool.query(

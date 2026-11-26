@@ -162,6 +162,11 @@ export function ahoraEnColegio(): { fecha: string; hora: string; fechaHora: stri
   };
 }
 
+/** Fecha YYYY-MM-DD en Lima de un instante en milisegundos (por defecto, ahora). */
+export function fechaEnColegio(instante: number = Date.now()): string {
+  return dayjs(instante).tz(ZONA_HORARIA_COLEGIO).format("YYYY-MM-DD");
+}
+
 /** "07:52:10" → "07:52" */
 export function horaCorta(hora: string): string {
   return hora.slice(0, 5);

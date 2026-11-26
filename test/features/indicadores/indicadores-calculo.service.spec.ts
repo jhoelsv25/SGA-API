@@ -1,3 +1,4 @@
+import type { AniosAcademicosService } from "@/features/anio-escolar/anios.service";
 import { BadRequestException, ForbiddenException, NotFoundException } from "@nestjs/common";
 import { AnioLectivoCls } from "@/common/anio-lectivo";
 import {
@@ -31,6 +32,7 @@ describe("RF-020: Indicadores de la Tesis — Cálculo de Indicadores (CP-RF020-
     obtenerDocentePorPersonaId: jest.Mock;
   };
 
+  let aniosService: { anioVigente: jest.Mock };
   let anioLectivoCls: {
     id: jest.Mock;
   };
@@ -117,6 +119,10 @@ describe("RF-020: Indicadores de la Tesis — Cálculo de Indicadores (CP-RF020-
       }),
     };
 
+    aniosService = {
+      anioVigente: jest.fn().mockResolvedValue({ id: ANIO_ACADEMICO_ID }),
+    };
+
     anioLectivoCls = {
       id: jest.fn().mockReturnValue(ANIO_ACADEMICO_ID),
     };
@@ -124,7 +130,33 @@ describe("RF-020: Indicadores de la Tesis — Cálculo de Indicadores (CP-RF020-
     service = new IndicadoresCalculoService(
       repo as unknown as IndicadoresCalculoRepository,
       anioLectivoCls as unknown as AnioLectivoCls,
+      aniosService as unknown as AniosAcademicosService,
     );
+  });
+
+  // OBS-01: sin encabezado de año se usa el vigente, nunca "" (una columna UUID lo rechaza).
+  describe("OBS-01: petición sin año lectivo", () => {
+    it("usa el año vigente en «Mis indicadores» y en el tablero", async () => {
+      anioLectivoCls.id.mockReturnValue(undefined);
+
+      await service.obtenerMisIndicadores("persona-1");
+      await service.obtenerTablero({});
+
+      expect(repo.obtenerPeriodoEnCurso.mock.calls).toEqual([
+        [ANIO_ACADEMICO_ID],
+        [ANIO_ACADEMICO_ID],
+      ]);
+    });
+
+    it("si no hay año vigente responde 400 sin consultar", async () => {
+      anioLectivoCls.id.mockReturnValue(undefined);
+      aniosService.anioVigente.mockResolvedValue(null);
+
+      await expect(service.obtenerMisIndicadores("persona-1")).rejects.toThrow(
+        "No hay un año escolar en curso.",
+      );
+      expect(repo.obtenerPeriodoEnCurso).not.toHaveBeenCalled();
+    });
   });
 
   // =========================================================================

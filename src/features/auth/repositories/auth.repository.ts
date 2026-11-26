@@ -34,7 +34,13 @@ export class AuthRepository implements IAuthRepository {
     const [user] = await this.db
       .select()
       .from(usuarios)
-      .where(and(eq(usuarios.nombreUsuario, username), isNull(usuarios.eliminadoEn)))
+      // El login llega en minúsculas y hay cuentas guardadas con mayúsculas (código de estudiante).
+      .where(
+        and(
+          sql`lower(${usuarios.nombreUsuario}) = ${username.toLowerCase()}`,
+          isNull(usuarios.eliminadoEn),
+        ),
+      )
       .limit(1);
 
     return user ?? null;

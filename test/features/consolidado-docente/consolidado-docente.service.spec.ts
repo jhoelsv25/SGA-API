@@ -410,6 +410,21 @@ describe("RF-013: Consolidado y Ficha de Seguimiento Docente (CP-RF013-01 a CP-R
     });
   });
 
+  // OBS-17: la versión nueva solo nace de «reabrir → corregir → cerrar».
+  describe("RF-013: cierre de un consolidado que no se reabrió", () => {
+    it.each([
+      ["cerrado", true],
+      ["reabierto", false],
+    ] as const)("rechaza el cierre si está %s y vigente=%s", async (estado, vigente) => {
+      repo.obtenerConsolidadoPorId!.mockResolvedValue(consolidadoMock({ estado, vigente }));
+
+      await expect(
+        service.cerrarConsolidado("cons-1", { motivoCambio: "Ajuste" }, usuarioDirector),
+      ).rejects.toThrow(ConflictException);
+      expect(repo.cerrarConNuevaVersion).not.toHaveBeenCalled();
+    });
+  });
+
   describe("CP-RF013-15: Cierre posterior a reapertura incrementa versión", () => {
     it("debe cerrar con nueva version (version 2) y recalcular métricas", async () => {
       repo.obtenerConsolidadoPorId!.mockResolvedValue(

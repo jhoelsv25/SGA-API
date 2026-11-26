@@ -13,13 +13,11 @@ import { MatriculasService } from "../matriculas/matriculas.service";
 import { PersonasService } from "../personas/personas.service";
 import { SeccionesService } from "../secciones/secciones.service";
 import { UsersService } from "../users/users.service";
-import {
-  ExportacionAcademicaService,
-  ExportacionAsistenciaService,
-  ExportacionContextoHelper,
-  ExportacionPadronService,
-  type ReporteGenerado,
-} from "./services";
+// Importes directos: el índice ./services incluye la cola, que importa este archivo (ciclo).
+import { ExportacionAcademicaService } from "./services/exportacion-academica.service";
+import { ExportacionAsistenciaService } from "./services/exportacion-asistencia.service";
+import { ExportacionContextoHelper, type ReporteGenerado } from "./services/exportacion-base.helper";
+import { ExportacionPadronService } from "./services/exportacion-padron.service";
 
 export type { ReporteGenerado };
 

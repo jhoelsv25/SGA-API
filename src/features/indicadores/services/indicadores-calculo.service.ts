@@ -1,6 +1,7 @@
 import { sinFichaDocente } from "../../../common/utils/ficha-docente.util";
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { AnioLectivoCls } from "@/common/anio-lectivo";
+import { AniosAcademicosService } from "../../anio-escolar/anios.service";
 import { MENSAJES_INDICADORES } from "../constants";
 import type {
   DesgloseCspDto,
@@ -21,7 +22,15 @@ export class IndicadoresCalculoService {
   constructor(
     private readonly repository: IndicadoresCalculoRepository,
     private readonly anioLectivoCls: AnioLectivoCls,
+    private readonly aniosService: AniosAcademicosService,
   ) {}
+
+  /** El encabezado del año es opcional: si no llega, se usa el año vigente. */
+  private async anioConsultado(): Promise<string> {
+    const id = this.anioLectivoCls.id() ?? (await this.aniosService.anioVigente())?.id;
+    if (!id) throw new BadRequestException("No hay un año escolar en curso.");
+    return id;
+  }
 
   /**
    * HU1: Calcula el tablero de indicadores CSP, ISA, IGM para el colegio o con filtros.
@@ -32,7 +41,7 @@ export class IndicadoresCalculoService {
       throw new BadRequestException("La fecha de fin no puede ser anterior a la fecha de inicio.");
     }
 
-    const anioAcademicoId = this.anioLectivoCls.id() ?? "";
+    const anioAcademicoId = await this.anioConsultado();
     let periodo: PeriodoResumen | null = null;
 
     if (query.periodoId) {
@@ -178,7 +187,7 @@ export class IndicadoresCalculoService {
       throw sinFichaDocente();
     }
 
-    const anioAcademicoId = this.anioLectivoCls.id() ?? "";
+    const anioAcademicoId = await this.anioConsultado();
     let periodo: PeriodoResumen | null = null;
 
     if (periodoId) {

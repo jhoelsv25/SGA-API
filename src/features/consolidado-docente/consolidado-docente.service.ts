@@ -355,6 +355,10 @@ export class ConsolidadoDocenteService {
       throw new NotFoundException(MENSAJES_CONSOLIDADO.NO_ENCONTRADO);
     }
 
+    if (consolidado.estado !== "reabierto" || !consolidado.vigente) {
+      throw new ConflictException(MENSAJES_CONSOLIDADO.CIERRE_SIN_REAPERTURA);
+    }
+
     // Si ya es versión 1 o superior, para versionar a 2+ es obligatorio el motivo - CP-RF013-09
     if (consolidado.version >= 1 && !dto.motivoCambio?.trim()) {
       throw new BadRequestException(MENSAJES_CONSOLIDADO.NUEVO_CIERRE_SIN_MOTIVO);

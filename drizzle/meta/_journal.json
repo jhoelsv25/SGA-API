@@ -225,6 +225,20 @@
       "when": 1794741411900,
       "tag": "0033_interaccion_y_actividad_chat",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1794827811900,
+      "tag": "0032_area_curricular_quechua",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1794914211900,
+      "tag": "0034_suscripciones_push",
+      "breakpoints": true
     }
   ]
 }
