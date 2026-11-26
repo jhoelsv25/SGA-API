@@ -1,6 +1,6 @@
 import { AnioLectivoCls } from "@/common/anio-lectivo";
 import { AuditService } from "@/common/services/audit.service";
-import { AusenciasRegistroService } from "@/features/ausencias-docente/ausencias-registro.service";
+import { AusenciasRegistroService } from "@/features/ausencias-docente/services/ausencias-registro.service";
 import type { AusenciasDocenteRepository } from "@/features/ausencias-docente/repositories";
 import { NotificacionesService } from "@/features/notificaciones/notificaciones.service";
 

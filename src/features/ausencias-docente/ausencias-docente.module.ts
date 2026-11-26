@@ -1,11 +1,11 @@
 import { Module } from "@nestjs/common";
 import { AuditService } from "../../common/services/audit.service";
 import { NotificacionesModule } from "../notificaciones/notificaciones.module";
-import { AusenciasConsultaService } from "./ausencias-consulta.service";
-import { AusenciasCorreccionService } from "./ausencias-correccion.service";
-import { AusenciasDocenteController } from "./ausencias-docente.controller";
-import { AusenciasDocenteService } from "./ausencias-docente.service";
-import { AusenciasRegistroService } from "./ausencias-registro.service";
+import { AusenciasConsultaService } from "./services/ausencias-consulta.service";
+import { AusenciasCorreccionService } from "./services/ausencias-correccion.service";
+import { AusenciasDocenteController } from "./controllers/ausencias-docente.controller";
+import { AusenciasDocenteService } from "./services/ausencias-docente.service";
+import { AusenciasRegistroService } from "./services/ausencias-registro.service";
 import { AusenciasDocenteRepository } from "./repositories";
 
 @Module({

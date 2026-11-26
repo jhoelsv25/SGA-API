@@ -14,7 +14,7 @@ import {
 import {
   MENSAJE_DESCARGO_AUSENCIA_ANULADA,
   MENSAJE_DESCARGO_AUSENCIA_NO_VIGENTE,
-} from "../../../src/features/ausencias-docente/ausencias-consulta.service";
+} from "../../../src/features/ausencias-docente/services/ausencias-consulta.service";
 
 type Mocks<T> = { [K in keyof T]?: jest.Mock };
 

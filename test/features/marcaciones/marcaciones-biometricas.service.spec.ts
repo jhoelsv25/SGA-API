@@ -1,5 +1,5 @@
-import { MarcacionesBiometricasService } from "@/features/marcaciones/marcaciones-biometricas.service";
-import { MarcacionesService } from "@/features/marcaciones/marcaciones.service";
+import { MarcacionesBiometricasService } from "@/features/marcaciones/services/marcaciones-biometricas.service";
+import { MarcacionesService } from "@/features/marcaciones/services/marcaciones.service";
 import type { MarcacionCruda } from "@/features/marcaciones/repositories/marcaciones-biometricas.repository";
 
 const turnoDocentes = {

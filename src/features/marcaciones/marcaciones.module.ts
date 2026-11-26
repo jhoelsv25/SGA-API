@@ -6,10 +6,10 @@ import { EquiposModule } from "../equipos/equipos.module";
 import { NotificacionesModule } from "../notificaciones/notificaciones.module";
 import { TurnosModule } from "../turnos/turnos.module";
 import { VariablesSistemaModule } from "../variables-sistema/variables-sistema.module";
-import { MarcacionesBiometricasProcesador } from "./marcaciones-biometricas.procesador";
-import { MarcacionesBiometricasService } from "./marcaciones-biometricas.service";
-import { MarcacionesController } from "./marcaciones.controller";
-import { MarcacionesService } from "./marcaciones.service";
+import { MarcacionesBiometricasProcesador } from "./processors/marcaciones-biometricas.procesador";
+import { MarcacionesBiometricasService } from "./services/marcaciones-biometricas.service";
+import { MarcacionesController } from "./controllers/marcaciones.controller";
+import { MarcacionesService } from "./services/marcaciones.service";
 import { MarcacionesBiometricasRepository, MarcacionesRepository } from "./repositories";
 
 @Module({

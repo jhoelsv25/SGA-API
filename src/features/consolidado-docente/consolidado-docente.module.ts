@@ -5,18 +5,18 @@ import { QUEUES } from "@/core/queues/queues.constants";
 import { QueuesModule } from "@/core/queues/queues.module";
 import { InstitucionModule } from "@/features/institucion/institucion.module";
 import { NotificacionesModule } from "@/features/notificaciones/notificaciones.module";
-import { CompromisosConsolidadoController } from "./compromisos-consolidado.controller";
-import { CompromisosConsolidadoService } from "./compromisos-consolidado.service";
-import { ConsolidadoDocenteController } from "./consolidado-docente.controller";
-import { ConsolidadoDocenteService } from "./consolidado-docente.service";
+import { CompromisosConsolidadoController } from "./controllers/compromisos-consolidado.controller";
+import { CompromisosConsolidadoService } from "./services/compromisos-consolidado.service";
+import { ConsolidadoDocenteController } from "./controllers/consolidado-docente.controller";
+import { ConsolidadoDocenteService } from "./services/consolidado-docente.service";
 import { ConsolidadoDocenteProcessor } from "./processors";
 import {
   CompromisosConsolidadoRepository,
   ConsolidadoDocenteRepository,
   SeguimientoReportesRepository,
 } from "./repositories";
-import { SeguimientoReportesController } from "./seguimiento-reportes.controller";
-import { SeguimientoReportesService } from "./seguimiento-reportes.service";
+import { SeguimientoReportesController } from "./controllers/seguimiento-reportes.controller";
+import { SeguimientoReportesService } from "./services/seguimiento-reportes.service";
 
 @Module({
   imports: [

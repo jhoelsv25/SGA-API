@@ -2,7 +2,7 @@ import { Processor, WorkerHost } from "@nestjs/bullmq";
 import { Logger } from "@nestjs/common";
 import { Job } from "bullmq";
 import { QUEUES } from "../../../core/queues/queues.constants";
-import { CompromisosConsolidadoService } from "../compromisos-consolidado.service";
+import { CompromisosConsolidadoService } from "../services/compromisos-consolidado.service";
 import { JOB_RECORDAR_COMPROMISOS } from "../constants";
 
 @Processor(QUEUES.CONSOLIDADO_DOCENTE)
