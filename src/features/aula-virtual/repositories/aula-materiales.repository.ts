@@ -342,6 +342,7 @@ export class AulaMaterialesRepository {
   async listarSolicitudes(filtro: {
     estado?: EstadoSolicitudFecha;
     solicitadoPorId?: string;
+    anioAcademicoId?: string;
   }): Promise<SolicitudFila[]> {
     const filas = await this.consultaSolicitudes()
       .where(
@@ -349,6 +350,9 @@ export class AulaMaterialesRepository {
           filtro.estado ? eq(materialCambiosFecha.estado, filtro.estado) : undefined,
           filtro.solicitadoPorId
             ? eq(materialCambiosFecha.solicitadoPorId, filtro.solicitadoPorId)
+            : undefined,
+          filtro.anioAcademicoId
+            ? eq(secciones.anioAcademicoId, filtro.anioAcademicoId)
             : undefined,
         ),
       )

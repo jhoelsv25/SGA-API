@@ -107,14 +107,19 @@ export class AulaSolicitudesService {
     return { mensaje: MENSAJES_AULA_VIRTUAL.SOLICITUD_ENVIADA, id: solicitud.id };
   }
 
-  /** Subdirector: pendientes por defecto. Docente: las suyas. */
+  /** Seguimiento: todas las del año, o un estado si se pide. Docente: las suyas. */
   async listarSolicitudes(
     usuario: AuthenticatedUser,
     estado?: EstadoSolicitudFecha,
   ): Promise<SolicitudCambioResponse[]> {
+    const anioAcademicoId = await this.ctx.anioDeTrabajo();
     const filas = this.ctx.esRolDeSeguimiento(usuario)
-      ? await this.repository.listarSolicitudes({ estado: estado ?? "solicitada" })
-      : await this.repository.listarSolicitudes({ estado, solicitadoPorId: usuario.id });
+      ? await this.repository.listarSolicitudes({ estado, anioAcademicoId })
+      : await this.repository.listarSolicitudes({
+          estado,
+          anioAcademicoId,
+          solicitadoPorId: usuario.id,
+        });
     return filas.map((fila) => this.armarSolicitud(fila));
   }
 
