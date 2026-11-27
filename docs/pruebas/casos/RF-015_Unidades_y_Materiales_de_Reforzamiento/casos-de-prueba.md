@@ -1,6 +1,6 @@
 # Casos de prueba — RF-015: Unidades y Materiales de Reforzamiento
 
-**Fuente:** [`RF-015` V2](../../requerimientos/RF-015_Unidades_y_Materiales_de_Reforzamiento/V2/RF-015_Unidades_y_Materiales_de_Reforzamiento.md) · **Total de casos:** 26 · **Nuevos en V2:** 0
+**Fuente:** [`RF-015` V2](../../../requerimientos/RF-015_Unidades_y_Materiales_de_Reforzamiento/V2/RF-015_Unidades_y_Materiales_de_Reforzamiento.md) · **Total de casos:** 26 · **Nuevos en V2:** 0
 
 > Generados desde los escenarios Gherkin. Los IDs de la V1 se conservan; los casos marcados `(v2.0)` son nuevos o cambiaron. Las ejecuciones anteriores se conservan.
 

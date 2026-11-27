@@ -15,7 +15,9 @@ import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagg
 import { ClientInfo, type ClientInfoData, CurrentUser, Roles } from "../../common/decorators";
 import type { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface";
 import { CambiarPinDto, CarneDatosDto, CredencialResponseDto, ReemitirCredencialDto } from "./dto";
+import { ROLES_CAMBIO_PIN, ROLES_EMISION_CARNES } from "./constants";
 import { CredencialesService } from "./credenciales.service";
+import { exigirAccesoACredencial } from "./utils/acceso-credencial.util";
 
 @ApiTags("Comunidad - Credenciales de Marcación")
 @ApiBearerAuth()
@@ -40,25 +42,10 @@ export class CredencialesController {
     return this.credencialesService.reemitir(dto, user.id, clientInfo.ip);
   }
 
-  @Patch("mi-pin")
-  @ApiOperation({
-    summary: "Cambiar el PIN de marcación de la sesión actual",
-    description:
-      "Permite al docente o estudiante autenticado actualizar su PIN de marcación en kiosko.",
-  })
-  @ApiResponse({ status: 200, description: "PIN actualizado correctamente" })
-  async cambiarMiPin(
-    @Body() dto: CambiarPinDto,
-    @CurrentUser() user: AuthenticatedUser,
-    @ClientInfo() clientInfo: ClientInfoData,
-  ): Promise<{ mensaje: string }> {
-    return this.credencialesService.cambiarPin(dto, user.personaId, user.id, clientInfo.ip);
-  }
-
   @Patch("personas/:personaId/pin")
-  @Roles("Administrador", "Secretaria")
+  @Roles(...ROLES_CAMBIO_PIN)
   @ApiOperation({
-    summary: "Cambiar o restablecer el PIN de marcación de una persona (Administrativo)",
+    summary: "Cambiar o restablecer el PIN de marcación de una persona (solo Soporte TI)",
   })
   @ApiResponse({ status: 200, description: "PIN actualizado correctamente" })
   async cambiarPinPersona(
@@ -75,7 +62,11 @@ export class CredencialesController {
     summary: "Obtener datos completos para la emisión o impresión del carné con QR",
   })
   @ApiResponse({ status: 200, type: CarneDatosDto })
-  async obtenerCarne(@Param("personaId", ParseUUIDPipe) personaId: string): Promise<CarneDatosDto> {
+  async obtenerCarne(
+    @Param("personaId", ParseUUIDPipe) personaId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<CarneDatosDto> {
+    exigirAccesoACredencial(user, personaId);
     return this.credencialesService.obtenerCarne(personaId);
   }
 
@@ -86,8 +77,10 @@ export class CredencialesController {
   @ApiResponse({ status: 200, description: "Buffer del archivo PDF del carné PVC" })
   async descargarCarnePdf(
     @Param("personaId", ParseUUIDPipe) personaId: string,
+    @CurrentUser() user: AuthenticatedUser,
     @Res() res: Response,
   ): Promise<void> {
+    exigirAccesoACredencial(user, personaId);
     const buffer = await this.credencialesService.generarCarnePdf(personaId);
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `inline; filename="carnet-${personaId}.pdf"`);
@@ -96,7 +89,7 @@ export class CredencialesController {
   }
 
   @Get("secciones/:seccionId/carnes/pdf")
-  @Roles("Administrador", "Secretaria", "Director", "Subdirector")
+  @Roles(...ROLES_EMISION_CARNES)
   @ApiOperation({
     summary: "Descargar en PDF A4 los carnés con QR de toda una sección listos para impresión",
     description:
@@ -118,7 +111,7 @@ export class CredencialesController {
   }
 
   @Get("docentes/carnes/pdf")
-  @Roles("Administrador", "Secretaria", "Director", "Subdirector")
+  @Roles(...ROLES_EMISION_CARNES)
   @ApiOperation({
     summary: "Descargar en PDF A4 los carnés con QR de todo el personal docente activo",
     description:
@@ -143,7 +136,9 @@ export class CredencialesController {
   @ApiResponse({ status: 200, type: CredencialResponseDto })
   async obtenerActiva(
     @Param("personaId", ParseUUIDPipe) personaId: string,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<CredencialResponseDto> {
+    exigirAccesoACredencial(user, personaId);
     return this.credencialesService.obtenerActiva(personaId);
   }
 }

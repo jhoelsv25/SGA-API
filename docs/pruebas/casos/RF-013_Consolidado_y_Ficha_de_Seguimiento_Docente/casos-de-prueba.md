@@ -1,6 +1,6 @@
 # Casos de prueba — RF-013: Consolidado y Ficha de Seguimiento Docente
 
-**Fuente:** [`RF-013` V2](../../requerimientos/RF-013_Consolidado_y_Ficha_de_Seguimiento_Docente/V2/RF-013_Consolidado_y_Ficha_de_Seguimiento_Docente.md) · **Total de casos:** 53 · **Nuevos en V2:** 33 · **Actualizados en V2:** 1 (CP-RF013-05)
+**Fuente:** [`RF-013` V2](../../../requerimientos/RF-013_Consolidado_y_Ficha_de_Seguimiento_Docente/V2/RF-013_Consolidado_y_Ficha_de_Seguimiento_Docente.md) · **Total de casos:** 53 · **Nuevos en V2:** 33 · **Actualizados en V2:** 1 (CP-RF013-05)
 
 > Generados desde los escenarios Gherkin de la versión 2.0. Se conservaron los IDs de la versión 1.0 y los escenarios nuevos (marcados `(v2.0)`) tomaron IDs nuevos. Si el RF cambia de versión, regenerar y conservar las ejecuciones anteriores.
 

@@ -1,6 +1,6 @@
 # Casos de prueba — RF-005: Año Escolar y Calendario
 
-**Fuente:** [`RF-005` V1](../../requerimientos/RF-005_Anio_Escolar_y_Calendario/V1/RF-005_Anio_Escolar_y_Calendario.md) · **Total de casos:** 21
+**Fuente:** [`RF-005` V2](../../../requerimientos/RF-005_Anio_Escolar_y_Calendario/V2/RF-005_Anio_Escolar_y_Calendario.md) · **Total de casos:** 21
 
 > Generados desde los escenarios Gherkin. Si el RF cambia de versión, regenerar y conservar las ejecuciones anteriores.
 
@@ -27,3 +27,25 @@
 | CP-RF005-19 | HU2 | Fechas del evento invertidas | que estoy registrando un evento | la fecha de fin es anterior a la de inicio | el sistema impide guardar y muestra "La fecha de fin debe ser posterior a la fecha de inicio." | Back + Front |
 | CP-RF005-20 | HU2 | Ver el calendario | que soy cualquier usuario del sistema | abro "Calendario" | el sistema muestra los eventos del año en curso en vista mensual, con los días sin clases resaltados. | Back + Front |
 | CP-RF005-21 | HU2 | Usuario sin permiso para registrar | que mi perfil no tiene el permiso `calendario.registrar` | abro "Calendario" | puedo ver los eventos, pero el sistema no me ofrece registrar, editar ni eliminar. | Back + Front |
+
+## Casos de la versión 2.0 (2026-11-26)
+
+| Escenario | Verificado con | Resultado |
+|---|---|---|
+| Semana de gestión sin clases en la que el personal trabaja | e2e (reporte) y `control-diario.service.spec.ts`; que no genere sesiones usa la regla ya existente | Pasa |
+| Solo aplica a eventos que suspenden clases | Chrome con datos simulados (se oculta); la API lo fuerza a falso, revisado en el código | Pasa en pantalla; API sin prueba propia |
+| Feriado dentro de una semana de gestión | e2e | Pasa |
+
+## Corrección del permiso del calendario (2026-11-26)
+
+La opción de menú `/admin/calendario` no existía y solo el Administrador podía registrar eventos. Corregido en la carga inicial y en la migración `0039_menu_calendario` (Administrador y Director).
+
+| Comprobación | Resultado |
+|---|---|
+| Antes de la migración, Director intenta crear un evento (Supabase de pruebas) | 403 (fallo reproducido) |
+| Después, Director crea, edita y quita un evento por la API | Pasa (201, 200, 200) |
+| Director en la web: ve la opción en el menú, el botón «Registrar evento» y el formulario | Pasa |
+| Secretaria, sin la opción asignada, intenta crear | 403, como corresponde |
+| Base vacía: migraciones y carga inicial dos veces | Pasa; una sola opción, con Administrador y Director |
+
+No se probó darle la opción a otro rol desde Roles y Permisos.

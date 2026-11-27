@@ -69,6 +69,7 @@ export class CalendarioService {
       fechaInicio: dto.fechaInicio,
       fechaFin: dto.fechaFin,
       suspendeClases,
+      personalLabora: suspendeClases && (dto.personalLabora ?? false),
       creadoPorId: actorId,
     });
 
@@ -110,6 +111,7 @@ export class CalendarioService {
       fechaInicio,
       fechaFin,
       suspendeClases,
+      personalLabora: suspendeClases && (dto.personalLabora ?? actual.personalLabora),
     });
 
     const mensaje = await this.aplicarSuspension(actualizado);
@@ -140,6 +142,29 @@ export class CalendarioService {
   }
 
   /** Lo consulta RF-011 para no generar sesiones en días que suspenden clases. */
+  /** De las fechas pedidas (ordenadas), las que no tienen clases. */
+  async fechasSinClases(fechas: readonly string[]): Promise<Set<string>> {
+    if (fechas.length === 0) return new Set();
+    const rangos = await this.calendarioRepository.rangosSinClases(
+      fechas[0],
+      fechas[fechas.length - 1],
+    );
+    return new Set(fechas.filter((f) => rangos.some((r) => r.inicio <= f && r.fin >= f)));
+  }
+
+  /**
+   * De las fechas pedidas (ordenadas), las que no son de trabajo para docentes y auxiliares.
+   * Un día sin clases en el que el personal trabaja no entra; si otro evento (un feriado) lo cubre, sí.
+   */
+  async fechasSinTrabajoPersonal(fechas: readonly string[]): Promise<Set<string>> {
+    if (fechas.length === 0) return new Set();
+    const rangos = await this.calendarioRepository.rangosSinTrabajoPersonal(
+      fechas[0],
+      fechas[fechas.length - 1],
+    );
+    return new Set(fechas.filter((f) => rangos.some((r) => r.inicio <= f && r.fin >= f)));
+  }
+
   async suspendeClasesEn(fecha: string): Promise<boolean> {
     return this.calendarioRepository.suspendeClasesEn(fecha);
   }
@@ -219,6 +244,7 @@ export class CalendarioService {
       fechaInicio: evento.fechaInicio,
       fechaFin: evento.fechaFin,
       suspendeClases: evento.suspendeClases,
+      personalLabora: evento.personalLabora,
     };
   }
 }

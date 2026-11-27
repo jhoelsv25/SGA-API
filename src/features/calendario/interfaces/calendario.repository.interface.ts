@@ -13,6 +13,7 @@ export interface GuardarEventoData {
   fechaInicio: string;
   fechaFin: string;
   suspendeClases: boolean;
+  personalLabora: boolean;
   creadoPorId: string | null;
 }
 

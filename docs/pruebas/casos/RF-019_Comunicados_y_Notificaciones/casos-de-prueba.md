@@ -1,6 +1,6 @@
 # Casos de prueba — RF-019: Comunicados y Notificaciones
 
-**Fuente:** [`RF-019` V2](../../requerimientos/RF-019_Comunicados_y_Notificaciones/V2/RF-019_Comunicados_y_Notificaciones.md) · **Total de casos:** 34 · **Nuevos en V2:** 19
+**Fuente:** [`RF-019` V2](../../../requerimientos/RF-019_Comunicados_y_Notificaciones/V2/RF-019_Comunicados_y_Notificaciones.md) · **Total de casos:** 34 · **Nuevos en V2:** 19
 
 > Generados desde los escenarios Gherkin. Los IDs de la V1 se conservan; los casos marcados `(v2.0)` son nuevos o cambiaron. Las ejecuciones anteriores se conservan.
 

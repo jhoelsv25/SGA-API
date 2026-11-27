@@ -7,15 +7,22 @@ import { TurnosRepository } from "../../../turnos/repositories/turnos.repository
 import { VariablesSistemaService } from "../../../variables-sistema/variables-sistema.service";
 import type { TurnoResponseDto } from "../../../turnos/dto";
 import { type TipoMarcacion, type TipoPersonaMarcacion } from "../../constants";
-import type { MarcacionKioskoResponseDto } from "../../dto";
+import type { MarcacionKioskoResponseDto, MarcacionResponseDto } from "../../dto";
 import type {
   CredencialParaMarcar,
   MarcacionDelDia,
+  NuevaMarcacion,
   PersonaAutenticada,
   PersonaParaMarcar,
 } from "../../interfaces";
 import { MarcacionesRepository } from "../../repositories";
 import { type DecisionMarca } from "../../utils";
+
+export interface CambioAuditable {
+  marcacionId: string;
+  valorAnterior: Record<string, unknown>;
+  valorNuevo: Record<string, unknown>;
+}
 
 export type MarcacionesServiceDeps = {
   repository: MarcacionesRepository;
@@ -34,14 +41,38 @@ export type MarcacionesServiceCalls = {
     pin: string,
   ) => Promise<{ credencial: CredencialParaMarcar; persona: PersonaAutenticada }>;
   exigirMatriculaSiEstudiante: (persona: PersonaParaMarcar) => Promise<void>;
-  turnoDe: (tipoPersona: TipoPersonaMarcacion) => Promise<TurnoResponseDto>;
+  turnoDePersona: (
+    personaId: string,
+    tipoPersona: TipoPersonaMarcacion,
+    fecha: string,
+  ) => Promise<TurnoResponseDto | null>;
+  exigirTurno: (turno: TurnoResponseDto | null | undefined) => TurnoResponseDto;
+  esDiaDeAsistencia: (
+    fecha: string,
+    turno: TurnoResponseDto,
+    tipoPersona: string,
+  ) => Promise<boolean>;
   esDiaConClases: (fecha: string, turno: TurnoResponseDto) => Promise<boolean>;
+  segundosDobleLectura: () => Promise<number>;
   minutosEntreVias: () => Promise<number>;
+  exigirOrdenDelDia: (
+    tipo: TipoMarcacion,
+    fechaHora: string,
+    previas: readonly MarcacionDelDia[],
+  ) => void;
+  guardarMarca: (
+    repositorio: MarcacionesRepository,
+    nueva: NuevaMarcacion,
+    reemplazada?: MarcacionDelDia,
+  ) => Promise<{ marcacion: MarcacionResponseDto; reemplazo?: CambioAuditable }>;
+  auditarReemplazo: (cambio: CambioAuditable) => Promise<void>;
   reetiquetarEntradaComoSalida: (
+    repositorio: MarcacionesRepository,
     entrada: MarcacionDelDia,
     turno: TurnoResponseDto,
     diaConClases: boolean,
-  ) => Promise<void>;
+  ) => Promise<CambioAuditable>;
+  auditarReetiquetado: (cambio: CambioAuditable) => Promise<void>;
   dejarRastroDeIgnorada: (
     personaId: string,
     fechaHora: string,

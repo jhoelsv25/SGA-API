@@ -113,15 +113,19 @@ export type DecisionMarca =
       /** La entrada ya guardada pasa a ser la salida porque la nueva marca es anterior a ella. */
       reetiquetar?: MarcacionDelDia & { tipo: "entrada" };
     }
+  /** La marca nueva ocupa el lugar de una guardada: es una salida más tarde o una entrada más temprana. */
+  | { accion: "reemplazar"; tipo: TipoMarcacion; marca: MarcacionDelDia }
   | { accion: "ignorar"; razon: "duplicada_entre_vias"; con: MarcacionDelDia }
-  | { accion: "ignorar"; razon: "jornada_completa" };
+  /** `intermedia`: cae entre la entrada y la salida. `jornada_completa`: el estudiante ya marcó su entrada. */
+  | { accion: "ignorar"; razon: "intermedia" | "jornada_completa" };
 
 /**
  * Decide qué hacer con una marcación nueva según las que ya hay ese día, sin importar la vía por la que llegó:
  *  1. Si hay una marca de OTRA vía a menos de `minutosEntreVias`, es la misma asistencia: se ignora (el llamador
  *     deja el rastro). Una segunda marca de la misma vía no entra aquí: sigue su propia regla (antirrebote).
- *  2. Entrada y salida se asignan por la hora de la marca, no por el orden de llegada: si llega una marca
- *     anterior a la entrada ya guardada (lote atrasado del reloj), esa pasa a ser la entrada y la guardada, la salida.
+ *  2. Como en el reloj biométrico: la entrada es la marca MÁS TEMPRANA del día y la salida la MÁS TARDÍA, por la
+ *     hora de la marca y no por el orden de llegada. Una sola marca es entrada, sea la hora que sea. Las
+ *     intermedias no cuentan.
  * El personal admite entrada y salida; los estudiantes solo entrada.
  */
 export function decidirMarca(params: {
@@ -142,14 +146,26 @@ export function decidirMarca(params: {
   }
 
   const entrada = previas.find((m) => m.tipo === "entrada");
-  if (!entrada) return { accion: "registrar", tipo: "entrada" };
-  if (esEstudiante || previas.some((m) => m.tipo === "salida")) {
-    return { accion: "ignorar", razon: "jornada_completa" };
+  if (esEstudiante) {
+    return entrada
+      ? { accion: "ignorar", razon: "jornada_completa" }
+      : { accion: "registrar", tipo: "entrada" };
   }
-  if (minutosEntre(entrada.fechaHora, fechaHora) >= 0) {
-    return { accion: "registrar", tipo: "salida" };
+
+  const salida = previas.find((m) => m.tipo === "salida");
+  if (!entrada) {
+    if (!salida || fechaHora < salida.fechaHora) return { accion: "registrar", tipo: "entrada" };
+    return { accion: "reemplazar", tipo: "salida", marca: salida };
   }
-  return { accion: "registrar", tipo: "entrada", reetiquetar: { ...entrada, tipo: "entrada" } };
+  if (fechaHora < entrada.fechaHora) {
+    // Sin salida, la entrada guardada pasa a ser la salida; con salida, queda como marca intermedia.
+    return salida
+      ? { accion: "reemplazar", tipo: "entrada", marca: entrada }
+      : { accion: "registrar", tipo: "entrada", reetiquetar: { ...entrada, tipo: "entrada" } };
+  }
+  if (!salida) return { accion: "registrar", tipo: "salida" };
+  if (fechaHora > salida.fechaHora) return { accion: "reemplazar", tipo: "salida", marca: salida };
+  return { accion: "ignorar", razon: "intermedia" };
 }
 
 /** Hora del servidor en la zona de Lima (nunca la del equipo). */
@@ -181,6 +197,24 @@ export function horaDeFechaHora(fechaHora: string): string {
 export function minutosEntre(a: string, b: string): number {
   return Math.round(
     (dayjs.utc(b.replace(" ", "T")).valueOf() - dayjs.utc(a.replace(" ", "T")).valueOf()) / 60000,
+  );
+}
+
+/**
+ * La marca de kiosko ya guardada que corresponde a esta misma lectura, si la hay. Se compara por la hora y
+ * no por el orden de llegada: el segundo envío puede procesarse antes o después de guardarse el primero.
+ */
+export function lecturaRepetidaEnKiosko(
+  previas: readonly MarcacionDelDia[],
+  fechaHora: string,
+  segundos: number,
+): MarcacionDelDia | undefined {
+  if (segundos <= 0) return undefined;
+  const instante = (t: string) => dayjs.utc(t.replace(" ", "T")).valueOf();
+  return previas.find(
+    (m) =>
+      m.origen === "kiosko" &&
+      Math.abs(instante(fechaHora) - instante(m.fechaHora)) < segundos * 1000,
   );
 }
 

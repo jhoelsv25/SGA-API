@@ -1,3 +1,4 @@
+import { TIPOS_CONTRATO } from "../../docentes/constants";
 import type { JornadaHoras, TipoContrato } from "../../docentes/constants";
 import { PARENTESCOS, type Parentesco } from "../../apoderados/constants";
 import type { TipoDocumento } from "../../personas/constants";
@@ -72,7 +73,7 @@ export function getBool(obj: Record<string, unknown>, ...keys: string[]): boolea
  */
 export function parsearTipoContratoDocente(datos: Record<string, unknown>): TipoContrato {
   const raw = getStr(datos, "tipoContrato", "tipo_contrato").toLowerCase();
-  return raw === "contratado" || raw === "practicante" ? raw : "nombrado";
+  return (TIPOS_CONTRATO as readonly string[]).includes(raw) ? (raw as TipoContrato) : "nombrado";
 }
 
 /**

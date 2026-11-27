@@ -21,13 +21,18 @@ import type {
 import type {
   CredencialParaMarcar,
   MarcacionDelDia,
+  NuevaMarcacion,
   PersonaAutenticada,
   PersonaParaMarcar,
   ResultadoRegistroReloj,
 } from "../interfaces";
 import { MarcacionesRepository } from "../repositories";
 import { type DecisionMarca } from "../utils";
-import type { MarcacionesServiceDeps, MarcacionesServiceCalls } from "./marcaciones/deps";
+import type {
+  CambioAuditable,
+  MarcacionesServiceCalls,
+  MarcacionesServiceDeps,
+} from "./marcaciones/deps";
 import * as parte1 from "./marcaciones/marcar-en-kiosko";
 import * as parte2 from "./marcaciones/panel-de-hoy";
 
@@ -62,11 +67,22 @@ export class MarcacionesService {
     return {
       autenticarCredencial: (codigo, pin) => this.autenticarCredencial(codigo, pin),
       exigirMatriculaSiEstudiante: (persona) => this.exigirMatriculaSiEstudiante(persona),
-      turnoDe: (tipoPersona) => this.turnoDe(tipoPersona),
+      turnoDePersona: (personaId, tipoPersona, fecha) =>
+        this.turnoDePersona(personaId, tipoPersona, fecha),
+      exigirTurno: (turno) => this.exigirTurno(turno),
+      esDiaDeAsistencia: (fecha, turno, tipoPersona) =>
+        this.esDiaDeAsistencia(fecha, turno, tipoPersona),
       esDiaConClases: (fecha, turno) => this.esDiaConClases(fecha, turno),
+      segundosDobleLectura: () => this.segundosDobleLectura(),
       minutosEntreVias: () => this.minutosEntreVias(),
-      reetiquetarEntradaComoSalida: (entrada, turno, diaConClases) =>
-        this.reetiquetarEntradaComoSalida(entrada, turno, diaConClases),
+      exigirOrdenDelDia: (tipo, fechaHora, previas) =>
+        this.exigirOrdenDelDia(tipo, fechaHora, previas),
+      guardarMarca: (repositorio, nueva, reemplazada) =>
+        this.guardarMarca(repositorio, nueva, reemplazada),
+      auditarReemplazo: (cambio) => this.auditarReemplazo(cambio),
+      reetiquetarEntradaComoSalida: (repositorio, entrada, turno, diaConClases) =>
+        this.reetiquetarEntradaComoSalida(repositorio, entrada, turno, diaConClases),
+      auditarReetiquetado: (cambio) => this.auditarReetiquetado(cambio),
       dejarRastroDeIgnorada: (personaId, fechaHora, origen, decision) =>
         this.dejarRastroDeIgnorada(personaId, fechaHora, origen, decision),
       respuestaIgnorada: (persona, previas, decision) =>
@@ -90,7 +106,7 @@ export class MarcacionesService {
   /**
    * RF-022: registra una marcación leída de un reloj biométrico. Usa la hora del reloj (la que
    * llega en `fechaHora`, hora de Lima) y las mismas reglas de RF-010: la primera del día es
-   * entrada y la siguiente salida; el botón del reloj no cuenta. Si el docente pone el dedo otra
+   * entrada y la última, salida; el botón del reloj no cuenta. Si el docente pone el dedo otra
    * vez dentro de `minutosAntirrebote`, se ignora para no convertir un rebote en salida.
    */
   async registrarDesdeReloj(
@@ -151,12 +167,65 @@ export class MarcacionesService {
     return parte2.exigirMatriculaSiEstudiante(this.dependencias(), persona);
   }
 
-  private async turnoDe(tipoPersona: TipoPersonaMarcacion): Promise<TurnoResponseDto> {
-    return parte2.turnoDe(this.dependencias(), tipoPersona);
+  /** La entrada va antes que la salida, también cuando se registran a mano. */
+  private exigirOrdenDelDia(
+    tipo: TipoMarcacion,
+    fechaHora: string,
+    previas: readonly MarcacionDelDia[],
+  ): void {
+    return parte2.exigirOrdenDelDia(tipo, fechaHora, previas);
+  }
+
+  /** Guarda la marca como nueva o en el lugar de la que reemplaza. Devuelve también lo que había, para auditarlo. */
+  private async guardarMarca(
+    repositorio: MarcacionesRepository,
+    nueva: NuevaMarcacion,
+    reemplazada?: MarcacionDelDia,
+  ): Promise<{ marcacion: MarcacionResponseDto; reemplazo?: CambioAuditable }> {
+    return parte2.guardarMarca(repositorio, nueva, reemplazada);
+  }
+
+  private async auditarReemplazo(cambio: CambioAuditable): Promise<void> {
+    return parte2.auditarReemplazo(this.dependencias(), cambio);
+  }
+
+  /**
+   * Turno con el que se evalúa a una persona en una fecha. Para el docente con clases ese día, la entrada y la salida
+   * esperadas salen de su horario; en los demás casos vale el turno general de su tipo.
+   */
+  private async turnoDePersona(
+    personaId: string,
+    tipoPersona: TipoPersonaMarcacion,
+    fecha: string,
+  ): Promise<TurnoResponseDto | null> {
+    return parte2.turnoDePersona(this.dependencias(), personaId, tipoPersona, fecha);
+  }
+
+  private exigirTurno(turno: TurnoResponseDto | null | undefined): TurnoResponseDto {
+    return parte2.exigirTurno(turno);
+  }
+
+  /** Estudiantes: día con clases. Personal: día en que trabaja, aunque no haya clases. */
+  private async esDiaDeAsistencia(
+    fecha: string,
+    turno: TurnoResponseDto,
+    tipoPersona: string,
+  ): Promise<boolean> {
+    return parte2.esDiaDeAsistencia(
+      this.dependencias(),
+      this.llamadas(),
+      fecha,
+      turno,
+      tipoPersona,
+    );
   }
 
   private async esDiaConClases(fecha: string, turno: TurnoResponseDto): Promise<boolean> {
     return parte2.esDiaConClases(this.dependencias(), fecha, turno);
+  }
+
+  private async segundosDobleLectura(): Promise<number> {
+    return parte2.segundosDobleLectura(this.dependencias());
   }
 
   /** Minutos en los que una marca de otra vía se toma como la misma asistencia (variable del sistema). */
@@ -166,14 +235,21 @@ export class MarcacionesService {
 
   /**
    * Llegó una marca anterior a la entrada ya guardada (p. ej. un lote atrasado del reloj): la anterior pasa a ser
-   * la entrada y la guardada se convierte en salida, con su resultado recalculado. Queda auditado.
+   * la entrada y la guardada se convierte en salida, con su resultado recalculado. La justificación era de la
+   * entrada, así que no pasa a la salida. Devuelve el cambio para auditarlo.
    */
   private async reetiquetarEntradaComoSalida(
+    repositorio: MarcacionesRepository,
     entrada: MarcacionDelDia,
     turno: TurnoResponseDto,
     diaConClases: boolean,
-  ): Promise<void> {
-    return parte2.reetiquetarEntradaComoSalida(this.dependencias(), entrada, turno, diaConClases);
+  ): Promise<CambioAuditable> {
+    return parte2.reetiquetarEntradaComoSalida(repositorio, entrada, turno, diaConClases);
+  }
+
+  /** Se audita después de confirmar la transacción: la bitácora usa otra conexión. */
+  private async auditarReetiquetado(cambio: CambioAuditable): Promise<void> {
+    return parte2.auditarReetiquetado(this.dependencias(), cambio);
   }
 
   /** Una marca descartada por coincidir con otra vía no se guarda como asistencia, pero queda a la vista. */

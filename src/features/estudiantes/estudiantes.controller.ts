@@ -70,7 +70,7 @@ export class EstudiantesController {
   @Post("ocr-documento")
   @Roles("Administrador", "Secretaria")
   @HttpCode(HttpStatus.OK)
-  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @Throttle({ long: { limit: 10, ttl: 60000 } })
   @UseInterceptors(FileInterceptor("archivo", { limits: { fileSize: 10 * 1024 * 1024 } }))
   @ApiConsumes("multipart/form-data")
   @ApiOperation({

@@ -9,6 +9,7 @@ import {
   MENSAJES_MARCACION,
   PROPOSITO_EQUIPO_MARCACION,
   mensajeYaMarcoEntrada,
+  mensajeYaMarcoReciente,
 } from "../../constants";
 import type {
   JustificarMarcacionDto,
@@ -31,6 +32,7 @@ import {
   evaluarMarcacion,
   horaCorta,
   horaDeFechaHora,
+  lecturaRepetidaEnKiosko,
   minutosEntre,
 } from "../../utils";
 import type { MarcacionesServiceDeps, MarcacionesServiceCalls } from "./deps";
@@ -56,37 +58,91 @@ export async function marcarEnKiosko(
   }
   await calls.exigirMatriculaSiEstudiante(persona);
 
-  const previas = await deps.repository.marcacionesDePersonaEnFecha(persona.personaId, fecha);
-  const decision = decidirMarca({
-    esEstudiante: persona.tipoPersona === "estudiantes",
-    previas,
-    fechaHora,
-    origen: "kiosko",
-    minutosEntreVias: await calls.minutosEntreVias(),
-  });
-  if (decision.accion === "ignorar") {
-    await calls.dejarRastroDeIgnorada(persona.personaId, fechaHora, "kiosko", decision);
-    return calls.respuestaIgnorada(persona, previas, decision);
-  }
-  const tipo = decision.tipo;
+  // Lo guardado al llegar el pedido: sirve para reconocer otro envío del kiosko que se procese a la vez.
+  const alLlegar = new Set(
+    (await deps.repository.marcacionesDePersonaEnFecha(persona.personaId, fecha)).map((m) => m.id),
+  );
+  const minutosEntreVias = await calls.minutosEntreVias();
+  // Los estudiantes solo marcan entrada: para ellos no hay salida falsa posible.
+  const segundosDobleLectura =
+    persona.tipoPersona === "estudiantes" ? 0 : await calls.segundosDobleLectura();
+  const turno = await calls.turnoDePersona(persona.personaId, persona.tipoPersona, fecha);
+  const diaConClases = turno
+    ? await calls.esDiaDeAsistencia(fecha, turno, persona.tipoPersona)
+    : false;
 
-  const turno = await calls.turnoDe(persona.tipoPersona);
-  const diaConClases = await calls.esDiaConClases(fecha, turno);
-  const evaluacion = evaluarMarcacion(tipo, turno, hora, diaConClases);
-  if (decision.reetiquetar) {
-    await calls.reetiquetarEntradaComoSalida(decision.reetiquetar, turno, diaConClases);
-  }
+  const resultado = await deps.repository.conBloqueoDelDia(
+    persona.personaId,
+    fecha,
+    async (repositorio) => {
+      const previas = await repositorio.marcacionesDePersonaEnFecha(persona.personaId, fecha);
+      const simultanea =
+        previas.find((m) => m.origen === "kiosko" && !alLlegar.has(m.id)) ??
+        lecturaRepetidaEnKiosko(previas, fechaHora, segundosDobleLectura);
+      if (simultanea) {
+        return { estado: "simultanea" as const, previas, simultanea };
+      }
+      const decision = decidirMarca({
+        esEstudiante: persona.tipoPersona === "estudiantes",
+        previas,
+        fechaHora,
+        origen: "kiosko",
+        minutosEntreVias,
+      });
+      if (decision.accion === "ignorar") {
+        return { estado: "ignorada" as const, previas, decision };
+      }
+      const turnoVigente = calls.exigirTurno(turno);
+      const evaluacion = evaluarMarcacion(decision.tipo, turnoVigente, hora, diaConClases);
+      const reetiquetada =
+        decision.accion === "registrar" && decision.reetiquetar
+          ? await calls.reetiquetarEntradaComoSalida(
+              repositorio,
+              decision.reetiquetar,
+              turnoVigente,
+              diaConClases,
+            )
+          : undefined;
+      const { marcacion: creada, reemplazo } = await calls.guardarMarca(
+        repositorio,
+        {
+          personaId: persona.personaId,
+          credencialId: credencial.id,
+          turnoId: turnoVigente.id,
+          tipo: decision.tipo,
+          fechaHora,
+          origen: "kiosko",
+          resultado: evaluacion.resultado,
+          minutosTardanza: evaluacion.minutosTardanza,
+        },
+        decision.accion === "reemplazar" ? decision.marca : undefined,
+      );
+      return {
+        estado: "registrada" as const,
+        tipo: decision.tipo,
+        evaluacion,
+        creada,
+        reetiquetada,
+        reemplazo,
+      };
+    },
+  );
 
-  const creada = await deps.repository.insertar({
-    personaId: persona.personaId,
-    credencialId: credencial.id,
-    turnoId: turno.id,
-    tipo,
-    fechaHora,
-    origen: "kiosko",
-    resultado: evaluacion.resultado,
-    minutosTardanza: evaluacion.minutosTardanza,
-  });
+  if (resultado.estado === "simultanea") {
+    return {
+      registrada: false,
+      mensaje: mensajeYaMarcoReciente(horaDeFechaHora(resultado.simultanea.fechaHora)),
+      nombreCompleto: persona.nombreCompleto,
+      fotoUrl: persona.fotoUrl,
+    };
+  }
+  if (resultado.estado === "ignorada") {
+    await calls.dejarRastroDeIgnorada(persona.personaId, fechaHora, "kiosko", resultado.decision);
+    return calls.respuestaIgnorada(persona, resultado.previas, resultado.decision);
+  }
+  const { tipo, evaluacion, creada } = resultado;
+  if (resultado.reetiquetada) await calls.auditarReetiquetado(resultado.reetiquetada);
+  if (resultado.reemplazo) await calls.auditarReemplazo(resultado.reemplazo);
 
   const horaMarcada = horaCorta(hora);
 
@@ -127,53 +183,88 @@ export async function registrarDesdeReloj(
   const fecha = fechaHora.slice(0, 10);
   const hora = fechaHora.slice(11, 19);
 
-  const previas = await deps.repository.marcacionesDePersonaEnFecha(persona.personaId, fecha);
-  if (previas.some((m) => m.fechaHora === fechaHora)) {
-    return { estado: "duplicada" };
-  }
-  const ultima = previas[previas.length - 1];
-  if (ultima) {
-    const minutos = minutosEntre(ultima.fechaHora, fechaHora);
-    if (minutos >= 0 && minutos < minutosAntirrebote) {
-      return { estado: "ignorada", razon: "rebote" };
-    }
-  }
-  const decision = decidirMarca({
-    esEstudiante: false,
-    previas,
-    fechaHora,
-    origen: "biometrico",
-    minutosEntreVias: await calls.minutosEntreVias(),
-  });
-  if (decision.accion === "ignorar") {
-    await calls.dejarRastroDeIgnorada(persona.personaId, fechaHora, "biometrico", decision);
-    return { estado: "ignorada", razon: decision.razon };
-  }
-  const tipo = decision.tipo;
-
-  const turno = await deps.turnosRepository.findByAplicaA(persona.tipoPersona);
-  if (!turno || !turno.activo) {
-    return { estado: "sin_turno" };
-  }
-  const diaConClases = await calls.esDiaConClases(fecha, turno);
-  const evaluacion = evaluarMarcacion(tipo, turno, hora, diaConClases);
-  if (decision.reetiquetar) {
-    await calls.reetiquetarEntradaComoSalida(decision.reetiquetar, turno, diaConClases);
-  }
+  const minutosEntreVias = await calls.minutosEntreVias();
+  const turno = await calls.turnoDePersona(persona.personaId, persona.tipoPersona, fecha);
+  const diaConClases = turno
+    ? await calls.esDiaDeAsistencia(fecha, turno, persona.tipoPersona)
+    : false;
 
   try {
-    const marcacion = await deps.repository.insertar({
-      personaId: persona.personaId,
-      credencialId: null,
-      turnoId: turno.id,
-      tipo,
-      fechaHora,
-      origen: "biometrico",
-      resultado: evaluacion.resultado,
-      minutosTardanza: evaluacion.minutosTardanza,
-      equipoId,
-    });
-    return { estado: "registrada", marcacion };
+    const resultado = await deps.repository.conBloqueoDelDia(
+      persona.personaId,
+      fecha,
+      async (repositorio) => {
+        const previas = await repositorio.marcacionesDePersonaEnFecha(persona.personaId, fecha);
+        if (previas.some((m) => m.fechaHora === fechaHora)) {
+          return { estado: "duplicada" as const };
+        }
+        // El rebote es del dedo en el reloj. Una marca de otra vía la decide la ventana entre vías, que deja
+        // rastro; si esa ventana está desactivada, el rebote sigue protegiendo. Con la salida ya registrada no
+        // hace falta: la marca posterior solo actualiza la salida.
+        const ultima = previas[previas.length - 1];
+        if (
+          ultima &&
+          !previas.some((m) => m.tipo === "salida") &&
+          (ultima.origen === "biometrico" || minutosEntreVias === 0)
+        ) {
+          const minutos = minutosEntre(ultima.fechaHora, fechaHora);
+          if (minutos >= 0 && minutos < minutosAntirrebote) {
+            return { estado: "ignorada" as const, razon: "rebote" as const };
+          }
+        }
+        const decision = decidirMarca({
+          esEstudiante: false,
+          previas,
+          fechaHora,
+          origen: "biometrico",
+          minutosEntreVias,
+        });
+        if (decision.accion === "ignorar") {
+          return { estado: "descartada" as const, decision };
+        }
+        if (!turno || !turno.activo) {
+          return { estado: "sin_turno" as const };
+        }
+        const evaluacion = evaluarMarcacion(decision.tipo, turno, hora, diaConClases);
+        const reetiquetada =
+          decision.accion === "registrar" && decision.reetiquetar
+            ? await calls.reetiquetarEntradaComoSalida(
+                repositorio,
+                decision.reetiquetar,
+                turno,
+                diaConClases,
+              )
+            : undefined;
+        const { marcacion, reemplazo } = await calls.guardarMarca(
+          repositorio,
+          {
+            personaId: persona.personaId,
+            credencialId: null,
+            turnoId: turno.id,
+            tipo: decision.tipo,
+            fechaHora,
+            origen: "biometrico",
+            resultado: evaluacion.resultado,
+            minutosTardanza: evaluacion.minutosTardanza,
+            equipoId,
+          },
+          decision.accion === "reemplazar" ? decision.marca : undefined,
+        );
+        return { estado: "registrada" as const, marcacion, reetiquetada, reemplazo };
+      },
+    );
+
+    if (resultado.estado === "descartada") {
+      const { decision } = resultado;
+      await calls.dejarRastroDeIgnorada(persona.personaId, fechaHora, "biometrico", decision);
+      return { estado: "ignorada", razon: decision.razon };
+    }
+    if (resultado.estado === "registrada") {
+      if (resultado.reetiquetada) await calls.auditarReetiquetado(resultado.reetiquetada);
+      if (resultado.reemplazo) await calls.auditarReemplazo(resultado.reemplazo);
+      return { estado: "registrada", marcacion: resultado.marcacion };
+    }
+    return resultado;
   } catch (error) {
     if (esViolacionUnica(error)) return { estado: "duplicada" };
     throw error;
@@ -231,33 +322,67 @@ export async function registrarManual(
   }
   await calls.exigirMatriculaSiEstudiante(persona);
 
-  const previas = await deps.repository.marcacionesDePersonaEnFecha(persona.personaId, fecha);
-  if (previas.some((m) => m.tipo === dto.tipo)) {
-    throw new ConflictException(
-      dto.tipo === "entrada"
-        ? mensajeYaMarcoEntrada(
-            horaDeFechaHora(previas.find((m) => m.tipo === "entrada")!.fechaHora),
+  const turno = await calls.turnoDePersona(persona.personaId, persona.tipoPersona, fecha);
+  const diaConClases = turno
+    ? await calls.esDiaDeAsistencia(fecha, turno, persona.tipoPersona)
+    : false;
+
+  const { creada, reetiquetada, reemplazo } = await deps.repository.conBloqueoDelDia(
+    persona.personaId,
+    fecha,
+    async (repositorio) => {
+      const previas = await repositorio.marcacionesDePersonaEnFecha(persona.personaId, fecha);
+      const fechaHora = `${fecha} ${dto.hora}:00`;
+      // La entrada es la hora más temprana y la salida la más tarde: solo así se acepta otra del mismo tipo.
+      const mismoTipo = previas.find((m) => m.tipo === dto.tipo);
+      const mejora =
+        mismoTipo !== undefined &&
+        !esEstudiante &&
+        (dto.tipo === "salida" ? fechaHora > mismoTipo.fechaHora : fechaHora < mismoTipo.fechaHora);
+      if (mismoTipo && !mejora) {
+        throw new ConflictException(
+          dto.tipo === "entrada"
+            ? mensajeYaMarcoEntrada(horaDeFechaHora(mismoTipo.fechaHora))
+            : MENSAJES_MARCACION.YA_MARCO_SALIDA,
+        );
+      }
+      calls.exigirOrdenDelDia(dto.tipo, fechaHora, previas);
+      const turnoVigente = calls.exigirTurno(turno);
+      const evaluacion = evaluarMarcacion(dto.tipo, turnoVigente, dto.hora, diaConClases);
+      // Entrada más temprana sin salida guardada (p. ej. solo marcó al irse): la anterior pasa a ser la salida.
+      const pasaASalida =
+        mejora && dto.tipo === "entrada" && !previas.some((m) => m.tipo === "salida")
+          ? mismoTipo
+          : undefined;
+      const reetiquetada = pasaASalida
+        ? await calls.reetiquetarEntradaComoSalida(
+            repositorio,
+            pasaASalida,
+            turnoVigente,
+            diaConClases,
           )
-        : MENSAJES_MARCACION.YA_MARCO_SALIDA,
-    );
-  }
-
-  const turno = await calls.turnoDe(persona.tipoPersona);
-  const diaConClases = await calls.esDiaConClases(fecha, turno);
-  const evaluacion = evaluarMarcacion(dto.tipo, turno, dto.hora, diaConClases);
-
-  const creada = await deps.repository.insertar({
-    personaId: persona.personaId,
-    credencialId: null,
-    turnoId: turno.id,
-    tipo: dto.tipo,
-    fechaHora: `${fecha} ${dto.hora}:00`,
-    origen: "manual",
-    resultado: evaluacion.resultado,
-    minutosTardanza: evaluacion.minutosTardanza,
-    observacion,
-    registradaPorId: actorId,
-  });
+        : undefined;
+      const { marcacion, reemplazo } = await calls.guardarMarca(
+        repositorio,
+        {
+          personaId: persona.personaId,
+          credencialId: null,
+          turnoId: turnoVigente.id,
+          tipo: dto.tipo,
+          fechaHora,
+          origen: "manual",
+          resultado: evaluacion.resultado,
+          minutosTardanza: evaluacion.minutosTardanza,
+          observacion,
+          registradaPorId: actorId,
+        },
+        mejora && !pasaASalida ? mismoTipo : undefined,
+      );
+      return { creada: marcacion, reetiquetada, reemplazo };
+    },
+  );
+  if (reetiquetada) await calls.auditarReetiquetado(reetiquetada);
+  if (reemplazo) await calls.auditarReemplazo(reemplazo);
 
   await deps.auditService.log({
     usuarioId: actorId,

@@ -26,6 +26,9 @@ export class EventoCalendarioResponseDto {
   @ApiProperty()
   suspendeClases!: boolean;
 
+  @ApiProperty()
+  personalLabora!: boolean;
+
   @ApiPropertyOptional({
     description: "Presente cuando una suspensión eliminó o conservó sesiones ya generadas.",
   })

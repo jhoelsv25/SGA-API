@@ -239,6 +239,41 @@
       "when": 1794914211900,
       "tag": "0034_suscripciones_push",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1795660197912,
+      "tag": "0035_solicitudes_kiosko",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1795660257912,
+      "tag": "0036_reporte_asistencia_ugel",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1795660257913,
+      "tag": "0037_reporte_ugel_v2",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1795660257914,
+      "tag": "0038_doble_lectura_kiosko",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1795660257915,
+      "tag": "0039_menu_calendario",
+      "breakpoints": true
     }
   ]
 }

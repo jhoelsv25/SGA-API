@@ -14,6 +14,7 @@ export const MOTIVOS_RECHAZO_BIOMETRICO = {
   NO_VIGENTE: "La persona no está vigente como docente o personal administrativo.",
   SOLO_PERSONAL: "El reloj biométrico solo registra personal (docentes y administrativos).",
   YA_MARCO: MENSAJES_MARCACION.YA_MARCO_ENTRADA_Y_SALIDA,
+  INTERMEDIA: MENSAJES_MARCACION.MARCA_INTERMEDIA,
   REBOTE: "Se ignoró: segunda marca seguida del mismo dedo (rebote).",
   DUPLICADA: "Ya existe una marcación de esta persona a esa misma hora.",
   DUPLICADA_ENTRE_VIAS: MENSAJES_MARCACION.DUPLICADA_ENTRE_VIAS,
@@ -132,7 +133,9 @@ export class MarcacionesBiometricasService {
             ? MOTIVOS_RECHAZO_BIOMETRICO.REBOTE
             : resultado.razon === "duplicada_entre_vias"
               ? MOTIVOS_RECHAZO_BIOMETRICO.DUPLICADA_ENTRE_VIAS
-              : MOTIVOS_RECHAZO_BIOMETRICO.YA_MARCO,
+              : resultado.razon === "intermedia"
+                ? MOTIVOS_RECHAZO_BIOMETRICO.INTERMEDIA
+                : MOTIVOS_RECHAZO_BIOMETRICO.YA_MARCO,
         );
       case "sin_turno":
         // Falla de configuración, no de la marca: queda pendiente hasta que exista el turno.

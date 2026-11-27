@@ -126,10 +126,11 @@ export class DashboardSecretariaRepository {
 
     const m = matriculasMesRes[0] ?? { matriculados: 0, retirados: 0, trasladados: 0 };
     const asis = asistenciaHoyRes[0] ?? { totalEsperado: 0, presentes: 0, tardanzas: 0 };
+    // Sin estudiantes esperados hoy no hay porcentaje (antes se mostraba un 100 % engañoso).
     const porcAsistencia =
       asis.totalEsperado > 0
         ? Math.round(((asis.presentes + asis.tardanzas) / asis.totalEsperado) * 100)
-        : 100;
+        : null;
 
     return {
       kpis: {

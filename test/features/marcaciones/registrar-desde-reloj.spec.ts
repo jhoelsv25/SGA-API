@@ -43,22 +43,40 @@ describe("RF-022: registrar una marcación leída del reloj", () => {
   let turnos: Mocks<TurnosRepository>;
   let calendario: Mocks<CalendarioService>;
   let audit: { log: jest.Mock };
-  let variables: { getValor: jest.Mock };
+  let variables: { getValor: jest.Mock; isActiva: jest.Mock };
 
   beforeEach(() => {
     repo = {
       marcacionesDePersonaEnFecha: jest.fn().mockResolvedValue([]),
       reetiquetar: jest.fn().mockResolvedValue(undefined),
+      reemplazar: jest.fn().mockResolvedValue({ id: "m2" }),
       insertar: jest
         .fn()
         .mockImplementation((d: Partial<MarcacionResponseDto>) =>
           Promise.resolve({ ...d, id: "nueva" }),
         ),
     };
+    // El bloqueo real se prueba contra PostgreSQL; aquí solo se ejecuta el trabajo con el mismo doble.
+    repo.clasesDeDocenteEnFecha = jest.fn().mockResolvedValue([]);
+    repo.conBloqueoDelDia = jest.fn((_p: string, _f: string, trabajo: (r: unknown) => unknown) =>
+      Promise.resolve(trabajo(repo)),
+    ) as jest.Mock;
+    repo.findById = jest.fn().mockResolvedValue(null);
     turnos = { findByAplicaA: jest.fn().mockResolvedValue(turnoDocentes) };
-    calendario = { suspendeClasesEn: jest.fn().mockResolvedValue(false) };
+    calendario = {
+      suspendeClasesEn: jest.fn().mockResolvedValue(false),
+      // Por defecto el personal tampoco trabaja los días sin clases.
+      fechasSinTrabajoPersonal: jest
+        .fn()
+        .mockImplementation(async ([f]: string[]) =>
+          (await calendario.suspendeClasesEn!(f)) ? new Set([f]) : new Set(),
+        ),
+    };
     audit = { log: jest.fn().mockResolvedValue(undefined) };
-    variables = { getValor: jest.fn().mockResolvedValue("30") };
+    variables = {
+      getValor: jest.fn().mockResolvedValue("30"),
+      isActiva: jest.fn().mockResolvedValue(false),
+    };
     service = new MarcacionesService(
       repo as unknown as MarcacionesRepository,
       {} as EquiposService,
@@ -121,13 +139,44 @@ describe("RF-022: registrar una marcación leída del reloj", () => {
     expect(repo.insertar).not.toHaveBeenCalled();
   });
 
-  it("CP-RF022-10b: con entrada y salida ya registradas no se guarda una tercera", async () => {
+  it("CP-RF022-10b: una marca posterior a la salida la reemplaza: vale la última", async () => {
     repo.marcacionesDePersonaEnFecha!.mockResolvedValue([
       { id: "m1", tipo: "entrada", fechaHora: `${HOY} 07:35:12`, origen: "biometrico" },
       { id: "m2", tipo: "salida", fechaHora: `${HOY} 14:03:00`, origen: "biometrico" },
     ]);
     const r = await service.registrarDesdeReloj(docente, "eq-1", `${HOY} 15:00:00`, 5);
-    expect(r).toEqual({ estado: "ignorada", razon: "jornada_completa" });
+    expect(r.estado).toBe("registrada");
+    expect(repo.reemplazar).toHaveBeenCalledWith(
+      "m2",
+      expect.objectContaining({ tipo: "salida", fechaHora: `${HOY} 15:00:00` }),
+    );
+    expect(repo.insertar).not.toHaveBeenCalled();
+    expect(audit.log).toHaveBeenCalledWith(
+      expect.objectContaining({ accion: "actualizar", registroId: "m2" }),
+    );
+  });
+
+  it("con la salida ya registrada, otra marca a los 2 minutos la actualiza (no es rebote)", async () => {
+    repo.marcacionesDePersonaEnFecha!.mockResolvedValue([
+      { id: "m1", tipo: "entrada", fechaHora: `${HOY} 07:35:12`, origen: "biometrico" },
+      { id: "m2", tipo: "salida", fechaHora: `${HOY} 14:03:00`, origen: "biometrico" },
+    ]);
+    await service.registrarDesdeReloj(docente, "eq-1", `${HOY} 14:05:00`, 5);
+    expect(repo.reemplazar).toHaveBeenCalled();
+  });
+
+  it("una marca entre la entrada y la salida no cuenta, pero queda en la bitácora", async () => {
+    repo.marcacionesDePersonaEnFecha!.mockResolvedValue([
+      { id: "m1", tipo: "entrada", fechaHora: `${HOY} 07:35:12`, origen: "biometrico" },
+      { id: "m2", tipo: "salida", fechaHora: `${HOY} 14:03:00`, origen: "biometrico" },
+    ]);
+    const r = await service.registrarDesdeReloj(docente, "eq-1", `${HOY} 10:00:00`, 5);
+    expect(r).toEqual({ estado: "ignorada", razon: "intermedia" });
+    expect(repo.insertar).not.toHaveBeenCalled();
+    expect(repo.reemplazar).not.toHaveBeenCalled();
+    expect(audit.log).toHaveBeenCalledWith(
+      expect.objectContaining({ tabla: "marcaciones_intermedias" }),
+    );
   });
 
   it("CP-RF022-17b: una marcación ya guardada con la misma hora es duplicada", async () => {
@@ -151,6 +200,13 @@ describe("RF-022: registrar una marcación leída del reloj", () => {
     expect(repo.insertar).toHaveBeenCalledWith(
       expect.objectContaining({ resultado: "fuera_de_turno" }),
     );
+  });
+
+  it("en un día sin clases en que el personal trabaja, la marca del docente se evalúa", async () => {
+    calendario.suspendeClasesEn!.mockResolvedValue(true);
+    calendario.fechasSinTrabajoPersonal!.mockResolvedValue(new Set());
+    await service.registrarDesdeReloj(docente, "eq-1", `${HOY} 07:25:12`, 5);
+    expect(repo.insertar).toHaveBeenCalledWith(expect.objectContaining({ resultado: "puntual" }));
   });
 
   it("CP-RF022-13b: en un sábado la marcación es fuera_de_turno", async () => {

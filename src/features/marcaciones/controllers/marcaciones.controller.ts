@@ -28,7 +28,12 @@ import {
 } from "../../../common/decorators";
 import { MENU_MARCACION_MANUAL, MENU_MARCACIONES_HOY } from "../../../common/constants";
 import type { AuthenticatedUser } from "../../auth/interfaces/jwt-payload.interface";
+import { ControlDiarioService } from "../control-diario.service";
 import {
+  ControlDiarioQueryDto,
+  ControlDiarioResponseDto,
+  ControlMensualQueryDto,
+  ControlMensualResponseDto,
   JustificarMarcacionDto,
   MarcacionKioskoResponseDto,
   MarcacionResponseDto,
@@ -43,13 +48,16 @@ import { MarcacionesService } from "../services/marcaciones.service";
 @ApiTags("Marcaciones")
 @Controller("marcaciones")
 export class MarcacionesController {
-  constructor(private readonly service: MarcacionesService) {}
+  constructor(
+    private readonly service: MarcacionesService,
+    private readonly controlService: ControlDiarioService,
+  ) {}
 
   @Public()
   @Post("kiosko")
   @HttpCode(200)
   // Un kiosko atiende a muchos en la puerta, pero el PIN es de 4 dígitos: se limita por IP.
-  @Throttle({ default: { limit: 60, ttl: 60000 } })
+  @Throttle({ long: { limit: 60, ttl: 60000 } })
   @ApiOperation({
     summary: "Marcar entrada o salida en un kiosko autorizado (código + PIN)",
     description: "El equipo se identifica con el header 'x-kiosk-token'. Usa la hora del servidor.",
@@ -98,6 +106,28 @@ export class MarcacionesController {
   @ApiResponse({ status: 200, type: PanelMarcacionesHoyResponseDto })
   async panelDeHoy(): Promise<PanelMarcacionesHoyResponseDto> {
     return this.service.panelDeHoy();
+  }
+
+  @Get("control-diario")
+  @ApiBearerAuth()
+  @MenuAccess(MENU_MARCACIONES_HOY)
+  @ApiOperation({ summary: "Personal de un día: asistencia, horario esperado y sesiones de clase" })
+  @ApiResponse({ status: 200, type: ControlDiarioResponseDto })
+  async controlDiario(@Query() query: ControlDiarioQueryDto): Promise<ControlDiarioResponseDto> {
+    return this.controlService.delDia(query.fecha);
+  }
+
+  @Get("control-diario/:personaId")
+  @ApiBearerAuth()
+  @MenuAccess(MENU_MARCACIONES_HOY)
+  @ApiOperation({ summary: "Historial de un mes de una persona del personal, día por día" })
+  @ApiParam({ name: "personaId", description: "UUID de la persona" })
+  @ApiResponse({ status: 200, type: ControlMensualResponseDto })
+  async controlMensual(
+    @Param("personaId", ParseUUIDPipe) personaId: string,
+    @Query() query: ControlMensualQueryDto,
+  ): Promise<ControlMensualResponseDto> {
+    return this.controlService.delMes(personaId, query.mes);
   }
 
   @Get("reporte")

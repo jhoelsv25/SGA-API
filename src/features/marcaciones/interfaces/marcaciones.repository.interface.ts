@@ -51,7 +51,10 @@ export interface NuevaMarcacion {
 export type ResultadoRegistroReloj =
   | { estado: "registrada"; marcacion: MarcacionResponseDto }
   | { estado: "duplicada" }
-  | { estado: "ignorada"; razon: "rebote" | "jornada_completa" | "duplicada_entre_vias" }
+  | {
+      estado: "ignorada";
+      razon: "rebote" | "intermedia" | "jornada_completa" | "duplicada_entre_vias";
+    }
   | { estado: "sin_turno" };
 
 export interface MarcacionDelDia {
@@ -75,6 +78,11 @@ export interface IMarcacionesRepository {
   marcacionesDePersonaEnFecha(personaId: string, fecha: string): Promise<MarcacionDelDia[]>;
   insertar(data: NuevaMarcacion): Promise<MarcacionResponseDto>;
   reetiquetar(id: string, cambio: CambioDeTipo): Promise<void>;
+  clasesDeDocenteEnFecha(
+    personaId: string,
+    fecha: string,
+  ): Promise<{ horaInicio: string; horaFin: string }[]>;
+  reemplazar(id: string, data: NuevaMarcacion): Promise<MarcacionResponseDto>;
   findById(id: string): Promise<MarcacionResponseDto | null>;
   justificar(id: string, motivo: string, usuarioId: string): Promise<MarcacionResponseDto>;
   panelDelDia(

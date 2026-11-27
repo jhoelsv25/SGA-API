@@ -1,5 +1,9 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, desc, eq, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, sql, type SQL, notInArray } from "drizzle-orm";
+import {
+  CARGOS_ESTUDIANTE_APODERADO,
+  esEstudianteSql,
+} from "../../../common/utils/es-estudiante.sql";
 import dayjs from "dayjs";
 import { decodeCursor, encodeCursor } from "../../../common/utils";
 import { Database, DRIZZLE } from "../../../core/database";
@@ -40,6 +44,9 @@ import type {
   PersonaParaMarcar,
 } from "../interfaces";
 
+import { clasesDeDocentes, claveClases } from "./clases-docente.query";
+import type { BloqueDeClase } from "../utils";
+
 interface CursorReporte {
   fechaHora: string;
   id: string;
@@ -47,8 +54,11 @@ interface CursorReporte {
 
 const nombreCompletoSql = sql<string>`TRIM(${personas.apellidoPaterno} || ' ' || COALESCE(${personas.apellidoMaterno}, '') || ', ' || ${personas.nombres})`;
 
+// Columna calificada a mano: con una sola tabla Drizzle escribe solo "id" dentro de las subconsultas.
+const esEstudiante = esEstudianteSql(sql.raw('"personas"."id"'));
+
 const tipoPersonaSql = sql<string>`CASE
-  WHEN EXISTS (SELECT 1 FROM ${estudiantes} e WHERE e.persona_id = ${personas.id}) THEN 'estudiantes'
+  WHEN ${esEstudiante} THEN 'estudiantes'
   WHEN EXISTS (SELECT 1 FROM ${docentes} d WHERE d.persona_id = ${personas.id}) THEN 'docentes'
   ELSE 'administrativos' END`;
 
@@ -59,6 +69,11 @@ function siguienteDia(fecha: string): string {
 @Injectable()
 export class MarcacionesRepository implements IMarcacionesRepository {
   constructor(@Inject(DRIZZLE) private readonly db: Database) {}
+
+  /** Para las consultas compartidas entre módulos (p. ej. las clases del docente). */
+  get conexion(): Database {
+    return this.db;
+  }
 
   private seleccion() {
     return {
@@ -142,6 +157,7 @@ export class MarcacionesRepository implements IMarcacionesRepository {
         estudianteId: sql<
           string | null
         >`(SELECT e.id FROM ${estudiantes} e WHERE e.persona_id = "personas"."id" LIMIT 1)`,
+        esEstudiante,
         docenteActivo: sql<
           boolean | null
         >`(SELECT (d.estado = 'activo' AND d.eliminado_en IS NULL) FROM ${docentes} d WHERE d.persona_id = "personas"."id" LIMIT 1)`,
@@ -152,7 +168,7 @@ export class MarcacionesRepository implements IMarcacionesRepository {
       .limit(1);
     if (!fila) return null;
 
-    if (fila.estudianteId) {
+    if (fila.estudianteId && fila.esEstudiante) {
       return {
         ...base(fila),
         tipoPersona: "estudiantes",
@@ -198,6 +214,12 @@ export class MarcacionesRepository implements IMarcacionesRepository {
     return Boolean(fila);
   }
 
+  /** Clases de un docente en una fecha, para calcular su entrada y salida esperadas. */
+  async clasesDeDocenteEnFecha(personaId: string, fecha: string): Promise<BloqueDeClase[]> {
+    const clases = await clasesDeDocentes(this.db, [personaId], [fecha]);
+    return clases.get(claveClases(personaId, fecha)) ?? [];
+  }
+
   async marcacionesDePersonaEnFecha(personaId: string, fecha: string): Promise<MarcacionDelDia[]> {
     const filas = await this.db
       .select({
@@ -222,6 +244,23 @@ export class MarcacionesRepository implements IMarcacionesRepository {
     }));
   }
 
+  /**
+   * Ejecuta `trabajo` con un bloqueo por persona y día: kiosko, reloj y marcación manual leen y guardan por turnos,
+   * así dos envíos a la vez no crean dos entradas. Las escrituras de `trabajo` son atómicas. Dentro solo se usa el
+   * repositorio recibido: pedir otra conexión del pool con el bloqueo tomado puede agotarlo.
+   */
+  async conBloqueoDelDia<T>(
+    personaId: string,
+    fecha: string,
+    trabajo: (repositorio: MarcacionesRepository) => Promise<T>,
+  ): Promise<T> {
+    return this.db.transaction(async (tx) => {
+      const clave = `marcacion:${personaId}:${fecha}`;
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${clave}, 0))`);
+      return trabajo(new MarcacionesRepository(tx));
+    });
+  }
+
   async insertar(data: NuevaMarcacion): Promise<MarcacionResponseDto> {
     const [creada] = await this.db
       .insert(marcaciones)
@@ -244,6 +283,34 @@ export class MarcacionesRepository implements IMarcacionesRepository {
     return completa;
   }
 
+  /**
+   * La marca nueva toma el lugar de la guardada (salida más tarde o entrada más temprana). La justificación era
+   * de la hora anterior, así que se quita; los valores anteriores quedan en la bitácora.
+   */
+  async reemplazar(id: string, data: NuevaMarcacion): Promise<MarcacionResponseDto> {
+    await this.db
+      .update(marcaciones)
+      .set({
+        credencialId: data.credencialId,
+        turnoId: data.turnoId,
+        fechaHora: data.fechaHora,
+        origen: data.origen,
+        resultado: data.resultado,
+        minutosTardanza: data.minutosTardanza,
+        observacion: data.observacion ?? null,
+        registradaPorId: data.registradaPorId ?? null,
+        equipoId: data.equipoId ?? null,
+        justificada: false,
+        motivoJustificacion: null,
+        justificadaPorId: null,
+        justificadaEn: null,
+      })
+      .where(eq(marcaciones.id, id));
+    const completa = await this.findById(id);
+    if (!completa) throw new Error("La marcación reemplazada no se pudo leer.");
+    return completa;
+  }
+
   async reetiquetar(id: string, cambio: CambioDeTipo): Promise<void> {
     await this.db
       .update(marcaciones)
@@ -251,6 +318,10 @@ export class MarcacionesRepository implements IMarcacionesRepository {
         tipo: cambio.tipo,
         resultado: cambio.resultado,
         minutosTardanza: cambio.minutosTardanza,
+        justificada: false,
+        motivoJustificacion: null,
+        justificadaPorId: null,
+        justificadaEn: null,
       })
       .where(eq(marcaciones.id, id));
   }
@@ -278,6 +349,27 @@ export class MarcacionesRepository implements IMarcacionesRepository {
     const actualizada = await this.findById(id);
     if (!actualizada) throw new Error("La marcación justificada no se pudo leer.");
     return actualizada;
+  }
+
+  /** Marcaciones completas entre dos fechas (incluidas), opcionalmente de una persona. */
+  async marcacionesEntre(
+    desde: string,
+    hasta: string,
+    personaId?: string,
+  ): Promise<MarcacionResponseDto[]> {
+    const filas = await this.db
+      .select(this.seleccion())
+      .from(marcaciones)
+      .innerJoin(personas, eq(personas.id, marcaciones.personaId))
+      .where(
+        and(
+          sql`${marcaciones.fechaHora} >= ${`${desde} 00:00:00`}::timestamp`,
+          sql`${marcaciones.fechaHora} < ${`${siguienteDia(hasta)} 00:00:00`}::timestamp`,
+          personaId ? eq(marcaciones.personaId, personaId) : undefined,
+        ),
+      )
+      .orderBy(marcaciones.fechaHora);
+    return filas.map((f) => this.mapear(f));
   }
 
   async panelDelDia(
@@ -350,7 +442,9 @@ export class MarcacionesRepository implements IMarcacionesRepository {
         and(
           eq(personaCargos.vigente, true),
           sql`NOT EXISTS (SELECT 1 FROM ${docentes} d WHERE d.persona_id = ${personas.id})`,
-          sql`NOT EXISTS (SELECT 1 FROM ${estudiantes} e WHERE e.persona_id = ${personas.id})`,
+          sql`NOT ${esEstudiante}`,
+          // El cargo "Estudiante" o "Apoderado(a)" de un exalumno no lo pone en la lista del personal.
+          sql`(${notInArray(cargos.nombre, [...CARGOS_ESTUDIANTE_APODERADO])} OR NOT EXISTS (SELECT 1 FROM ${estudiantes} e WHERE e.persona_id = ${personas.id}))`,
           sinEntradaHoy,
         ),
       );

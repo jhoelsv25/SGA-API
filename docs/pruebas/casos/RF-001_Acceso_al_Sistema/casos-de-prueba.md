@@ -1,6 +1,6 @@
 # Casos de prueba — RF-001: Acceso al Sistema
 
-**Fuente:** [`RF-001` V2](../../requerimientos/RF-001_Acceso_al_Sistema/V3/RF-001_Acceso_al_Sistema.md) · **Total de casos:** 25 · **Nuevos en V2:** 3
+**Fuente:** [`RF-001` V2](../../../requerimientos/RF-001_Acceso_al_Sistema/V3/RF-001_Acceso_al_Sistema.md) · **Total de casos:** 25 · **Nuevos en V2:** 3
 
 > Generados desde los escenarios Gherkin. Los IDs de la V1 se conservan; los casos marcados `(v2.0)` son nuevos o cambiaron. Las ejecuciones anteriores se conservan.
 

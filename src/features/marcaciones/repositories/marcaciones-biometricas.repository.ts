@@ -92,13 +92,20 @@ export class MarcacionesBiometricasRepository {
     return porDocumento?.id ?? null;
   }
 
+  /** Quien guardó la asistencia manda: corrige la fila aunque otra instancia ya la hubiera rechazado. */
   async marcarProcesada(id: string, marcacionId: string): Promise<void> {
     await this.db
       .update(marcacionesBiometricas)
-      .set({ estado: "procesada", marcacionId, procesadaEn: sql`CURRENT_TIMESTAMP` })
+      .set({
+        estado: "procesada",
+        marcacionId,
+        motivoRechazo: null,
+        procesadaEn: sql`CURRENT_TIMESTAMP`,
+      })
       .where(eq(marcacionesBiometricas.id, id));
   }
 
+  /** Solo rechaza lo que sigue pendiente: con dos instancias, la otra ya pudo haberla procesado. */
   async marcarRechazada(id: string, motivo: string): Promise<void> {
     await this.db
       .update(marcacionesBiometricas)
@@ -107,6 +114,8 @@ export class MarcacionesBiometricasRepository {
         motivoRechazo: motivo.slice(0, 255),
         procesadaEn: sql`CURRENT_TIMESTAMP`,
       })
-      .where(eq(marcacionesBiometricas.id, id));
+      .where(
+        and(eq(marcacionesBiometricas.id, id), eq(marcacionesBiometricas.estado, "pendiente")),
+      );
   }
 }

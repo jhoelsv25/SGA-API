@@ -1,6 +1,6 @@
 # Casos de prueba — RF-016: Tareas, Entregas y Calificación
 
-**Fuente:** [`RF-016` V2](../../requerimientos/RF-016_Tareas_Entregas_y_Calificacion/V2/RF-016_Tareas_Entregas_y_Calificacion.md) · **Total de casos:** 31 · **Nuevos en V2:** 2
+**Fuente:** [`RF-016` V2](../../../requerimientos/RF-016_Tareas_Entregas_y_Calificacion/V2/RF-016_Tareas_Entregas_y_Calificacion.md) · **Total de casos:** 31 · **Nuevos en V2:** 2
 
 > Generados desde los escenarios Gherkin. Los IDs de la V1 se conservan; los casos marcados `(v2.0)` son nuevos o cambiaron. Las ejecuciones anteriores se conservan.
 

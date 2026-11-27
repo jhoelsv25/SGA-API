@@ -2,7 +2,7 @@
 export const LISTAS_PLANTILLA = {
   tipoDocumento: ["dni", "carne_extranjeria", "pasaporte", "partida_nacimiento"],
   sexo: ["M", "F"],
-  tipoContrato: ["nombrado", "contratado", "practicante"],
+  tipoContrato: ["nombrado", "contratado", "destacado", "encargado", "practicante"],
   jornada: ["20", "24", "30", "40"],
   parentesco: [
     "padre",

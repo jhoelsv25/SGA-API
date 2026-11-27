@@ -79,7 +79,7 @@ export class CreateDocenteDto {
   })
   @IsNotEmpty({ message: "El tipo de contrato es obligatorio." })
   @IsIn(TIPOS_CONTRATO, {
-    message: "El tipo de contrato debe ser nombrado, contratado o practicante.",
+    message: "El tipo de contrato debe ser nombrado, contratado, destacado, encargado o practicante.",
   })
   tipoContrato: TipoContrato;
 

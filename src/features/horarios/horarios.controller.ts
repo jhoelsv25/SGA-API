@@ -224,7 +224,7 @@ export class HorariosController {
 
   @Post("seccion/:seccionId/proponer-ia")
   @MenuAccess(MENU_HORARIOS)
-  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @Throttle({ long: { limit: 10, ttl: 60000 } })
   @ApiOperation({
     summary: "Proponer distribución de cursos en la grilla usando IA + validador sin cruces",
   })

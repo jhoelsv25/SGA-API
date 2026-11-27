@@ -1,6 +1,6 @@
 # Casos de prueba — RF-006: Grados, Cursos y Plan de Estudios
 
-**Fuente:** [`RF-006` V1](../../requerimientos/RF-006_Grados_Cursos_y_Plan_de_Estudios/V1/RF-006_Grados_Cursos_y_Plan_de_Estudios.md) · **Total de casos:** 18
+**Fuente:** [`RF-006` V1](../../../requerimientos/RF-006_Grados_Cursos_y_Plan_de_Estudios/V1/RF-006_Grados_Cursos_y_Plan_de_Estudios.md) · **Total de casos:** 18
 
 > Generados desde los escenarios Gherkin. Si el RF cambia de versión, regenerar y conservar las ejecuciones anteriores.
 

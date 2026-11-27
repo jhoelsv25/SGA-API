@@ -1,6 +1,6 @@
 # Casos de prueba — RF-020: Indicadores de la Tesis y Panel
 
-**Fuente:** [`RF-020` V2](../../requerimientos/RF-020_Indicadores_de_la_Tesis_y_Panel/V2/RF-020_Indicadores_de_la_Tesis_y_Panel.md) · **Total de casos:** 38 · **Nuevos en V2:** 18
+**Fuente:** [`RF-020` V2](../../../requerimientos/RF-020_Indicadores_de_la_Tesis_y_Panel/V2/RF-020_Indicadores_de_la_Tesis_y_Panel.md) · **Total de casos:** 38 · **Nuevos en V2:** 18
 
 > Generados desde los escenarios Gherkin de la versión 2.0. Se conservaron los IDs de la versión 1.0 y los escenarios nuevos (marcados `(v2.0)`) tomaron IDs nuevos. Si el RF cambia de versión, regenerar y conservar las ejecuciones anteriores.
 

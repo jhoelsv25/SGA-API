@@ -117,14 +117,44 @@ describe("decidirMarca: marcaciones que llegan por distintas vías", () => {
       });
     });
 
-    it("con entrada y salida ya registradas no se guarda una tercera", () => {
+    it("una marca más tarde que la salida la reemplaza: vale la última", () => {
+      const salida = marca("salida", "14:03:00", "biometrico");
+      expect(
+        decidir([marca("entrada", "07:30:00", "kiosko"), salida], "16:00:00", "biometrico"),
+      ).toEqual({ accion: "reemplazar", tipo: "salida", marca: salida });
+    });
+
+    it("una marca entre la entrada y la salida no cuenta", () => {
       const previas = [
         marca("entrada", "07:30:00", "kiosko"),
         marca("salida", "14:03:00", "biometrico"),
       ];
-      expect(decidir(previas, "16:00:00", "biometrico")).toEqual({
+      expect(decidir(previas, "11:00:00", "biometrico")).toEqual({
         accion: "ignorar",
-        razon: "jornada_completa",
+        razon: "intermedia",
+      });
+    });
+
+    it("con entrada y salida, una marca más temprana reemplaza la entrada: vale la primera", () => {
+      const entrada = marca("entrada", "09:10:00", "kiosko");
+      expect(
+        decidir([entrada, marca("salida", "14:03:00", "kiosko")], "07:05:00", "biometrico"),
+      ).toEqual({ accion: "reemplazar", tipo: "entrada", marca: entrada });
+    });
+
+    it("una sola marca por la tarde es entrada", () => {
+      expect(decidir([], "15:27:00", "biometrico")).toEqual({
+        accion: "registrar",
+        tipo: "entrada",
+      });
+    });
+
+    it("solo hay salida y llega una marca posterior: la reemplaza", () => {
+      const salida = marca("salida", "14:00:00", "manual");
+      expect(decidir([salida], "15:00:00", "biometrico")).toEqual({
+        accion: "reemplazar",
+        tipo: "salida",
+        marca: salida,
       });
     });
 

@@ -1,6 +1,6 @@
 # Casos de prueba — RF-012: Supervisión y Ausencias del Docente
 
-**Fuente:** [`RF-012` V3](../../requerimientos/RF-012_Supervision_y_Ausencias_del_Docente/V3/RF-012_Supervision_y_Ausencias_del_Docente.md) · **Total de casos:** 25 · **Nuevos en V3:** 0 · **Nuevos en V2:** 1
+**Fuente:** [`RF-012` V3](../../../requerimientos/RF-012_Supervision_y_Ausencias_del_Docente/V3/RF-012_Supervision_y_Ausencias_del_Docente.md) · **Total de casos:** 25 · **Nuevos en V3:** 0 · **Nuevos en V2:** 1
 
 > Generados desde los escenarios Gherkin. Los IDs de la V1 se conservan; los casos marcados `(v2.0)` son nuevos o cambiaron. La V3 solo aclara el alcance (lo pedagógico pasa a `RF-023`); los escenarios no cambian y los casos se conservan igual. Las ejecuciones anteriores se conservan.
 
