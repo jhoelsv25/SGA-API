@@ -10,9 +10,9 @@ import { AuditService } from "../../../common/services/audit.service";
 import { CacheService } from "../../../core/cache/cache.service";
 import type { AuthenticatedUser } from "../../auth/interfaces/jwt-payload.interface";
 import { EquiposService } from "../../equipos/equipos.service";
-import { MarcacionesService } from "../../marcaciones/marcaciones.service";
+import { MarcacionesService } from "../../marcaciones/services/marcaciones.service";
 import { ahoraEnColegio, horaCorta } from "../../marcaciones/utils";
-import { PlanificacionSesionesService } from "../../planificacion-sesiones/planificacion-sesiones.service";
+import { PlanificacionSesionesService } from "../../planificacion-sesiones/services/planificacion-sesiones.service";
 import {
   MENSAJES_SESION,
   PROPOSITO_EQUIPO_SESIONES,

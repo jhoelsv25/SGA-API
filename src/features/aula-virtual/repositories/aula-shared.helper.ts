@@ -21,13 +21,14 @@ import type {
 } from "../constants";
 import type { EntregaFila, MaterialFila, TareaFila } from "../interfaces";
 
+/** Apellido paterno, materno si existe, y nombres. Sin materno no deja el espacio antes de la coma. */
 export const nombreSql = (p: typeof personas) =>
-  sql<string>`TRIM(${p.apellidoPaterno} || ' ' || COALESCE(${p.apellidoMaterno}, '') || ', ' || ${p.nombres})`;
+  sql<string>`TRIM(${p.apellidoPaterno} || CASE WHEN NULLIF(BTRIM(COALESCE(${p.apellidoMaterno}, '')), '') IS NULL THEN '' ELSE ' ' || BTRIM(${p.apellidoMaterno}) END || ', ' || ${p.nombres})`;
 
 export const seccionNombreSql = sql<string>`${grados.numero} || '.° ' || ${secciones.nombre}`;
 
 export const docentePersonaSql = sql<string | null>`(
-  SELECT TRIM(${personas.apellidoPaterno} || ' ' || COALESCE(${personas.apellidoMaterno}, '') || ', ' || ${personas.nombres})
+  SELECT TRIM(${personas.apellidoPaterno} || CASE WHEN NULLIF(BTRIM(COALESCE(${personas.apellidoMaterno}, '')), '') IS NULL THEN '' ELSE ' ' || BTRIM(${personas.apellidoMaterno}) END || ', ' || ${personas.nombres})
   FROM ${docentes}
   JOIN ${personas} ON ${personas.id} = ${docentes.personaId}
   WHERE ${docentes.id} = cursos_seccion.docente_id

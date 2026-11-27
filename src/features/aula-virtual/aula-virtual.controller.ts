@@ -78,7 +78,7 @@ export class AulaVirtualController {
   @Get("solicitudes-cambio-fecha")
   @ApiOperation({
     summary:
-      "Solicitudes de cambio de fecha (pendientes para el Subdirector; propias para el docente)",
+      "Solicitudes de cambio de fecha del año (todas para seguimiento; propias para el docente)",
   })
   async solicitudes(
     @Query() query: SolicitudesQueryDto,

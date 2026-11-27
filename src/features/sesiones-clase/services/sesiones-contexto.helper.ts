@@ -8,7 +8,7 @@ import {
 import { sinFichaDocente } from "../../../common/utils/ficha-docente.util";
 import { AniosAcademicosService } from "../../anio-escolar/anios.service";
 import type { AuthenticatedUser } from "../../auth/interfaces/jwt-payload.interface";
-import { ConsolidadoDocenteService } from "../../consolidado-docente/consolidado-docente.service";
+import { ConsolidadoDocenteService } from "../../consolidado-docente/services/consolidado-docente.service";
 import { VariablesSistemaService } from "../../variables-sistema/variables-sistema.service";
 import { MENSAJES_SESION, VARIABLES_SESION } from "../constants";
 import type { SesionResponseDto } from "../dto";
