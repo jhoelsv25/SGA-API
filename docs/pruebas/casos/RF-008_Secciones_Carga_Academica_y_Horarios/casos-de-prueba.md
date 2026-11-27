@@ -1,6 +1,6 @@
 # Casos de prueba — RF-008: Secciones, Carga Académica y Horarios
 
-**Fuente:** [`RF-008` V1](../../requerimientos/RF-008_Secciones_Carga_Academica_y_Horarios/V1/RF-008_Secciones_Carga_Academica_y_Horarios.md) · **Total de casos:** 20
+**Fuente:** [`RF-008` V1](../../../requerimientos/RF-008_Secciones_Carga_Academica_y_Horarios/V1/RF-008_Secciones_Carga_Academica_y_Horarios.md) · **Total de casos:** 20
 
 > Generados desde los escenarios Gherkin. Si el RF cambia de versión, regenerar y conservar las ejecuciones anteriores.
 

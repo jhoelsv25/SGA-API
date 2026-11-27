@@ -43,6 +43,8 @@ import { DashboardModule } from "./dashboard";
 import { ObservacionesAulaModule } from "./observaciones-aula";
 import { PlanificacionSesionesModule } from "./planificacion-sesiones";
 
+import { AsistenciaUgelModule } from "./asistencia-ugel/asistencia-ugel.module";
+
 @Module({
   imports: [
     AuthModule,
@@ -76,6 +78,7 @@ import { PlanificacionSesionesModule } from "./planificacion-sesiones";
     NotificacionesModule,
     ComunicadosModule,
     MarcacionesModule,
+    AsistenciaUgelModule,
     AsistenciaClaseModule,
     SesionesClaseModule,
     AusenciasDocenteModule,
@@ -119,6 +122,7 @@ import { PlanificacionSesionesModule } from "./planificacion-sesiones";
     NotificacionesModule,
     ComunicadosModule,
     MarcacionesModule,
+    AsistenciaUgelModule,
     AsistenciaClaseModule,
     SesionesClaseModule,
     AusenciasDocenteModule,

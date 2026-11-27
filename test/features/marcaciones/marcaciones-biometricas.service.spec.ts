@@ -62,13 +62,29 @@ function construir(opciones: {
     reetiquetar: jest.fn().mockResolvedValue(undefined),
     insertar: jest.fn().mockResolvedValue({ id: "m1" }),
   };
+  // El bloqueo real se prueba contra PostgreSQL; aquí solo se ejecuta el trabajo con el mismo doble.
+  Object.assign(marcaciones, {
+    findById: jest.fn().mockResolvedValue(null),
+    clasesDeDocenteEnFecha: jest.fn().mockResolvedValue([]),
+    conBloqueoDelDia: jest.fn((_p: string, _f: string, trabajo: (r: unknown) => unknown) =>
+      Promise.resolve(trabajo(marcaciones)),
+    ),
+  });
   const turnos = {
     findByAplicaA: jest.fn().mockResolvedValue(opciones.sinTurno ? null : turnoDocentes),
   };
   const calendario = {
     suspendeClasesEn: jest.fn().mockResolvedValue(opciones.suspendido ?? false),
+    fechasSinTrabajoPersonal: jest
+      .fn()
+      .mockImplementation(async ([f]: string[]) =>
+        (await calendario.suspendeClasesEn()) ? new Set([f]) : new Set(),
+      ),
   };
-  const variables = { getValor: jest.fn().mockResolvedValue("5") };
+  const variables = {
+    getValor: jest.fn().mockResolvedValue("5"),
+    isActiva: jest.fn().mockResolvedValue(false),
+  };
   // Las reglas son las del servicio de marcaciones: se usa el servicio real sobre repositorios simulados.
   const marcacionesService = new MarcacionesService(
     marcaciones as never,
@@ -77,7 +93,10 @@ function construir(opciones: {
     calendario as never,
     {} as never,
     { log: jest.fn() } as never,
-    { getValor: jest.fn().mockResolvedValue("30") } as never,
+    {
+      getValor: jest.fn().mockResolvedValue("30"),
+      isActiva: jest.fn().mockResolvedValue(false),
+    } as never,
   );
   const servicio = new MarcacionesBiometricasService(
     crudas as never,
@@ -155,14 +174,14 @@ describe("Marcaciones del reloj biométrico", () => {
       "La persona no está vigente como docente o personal administrativo.",
     ],
     [
-      "entrada y salida ya marcadas",
+      "marca intermedia entre la entrada y la salida",
       {
         previas: [
           { tipo: "entrada" as const, fechaHora: "2026-11-06 07:20:00" },
           { tipo: "salida" as const, fechaHora: "2026-11-06 14:03:00" },
         ],
       },
-      "Ya registró su entrada y su salida hoy.",
+      "No cuenta: ya hay una entrada anterior y una salida posterior.",
     ],
   ])("rechaza con motivo: %s", async (_nombre, extra, motivo) => {
     const { servicio, crudas, marcaciones } = construir({

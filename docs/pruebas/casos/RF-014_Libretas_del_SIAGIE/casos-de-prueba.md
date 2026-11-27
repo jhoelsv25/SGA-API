@@ -1,6 +1,6 @@
 # Casos de prueba — RF-014: Libretas del SIAGIE
 
-**Fuente:** [`RF-014` V1](../../requerimientos/RF-014_Libretas_del_SIAGIE/V1/RF-014_Libretas_del_SIAGIE.md) · **Total de casos:** 20
+**Fuente:** [`RF-014` V1](../../../requerimientos/RF-014_Libretas_del_SIAGIE/V1/RF-014_Libretas_del_SIAGIE.md) · **Total de casos:** 20
 
 > Generados desde los escenarios Gherkin. Si el RF cambia de versión, regenerar y conservar las ejecuciones anteriores.
 

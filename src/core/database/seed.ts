@@ -2,6 +2,7 @@ import { Pool } from "pg";
 import * as bcrypt from "bcryptjs";
 import { asegurarCuentaServicioBiometrico } from "./seed-cuenta-biometrico";
 import {
+  MENU_CALENDARIO,
   MENU_CORREGIR_DATOS_CRITICOS,
   MENU_ESCRITORIO_BIOMETRICOS,
   MENU_HORARIOS,
@@ -354,6 +355,17 @@ async function seed() {
       valorMaximo: 60,
     },
     {
+      codigo: "marcacion.segundos_doble_lectura_kiosko",
+      descripcion:
+        "Segundos en los que otra marca del personal en el kiosko se toma como la misma lectura (doble toque o carné leído dos veces) y no como salida. 0 lo desactiva",
+      modulo: "asistencia",
+      tipo: "entero",
+      valor: "60",
+      unidad: "segundos",
+      valorMinimo: 0,
+      valorMaximo: 600,
+    },
+    {
       codigo: "marcacion.minutos_duplicado_entre_vias",
       descripcion:
         "Minutos en los que una marcación de otra vía (kiosko, manual o reloj biométrico) se toma como la misma asistencia ya registrada y no se guarda de nuevo. 0 lo desactiva",
@@ -363,6 +375,80 @@ async function seed() {
       unidad: "minutos",
       valorMinimo: 0,
       valorMaximo: 120,
+    },
+    {
+      codigo: "asistencia.docente_horario_segun_clases",
+      descripcion:
+        "Horario esperado del docente. false: el del Reglamento Interno (turno de docentes en Turnos). true: de su primera a su última clase del día",
+      modulo: "asistencia",
+      tipo: "booleano",
+      valor: "false",
+      unidad: null,
+      valorMinimo: null,
+      valorMaximo: null,
+    },
+    {
+      codigo: "asistencia.tardanzas_para_inasistencia",
+      descripcion:
+        "Número de tardanza del mes que el reporte marca como 3T. 0 (por defecto) lo desactiva: el Anexo 03 modificado por la RSG 121-2018 no tiene ese código; actívelo solo si la UGEL lo confirma",
+      modulo: "asistencia",
+      tipo: "entero",
+      valor: "0",
+      unidad: null,
+      valorMinimo: 0,
+      valorMaximo: 31,
+    },
+    {
+      codigo: "asistencia.marca_incompleta_es_inasistencia",
+      descripcion:
+        "En el reporte a la UGEL, sin ingreso, sin salida o con salida anticipada sin justificación cuenta como inasistencia (RSG 326-2017, 5.3.2)",
+      modulo: "asistencia",
+      tipo: "booleano",
+      valor: "true",
+      unidad: null,
+      valorMinimo: null,
+      valorMaximo: null,
+    },
+    {
+      codigo: "asistencia.omisiones_justificables_mes",
+      descripcion:
+        "Omisiones de marca que se pueden justificar al mes por persona (RSG 326-2017, 6.1.5)",
+      modulo: "asistencia",
+      tipo: "entero",
+      valor: "1",
+      unidad: null,
+      valorMinimo: 0,
+      valorMaximo: 31,
+    },
+    {
+      codigo: "asistencia.horas_para_justificar_omision",
+      descripcion: "Horas desde la omisión para presentar el sustento (RSG 326-2017, 6.1.5)",
+      modulo: "asistencia",
+      tipo: "entero",
+      valor: "24",
+      unidad: "horas",
+      valorMinimo: 1,
+      valorMaximo: 720,
+    },
+    {
+      codigo: "asistencia.reporte_nivel_modalidad",
+      descripcion: "Texto «Nivel/Modalidad Educativa» del reporte a la UGEL",
+      modulo: "asistencia",
+      tipo: "texto",
+      valor: "EBR - Secundaria",
+      unidad: null,
+      valorMinimo: null,
+      valorMaximo: null,
+    },
+    {
+      codigo: "asistencia.reporte_turno",
+      descripcion: "Texto «Turno» del reporte a la UGEL",
+      modulo: "asistencia",
+      tipo: "texto",
+      valor: "Mañana",
+      unidad: null,
+      valorMinimo: null,
+      valorMaximo: null,
     },
     {
       codigo: "ausencia.plazo_descargo_dias",
@@ -970,6 +1056,24 @@ async function seed() {
   );
   console.log("✔ Opción 'Mi horario' registrada (Docente, Estudiante y Apoderado).");
 
+  // RF-005: sin esta opción solo el Administrador podría registrar eventos del calendario.
+  await pool.query(
+    `INSERT INTO menus (modulo_id, menu_padre_id, nombre, ruta, icono, orden, es_contenedor)
+     SELECT c.modulo_id, c.id, 'Calendario escolar', $1::varchar, 'Calendar03Icon', 4, false
+     FROM menus c JOIN modulos m ON m.id = c.modulo_id
+     WHERE m.codigo = 'academico' AND c.es_contenedor AND c.nombre = 'Organización escolar'
+       AND NOT EXISTS (SELECT 1 FROM menus x WHERE x.ruta = $1::varchar);`,
+    [MENU_CALENDARIO],
+  );
+  await pool.query(
+    `INSERT INTO rol_menus (rol_id, menu_id)
+     SELECT r.id, m.id FROM roles r, menus m
+     WHERE r.nombre IN ('Administrador', 'Director') AND m.ruta = $1
+     ON CONFLICT DO NOTHING;`,
+    [MENU_CALENDARIO],
+  );
+  console.log("✔ Opción 'Calendario escolar' registrada (Administrador y Director).");
+
   // RF-010: menús de Asistencia bajo el contenedor "Asistencia"
   await pool.query(
     `INSERT INTO menus (modulo_id, nombre, orden, es_contenedor)
@@ -1264,7 +1368,17 @@ async function seed() {
   // RF-022: cuenta de servicio con la que el programa del reloj pide la aprobación de su equipo.
   await asegurarCuentaServicioBiometrico(pool);
 
+  // El Administrador tiene asignadas todas las opciones de menú vigentes (va al final: ya existen todas).
+  await pool.query(
+    `INSERT INTO rol_menus (rol_id, menu_id)
+     SELECT r.id, m.id FROM roles r CROSS JOIN menus m
+     WHERE r.nombre = 'Administrador' AND m.vigente AND m.ruta IS NOT NULL
+     ON CONFLICT DO NOTHING`,
+  );
+  console.log("✔ Administrador con todas las opciones de menú asignadas.");
+
   await pool.end();
+
   console.log("==========================================");
   console.log("🎉 Seed maestro completado exitosamente.");
   console.log("==========================================");

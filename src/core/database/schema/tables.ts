@@ -549,6 +549,8 @@ export const calendarioEventos = pgTable(
     fechaInicio: date("fecha_inicio").notNull(),
     fechaFin: date("fecha_fin").notNull(),
     suspendeClases: boolean("suspende_clases").default(false).notNull(),
+    /** Aunque no haya clases, docentes y auxiliares trabajan (semanas de gestión). */
+    personalLabora: boolean("personal_labora").default(false).notNull(),
     creadoPorId: uuid("creado_por_id"),
     creadoEn: timestamp("creado_en", { precision: 0, mode: "string" })
       .default(sql`CURRENT_TIMESTAMP`)
@@ -693,7 +695,7 @@ export const docentes = pgTable(
     }),
     check(
       "ck_docentes_contrato",
-      sql`(tipo_contrato)::text = ANY ((ARRAY['nombrado'::character varying, 'contratado'::character varying, 'practicante'::character varying])::text[])`,
+      sql`(tipo_contrato)::text = ANY ((ARRAY['nombrado'::character varying, 'contratado'::character varying, 'destacado'::character varying, 'encargado'::character varying, 'practicante'::character varying])::text[])`,
     ),
     check(
       "ck_docentes_estado",
@@ -1469,6 +1471,41 @@ export const equiposAutorizados = pgTable(
       "ck_equipos_proposito",
       sql`(proposito)::text = ANY ((ARRAY['marcacion'::character varying, 'sesiones'::character varying])::text[])`,
     ),
+  ],
+);
+
+// Navegadores que piden operar como kiosko. Solo se guarda el hash del secreto del navegador.
+export const solicitudesKiosko = pgTable(
+  "solicitudes_kiosko",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    codigo: varchar({ length: 20 }).notNull(),
+    secretoHash: varchar("secreto_hash", { length: 64 }).notNull(),
+    estado: smallint().default(1).notNull(),
+    equipoId: uuid("equipo_id"),
+    solicitadoEn: timestamp("solicitado_en", { withTimezone: true, mode: "string" })
+      .default(sql`now()`)
+      .notNull(),
+    ultimaConsultaEn: timestamp("ultima_consulta_en", { withTimezone: true, mode: "string" })
+      .default(sql`now()`)
+      .notNull(),
+    resueltoEn: timestamp("resuelto_en", { withTimezone: true, mode: "string" }),
+    resueltoPor: uuid("resuelto_por"),
+  },
+  (table) => [
+    unique("uq_solicitudes_kiosko_secreto").on(table.secretoHash),
+    unique("uq_solicitudes_kiosko_codigo").on(table.codigo),
+    foreignKey({
+      columns: [table.equipoId],
+      foreignColumns: [equiposAutorizados.id],
+      name: "fk_solicitudes_kiosko_equipo",
+    }),
+    foreignKey({
+      columns: [table.resueltoPor],
+      foreignColumns: [usuarios.id],
+      name: "fk_solicitudes_kiosko_resuelto_por",
+    }),
+    check("ck_solicitudes_kiosko_estado", sql`estado IN (1, 2, 3)`),
   ],
 );
 
@@ -3348,6 +3385,63 @@ export const sesionesVerificacionAula = pgTable(
     check(
       "ck_sesiones_verificacion_aula_horas",
       sql`hora_inicio IS NULL OR hora_fin IS NULL OR hora_fin > hora_inicio`,
+    ),
+  ],
+);
+
+// RF-025: justificaciones que el reporte mensual de asistencia a la UGEL necesita (RSG 326-2017-MINEDU).
+export const asistenciaNovedades = pgTable(
+  "asistencia_novedades",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    personaId: uuid("persona_id").notNull(),
+    tipo: varchar({ length: 30 }).notNull(),
+    fechaDesde: date("fecha_desde").notNull(),
+    fechaHasta: date("fecha_hasta").notNull(),
+    /** Solo permisos: minutos cronológicos autorizados. */
+    minutos: smallint(),
+    /** Documento que lo acredita (resolución, papeleta de permiso, constancia). */
+    documento: varchar({ length: 150 }).notNull(),
+    observacion: varchar({ length: 500 }),
+    /** Solo omisión de marca: cuál faltó («ingreso» o «salida»). */
+    marcaOmitida: varchar("marca_omitida", { length: 10 }),
+    /** Solo omisión de marca: cuándo se presentó el sustento (6.1.5). */
+    presentadoEn: timestamp("presentado_en", { precision: 0, mode: "string" }),
+    registradoPorId: uuid("registrado_por_id").notNull(),
+    registradoEn: timestamp("registrado_en", { precision: 0, mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    anulada: boolean().default(false).notNull(),
+    anuladaPorId: uuid("anulada_por_id"),
+    anuladaEn: timestamp("anulada_en", { precision: 0, mode: "string" }),
+    motivoAnulacion: varchar("motivo_anulacion", { length: 500 }),
+  },
+  (table) => [
+    index("ix_asistencia_novedades_persona_fechas").on(
+      table.personaId,
+      table.fechaDesde,
+      table.fechaHasta,
+    ),
+    foreignKey({
+      columns: [table.personaId],
+      foreignColumns: [personas.id],
+      name: "fk_asistencia_novedades_persona",
+    }),
+    foreignKey({
+      columns: [table.registradoPorId],
+      foreignColumns: [usuarios.id],
+      name: "fk_asistencia_novedades_registrado_por",
+    }),
+    foreignKey({
+      columns: [table.anuladaPorId],
+      foreignColumns: [usuarios.id],
+      name: "fk_asistencia_novedades_anulada_por",
+    }),
+    check("ck_asistencia_novedades_fechas", sql`fecha_hasta >= fecha_desde`),
+    check("ck_asistencia_novedades_minutos", sql`minutos IS NULL OR minutos > 0`),
+    check(
+      "ck_asistencia_novedades_marca",
+      sql`(tipo = 'omision_justificada') = (marca_omitida IS NOT NULL) AND (marca_omitida IS NULL OR marca_omitida IN ('ingreso', 'salida'))`,
     ),
   ],
 );

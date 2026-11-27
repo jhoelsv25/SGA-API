@@ -26,8 +26,8 @@ import type {
   IDocentesRepository,
   RegistrarDocenteTransactionData,
 } from "../interfaces";
+import { CARGOS_ESTUDIANTE_APODERADO } from "../../../common/utils/es-estudiante.sql";
 
-const CARGOS_ESTUDIANTE_APODERADO = ["Estudiante", "Apoderado(a)"];
 const ROL_DOCENTE = "Docente";
 
 @Injectable()

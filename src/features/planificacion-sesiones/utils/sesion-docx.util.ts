@@ -12,10 +12,8 @@ import {
   TextRun,
   WidthType,
 } from "docx";
+import { DOCUMENTO_SESION as M, fechaDocumento } from "../constants/sesion-documento.constants";
 import type { DatosSesionPdf } from "./sesion-pdf.util";
-
-const NOMBRE_MOMENTO = { inicio: "INICIO", desarrollo: "DESARROLLO", cierre: "CIERRE" } as const;
-const fechaLarga = (iso: string) => iso.slice(0, 10).split("-").reverse().join("/");
 
 const FUENTE = "Arial";
 const TAMANO = 20; // 10 pt, como en la plantilla del colegio
@@ -28,7 +26,7 @@ const dxa = (porcentaje: number) => Math.round((ANCHO_PAGINA * porcentaje) / 100
 const texto = (t: string, negrita = false) =>
   new TextRun({ text: t, bold: negrita, font: FUENTE, size: TAMANO });
 const parrafo = (t: string, negrita = false) => new Paragraph({ children: [texto(t, negrita)] });
-const lineas = (t: string | null | undefined) => (t ?? "—").split("\n").map((l) => parrafo(l));
+const lineas = (t: string | null | undefined) => (t ?? M.vacio).split("\n").map((l) => parrafo(l));
 const vinetas = (items: string[]) =>
   items.map(
     (i) => new Paragraph({ children: [texto(i)], bullet: { level: 0 }, spacing: { after: 40 } }),
@@ -37,7 +35,7 @@ const vinetas = (items: string[]) =>
 /** Celda con borde; las de encabezado van sombreadas y centradas, como la plantilla. */
 function celda(hijos: Paragraph[], porcentaje: number, esEncabezado = false): TableCell {
   return new TableCell({
-    children: hijos.length > 0 ? hijos : [parrafo("—")],
+    children: hijos.length > 0 ? hijos : [parrafo(M.vacio)],
     width: { size: dxa(porcentaje), type: WidthType.DXA },
     borders: BORDES,
     margins: { top: 60, bottom: 60, left: 100, right: 100 },
@@ -54,7 +52,11 @@ const encabezado = (t: string, porcentaje: number) =>
   );
 
 /** Tabla de ancho completo: `anchos` en porcentaje, `filas` con una lista de párrafos por celda. */
-function tabla(anchos: number[], titulos: string[] | null, filas: Paragraph[][][]): Table {
+function tabla(
+  anchos: readonly number[],
+  titulos: readonly string[] | null,
+  filas: Paragraph[][][],
+): Table {
   const cabecera = titulos
     ? [
         new TableRow({
@@ -86,24 +88,25 @@ const subseccion = (t: string) =>
 
 /** Sesión de aprendizaje en Word (.docx) con el modelo estándar del colegio (RF-024, HU4). */
 export async function generarSesionDocx(d: DatosSesionPdf): Promise<Buffer> {
+  const F = M.datosInformativos.filas;
   const datos: [string, string][] = [
-    ["INSTITUCIÓN EDUCATIVA", d.institucion],
-    ["DIRECTOR (A)", d.director],
-    ["DOCENTE", d.docente],
-    ["GRADO / SECCIÓN", d.gradoSeccion],
-    ["ÁREA CURRICULAR", d.area],
-    ["FECHA", fechaLarga(d.fecha)],
-    ...(d.unidad ? ([["UNIDAD", d.unidad]] as [string, string][]) : []),
+    [F.institucion, d.institucion],
+    [F.director, d.director],
+    [F.docente, d.docente],
+    [F.gradoSeccion, d.gradoSeccion],
+    [F.area, d.area],
+    [F.fecha, fechaDocumento(d.fecha)],
+    ...(d.unidad ? ([[F.unidad, d.unidad]] as [string, string][]) : []),
   ];
 
   const hijos: (Paragraph | Table)[] = [];
-  if (d.borrador) hijos.push(parrafo("BORRADOR", true));
+  if (d.borrador) hijos.push(parrafo(M.borrador, true));
   hijos.push(
     new Paragraph({
       alignment: AlignmentType.CENTER,
       children: [
         new TextRun({
-          text: `SESIÓN DE APRENDIZAJE N.º ${d.numero ?? "—"}`,
+          text: `${M.encabezado} ${d.numero ?? M.vacio}`,
           bold: true,
           font: FUENTE,
           size: 28,
@@ -115,71 +118,65 @@ export async function generarSesionDocx(d: DatosSesionPdf): Promise<Buffer> {
       spacing: { after: 160 },
       children: [new TextRun({ text: `“${d.titulo}”`, bold: true, font: FUENTE, size: 24 })],
     }),
-    seccion("I. DATOS INFORMATIVOS"),
+    seccion(M.datosInformativos.titulo),
     tabla(
-      [30, 70],
+      M.datosInformativos.anchos,
       null,
       datos.map(([k, v]) => [[parrafo(k, true)], [parrafo(v)]]),
     ),
-    seccion("II. ACERCA DE LA SESIÓN DE APRENDIZAJE"),
-    subseccion("2.1. PROPÓSITOS DE APRENDIZAJE"),
+    seccion(M.acerca),
+    subseccion(M.propositos.titulo),
     new Paragraph({
       spacing: { after: 80 },
-      children: [texto("Propósito: ", true), texto(d.proposito ?? "—")],
+      children: [texto(M.propositos.etiquetaProposito, true), texto(d.proposito ?? M.vacio)],
     }),
     tabla(
-      [20, 22, 38, 20],
-      ["Competencia", "Capacidades", "Desempeños precisados", "Campo temático"],
+      M.propositos.anchos,
+      M.propositos.columnas,
       d.competencias.map((c) => [
         [parrafo(c.competenciaTexto)],
         vinetas(c.capacidades),
         vinetas(c.desempenos.map((x) => x.texto)),
-        [parrafo(c.campoTematico ?? "—")],
+        [parrafo(c.campoTematico ?? M.vacio)],
       ]),
     ),
-    subseccion("2.2. EVALUACIÓN DE LOS APRENDIZAJES"),
+    subseccion(M.evaluacion.titulo),
+    tabla(M.evaluacion.anchos, M.evaluacion.columnas, [
+      [lineas(d.evidencia), vinetas(d.criterios), lineas(d.instrumento)],
+    ]),
+    subseccion(M.transversales.titulo),
     tabla(
-      [26, 48, 26],
-      ["Evidencia", "Criterios", "Instrumento"],
-      [[lineas(d.evidencia), vinetas(d.criterios), lineas(d.instrumento)]],
-    ),
-    subseccion("2.3. COMPETENCIAS TRANSVERSALES"),
-    tabla(
-      [34, 33, 33],
-      ["Competencia transversal", "Capacidades", "Desempeño precisado"],
+      M.transversales.anchos,
+      M.transversales.columnas,
       d.transversales.map((t) => [
         [parrafo(t.competencia)],
         vinetas(t.capacidades),
-        [parrafo(t.desempeno ?? "—")],
+        [parrafo(t.desempeno ?? M.vacio)],
       ]),
     ),
-    subseccion("2.4. ENFOQUES TRANSVERSALES"),
+    subseccion(M.enfoques.titulo),
     tabla(
-      [26, 24, 50],
-      ["Enfoque transversal", "Valores", "Acciones observables"],
+      M.enfoques.anchos,
+      M.enfoques.columnas,
       d.enfoques.map((e) => [[parrafo(e.enfoque)], vinetas(e.valores), vinetas(e.acciones)]),
     ),
-    seccion("III. SECUENCIA DIDÁCTICA"),
-    subseccion("3.1. MEDIACIÓN Y MATERIALES"),
-    tabla(
-      [34, 33, 33],
-      ["Materiales impresos", "Materiales manipulativos", "Materiales digitales"],
+    seccion(M.secuencia),
+    subseccion(M.materiales.titulo),
+    tabla(M.materiales.anchos, M.materiales.columnas, [
       [
-        [
-          vinetas(d.materiales.impresos),
-          vinetas(d.materiales.manipulativos),
-          vinetas(d.materiales.digitales),
-        ],
+        vinetas(d.materiales.impresos),
+        vinetas(d.materiales.manipulativos),
+        vinetas(d.materiales.digitales),
       ],
-    ),
-    subseccion("3.2. MOMENTOS DIDÁCTICOS"),
+    ]),
+    subseccion(M.momentos.titulo),
     tabla(
-      [16, 70, 14],
-      ["MOMENTO", "ACTIVIDADES ESTRATÉGICAS", "TIEMPO"],
-      (["inicio", "desarrollo", "cierre"] as const).map((m) => {
+      M.momentos.anchos,
+      M.momentos.columnas,
+      M.momentos.orden.map((m) => {
         const x = d.momentos.find((y) => y.momento === m);
         return [
-          [parrafo(NOMBRE_MOMENTO[m], true)],
+          [parrafo(M.momentos.nombres[m], true)],
           lineas(x?.actividades),
           [
             new Paragraph({
@@ -190,7 +187,7 @@ export async function generarSesionDocx(d: DatosSesionPdf): Promise<Buffer> {
         ];
       }),
     ),
-    seccion("IV. REFERENCIAS BIBLIOGRÁFICAS"),
+    seccion(M.referencias),
     ...vinetas(d.referencias),
     new Paragraph({ text: "", spacing: { before: 800 } }),
     new Table({
@@ -199,7 +196,7 @@ export async function generarSesionDocx(d: DatosSesionPdf): Promise<Buffer> {
       layout: TableLayoutType.FIXED,
       rows: [
         new TableRow({
-          children: ["DOCENTE", "SUBDIRECCIÓN"].map(
+          children: M.firmas.roles.map(
             (rol) =>
               new TableCell({
                 width: { size: dxa(50), type: WidthType.DXA },
@@ -212,7 +209,7 @@ export async function generarSesionDocx(d: DatosSesionPdf): Promise<Buffer> {
                 children: [
                   new Paragraph({
                     alignment: AlignmentType.CENTER,
-                    children: [texto("__________________________")],
+                    children: [texto(M.firmas.linea)],
                   }),
                   new Paragraph({ alignment: AlignmentType.CENTER, children: [texto(rol, true)] }),
                 ],

@@ -33,6 +33,7 @@ import { SwitchRoleDto } from "./dto/switch-role.dto";
 import type { AuthenticatedUser } from "./interfaces/jwt-payload.interface";
 import { SessionService } from "./services";
 import { clearAuthCookie, setAuthCookie } from "./utils";
+import { LIMITE_ACCESO } from "./utils/limite-acceso.util";
 
 @ApiTags("Autenticación")
 @Controller("auth")
@@ -82,7 +83,7 @@ export class AuthController {
   }
 
   @Public()
-  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Throttle(LIMITE_ACCESO)
   @Post("login")
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Iniciar sesión en el sistema SGA" })
@@ -278,7 +279,7 @@ export class AuthController {
   }
 
   @Public()
-  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Throttle(LIMITE_ACCESO)
   @Post("forgot-password")
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Solicitar recuperación de contraseña verificando identidad" })

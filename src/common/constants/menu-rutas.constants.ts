@@ -4,6 +4,9 @@
  */
 export const MENU_CORREGIR_DATOS_CRITICOS = "/personas/corregir-datos-criticos";
 
+/** RF-005: registrar, editar y quitar eventos del calendario escolar. */
+export const MENU_CALENDARIO = "/admin/calendario";
+
 /**
  * RF-008: opciones de menú para organización escolar (las escrituras exigen este menú).
  */

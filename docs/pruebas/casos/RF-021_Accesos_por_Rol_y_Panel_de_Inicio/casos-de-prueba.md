@@ -1,6 +1,6 @@
 # Casos de prueba — RF-021: Accesos por Rol y Panel de Inicio
 
-**Fuente:** [`RF-021` V2](../../requerimientos/RF-021_Accesos_por_Rol_y_Panel_de_Inicio/V2/RF-021_Accesos_por_Rol_y_Panel_de_Inicio.md) · **Total de casos:** 24 · **Nuevos en V2:** 3
+**Fuente:** [`RF-021` V2](../../../requerimientos/RF-021_Accesos_por_Rol_y_Panel_de_Inicio/V2/RF-021_Accesos_por_Rol_y_Panel_de_Inicio.md) · **Total de casos:** 24 · **Nuevos en V2:** 3
 
 > Generados desde los escenarios Gherkin de la versión 2.0. Los escenarios de la versión 1.0 conservan su orden (CP-RF021-01 a 21; el "Menú del Docente" se actualizó y se marca `(v2.0)`) y los escenarios nuevos (marcados `(v2.0)`) tomaron IDs nuevos. Si el RF cambia de versión, regenerar y conservar las ejecuciones anteriores.
 

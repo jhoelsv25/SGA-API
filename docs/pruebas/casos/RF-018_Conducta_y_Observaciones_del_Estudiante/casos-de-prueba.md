@@ -1,6 +1,6 @@
 # Casos de prueba — RF-018: Conducta y Observaciones del Estudiante
 
-**Fuente:** [`RF-018` V2](../../requerimientos/RF-018_Conducta_y_Observaciones_del_Estudiante/V2/RF-018_Conducta_y_Observaciones_del_Estudiante.md) · **Total de casos:** 18 · **Nuevos en V2:** 1
+**Fuente:** [`RF-018` V2](../../../requerimientos/RF-018_Conducta_y_Observaciones_del_Estudiante/V2/RF-018_Conducta_y_Observaciones_del_Estudiante.md) · **Total de casos:** 18 · **Nuevos en V2:** 1
 
 > Generados desde los escenarios Gherkin. Los IDs de la V1 se conservan; los casos marcados `(v2.0)` son nuevos o cambiaron. Las ejecuciones anteriores se conservan.
 

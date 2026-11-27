@@ -37,6 +37,14 @@ export class CreateEventoCalendarioDto {
   @IsBoolean()
   suspendeClases?: boolean;
 
+  @ApiPropertyOptional({
+    description:
+      "Solo si suspende clases: docentes y auxiliares trabajan esos días (semanas de gestión).",
+  })
+  @IsOptional()
+  @IsBoolean()
+  personalLabora?: boolean;
+
   @ApiPropertyOptional({ description: "Año escolar. Si se omite, se usa el año vigente." })
   @IsOptional()
   @IsUUID()

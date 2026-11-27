@@ -121,6 +121,11 @@ describe("RF-010: Marcaciones (HU1 y HU2)", () => {
       findById: jest.fn(),
       justificar: jest.fn(),
     };
+    repo.clasesDeDocenteEnFecha = jest.fn().mockResolvedValue([]);
+    repo.conBloqueoDelDia = jest.fn((_p: string, _f: string, trabajo: (r: unknown) => unknown) =>
+      Promise.resolve(trabajo(repo)),
+    ) as jest.Mock;
+    repo.findById ??= jest.fn().mockResolvedValue(null);
     equipos = {
       validarKiosko: jest.fn().mockResolvedValue({
         valido: true,
@@ -135,10 +140,21 @@ describe("RF-010: Marcaciones (HU1 y HU2)", () => {
           Promise.resolve(a === "estudiantes" ? turnoEstudiantes : turnoDocentes),
         ),
     };
-    calendario = { suspendeClasesEn: jest.fn().mockResolvedValue(false) };
+    calendario = {
+      suspendeClasesEn: jest.fn().mockResolvedValue(false),
+      // Por defecto el personal tampoco trabaja los días sin clases.
+      fechasSinTrabajoPersonal: jest
+        .fn()
+        .mockImplementation(async ([f]: string[]) =>
+          (await calendario.suspendeClasesEn!(f)) ? new Set([f]) : new Set(),
+        ),
+    };
     anios = { anioVigente: jest.fn().mockResolvedValue({ id: "anio-2027" }) };
     audit = { log: jest.fn().mockResolvedValue(undefined) };
-    variables = { getValor: jest.fn().mockResolvedValue("30") };
+    variables = {
+      getValor: jest.fn().mockResolvedValue("30"),
+      isActiva: jest.fn().mockResolvedValue(false),
+    };
     service = new MarcacionesService(
       repo as unknown as MarcacionesRepository,
       equipos as unknown as EquiposService,
@@ -151,6 +167,70 @@ describe("RF-010: Marcaciones (HU1 y HU2)", () => {
   });
 
   afterEach(() => jest.useRealTimers());
+
+  describe("doble lectura en el mismo kiosko", () => {
+    function docenteConEntradaEnKiosko(horaDeLaEntrada: string) {
+      repo.findCredencialPorCodigo!.mockResolvedValue(credencial("1234", { personaId: "per-doc" }));
+      repo.findPersonaParaMarcar!.mockResolvedValue({
+        personaId: "per-doc",
+        nombres: "Luis",
+        nombreCompleto: "Rojas, Luis",
+        fotoUrl: null,
+        tipoPersona: "docentes",
+        estudianteId: null,
+        vigente: true,
+      });
+      equipos.validarKiosko!.mockResolvedValue({
+        valido: true,
+        message: "ok",
+        equipo: { proposito: "marcacion", usuariosPermitidos: "docentes" },
+      });
+      variables.getValor!.mockImplementation((codigo: string) =>
+        Promise.resolve(codigo === "marcacion.segundos_doble_lectura_kiosko" ? "60" : "30"),
+      );
+      // El primer envío ya quedó guardado cuando llega el segundo.
+      repo.marcacionesDePersonaEnFecha!.mockResolvedValue([
+        { id: "m1", tipo: "entrada", fechaHora: `${HOY} ${horaDeLaEntrada}`, origen: "kiosko" },
+      ]);
+    }
+    const marcar = () => service.marcarEnKiosko("tok", { codigo: "CR-1", pin: "1234" });
+
+    it.each(["07:40:00", "07:40:20", "07:40:59"])(
+      "a las %s, tras una entrada de las 07:40:00, no genera una salida falsa",
+      async (hora) => {
+        horaServidor(hora);
+        docenteConEntradaEnKiosko("07:40:00");
+        const r = await marcar();
+        expect(r).toMatchObject({
+          registrada: false,
+          mensaje: "Ya tiene una marcación registrada a las 07:40.",
+        });
+        expect(repo.insertar).not.toHaveBeenCalled();
+      },
+    );
+
+    it("también si el segundo envío calculó su hora antes de que se guardara el primero", async () => {
+      horaServidor("07:40:00");
+      docenteConEntradaEnKiosko("07:40:01");
+      expect((await marcar()).registrada).toBe(false);
+      expect(repo.insertar).not.toHaveBeenCalled();
+    });
+
+    it("pasado el minuto, la segunda marca sí es la salida", async () => {
+      horaServidor("07:41:00");
+      docenteConEntradaEnKiosko("07:40:00");
+      expect(await marcar()).toMatchObject({ registrada: true, tipo: "salida" });
+    });
+
+    it("con la variable en 0 se desactiva", async () => {
+      horaServidor("07:40:20");
+      docenteConEntradaEnKiosko("07:40:00");
+      variables.getValor!.mockImplementation((codigo: string) =>
+        Promise.resolve(codigo === "marcacion.segundos_doble_lectura_kiosko" ? "0" : "30"),
+      );
+      expect((await marcar()).registrada).toBe(true);
+    });
+  });
 
   it("CP-RF010-26: si ya marcó el reloj hace pocos minutos, el kiosko no genera una salida falsa", async () => {
     horaServidor("07:40:00");
@@ -254,7 +334,7 @@ describe("RF-010: Marcaciones (HU1 y HU2)", () => {
     expect(r.mensaje).toBe("Hasta luego, Luis. Salida registrada a las 14:03.");
   });
 
-  it("personal con entrada y salida ya registradas recibe el aviso de ambas", async () => {
+  it("personal que vuelve a marcar tras su salida: la nueva marca es la salida", async () => {
     horaServidor("15:00:00");
     equipos.validarKiosko!.mockResolvedValue({
       valido: true,
@@ -266,9 +346,15 @@ describe("RF-010: Marcaciones (HU1 y HU2)", () => {
       { id: "a", tipo: "entrada", fechaHora: `${HOY} 07:20:00`, origen: "kiosko" },
       { id: "b", tipo: "salida", fechaHora: `${HOY} 14:03:00`, origen: "kiosko" },
     ]);
+    repo.reemplazar = jest.fn().mockResolvedValue({ id: "b", resultado: "a_tiempo" });
     const r = await service.marcarEnKiosko("tok", { codigo: "CR-1", pin: "1234" });
-    expect(r.registrada).toBe(false);
-    expect(r.mensaje).toBe("Ya registró su entrada y su salida hoy.");
+    expect(r.registrada).toBe(true);
+    expect(r.tipo).toBe("salida");
+    expect(repo.reemplazar).toHaveBeenCalledWith(
+      "b",
+      expect.objectContaining({ tipo: "salida", fechaHora: `${HOY} 15:00:00` }),
+    );
+    expect(repo.insertar).not.toHaveBeenCalled();
   });
 
   it("CP-RF010-06: fuera de ventana se registra como fuera_de_turno", async () => {

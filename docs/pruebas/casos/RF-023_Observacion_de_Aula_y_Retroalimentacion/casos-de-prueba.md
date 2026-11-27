@@ -1,6 +1,6 @@
 # Casos de prueba — RF-023: Observación de Aula y Retroalimentación Docente
 
-**Fuente:** [`RF-023` V1](../../requerimientos/RF-023_Observacion_de_Aula_y_Retroalimentacion/V1/RF-023_Observacion_de_Aula_y_Retroalimentacion.md) · **Total de casos:** 62
+**Fuente:** [`RF-023` V1](../../../requerimientos/RF-023_Observacion_de_Aula_y_Retroalimentacion/V1/RF-023_Observacion_de_Aula_y_Retroalimentacion.md) · **Total de casos:** 62
 
 > Generados desde los escenarios Gherkin. Los IDs no cambian; si el RF pasa a una versión nueva, los casos nuevos toman números nuevos y las ejecuciones anteriores se conservan.
 

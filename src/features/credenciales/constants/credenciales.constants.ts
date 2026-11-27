@@ -6,4 +6,16 @@ export const CREDENCIAL_MESSAGES = {
   MOTIVO_REQUERIDO: "Indique el motivo de la anulación de la credencial.",
   PIN_INVALIDO: "El PIN debe tener 4 dígitos numéricos.",
   PIN_ACTUAL_INCORRECTO: "El PIN actual ingresado no es correcto.",
+  SIN_ACCESO: "No tiene permiso para ver la credencial de otra persona.",
 } as const;
+
+/** Roles que emiten carnés: ven los de cualquier persona y los descargan por lote. */
+export const ROLES_EMISION_CARNES = [
+  "Administrador",
+  "Secretaria",
+  "Director",
+  "Subdirector",
+] as const;
+
+/** RF-007: solo TI cambia el PIN de marcación; nadie cambia el suyo desde su cuenta. */
+export const ROLES_CAMBIO_PIN = ["Soporte TI"] as const;

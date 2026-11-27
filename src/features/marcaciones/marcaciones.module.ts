@@ -8,6 +8,8 @@ import { TurnosModule } from "../turnos/turnos.module";
 import { VariablesSistemaModule } from "../variables-sistema/variables-sistema.module";
 import { MarcacionesBiometricasProcesador } from "./marcaciones-biometricas.procesador";
 import { MarcacionesBiometricasService } from "./marcaciones-biometricas.service";
+import { ControlDiarioService } from "./control-diario.service";
+import { ControlDiarioRepository } from "./repositories/control-diario.repository";
 import { MarcacionesController } from "./marcaciones.controller";
 import { MarcacionesService } from "./marcaciones.service";
 import { MarcacionesBiometricasRepository, MarcacionesRepository } from "./repositories";
@@ -24,6 +26,8 @@ import { MarcacionesBiometricasRepository, MarcacionesRepository } from "./repos
   controllers: [MarcacionesController],
   providers: [
     MarcacionesService,
+    ControlDiarioService,
+    ControlDiarioRepository,
     MarcacionesRepository,
     MarcacionesBiometricasRepository,
     MarcacionesBiometricasService,

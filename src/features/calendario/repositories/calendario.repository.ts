@@ -62,6 +62,7 @@ export class CalendarioRepository implements ICalendarioRepository {
         fechaInicio: data.fechaInicio,
         fechaFin: data.fechaFin,
         suspendeClases: data.suspendeClases,
+        personalLabora: data.personalLabora,
         creadoPorId: data.creadoPorId,
       })
       .returning();
@@ -81,6 +82,7 @@ export class CalendarioRepository implements ICalendarioRepository {
         ...(data.fechaInicio !== undefined ? { fechaInicio: data.fechaInicio } : {}),
         ...(data.fechaFin !== undefined ? { fechaFin: data.fechaFin } : {}),
         ...(data.suspendeClases !== undefined ? { suspendeClases: data.suspendeClases } : {}),
+        ...(data.personalLabora !== undefined ? { personalLabora: data.personalLabora } : {}),
         actualizadoEn: sql`CURRENT_TIMESTAMP`,
       })
       .where(eq(calendarioEventos.id, id))
@@ -138,6 +140,38 @@ export class CalendarioRepository implements ICalendarioRepository {
     });
   }
 
+  /** Eventos que suspenden clases y tocan el rango: una sola consulta para todo un mes. */
+  rangosSinClases(desde: string, hasta: string): Promise<{ inicio: string; fin: string }[]> {
+    return this.db
+      .select({ inicio: calendarioEventos.fechaInicio, fin: calendarioEventos.fechaFin })
+      .from(calendarioEventos)
+      .where(
+        and(
+          eq(calendarioEventos.suspendeClases, true),
+          lte(calendarioEventos.fechaInicio, hasta),
+          gte(calendarioEventos.fechaFin, desde),
+        ),
+      );
+  }
+
+  /** Como `rangosSinClases`, pero solo los eventos en los que el personal tampoco trabaja. */
+  rangosSinTrabajoPersonal(
+    desde: string,
+    hasta: string,
+  ): Promise<{ inicio: string; fin: string }[]> {
+    return this.db
+      .select({ inicio: calendarioEventos.fechaInicio, fin: calendarioEventos.fechaFin })
+      .from(calendarioEventos)
+      .where(
+        and(
+          eq(calendarioEventos.suspendeClases, true),
+          eq(calendarioEventos.personalLabora, false),
+          lte(calendarioEventos.fechaInicio, hasta),
+          gte(calendarioEventos.fechaFin, desde),
+        ),
+      );
+  }
+
   async suspendeClasesEn(fecha: string): Promise<boolean> {
     const [row] = await this.db
       .select({ id: calendarioEventos.id })
@@ -163,6 +197,7 @@ export class CalendarioRepository implements ICalendarioRepository {
       fechaInicio: row.fechaInicio,
       fechaFin: row.fechaFin,
       suspendeClases: row.suspendeClases,
+      personalLabora: row.personalLabora,
       creadoPorId: row.creadoPorId,
     };
   }

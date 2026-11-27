@@ -24,11 +24,15 @@ import {
   credenciales,
   docentes,
   equiposAutorizados,
+  estudiantes,
   marcaciones,
   marcacionesBiometricas,
   personas,
   usuarios,
 } from "../src/core/database/schema";
+import { AsistenciaUgelRepository } from "../src/features/asistencia-ugel/repositories/asistencia-ugel.repository";
+import { ControlDiarioRepository } from "../src/features/marcaciones/repositories/control-diario.repository";
+import { MarcacionesRepository } from "../src/features/marcaciones/repositories/marcaciones.repository";
 import { MarcacionesService } from "../src/features/marcaciones/marcaciones.service";
 import { MarcacionesBiometricasService } from "../src/features/marcaciones/marcaciones-biometricas.service";
 import { ahoraEnColegio } from "../src/features/marcaciones/utils/marcacion-reglas.util";
@@ -203,6 +207,9 @@ describeSiHabilitado("Vías de marcación (e2e, base real)", () => {
         db.delete(credenciales).where(inArray(credenciales.personaId, idsPersonas)),
       );
       await intentar(() => db.delete(docentes).where(inArray(docentes.personaId, idsPersonas)));
+      await intentar(() =>
+        db.delete(estudiantes).where(inArray(estudiantes.personaId, idsPersonas)),
+      );
       await intentar(() => db.delete(personas).where(inArray(personas.id, idsPersonas)));
     }
     const idsEquipos = [equipoKioskoId].filter(Boolean);
@@ -233,11 +240,23 @@ describeSiHabilitado("Vías de marcación (e2e, base real)", () => {
 
     it("DNI escrito: la segunda marca del día es la salida (origen kiosko)", async () => {
       const d = docentesCreados.qr;
-      const res = await request(app.getHttpServer())
-        .post("/api/marcaciones/kiosko")
-        .set("x-kiosk-token", tokenKiosko)
-        .send({ codigo: d.documento, pin: PIN })
-        .expect(200);
+      const marcar = () =>
+        request(app.getHttpServer())
+          .post("/api/marcaciones/kiosko")
+          .set("x-kiosk-token", tokenKiosko)
+          .send({ codigo: d.documento, pin: PIN })
+          .expect(200);
+
+      // Repetida enseguida es la misma lectura: no crea una salida.
+      expect(cuerpo<{ registrada: boolean }>(await marcar()).registrada).toBe(false);
+      expect(await marcasDe(d.personaId)).toHaveLength(1);
+
+      // Se envejece la entrada para no esperar el minuto de doble lectura.
+      await db
+        .update(marcaciones)
+        .set({ fechaHora: sql`${marcaciones.fechaHora} - interval '2 minutes'` })
+        .where(eq(marcaciones.personaId, d.personaId));
+      const res = await marcar();
 
       expect(cuerpo<{ tipo: string }>(res).tipo).toBe("salida");
       const filas = await marcasDe(d.personaId);
@@ -447,4 +466,92 @@ describeSiHabilitado("Vías de marcación (e2e, base real)", () => {
     // kiosko: 2 (QR y DNI) + 1 + 1 (entrada y salida reetiquetada); biometrico: 1 + 1 (reloj→kiosko) + 1 (atrasado)
     expect(conteo).toEqual({ kiosko: 4, manual: 1, biometrico: 3 });
   });
+
+  // Van después del resumen porque crean sus propias personas y marcas.
+  it("un docente con una ficha de estudiante dada de baja marca como docente", async () => {
+    const d = await crearDocente("exalumno", 8);
+    await db.insert(estudiantes).values({
+      personaId: d.personaId,
+      codigo: `E2EX${tag}`,
+      fechaIngreso: "2012-03-01",
+      estado: "retirado",
+    });
+
+    // Sigue figurando como personal en el control diario y en el reporte a la UGEL.
+    const hoy = ahoraEnColegio().fecha;
+    const control = await app
+      .get(ControlDiarioRepository, { strict: false })
+      .personal([], d.personaId);
+    const ugel = await app
+      .get(AsistenciaUgelRepository, { strict: false })
+      .servidores(hoy, hoy, d.personaId);
+    expect([control.length, ugel.length]).toEqual([1, 1]);
+
+    const res = await request(app.getHttpServer())
+      .post("/api/marcaciones/kiosko")
+      .set("x-kiosk-token", tokenKiosko)
+      .send({ codigo: d.codigoCredencial, pin: PIN });
+
+    expect([res.status, cuerpo<{ message?: string }>(res).message]).toEqual([200, undefined]);
+    expect(await marcasDe(d.personaId)).toHaveLength(1);
+    const lista = await marcacionesService.reporte({
+      desde: ahoraEnColegio().fecha,
+      hasta: ahoraEnColegio().fecha,
+      personaId: d.personaId,
+    });
+    expect(lista.data.map((m) => m.tipoPersona)).toEqual(["docentes"]);
+    const panel = await marcacionesService.panelDeHoy();
+    const esSuya = (m: { personaId: string }) => m.personaId === d.personaId;
+    expect(panel.personal.marcaron.filter(esSuya)).toHaveLength(1);
+    expect(panel.estudiantes.marcaron.filter(esSuya)).toHaveLength(0);
+  }, 30_000);
+
+  it("sin trabajo en el colegio, una ficha de estudiante sigue contando aunque esté de baja", async () => {
+    const repo = app.get(MarcacionesRepository, { strict: false });
+    const tipos: (string | null | undefined)[] = [];
+    for (const [n, estado] of [
+      [10, "retirado"],
+      [11, "activo"],
+    ] as const) {
+      const d = await crearDocente(`ficha ${n}`, n);
+      await db.delete(docentes).where(eq(docentes.personaId, d.personaId));
+      await db.insert(estudiantes).values({
+        personaId: d.personaId,
+        codigo: `E2F${tag}${n}`,
+        fechaIngreso: "2024-03-01",
+        estado,
+      });
+      tipos.push((await repo.findPersonaParaMarcar(d.personaId))?.tipoPersona);
+    }
+    expect(tipos).toEqual(["estudiantes", "estudiantes"]);
+  }, 30_000);
+
+  it("dos servidores a la vez no dejan como rechazada una marca del reloj que sí se registró", async () => {
+    const malas: string[] = [];
+    for (let i = 0; i < 8; i++) {
+      const d = await crearDocente(`dos servidores ${i}`, 20 + i);
+      const [cruda] = await db
+        .insert(marcacionesBiometricas)
+        .values({
+          relojSerie: serieReloj,
+          codigoUsuario: d.codigoBiometrico,
+          fechaHora: sumarMinutos(`${ahoraEnColegio().fecha} 00:10:00`, i),
+        })
+        .returning({ id: marcacionesBiometricas.id });
+      // Llamar dos veces al servicio equivale a dos instancias: el candado "en curso" es de cada proceso.
+      await Promise.all([
+        biometricasService.procesarPendientes(),
+        biometricasService.procesarPendientes(),
+      ]);
+      const [fila] = await db
+        .select()
+        .from(marcacionesBiometricas)
+        .where(eq(marcacionesBiometricas.id, cruda.id));
+      expect(await marcasDe(d.personaId)).toHaveLength(1);
+      if (fila.estado !== "procesada" || fila.motivoRechazo) {
+        malas.push(`${i}: ${fila.estado} ${fila.motivoRechazo}`);
+      }
+    }
+    expect(malas).toEqual([]);
+  }, 60_000);
 });

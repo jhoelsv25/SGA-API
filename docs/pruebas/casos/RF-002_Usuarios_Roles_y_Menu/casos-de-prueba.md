@@ -1,6 +1,6 @@
 # Casos de prueba — RF-002: Usuarios, Perfiles y Menú
 
-**Fuente:** [`RF-002` V5](../../requerimientos/RF-002_Usuarios_Roles_y_Menu/V5/RF-002_Usuarios_Roles_y_Menu.md) · **Total de casos:** 53 · **Nuevos en V5:** 15
+**Fuente:** [`RF-002` V5](../../../requerimientos/RF-002_Usuarios_Roles_y_Menu/V5/RF-002_Usuarios_Roles_y_Menu.md) · **Total de casos:** 53 · **Nuevos en V5:** 15
 
 > Generados desde los escenarios Gherkin. Los IDs de la V4 se conservan; los casos marcados `(v5.0)` son nuevos o cambiaron. Las ejecuciones anteriores se conservan.
 

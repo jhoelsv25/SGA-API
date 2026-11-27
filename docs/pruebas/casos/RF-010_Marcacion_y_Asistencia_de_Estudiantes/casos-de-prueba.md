@@ -1,6 +1,6 @@
 # Casos de prueba — RF-010: Marcación y Asistencia de Estudiantes
 
-**Fuente:** [`RF-010` V2](../../requerimientos/RF-010_Marcacion_y_Asistencia_de_Estudiantes/V2/RF-010_Marcacion_y_Asistencia_de_Estudiantes.md) · **Total de casos:** 26
+**Fuente:** [`RF-010` V7](../../../requerimientos/RF-010_Marcacion_y_Asistencia_de_Estudiantes/V7/RF-010_Marcacion_y_Asistencia_de_Estudiantes.md) · **Total de casos:** 26
 
 > Generados desde los escenarios Gherkin. Si el RF cambia de versión, regenerar y conservar las ejecuciones anteriores.
 
@@ -32,3 +32,65 @@
 | CP-RF010-24 | HU4 | Falta al colegio                                                     | que el 12/05/2027 hubo clases y el estudiante no marcó entrada                                                                                            | consulto su asistencia                                                                                  | ese día aparece como "Falta al colegio".                                                                                                                           | Back + Front |
 | CP-RF010-25 | HU4 | Tutor consulta su sección                                            | que soy tutor de 5.° A                                                                                                                                    | abro "Asistencia de mi sección"                                                                         | el sistema muestra, por estudiante, sus faltas y tardanzas al colegio y por curso en el rango elegido.                                                             | Back + Front |
 | CP-RF010-26 | HU1 | Docente marca en el kiosko poco después de marcar en otra vía (v2.0) | que soy docente y ya marqué mi entrada hoy a las 07:30 en el reloj biométrico (o Secretaría la registró a mano) y la variable de minutos entre vías es 30 | marco a las 07:40 en el Kiosko Personal                                                                 | el sistema no registra una salida y muestra "Ya tiene una marcación registrada a las 07:30."                                                                       | Back + Front |
+
+## Casos de la versión nueva (2026-11-26)
+
+| Escenario | Verificado con | Resultado |
+|---|---|---|
+| Vuelve a marcar después de su salida (v3.0) | `marcaciones.service.spec.ts` y mezcla M6 (base desechable) | Pasa |
+| Marca intermedia (v3.0) | `registrar-desde-reloj.spec.ts` y mezcla M6 | Pasa |
+| Una sola marca por la tarde (v3.0) | `decidir-marca.util.spec.ts` y mezcla M14 | Pasa |
+| Manual: salida más tarde / hora que no mejora (v3.0) | Mezcla M15 (base desechable) | Pasa |
+| El kiosko dice el nombre (v3.0) | Chrome con datos y voz simulados | Pasa; falta oírlo en el equipo del colegio |
+
+## Casos de la versión 4.0 (2026-11-26)
+
+| Escenario | Verificado con | Resultado |
+|---|---|---|
+| Docente con clases / sin clases (v4.0) | `turno-horario.util.spec.ts` y e2e T1–T3 (base desechable) | Pasa |
+| Control de un día anterior; todavía no es su hora (v4.0) | `control-diario.service.spec.ts`, e2e T4, lectura en Supabase de pruebas y Chrome con datos simulados | Pasa |
+| Detalle y mes de una persona (v4.0) | e2e T4 y Chrome (escritorio y móvil, claro y oscuro) con datos simulados | Pasa; falta revisarlo con sesión real |
+
+## Casos de la versión 5.0 (2026-11-26)
+
+| Escenario | Verificado con | Resultado |
+|---|---|---|
+| Por defecto vale el horario del Reglamento Interno (v5.0) | `control-diario.service.spec.ts` y e2e T0 | Pasa |
+| Horario según clases activado (v4.0, condición nueva) | e2e T1–T4 | Pasa |
+
+## Casos de la versión 6.0 (2026-11-26)
+
+| Escenario | Verificado con | Resultado |
+|---|---|---|
+| Marcación del personal en semana de gestión | `registrar-desde-reloj.spec.ts` (reloj) y `control-diario.service.spec.ts`; kiosko y manual usan la misma función, sin prueba propia | Pasa |
+
+## Casos de la versión 7.0 (2026-11-26)
+
+| Escenario | Verificado con | Resultado |
+|---|---|---|
+| El kiosko lee dos veces seguidas | `marcaciones.service.spec.ts` (fallaba antes de corregir), e2e en base desechable y `marcaciones-vias.e2e-spec.ts` | Pasa |
+| Envíos simultáneos o casi simultáneos al kiosko | e2e en base desechable: 60 pares con 0 a 55 ms de diferencia | Pasa |
+| Salida pasado el plazo de doble lectura | unitarias y e2e | Pasa |
+
+## Docente con ficha de estudiante dada de baja (2026-11-26)
+
+| Comprobación | Resultado |
+|---|---|
+| Antes de corregir (base desechable) | El kiosko respondía 403 y la persona no salía en el control diario ni en el reporte a la UGEL |
+| Después: marca en el kiosko como docente y figura en control diario, reporte y panel como personal | Pasa (`marcaciones-vias.e2e-spec.ts`) |
+| Estudiante activo o retirado sin trabajo en el colegio sigue contando como estudiante | Pasa (misma prueba) |
+
+No se probó por separado a un exalumno con cargo administrativo.
+
+## Semana de gestión y límite del kiosko (2026-11-26)
+
+Base desechable, con la hora del servidor simulada en los casos de la semana de gestión.
+
+| Comprobación | Resultado |
+|---|---|
+| Semana de gestión: kiosko evalúa puntualidad, tardanza y salida anticipada | Pasa |
+| Semana de gestión: marcación manual y reloj se evalúan igual | Pasa |
+| Feriado: las marcas quedan «fuera_de_turno», sin tardanza ni salida anticipada | Pasa |
+| Límite del kiosko a 4 peticiones por segundo | 60 pasan; la 61 responde 429 |
+
+Al kiosko también se le aplican los límites generales de 10 por segundo y 50 cada 10 segundos, todos por IP.

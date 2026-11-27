@@ -24,9 +24,23 @@ export const LIMITE_REPORTE_MAXIMO = 200;
  * misma asistencia ya registrada y no como una entrada o salida nueva. 0 la desactiva. El valor por defecto
  * se confirma con el colegio (P-44).
  */
+/** false: el docente usa el horario del Reglamento Interno (turno de docentes). true: el de sus clases. */
+export const VARIABLE_HORARIO_POR_CLASES = {
+  codigo: "asistencia.docente_horario_segun_clases",
+} as const;
+
 export const VARIABLE_MINUTOS_ENTRE_VIAS = {
   codigo: "marcacion.minutos_duplicado_entre_vias",
   porDefecto: 30,
+} as const;
+
+/**
+ * Variable del sistema: segundos en los que otra marca del personal en el kiosko es la misma lectura
+ * (doble toque, reintento o carné leído dos veces) y no la salida. 0 la desactiva (P-100).
+ */
+export const VARIABLE_SEGUNDOS_DOBLE_LECTURA = {
+  codigo: "marcacion.segundos_doble_lectura_kiosko",
+  porDefecto: 60,
 } as const;
 
 export const MENSAJES_MARCACION = {
@@ -49,6 +63,9 @@ export const MENSAJES_MARCACION = {
   FECHA_FUTURA: "No se puede registrar una marcación en una fecha futura.",
   YA_MARCO_ENTRADA_Y_SALIDA: "Ya registró su entrada y su salida hoy.",
   YA_MARCO_SALIDA: "Ya registró su salida.",
+  MARCA_INTERMEDIA: "No cuenta: ya hay una entrada anterior y una salida posterior.",
+  SALIDA_ANTES_DE_ENTRADA: "La salida debe ser posterior a la entrada registrada.",
+  ENTRADA_DESPUES_DE_SALIDA: "La entrada debe ser anterior a la salida registrada.",
   DUPLICADA_ENTRE_VIAS:
     "Ya existe una marcación de esta persona en esa franja, hecha por otra vía.",
 } as const;

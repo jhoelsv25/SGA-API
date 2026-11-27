@@ -1,4 +1,10 @@
-export const TIPOS_CONTRATO = ["nombrado", "contratado", "practicante"] as const;
+export const TIPOS_CONTRATO = [
+  "nombrado",
+  "contratado",
+  "destacado",
+  "encargado",
+  "practicante",
+] as const;
 export type TipoContrato = (typeof TIPOS_CONTRATO)[number];
 
 export const JORNADAS_HORAS = [20, 24, 30, 40] as const;

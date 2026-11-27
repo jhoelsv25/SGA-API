@@ -1,6 +1,6 @@
 # Casos de prueba — RF-003: Bitácora de Auditoría
 
-**Fuente:** [`RF-003` V1](../../requerimientos/RF-003_Bitacora_de_Auditoria/V1/RF-003_Bitacora_de_Auditoria.md) · **Total de casos:** 10
+**Fuente:** [`RF-003` V1](../../../requerimientos/RF-003_Bitacora_de_Auditoria/V1/RF-003_Bitacora_de_Auditoria.md) · **Total de casos:** 10
 
 > Generados desde los escenarios Gherkin. Si el RF cambia de versión, regenerar y conservar las ejecuciones anteriores.
 

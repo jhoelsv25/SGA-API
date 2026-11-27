@@ -1,6 +1,6 @@
 # Casos de prueba — RF-017: Interacción y Actividad del Curso
 
-**Fuente:** [`RF-017` V1](../../requerimientos/RF-017_Interaccion_y_Actividad_del_Curso/V1/RF-017_Interaccion_y_Actividad_del_Curso.md) · **Total de casos:** 19
+**Fuente:** [`RF-017` V1](../../../requerimientos/RF-017_Interaccion_y_Actividad_del_Curso/V1/RF-017_Interaccion_y_Actividad_del_Curso.md) · **Total de casos:** 19
 
 > Generados desde los escenarios Gherkin. Si el RF cambia de versión, regenerar y conservar las ejecuciones anteriores.
 

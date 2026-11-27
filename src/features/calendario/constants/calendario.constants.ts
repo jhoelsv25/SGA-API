@@ -15,7 +15,7 @@ export const TIPOS_SUSPENDEN_POR_DEFECTO: ReadonlySet<TipoEvento> = new Set([
 ]);
 
 // RF-005: registrar eventos exige que el rol tenga el menú del calendario (Roles-Menú, RF-002 V3)
-export const MENU_CALENDARIO = "/admin/calendario";
+export { MENU_CALENDARIO } from "../../../common/constants/menu-rutas.constants";
 
 export const ZONA_HORARIA_COLEGIO = "America/Lima";
 

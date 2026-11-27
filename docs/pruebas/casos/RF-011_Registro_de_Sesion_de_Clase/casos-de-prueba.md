@@ -1,6 +1,6 @@
 # Casos de prueba — RF-011: Registro de Sesión de Clase
 
-**Fuente:** [`RF-011` V3](../../requerimientos/RF-011_Registro_de_Sesion_de_Clase/V3/RF-011_Registro_de_Sesion_de_Clase.md) · **Total de casos:** 47 · **Nuevos en V3:** 18 · **Nuevos en V2:** 1
+**Fuente:** [`RF-011` V3](../../../requerimientos/RF-011_Registro_de_Sesion_de_Clase/V3/RF-011_Registro_de_Sesion_de_Clase.md) · **Total de casos:** 47 · **Nuevos en V3:** 18 · **Nuevos en V2:** 1
 
 > Generados desde los escenarios Gherkin. Los IDs de la V1 y la V2 se conservan; los casos marcados `(v2.0)` o `(v3.0)` son nuevos o cambiaron. Las ejecuciones anteriores se conservan.
 
@@ -53,3 +53,9 @@
 | CP-RF011-45 | HU4 | Documento obligatorio según el motivo (v3.0)                    | que elegí el motivo "Descanso médico"                                                                                                 | envío sin adjuntar documento                                                                                   | el sistema impide el envío y muestra "Para este motivo debe adjuntar un documento."                                                                                                                               | Back + Front |
 | CP-RF011-46 | HU4 | Documento opcional según el motivo (v3.0)                       | que elegí el motivo "Permiso personal"                                                                                                | envío sin adjuntar documento                                                                                   | la justificación queda `solicitada` y el sistema muestra "Su justificación fue enviada al subdirector."                                                                                                           | Back + Front |
 | CP-RF011-47 | HU4 | Motivo "Otro" sin observación (v3.0)                            | que elegí el motivo "Otro"                                                                                                            | envío sin escribir la observación                                                                              | el sistema impide el envío y muestra "Indique la observación del motivo «Otro»."                                                                                                                                  | Back + Front |
+
+## Casos de la versión nueva (2026-11-26)
+
+| Escenario | Verificado con | Resultado |
+|---|---|---|
+| El Kiosko de Sesiones dice el nombre (v5.0) | Chrome con datos y voz simulados | Pasa; falta oírlo en el equipo del colegio |

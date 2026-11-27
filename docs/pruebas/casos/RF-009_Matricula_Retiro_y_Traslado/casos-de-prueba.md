@@ -1,6 +1,6 @@
 # Casos de prueba — RF-009: Matrícula, Retiro y Traslado
 
-**Fuente:** [`RF-009` V2](../../requerimientos/RF-009_Matricula_Retiro_y_Traslado/V2/RF-009_Matricula_Retiro_y_Traslado.md) · **Total de casos:** 22 · **Nuevos en V2:** 1
+**Fuente:** [`RF-009` V2](../../../requerimientos/RF-009_Matricula_Retiro_y_Traslado/V2/RF-009_Matricula_Retiro_y_Traslado.md) · **Total de casos:** 22 · **Nuevos en V2:** 1
 
 > Generados desde los escenarios Gherkin. Si el RF cambia de versión, regenerar y conservar las ejecuciones anteriores.
 

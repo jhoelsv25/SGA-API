@@ -25,7 +25,9 @@ import {
   mensajeTardanza,
   mensajeYaMarcoEntrada,
   mensajeYaMarcoReciente,
+  VARIABLE_HORARIO_POR_CLASES,
   VARIABLE_MINUTOS_ENTRE_VIAS,
+  VARIABLE_SEGUNDOS_DOBLE_LECTURA,
   type TipoMarcacion,
   type TipoPersonaMarcacion,
 } from "./constants";
@@ -42,6 +44,7 @@ import type {
 import type {
   CredencialParaMarcar,
   MarcacionDelDia,
+  NuevaMarcacion,
   PersonaAutenticada,
   PersonaParaMarcar,
   ResultadoRegistroReloj,
@@ -57,9 +60,17 @@ import {
   evaluarMarcacion,
   horaCorta,
   horaDeFechaHora,
+  lecturaRepetidaEnKiosko,
   minutosEntre,
   type DecisionMarca,
+  turnoSegunClases,
 } from "./utils";
+
+interface CambioAuditable {
+  marcacionId: string;
+  valorAnterior: Record<string, unknown>;
+  valorNuevo: Record<string, unknown>;
+}
 
 @Injectable()
 export class MarcacionesService {
@@ -95,37 +106,93 @@ export class MarcacionesService {
     }
     await this.exigirMatriculaSiEstudiante(persona);
 
-    const previas = await this.repository.marcacionesDePersonaEnFecha(persona.personaId, fecha);
-    const decision = decidirMarca({
-      esEstudiante: persona.tipoPersona === "estudiantes",
-      previas,
-      fechaHora,
-      origen: "kiosko",
-      minutosEntreVias: await this.minutosEntreVias(),
-    });
-    if (decision.accion === "ignorar") {
-      await this.dejarRastroDeIgnorada(persona.personaId, fechaHora, "kiosko", decision);
-      return this.respuestaIgnorada(persona, previas, decision);
-    }
-    const tipo = decision.tipo;
+    // Lo guardado al llegar el pedido: sirve para reconocer otro envío del kiosko que se procese a la vez.
+    const alLlegar = new Set(
+      (await this.repository.marcacionesDePersonaEnFecha(persona.personaId, fecha)).map(
+        (m) => m.id,
+      ),
+    );
+    const minutosEntreVias = await this.minutosEntreVias();
+    // Los estudiantes solo marcan entrada: para ellos no hay salida falsa posible.
+    const segundosDobleLectura =
+      persona.tipoPersona === "estudiantes" ? 0 : await this.segundosDobleLectura();
+    const turno = await this.turnoDePersona(persona.personaId, persona.tipoPersona, fecha);
+    const diaConClases = turno
+      ? await this.esDiaDeAsistencia(fecha, turno, persona.tipoPersona)
+      : false;
 
-    const turno = await this.turnoDe(persona.tipoPersona);
-    const diaConClases = await this.esDiaConClases(fecha, turno);
-    const evaluacion = evaluarMarcacion(tipo, turno, hora, diaConClases);
-    if (decision.reetiquetar) {
-      await this.reetiquetarEntradaComoSalida(decision.reetiquetar, turno, diaConClases);
-    }
+    const resultado = await this.repository.conBloqueoDelDia(
+      persona.personaId,
+      fecha,
+      async (repositorio) => {
+        const previas = await repositorio.marcacionesDePersonaEnFecha(persona.personaId, fecha);
+        const simultanea =
+          previas.find((m) => m.origen === "kiosko" && !alLlegar.has(m.id)) ??
+          lecturaRepetidaEnKiosko(previas, fechaHora, segundosDobleLectura);
+        if (simultanea) {
+          return { estado: "simultanea" as const, previas, simultanea };
+        }
+        const decision = decidirMarca({
+          esEstudiante: persona.tipoPersona === "estudiantes",
+          previas,
+          fechaHora,
+          origen: "kiosko",
+          minutosEntreVias,
+        });
+        if (decision.accion === "ignorar") {
+          return { estado: "ignorada" as const, previas, decision };
+        }
+        const turnoVigente = this.exigirTurno(turno);
+        const evaluacion = evaluarMarcacion(decision.tipo, turnoVigente, hora, diaConClases);
+        const reetiquetada =
+          decision.accion === "registrar" && decision.reetiquetar
+            ? await this.reetiquetarEntradaComoSalida(
+                repositorio,
+                decision.reetiquetar,
+                turnoVigente,
+                diaConClases,
+              )
+            : undefined;
+        const { marcacion: creada, reemplazo } = await this.guardarMarca(
+          repositorio,
+          {
+            personaId: persona.personaId,
+            credencialId: credencial.id,
+            turnoId: turnoVigente.id,
+            tipo: decision.tipo,
+            fechaHora,
+            origen: "kiosko",
+            resultado: evaluacion.resultado,
+            minutosTardanza: evaluacion.minutosTardanza,
+          },
+          decision.accion === "reemplazar" ? decision.marca : undefined,
+        );
+        return {
+          estado: "registrada" as const,
+          tipo: decision.tipo,
+          evaluacion,
+          creada,
+          reetiquetada,
+          reemplazo,
+        };
+      },
+    );
 
-    const creada = await this.repository.insertar({
-      personaId: persona.personaId,
-      credencialId: credencial.id,
-      turnoId: turno.id,
-      tipo,
-      fechaHora,
-      origen: "kiosko",
-      resultado: evaluacion.resultado,
-      minutosTardanza: evaluacion.minutosTardanza,
-    });
+    if (resultado.estado === "simultanea") {
+      return {
+        registrada: false,
+        mensaje: mensajeYaMarcoReciente(horaDeFechaHora(resultado.simultanea.fechaHora)),
+        nombreCompleto: persona.nombreCompleto,
+        fotoUrl: persona.fotoUrl,
+      };
+    }
+    if (resultado.estado === "ignorada") {
+      await this.dejarRastroDeIgnorada(persona.personaId, fechaHora, "kiosko", resultado.decision);
+      return this.respuestaIgnorada(persona, resultado.previas, resultado.decision);
+    }
+    const { tipo, evaluacion, creada } = resultado;
+    if (resultado.reetiquetada) await this.auditarReetiquetado(resultado.reetiquetada);
+    if (resultado.reemplazo) await this.auditarReemplazo(resultado.reemplazo);
 
     const horaMarcada = horaCorta(hora);
 
@@ -158,7 +225,7 @@ export class MarcacionesService {
   /**
    * RF-022: registra una marcación leída de un reloj biométrico. Usa la hora del reloj (la que
    * llega en `fechaHora`, hora de Lima) y las mismas reglas de RF-010: la primera del día es
-   * entrada y la siguiente salida; el botón del reloj no cuenta. Si el docente pone el dedo otra
+   * entrada y la última, salida; el botón del reloj no cuenta. Si el docente pone el dedo otra
    * vez dentro de `minutosAntirrebote`, se ignora para no convertir un rebote en salida.
    */
   async registrarDesdeReloj(
@@ -170,53 +237,88 @@ export class MarcacionesService {
     const fecha = fechaHora.slice(0, 10);
     const hora = fechaHora.slice(11, 19);
 
-    const previas = await this.repository.marcacionesDePersonaEnFecha(persona.personaId, fecha);
-    if (previas.some((m) => m.fechaHora === fechaHora)) {
-      return { estado: "duplicada" };
-    }
-    const ultima = previas[previas.length - 1];
-    if (ultima) {
-      const minutos = minutosEntre(ultima.fechaHora, fechaHora);
-      if (minutos >= 0 && minutos < minutosAntirrebote) {
-        return { estado: "ignorada", razon: "rebote" };
-      }
-    }
-    const decision = decidirMarca({
-      esEstudiante: false,
-      previas,
-      fechaHora,
-      origen: "biometrico",
-      minutosEntreVias: await this.minutosEntreVias(),
-    });
-    if (decision.accion === "ignorar") {
-      await this.dejarRastroDeIgnorada(persona.personaId, fechaHora, "biometrico", decision);
-      return { estado: "ignorada", razon: decision.razon };
-    }
-    const tipo = decision.tipo;
-
-    const turno = await this.turnosRepository.findByAplicaA(persona.tipoPersona);
-    if (!turno || !turno.activo) {
-      return { estado: "sin_turno" };
-    }
-    const diaConClases = await this.esDiaConClases(fecha, turno);
-    const evaluacion = evaluarMarcacion(tipo, turno, hora, diaConClases);
-    if (decision.reetiquetar) {
-      await this.reetiquetarEntradaComoSalida(decision.reetiquetar, turno, diaConClases);
-    }
+    const minutosEntreVias = await this.minutosEntreVias();
+    const turno = await this.turnoDePersona(persona.personaId, persona.tipoPersona, fecha);
+    const diaConClases = turno
+      ? await this.esDiaDeAsistencia(fecha, turno, persona.tipoPersona)
+      : false;
 
     try {
-      const marcacion = await this.repository.insertar({
-        personaId: persona.personaId,
-        credencialId: null,
-        turnoId: turno.id,
-        tipo,
-        fechaHora,
-        origen: "biometrico",
-        resultado: evaluacion.resultado,
-        minutosTardanza: evaluacion.minutosTardanza,
-        equipoId,
-      });
-      return { estado: "registrada", marcacion };
+      const resultado = await this.repository.conBloqueoDelDia(
+        persona.personaId,
+        fecha,
+        async (repositorio) => {
+          const previas = await repositorio.marcacionesDePersonaEnFecha(persona.personaId, fecha);
+          if (previas.some((m) => m.fechaHora === fechaHora)) {
+            return { estado: "duplicada" as const };
+          }
+          // El rebote es del dedo en el reloj. Una marca de otra vía la decide la ventana entre vías, que deja
+          // rastro; si esa ventana está desactivada, el rebote sigue protegiendo. Con la salida ya registrada no
+          // hace falta: la marca posterior solo actualiza la salida.
+          const ultima = previas[previas.length - 1];
+          if (
+            ultima &&
+            !previas.some((m) => m.tipo === "salida") &&
+            (ultima.origen === "biometrico" || minutosEntreVias === 0)
+          ) {
+            const minutos = minutosEntre(ultima.fechaHora, fechaHora);
+            if (minutos >= 0 && minutos < minutosAntirrebote) {
+              return { estado: "ignorada" as const, razon: "rebote" as const };
+            }
+          }
+          const decision = decidirMarca({
+            esEstudiante: false,
+            previas,
+            fechaHora,
+            origen: "biometrico",
+            minutosEntreVias,
+          });
+          if (decision.accion === "ignorar") {
+            return { estado: "descartada" as const, decision };
+          }
+          if (!turno || !turno.activo) {
+            return { estado: "sin_turno" as const };
+          }
+          const evaluacion = evaluarMarcacion(decision.tipo, turno, hora, diaConClases);
+          const reetiquetada =
+            decision.accion === "registrar" && decision.reetiquetar
+              ? await this.reetiquetarEntradaComoSalida(
+                  repositorio,
+                  decision.reetiquetar,
+                  turno,
+                  diaConClases,
+                )
+              : undefined;
+          const { marcacion, reemplazo } = await this.guardarMarca(
+            repositorio,
+            {
+              personaId: persona.personaId,
+              credencialId: null,
+              turnoId: turno.id,
+              tipo: decision.tipo,
+              fechaHora,
+              origen: "biometrico",
+              resultado: evaluacion.resultado,
+              minutosTardanza: evaluacion.minutosTardanza,
+              equipoId,
+            },
+            decision.accion === "reemplazar" ? decision.marca : undefined,
+          );
+          return { estado: "registrada" as const, marcacion, reetiquetada, reemplazo };
+        },
+      );
+
+      if (resultado.estado === "descartada") {
+        const { decision } = resultado;
+        await this.dejarRastroDeIgnorada(persona.personaId, fechaHora, "biometrico", decision);
+        return { estado: "ignorada", razon: decision.razon };
+      }
+      if (resultado.estado === "registrada") {
+        if (resultado.reetiquetada) await this.auditarReetiquetado(resultado.reetiquetada);
+        if (resultado.reemplazo) await this.auditarReemplazo(resultado.reemplazo);
+        return { estado: "registrada", marcacion: resultado.marcacion };
+      }
+      return resultado;
     } catch (error) {
       if (esViolacionUnica(error)) return { estado: "duplicada" };
       throw error;
@@ -276,33 +378,69 @@ export class MarcacionesService {
     }
     await this.exigirMatriculaSiEstudiante(persona);
 
-    const previas = await this.repository.marcacionesDePersonaEnFecha(persona.personaId, fecha);
-    if (previas.some((m) => m.tipo === dto.tipo)) {
-      throw new ConflictException(
-        dto.tipo === "entrada"
-          ? mensajeYaMarcoEntrada(
-              horaDeFechaHora(previas.find((m) => m.tipo === "entrada")!.fechaHora),
+    const turno = await this.turnoDePersona(persona.personaId, persona.tipoPersona, fecha);
+    const diaConClases = turno
+      ? await this.esDiaDeAsistencia(fecha, turno, persona.tipoPersona)
+      : false;
+
+    const { creada, reetiquetada, reemplazo } = await this.repository.conBloqueoDelDia(
+      persona.personaId,
+      fecha,
+      async (repositorio) => {
+        const previas = await repositorio.marcacionesDePersonaEnFecha(persona.personaId, fecha);
+        const fechaHora = `${fecha} ${dto.hora}:00`;
+        // La entrada es la hora más temprana y la salida la más tarde: solo así se acepta otra del mismo tipo.
+        const mismoTipo = previas.find((m) => m.tipo === dto.tipo);
+        const mejora =
+          mismoTipo !== undefined &&
+          !esEstudiante &&
+          (dto.tipo === "salida"
+            ? fechaHora > mismoTipo.fechaHora
+            : fechaHora < mismoTipo.fechaHora);
+        if (mismoTipo && !mejora) {
+          throw new ConflictException(
+            dto.tipo === "entrada"
+              ? mensajeYaMarcoEntrada(horaDeFechaHora(mismoTipo.fechaHora))
+              : MENSAJES_MARCACION.YA_MARCO_SALIDA,
+          );
+        }
+        this.exigirOrdenDelDia(dto.tipo, fechaHora, previas);
+        const turnoVigente = this.exigirTurno(turno);
+        const evaluacion = evaluarMarcacion(dto.tipo, turnoVigente, dto.hora, diaConClases);
+        // Entrada más temprana sin salida guardada (p. ej. solo marcó al irse): la anterior pasa a ser la salida.
+        const pasaASalida =
+          mejora && dto.tipo === "entrada" && !previas.some((m) => m.tipo === "salida")
+            ? mismoTipo
+            : undefined;
+        const reetiquetada = pasaASalida
+          ? await this.reetiquetarEntradaComoSalida(
+              repositorio,
+              pasaASalida,
+              turnoVigente,
+              diaConClases,
             )
-          : MENSAJES_MARCACION.YA_MARCO_SALIDA,
-      );
-    }
-
-    const turno = await this.turnoDe(persona.tipoPersona);
-    const diaConClases = await this.esDiaConClases(fecha, turno);
-    const evaluacion = evaluarMarcacion(dto.tipo, turno, dto.hora, diaConClases);
-
-    const creada = await this.repository.insertar({
-      personaId: persona.personaId,
-      credencialId: null,
-      turnoId: turno.id,
-      tipo: dto.tipo,
-      fechaHora: `${fecha} ${dto.hora}:00`,
-      origen: "manual",
-      resultado: evaluacion.resultado,
-      minutosTardanza: evaluacion.minutosTardanza,
-      observacion,
-      registradaPorId: actorId,
-    });
+          : undefined;
+        const { marcacion, reemplazo } = await this.guardarMarca(
+          repositorio,
+          {
+            personaId: persona.personaId,
+            credencialId: null,
+            turnoId: turnoVigente.id,
+            tipo: dto.tipo,
+            fechaHora,
+            origen: "manual",
+            resultado: evaluacion.resultado,
+            minutosTardanza: evaluacion.minutosTardanza,
+            observacion,
+            registradaPorId: actorId,
+          },
+          mejora && !pasaASalida ? mismoTipo : undefined,
+        );
+        return { creada: marcacion, reetiquetada, reemplazo };
+      },
+    );
+    if (reetiquetada) await this.auditarReetiquetado(reetiquetada);
+    if (reemplazo) await this.auditarReemplazo(reemplazo);
 
     await this.auditService.log({
       usuarioId: actorId,
@@ -387,17 +525,113 @@ export class MarcacionesService {
     }
   }
 
-  private async turnoDe(tipoPersona: TipoPersonaMarcacion): Promise<TurnoResponseDto> {
-    const turno = await this.turnosRepository.findByAplicaA(tipoPersona);
+  /** La entrada va antes que la salida, también cuando se registran a mano. */
+  private exigirOrdenDelDia(
+    tipo: TipoMarcacion,
+    fechaHora: string,
+    previas: readonly MarcacionDelDia[],
+  ): void {
+    const otra = previas.find((m) => m.tipo !== tipo);
+    if (!otra) return;
+    if (tipo === "salida" && fechaHora <= otra.fechaHora) {
+      throw new BadRequestException(MENSAJES_MARCACION.SALIDA_ANTES_DE_ENTRADA);
+    }
+    if (tipo === "entrada" && fechaHora >= otra.fechaHora) {
+      throw new BadRequestException(MENSAJES_MARCACION.ENTRADA_DESPUES_DE_SALIDA);
+    }
+  }
+
+  /** Guarda la marca como nueva o en el lugar de la que reemplaza. Devuelve también lo que había, para auditarlo. */
+  private async guardarMarca(
+    repositorio: MarcacionesRepository,
+    nueva: NuevaMarcacion,
+    reemplazada?: MarcacionDelDia,
+  ): Promise<{ marcacion: MarcacionResponseDto; reemplazo?: CambioAuditable }> {
+    if (!reemplazada) return { marcacion: await repositorio.insertar(nueva) };
+    const anterior = await repositorio.findById(reemplazada.id);
+    const marcacion = await repositorio.reemplazar(reemplazada.id, nueva);
+    return {
+      marcacion,
+      reemplazo: {
+        marcacionId: reemplazada.id,
+        valorAnterior: {
+          fechaHora: reemplazada.fechaHora,
+          origen: reemplazada.origen,
+          resultado: anterior?.resultado,
+          minutosTardanza: anterior?.minutosTardanza,
+          justificada: anterior?.justificada,
+          motivoJustificacion: anterior?.motivoJustificacion,
+        },
+        valorNuevo: {
+          fechaHora: nueva.fechaHora,
+          origen: nueva.origen,
+          resultado: nueva.resultado,
+          minutosTardanza: nueva.minutosTardanza,
+          motivo:
+            nueva.tipo === "salida"
+              ? "Marca más tarde: es la nueva salida."
+              : "Marca más temprana: es la nueva entrada.",
+        },
+      },
+    };
+  }
+
+  private async auditarReemplazo(cambio: CambioAuditable): Promise<void> {
+    await this.auditService.log({
+      usuarioId: null,
+      accion: "actualizar",
+      tabla: "marcaciones",
+      registroId: cambio.marcacionId,
+      valorAnterior: cambio.valorAnterior,
+      valorNuevo: cambio.valorNuevo,
+    });
+  }
+
+  /**
+   * Turno con el que se evalúa a una persona en una fecha. Para el docente con clases ese día, la entrada y la salida
+   * esperadas salen de su horario; en los demás casos vale el turno general de su tipo.
+   */
+  private async turnoDePersona(
+    personaId: string,
+    tipoPersona: TipoPersonaMarcacion,
+    fecha: string,
+  ): Promise<TurnoResponseDto | null> {
+    const general = await this.turnosRepository.findByAplicaA(tipoPersona);
+    if (!general || tipoPersona !== "docentes") return general;
+    if (!(await this.variablesService.isActiva(VARIABLE_HORARIO_POR_CLASES.codigo, false))) {
+      return general;
+    }
+    const clases = await this.repository.clasesDeDocenteEnFecha(personaId, fecha);
+    return turnoSegunClases(general, clases, fecha);
+  }
+
+  private exigirTurno(turno: TurnoResponseDto | null | undefined): TurnoResponseDto {
     if (!turno || !turno.activo) {
       throw new BadRequestException(MENSAJES_MARCACION.SIN_TURNO);
     }
     return turno;
   }
 
+  /** Estudiantes: día con clases. Personal: día en que trabaja, aunque no haya clases. */
+  private async esDiaDeAsistencia(
+    fecha: string,
+    turno: TurnoResponseDto,
+    tipoPersona: string,
+  ): Promise<boolean> {
+    if (tipoPersona === "estudiantes") return this.esDiaConClases(fecha, turno);
+    if (!esDiaLaborable(fecha, turno.diasLaborables)) return false;
+    return !(await this.calendarioService.fechasSinTrabajoPersonal([fecha])).has(fecha);
+  }
+
   private async esDiaConClases(fecha: string, turno: TurnoResponseDto): Promise<boolean> {
     if (!esDiaLaborable(fecha, turno.diasLaborables)) return false;
     return !(await this.calendarioService.suspendeClasesEn(fecha));
+  }
+
+  private async segundosDobleLectura(): Promise<number> {
+    const { codigo, porDefecto } = VARIABLE_SEGUNDOS_DOBLE_LECTURA;
+    const valor = Number(await this.variablesService.getValor(codigo, String(porDefecto)));
+    return Number.isInteger(valor) && valor >= 0 ? valor : porDefecto;
   }
 
   /** Minutos en los que una marca de otra vía se toma como la misma asistencia (variable del sistema). */
@@ -413,32 +647,51 @@ export class MarcacionesService {
 
   /**
    * Llegó una marca anterior a la entrada ya guardada (p. ej. un lote atrasado del reloj): la anterior pasa a ser
-   * la entrada y la guardada se convierte en salida, con su resultado recalculado. Queda auditado.
+   * la entrada y la guardada se convierte en salida, con su resultado recalculado. La justificación era de la
+   * entrada, así que no pasa a la salida. Devuelve el cambio para auditarlo.
    */
   private async reetiquetarEntradaComoSalida(
+    repositorio: MarcacionesRepository,
     entrada: MarcacionDelDia,
     turno: TurnoResponseDto,
     diaConClases: boolean,
-  ): Promise<void> {
+  ): Promise<CambioAuditable> {
+    const anterior = await repositorio.findById(entrada.id);
     const evaluacion = evaluarMarcacion(
       "salida",
       turno,
       entrada.fechaHora.slice(11, 19),
       diaConClases,
     );
-    await this.repository.reetiquetar(entrada.id, {
-      tipo: "salida",
+    const nuevo = {
+      tipo: "salida" as const,
       resultado: evaluacion.resultado,
       minutosTardanza: evaluacion.minutosTardanza,
-    });
+    };
+    await repositorio.reetiquetar(entrada.id, nuevo);
+    return {
+      marcacionId: entrada.id,
+      valorAnterior: {
+        tipo: "entrada",
+        resultado: anterior?.resultado,
+        minutosTardanza: anterior?.minutosTardanza,
+        justificada: anterior?.justificada,
+        motivoJustificacion: anterior?.motivoJustificacion,
+      },
+      valorNuevo: { ...nuevo, justificada: false },
+    };
+  }
+
+  /** Se audita después de confirmar la transacción: la bitácora usa otra conexión. */
+  private async auditarReetiquetado(cambio: CambioAuditable): Promise<void> {
     await this.auditService.log({
       usuarioId: null,
       accion: "actualizar",
       tabla: "marcaciones",
-      registroId: entrada.id,
-      valorAnterior: { tipo: "entrada" },
+      registroId: cambio.marcacionId,
+      valorAnterior: cambio.valorAnterior,
       valorNuevo: {
-        tipo: "salida",
+        ...cambio.valorNuevo,
         motivo: "Llegó una marcación anterior: la entrada pasa a ser la salida.",
       },
     });
@@ -451,6 +704,15 @@ export class MarcacionesService {
     origen: "kiosko" | "biometrico",
     decision: Extract<DecisionMarca, { accion: "ignorar" }>,
   ): Promise<void> {
+    // Las marcas que no cuentan también quedan guardadas, para poder revisarlas.
+    if (decision.razon === "intermedia") {
+      await this.auditService.log({
+        usuarioId: null,
+        accion: "crear",
+        tabla: "marcaciones_intermedias",
+        valorNuevo: { personaId, fechaHora, origen },
+      });
+    }
     if (decision.razon !== "duplicada_entre_vias") return;
     await this.auditService.log({
       usuarioId: null,
@@ -483,6 +745,14 @@ export class MarcacionesService {
         fotoUrl: persona.fotoUrl,
       };
     }
+    if (decision.razon === "intermedia") {
+      return {
+        registrada: false,
+        mensaje: MENSAJES_MARCACION.MARCA_INTERMEDIA,
+        nombreCompleto: persona.nombreCompleto,
+        fotoUrl: persona.fotoUrl,
+      };
+    }
     return this.respuestaYaMarco(persona, previas);
   }
 
@@ -491,10 +761,12 @@ export class MarcacionesService {
     previas: { tipo: TipoMarcacion; fechaHora: string }[],
   ): MarcacionKioskoResponseDto {
     const entrada = previas.find((m) => m.tipo === "entrada");
-    const mensaje =
-      persona.tipoPersona === "estudiantes" && entrada
-        ? mensajeYaMarcoEntrada(horaDeFechaHora(entrada.fechaHora))
-        : MENSAJES_MARCACION.YA_MARCO_ENTRADA_Y_SALIDA;
+    let mensaje: string = MENSAJES_MARCACION.YA_MARCO_ENTRADA_Y_SALIDA;
+    if (!entrada) {
+      mensaje = MENSAJES_MARCACION.YA_MARCO_SALIDA;
+    } else if (persona.tipoPersona === "estudiantes") {
+      mensaje = mensajeYaMarcoEntrada(horaDeFechaHora(entrada.fechaHora));
+    }
     return {
       registrada: false,
       mensaje,

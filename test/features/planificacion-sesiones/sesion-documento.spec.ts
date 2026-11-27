@@ -1,4 +1,6 @@
+import { inflateRawSync } from "node:zlib";
 import {
+  DOCUMENTO_SESION,
   generarSesionDocx,
   generarSesionPdf,
   type DatosSesionPdf,
@@ -48,7 +50,68 @@ const datos: DatosSesionPdf = {
   borrador: false,
 };
 
+/** Texto de `word/document.xml` dentro del .docx (zip), sin etiquetas. */
+function textoDelDocx(docx: Buffer): string {
+  const firma = Buffer.from([0x50, 0x4b, 0x03, 0x04]);
+  let i = docx.indexOf(firma);
+  while (i >= 0) {
+    const metodo = docx.readUInt16LE(i + 8);
+    const comprimido = docx.readUInt32LE(i + 18);
+    const largoNombre = docx.readUInt16LE(i + 26);
+    const largoExtra = docx.readUInt16LE(i + 28);
+    const nombre = docx.subarray(i + 30, i + 30 + largoNombre).toString();
+    const inicio = i + 30 + largoNombre + largoExtra;
+    if (nombre === "word/document.xml") {
+      const datos = docx.subarray(inicio, inicio + comprimido);
+      const xml = (metodo === 8 ? inflateRawSync(datos) : datos).toString("utf8");
+      return xml
+        .replace(/<\/w:p>/g, "\n")
+        .replace(/<[^>]+>/g, "")
+        .replace(/&quot;/g, '"')
+        .replace(/&amp;/g, "&");
+    }
+    i = docx.indexOf(firma, inicio);
+  }
+  throw new Error("El .docx no trae word/document.xml");
+}
+
 describe("RF-024 V1: documento de la sesión (HU4)", () => {
+  it("el Word sigue la estructura compartida con el editor, en su orden", async () => {
+    const texto = textoDelDocx(await generarSesionDocx(datos));
+    const M = DOCUMENTO_SESION;
+    const esperado = [
+      `${M.encabezado} 1`,
+      M.datosInformativos.titulo,
+      ...Object.values(M.datosInformativos.filas),
+      M.acerca,
+      M.propositos.titulo,
+      M.propositos.etiquetaProposito.trim(),
+      ...M.propositos.columnas,
+      M.evaluacion.titulo,
+      ...M.evaluacion.columnas,
+      M.transversales.titulo,
+      ...M.transversales.columnas,
+      M.enfoques.titulo,
+      ...M.enfoques.columnas,
+      M.secuencia,
+      M.materiales.titulo,
+      ...M.materiales.columnas,
+      M.momentos.titulo,
+      ...M.momentos.columnas,
+      ...M.momentos.orden.map((m) => M.momentos.nombres[m]),
+      M.referencias,
+      ...M.firmas.roles,
+    ];
+    let desde = 0;
+    for (const t of esperado) {
+      const en = texto.indexOf(t, desde);
+      expect({ t, en: en >= 0 }).toEqual({ t, en: true });
+      desde = en + t.length;
+    }
+    expect(texto).toContain("12/10/2026");
+    expect(texto).not.toContain(M.borrador);
+  });
+
   it("genera el PDF", async () => {
     const pdf = await generarSesionPdf(datos);
     expect(pdf.subarray(0, 4).toString()).toBe("%PDF");

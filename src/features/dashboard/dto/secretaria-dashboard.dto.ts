@@ -19,8 +19,12 @@ export class SecretariaKpisDto {
   @ApiProperty()
   libretasPendientes!: number;
 
-  @ApiProperty()
-  asistenciaHoyPorcentaje!: number;
+  @ApiProperty({
+    type: Number,
+    nullable: true,
+    description: "Null si hoy no se esperaba a ningún estudiante",
+  })
+  asistenciaHoyPorcentaje!: number | null;
 }
 
 export class SecretariaMatriculasGradoDto {

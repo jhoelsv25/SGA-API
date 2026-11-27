@@ -1,6 +1,6 @@
 # Casos de prueba — RF-022: Integración con Biométrico ZKTeco (Marcación por Huella)
 
-**Fuente:** [`RF-022` V3](../../../requerimientos/RF-022_Integracion_con_Biometrico_ZKTeco/V3/RF-022_Integracion_con_Biometrico_ZKTeco.md) · **Total de casos:** 18
+**Fuente:** [`RF-022` V5](../../../requerimientos/RF-022_Integracion_con_Biometrico_ZKTeco/V5/RF-022_Integracion_con_Biometrico_ZKTeco.md) · **Total de casos:** 18
 
 > Generados desde los escenarios Gherkin. Si el RF cambia de versión, regenerar y conservar las ejecuciones anteriores.
 
@@ -26,3 +26,25 @@
 | CP-RF022-30 | HU2 | Marca atrasada anterior a la entrada ya registrada (v2.0)        | que mi entrada guardada es de las 09:10 (marcada en el kiosko) y el reloj tenía guardada una marca de las 07:05                   | el programa guarda esa marca atrasada                                                   | el sistema registra mi entrada a las 07:05 y la marca de las 09:10 pasa a ser mi salida, con su resultado recalculado y el cambio en la bitácora. | Back            |
 
 > **Casos retirados en la V3** (la app puente por HTTP ya no existe): CP-RF022-01, 02, 07 (equipo de tipo `biometrico`), 19, 20, 21 (desfase y alertas de la app/reloj), 23, 24 (bandeja de pendientes) y 25 a 28 (configuración remota y órdenes). Sus ejecuciones anteriores se conservan en el historial.
+
+## Casos de la versión nueva (2026-11-26)
+
+| Escenario | Verificado con | Resultado |
+|---|---|---|
+| La última marca es la salida (v4.0) | Mezcla M13 (base desechable, sin el aparato) | Pasa |
+| Guía de marcado (v4.0) | Chrome con datos simulados | Pasa |
+
+## Casos de la versión 5.0 (2026-11-26)
+
+| Escenario | Verificado con | Resultado |
+|---|---|---|
+| Marcación en día sin clases (condición nueva para el personal) | `registrar-desde-reloj.spec.ts` | Pasa |
+
+## Dos instancias procesando el reloj (2026-11-26)
+
+| Comprobación | Resultado |
+|---|---|
+| Antes de corregir (base desechable, 8 intentos) | La asistencia se guardaba, pero la fila del reloj quedaba «rechazada» por duplicada (en los intentos revisados) |
+| Después, 8 intentos | Pasa: una marcación y la fila «procesada», sin motivo (`marcaciones-vias.e2e-spec.ts`) |
+
+Se simuló con dos llamadas simultáneas al servicio en un solo proceso, no con dos servidores desplegados.

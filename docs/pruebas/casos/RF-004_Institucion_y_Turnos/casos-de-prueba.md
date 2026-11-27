@@ -1,6 +1,6 @@
 # Casos de prueba — RF-004: Institución, Turnos y Equipos Autorizados
 
-**Fuente:** [`RF-004` V3](../../requerimientos/RF-004_Institucion_y_Turnos/V3/RF-004_Institucion_y_Turnos.md) · **Total de casos:** 37 · **Nuevos en V3:** 5
+**Fuente:** [`RF-004` V6](../../../requerimientos/RF-004_Institucion_y_Turnos/V6/RF-004_Institucion_y_Turnos.md) · **Total de casos:** 37 · **Nuevos en V3:** 5
 
 > Generados desde los escenarios Gherkin. Los IDs de la V2 se conservan; los casos marcados `(v3.0)` son nuevos o cambiaron. Las ejecuciones anteriores se conservan.
 
@@ -43,3 +43,21 @@
 | CP-RF004-35 | HU4 | Umbral en 0 desactiva la alerta (v3.0)           | que `sesion.alerta_minutos_perdidos_umbral` es 45             | lo cambio a 0 con su motivo y guardo                                                                                                      | el sistema acepta el valor y deja de generar la alerta de minutos perdidos del día.                                                                                                                                                                                                                                                                                                                                                                | Back + Front |
 | CP-RF004-36 | HU4 | Cantidad de observaciones fuera de rango (v3.0)  | que `observacion.cantidad_objetivo_anual` admite de 2 a 3     | ingreso 4                                                                                                                                 | el sistema impide guardar y muestra "El valor debe estar entre 2 y 3."                                                                                                                                                                                                                                                                                                                                                                             | Back + Front |
 | CP-RF004-37 | HU4 | Variable nueva con tipo inválido (v3.0)          | que `sesion.alerta_salida_minutos` es de tipo `entero`        | ingreso "diez"                                                                                                                            | el sistema impide guardar y muestra "Ingrese un número entero."                                                                                                                                                                                                                                                                                                                                                                                    | Back + Front |
+
+## Casos de la versión 4.0 (2026-11-26)
+
+| Escenario | Verificado con | Resultado |
+|---|---|---|
+| Turno de docentes como turno general (v4.0) | `turno-horario.util.spec.ts` y e2e T1–T3; texto de la pantalla de turnos con TypeScript y ESLint | Pasa; falta revisar la pantalla en el navegador |
+
+## Casos de la versión 5.0 (2026-11-26)
+
+| Escenario | Verificado con | Resultado |
+|---|---|---|
+| Variables de asistencia docente con su valor por defecto (v5.0) | Migración 0036 aplicada dos veces en base desechable; una vez en Supabase de pruebas: 7 variables | Pasa |
+
+## Casos de la versión 6.0 (2026-11-26)
+
+| Escenario | Verificado con | Resultado |
+|---|---|---|
+| 3T desactivado por defecto (variable en 0) | Migración 0037 en base desechable (desde el estado anterior) y en Supabase de pruebas | Pasa |

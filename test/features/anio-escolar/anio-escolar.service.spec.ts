@@ -71,6 +71,7 @@ function evento(parcial: Partial<EventoPersistido> = {}): EventoPersistido {
     fechaInicio: "2027-07-28",
     fechaFin: "2027-07-29",
     suspendeClases: true,
+    personalLabora: false,
     creadoPorId: ACTOR,
     ...parcial,
   };
