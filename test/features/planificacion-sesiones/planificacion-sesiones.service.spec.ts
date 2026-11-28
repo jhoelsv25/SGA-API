@@ -45,6 +45,11 @@ const fila = (p: Record<string, unknown> = {}) => ({
   enfoques: [],
   materiales: {},
   referencias: [],
+  producto: null,
+  coordinador: null,
+  acuerdos: [],
+  mapaVisual: [],
+  seccionesAdicionales: [],
   estado: "borrador",
   copiadaDeId: null,
   actualizadoEn: "2027-03-17 10:00:00",
@@ -78,6 +83,12 @@ function armar() {
       ]),
     desempenosPorIds: jest.fn().mockResolvedValue([]),
     guardar: jest.fn().mockResolvedValue("pl-1"),
+    bloquesDeDocente: jest.fn().mockResolvedValue([bloque]),
+    opciones: jest.fn().mockResolvedValue([]),
+    enfoques: jest.fn().mockResolvedValue([]),
+    lemaAnual: jest.fn().mockResolvedValue(""),
+    ultimosDatosDeDocente: jest.fn().mockResolvedValue(null),
+    estudiantesDeCursosSeccion: jest.fn().mockResolvedValue([]),
     cambiarEstado: jest.fn().mockResolvedValue(undefined),
     competenciasDe: jest.fn().mockResolvedValue([]),
     momentosDe: jest.fn().mockResolvedValue([]),
@@ -235,6 +246,87 @@ describe("RF-024 V1: planificar la sesión (docente)", () => {
         actorDocente,
       ),
     ).rejects.toThrow(BadRequestException);
+  });
+
+  it("rechaza agregar una sección de otro curso", async () => {
+    const { service, repo } = armar();
+    repo.bloquesDeDocente.mockResolvedValue([
+      { ...bloque, cursoSeccionId: "cs-9", cursoNombre: "Arte" },
+    ]);
+    await expect(
+      service.guardar(dto({ seccionesAdicionales: ["cs-9"] }), actorDocente),
+    ).rejects.toThrow(MENSAJES_PLANIFICACION.SECCION_NO_VALIDA);
+  });
+
+  it("el documento reúne las secciones, el rango de fechas y la lista de cotejo", async () => {
+    const { service, repo } = armar();
+    repo.bloquesDeDocente.mockResolvedValue([
+      bloque,
+      { ...bloque, horarioId: "h-2", cursoSeccionId: "cs-2", seccionNombre: "B", diaSemana: 2 },
+    ]);
+    repo.opciones.mockResolvedValue([{ codigo: "lc", nombre: "Lista de cotejo" }]);
+    repo.planificacion.mockResolvedValue(
+      fila({ instrumentoCodigo: "lc", seccionesAdicionales: ["cs-2"] }),
+    );
+    repo.estudiantesDeCursosSeccion.mockResolvedValue([
+      { cursoSeccionId: "cs-2", nombre: "Quispe, Ana" },
+    ]);
+    const doc = await service.documento("pl-1", actorDocente);
+    expect(doc).toMatchObject({
+      secciones: ["B", "Única"],
+      bimestre: expect.stringMatching(/Bimestre$/i) as string,
+      fechaInicio: "2027-03-16",
+      fechaFin: "2027-03-18",
+      listasCotejo: [
+        { seccion: "B", estudiantes: ["Quispe, Ana"] },
+        { seccion: "Única", estudiantes: [] },
+      ],
+    });
+  });
+
+  it("propone el coordinador y los acuerdos de la última sesión", async () => {
+    const { service, repo } = armar();
+    repo.ultimosDatosDeDocente.mockResolvedValue({ coordinador: "Ana", acuerdos: ["Respeto"] });
+    await expect(service.predeterminados(actorDocente)).resolves.toEqual({
+      coordinador: "Ana",
+      acuerdos: ["Respeto"],
+    });
+  });
+
+  it("guarda producto, coordinador, acuerdos y mapa visual sin entradas vacías", async () => {
+    const { service, repo } = armar();
+    await service.guardar(
+      dto({
+        producto: " Informe ",
+        coordinador: " Ana ",
+        acuerdos: ["Respeto", " "],
+        mapaVisual: [
+          { concepto: "Múltiplo", definicion: "a = k·b" },
+          { concepto: "", definicion: "" },
+        ],
+      }),
+      actorDocente,
+    );
+    expect(repo.guardar.mock.calls[0]).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          producto: "Informe",
+          coordinador: "Ana",
+          acuerdos: ["Respeto"],
+          mapaVisual: [{ concepto: "Múltiplo", definicion: "a = k·b" }],
+        }),
+      ]),
+    );
+  });
+
+  it("conserva en el documento los materiales del formato anterior", async () => {
+    const { service, repo } = armar();
+    repo.planificacion.mockResolvedValue(
+      fila({ materiales: { impresos: ["Libro"], digitales: ["Video"], comunidad: ["Visita"] } }),
+    );
+    const doc = await service.documento("pl-1", actorDocente);
+    expect(doc.materiales).toEqual({ recursos: ["Libro", "Video"], comunidad: ["Visita"] });
+    expect(doc.listasCotejo).toEqual([]);
   });
 
   it("copia a otra fecha como borrador", async () => {

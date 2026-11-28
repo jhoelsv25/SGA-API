@@ -111,6 +111,11 @@ export async function guardar(
       enfoques: datos.enfoques,
       materiales: datos.materiales,
       referencias: datos.referencias,
+      producto: datos.producto,
+      coordinador: datos.coordinador,
+      acuerdos: datos.acuerdos,
+      mapaVisual: datos.mapaVisual,
+      seccionesAdicionales: datos.seccionesAdicionales,
       estado: datos.estado,
       copiadaDeId: datos.copiadaDeId,
     };
@@ -192,9 +197,13 @@ export async function agregarComentario(
 export async function periodoDeFecha(
   deps: PlanificacionSesionesRepositoryDeps,
   fecha: string,
-): Promise<{ id: string; estado: string } | null> {
+): Promise<{ id: string; estado: string; nombre: string } | null> {
   const [fila] = await deps.db
-    .select({ id: periodosAcademicos.id, estado: periodosAcademicos.estado })
+    .select({
+      id: periodosAcademicos.id,
+      estado: periodosAcademicos.estado,
+      nombre: periodosAcademicos.nombre,
+    })
     .from(periodosAcademicos)
     .where(
       and(

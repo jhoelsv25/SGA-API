@@ -54,6 +54,12 @@ export class PlanificacionSesionesController {
     return this.service.historial(actorDe(usuario), query);
   }
 
+  @Get("predeterminados")
+  @ApiOperation({ summary: "Coordinador y acuerdos de mi última sesión, para proponerlos" })
+  predeterminados(@CurrentUser() usuario: AuthenticatedUser) {
+    return this.service.predeterminados(actorDe(usuario));
+  }
+
   @Get(":id")
   @ApiOperation({
     summary: "Una planificación propia con sus competencias, momentos y comentarios",

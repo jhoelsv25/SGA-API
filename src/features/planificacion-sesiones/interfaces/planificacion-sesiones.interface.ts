@@ -42,6 +42,11 @@ export interface MomentoPlanificado {
   minutos: number | null;
 }
 
+export interface ConceptoMapa {
+  concepto: string;
+  definicion: string;
+}
+
 export interface ComentarioPlanificacion {
   id: string;
   usuarioId: string;
@@ -70,6 +75,12 @@ export interface PlanificacionFila {
   enfoques: unknown[];
   materiales: Record<string, string[]>;
   referencias: string[];
+  producto: string | null;
+  coordinador: string | null;
+  acuerdos: string[];
+  mapaVisual: ConceptoMapa[];
+  /** `curso_seccion` de las otras secciones que figuran en el documento. */
+  seccionesAdicionales: string[];
   estado: EstadoPlanificacion;
   copiadaDeId: string | null;
   actualizadoEn: string;
@@ -98,6 +109,12 @@ export interface DatosGuardarPlanificacion {
   enfoques: unknown[];
   materiales: Record<string, string[]>;
   referencias: string[];
+  producto: string | null;
+  coordinador: string | null;
+  acuerdos: string[];
+  mapaVisual: ConceptoMapa[];
+  /** `curso_seccion` de las otras secciones que figuran en el documento. */
+  seccionesAdicionales: string[];
   estado: EstadoPlanificacion;
   copiadaDeId: string | null;
   competencias: Omit<CompetenciaPlanificada, "orden">[];

@@ -12,8 +12,15 @@ import {
   TextRun,
   WidthType,
 } from "docx";
-import { DOCUMENTO_SESION as M, fechaDocumento } from "../constants/sesion-documento.constants";
-import type { DatosSesionPdf } from "./sesion-pdf.util";
+import { DOCUMENTO_SESION as M } from "../constants/sesion-documento.constants";
+import {
+  anchosListaCotejo,
+  type DatosSesion,
+  filasInformativas,
+  filasListaCotejo,
+  lineasDe,
+  numeroSesion,
+} from "./sesion-documento.util";
 
 const FUENTE = "Arial";
 const TAMANO = 20; // 10 pt, como en la plantilla del colegio
@@ -21,203 +28,243 @@ const COLOR_ENCABEZADO = "D9E2F3";
 const ANCHO_PAGINA = 9906; // A4 con márgenes de 1000 twips
 const BORDE = { style: BorderStyle.SINGLE, size: 4, color: "808080" };
 const BORDES = { top: BORDE, bottom: BORDE, left: BORDE, right: BORDE };
+const SIN_BORDE = { style: BorderStyle.NONE };
+const SIN_BORDES = { top: SIN_BORDE, bottom: SIN_BORDE, left: SIN_BORDE, right: SIN_BORDE };
 
-const dxa = (porcentaje: number) => Math.round((ANCHO_PAGINA * porcentaje) / 100);
-const texto = (t: string, negrita = false) =>
-  new TextRun({ text: t, bold: negrita, font: FUENTE, size: TAMANO });
+type Bloque = Paragraph | Table;
+
+const texto = (t: string, negrita = false, size = TAMANO) =>
+  new TextRun({ text: t, bold: negrita, font: FUENTE, size });
 const parrafo = (t: string, negrita = false) => new Paragraph({ children: [texto(t, negrita)] });
-const lineas = (t: string | null | undefined) => (t ?? M.vacio).split("\n").map((l) => parrafo(l));
+const centrado = (t: string, negrita = false, size = TAMANO) =>
+  new Paragraph({ alignment: AlignmentType.CENTER, children: [texto(t, negrita, size)] });
 const vinetas = (items: string[]) =>
   items.map(
     (i) => new Paragraph({ children: [texto(i)], bullet: { level: 0 }, spacing: { after: 40 } }),
   );
+const separador = () => new Paragraph({ spacing: { after: 80 } });
 
-/** Celda con borde; las de encabezado van sombreadas y centradas, como la plantilla. */
-function celda(hijos: Paragraph[], porcentaje: number, esEncabezado = false): TableCell {
+interface OpcionesCelda {
+  encabezado?: boolean;
+  columnas?: number;
+}
+
+/** Celda con borde; las de encabezado van sombreadas. `twips` es su ancho. */
+function celda(hijos: Bloque[], twips: number, opciones: OpcionesCelda = {}): TableCell {
   return new TableCell({
     children: hijos.length > 0 ? hijos : [parrafo(M.vacio)],
-    width: { size: dxa(porcentaje), type: WidthType.DXA },
+    width: { size: twips, type: WidthType.DXA },
+    columnSpan: opciones.columnas,
     borders: BORDES,
     margins: { top: 60, bottom: 60, left: 100, right: 100 },
-    shading: esEncabezado
+    shading: opciones.encabezado
       ? { type: ShadingType.CLEAR, fill: COLOR_ENCABEZADO, color: "auto" }
       : undefined,
   });
 }
-const encabezado = (t: string, porcentaje: number) =>
-  celda(
-    [new Paragraph({ alignment: AlignmentType.CENTER, children: [texto(t, true)] })],
-    porcentaje,
-    true,
-  );
 
-/** Tabla de ancho completo: `anchos` en porcentaje, `filas` con una lista de párrafos por celda. */
-function tabla(
-  anchos: readonly number[],
-  titulos: readonly string[] | null,
-  filas: Paragraph[][][],
-): Table {
-  const cabecera = titulos
-    ? [
-        new TableRow({
-          tableHeader: true,
-          children: titulos.map((t, i) => encabezado(t, anchos[i])),
-        }),
-      ]
-    : [];
+interface OpcionesTabla {
+  /** Título de la sección: fila sombreada que abarca toda la tabla. */
+  titulo?: string;
+  columnas?: readonly string[];
+  ancho?: number;
+}
+
+/** Tabla: `anchos` en porcentaje y cada fila con una lista de bloques por celda. */
+function tabla(anchos: readonly number[], filas: Bloque[][][], o: OpcionesTabla = {}): Table {
+  const total = o.ancho ?? ANCHO_PAGINA;
+  const twips = anchos.map((a) => Math.round((total * a) / 100));
+  const cabeceras: TableRow[] = [];
+  if (o.titulo) {
+    cabeceras.push(
+      new TableRow({
+        tableHeader: true,
+        children: [
+          celda([parrafo(o.titulo, true)], total, { encabezado: true, columnas: anchos.length }),
+        ],
+      }),
+    );
+  }
+  if (o.columnas) {
+    cabeceras.push(
+      new TableRow({
+        tableHeader: true,
+        children: o.columnas.map((t, i) =>
+          celda([centrado(t, true)], twips[i], { encabezado: true }),
+        ),
+      }),
+    );
+  }
   return new Table({
-    width: { size: ANCHO_PAGINA, type: WidthType.DXA },
-    columnWidths: anchos.map(dxa),
+    width: { size: total, type: WidthType.DXA },
+    columnWidths: twips,
     layout: TableLayoutType.FIXED,
     rows: [
-      ...cabecera,
+      ...cabeceras,
       ...filas.map(
-        (f) => new TableRow({ cantSplit: false, children: f.map((c, i) => celda(c, anchos[i])) }),
+        (f) => new TableRow({ cantSplit: false, children: f.map((c, i) => celda(c, twips[i])) }),
       ),
     ],
   });
 }
 
-const seccion = (t: string) =>
-  new Paragraph({
-    children: [new TextRun({ text: t, bold: true, font: FUENTE, size: 22 })],
-    spacing: { before: 240, after: 100 },
+const pares = (filas: [string, string, string, string][]) =>
+  filas.map(([a, b, c, d]) => [[parrafo(a, true)], [parrafo(b)], [parrafo(c, true)], [parrafo(d)]]);
+
+/** Actividades de un momento; el inicio cierra con el propósito y el desarrollo con el mapa visual. */
+function actividades(d: DatosSesion, momento: string): Bloque[] {
+  const hijos: Bloque[] = lineasDe(
+    d.momentos.find((x) => x.momento === momento)?.actividades ?? null,
+  ).map((l) => parrafo(l));
+  if (momento === "inicio" && d.proposito) {
+    hijos.push(
+      new Paragraph({
+        children: [texto(M.momentos.etiquetaProposito, true), texto(d.proposito)],
+      }),
+    );
+  }
+  if (momento === "desarrollo" && d.mapaVisual.length > 0) {
+    const ancho = Math.round((ANCHO_PAGINA * M.momentos.anchos[1]) / 100) - 220;
+    const columnas = d.mapaVisual.length;
+    hijos.push(
+      separador(),
+      tabla(
+        Array<number>(columnas).fill(100 / columnas),
+        [d.mapaVisual.map((c) => [centrado(c.concepto, true), centrado(c.definicion)])],
+        { titulo: M.momentos.mapaVisual, ancho },
+      ),
+      // Word exige que la celda termine en un párrafo
+      new Paragraph({}),
+    );
+  }
+  return hijos;
+}
+
+function firmas(d: DatosSesion): Table {
+  const nombres = [d.docente, d.coordinador ?? ""];
+  const mitad = ANCHO_PAGINA / 2;
+  return new Table({
+    width: { size: ANCHO_PAGINA, type: WidthType.DXA },
+    columnWidths: [mitad, mitad],
+    layout: TableLayoutType.FIXED,
+    rows: [
+      new TableRow({
+        cantSplit: true,
+        children: M.firmas.roles.map(
+          (rol, i) =>
+            new TableCell({
+              width: { size: mitad, type: WidthType.DXA },
+              borders: SIN_BORDES,
+              children: [
+                centrado(M.firmas.linea),
+                ...(nombres[i] ? [centrado(nombres[i])] : []),
+                centrado(rol, true),
+              ],
+            }),
+        ),
+      }),
+    ],
   });
-const subseccion = (t: string) =>
-  new Paragraph({ children: [texto(t, true)], spacing: { before: 160, after: 80 } });
+}
 
-/** Sesión de aprendizaje en Word (.docx) con el modelo estándar del colegio (RF-024, HU4). */
-export async function generarSesionDocx(d: DatosSesionPdf): Promise<Buffer> {
-  const F = M.datosInformativos.filas;
-  const datos: [string, string][] = [
-    [F.institucion, d.institucion],
-    [F.director, d.director],
-    [F.docente, d.docente],
-    [F.gradoSeccion, d.gradoSeccion],
-    [F.area, d.area],
-    [F.fecha, fechaDocumento(d.fecha)],
-    ...(d.unidad ? ([[F.unidad, d.unidad]] as [string, string][]) : []),
-  ];
-
-  const hijos: (Paragraph | Table)[] = [];
-  if (d.borrador) hijos.push(parrafo(M.borrador, true));
-  hijos.push(
-    new Paragraph({
-      alignment: AlignmentType.CENTER,
-      children: [
-        new TextRun({
-          text: `${M.encabezado} ${d.numero ?? M.vacio}`,
-          bold: true,
-          font: FUENTE,
-          size: 28,
-        }),
-      ],
+function anexos(d: DatosSesion): Bloque[] {
+  const L = M.listaCotejo;
+  return d.listasCotejo.flatMap((lista, n) => [
+    new Paragraph({ pageBreakBefore: true }),
+    tabla(L.anchos, pares(filasListaCotejo(d, lista.seccion)), {
+      titulo: `${L.anexo} ${n + 1}: ${L.titulo}`,
     }),
     new Paragraph({
-      alignment: AlignmentType.CENTER,
-      spacing: { after: 160 },
-      children: [new TextRun({ text: `“${d.titulo}”`, bold: true, font: FUENTE, size: 24 })],
+      children: [texto(L.instrucciones)],
+      spacing: { before: 100, after: 100 },
     }),
-    seccion(M.datosInformativos.titulo),
     tabla(
-      M.datosInformativos.anchos,
-      null,
-      datos.map(([k, v]) => [[parrafo(k, true)], [parrafo(v)]]),
+      anchosListaCotejo(d.criterios.length),
+      lista.estudiantes.map((nombre, i) => [
+        [centrado(String(i + 1))],
+        [parrafo(nombre)],
+        ...d.criterios.map(() => [new Paragraph({})]),
+      ]),
+      { columnas: [...L.columnas, ...d.criterios] },
     ),
-    seccion(M.acerca),
-    subseccion(M.propositos.titulo),
-    new Paragraph({
-      spacing: { after: 80 },
-      children: [texto(M.propositos.etiquetaProposito, true), texto(d.proposito ?? M.vacio)],
+  ]);
+}
+
+/** Sesión de aprendizaje en Word (.docx) con el modelo del colegio (RF-024 V2, HU4). */
+export async function generarSesionDocx(d: DatosSesion): Promise<Buffer> {
+  const hijos: Bloque[] = [];
+  if (d.borrador) hijos.push(parrafo(M.borrador, true));
+  if (d.lema) hijos.push(centrado(`"${d.lema}"`, true));
+  hijos.push(
+    centrado(d.institucion, true, 24),
+    centrado(`"${M.encabezado} ${numeroSesion(d.numero)}"`, true, 28),
+    separador(),
+    tabla(M.datosInformativos.anchos, pares(filasInformativas(d)), {
+      titulo: M.datosInformativos.titulo,
     }),
+    separador(),
+    tabla(M.tituloSesion.anchos, [[[parrafo(M.tituloSesion.titulo, true)], [parrafo(d.titulo)]]]),
+    separador(),
     tabla(
       M.propositos.anchos,
-      M.propositos.columnas,
       d.competencias.map((c) => [
         [parrafo(c.competenciaTexto)],
         vinetas(c.capacidades),
         vinetas(c.desempenos.map((x) => x.texto)),
         [parrafo(c.campoTematico ?? M.vacio)],
       ]),
+      { titulo: M.propositos.titulo, columnas: M.propositos.columnas },
     ),
-    subseccion(M.evaluacion.titulo),
-    tabla(M.evaluacion.anchos, M.evaluacion.columnas, [
-      [lineas(d.evidencia), vinetas(d.criterios), lineas(d.instrumento)],
-    ]),
-    subseccion(M.transversales.titulo),
+    separador(),
+    tabla(
+      M.enfoques.anchos,
+      d.enfoques.map((e) => [[parrafo(e.enfoque)], vinetas(e.valores), vinetas(e.acciones)]),
+      { titulo: M.enfoques.titulo, columnas: M.enfoques.columnas },
+    ),
+    separador(),
     tabla(
       M.transversales.anchos,
-      M.transversales.columnas,
       d.transversales.map((t) => [
         [parrafo(t.competencia)],
         vinetas(t.capacidades),
-        [parrafo(t.desempeno ?? M.vacio)],
+        [parrafo(t.actividad ?? M.vacio)],
       ]),
+      { titulo: M.transversales.titulo, columnas: M.transversales.columnas },
     ),
-    subseccion(M.enfoques.titulo),
-    tabla(
-      M.enfoques.anchos,
-      M.enfoques.columnas,
-      d.enfoques.map((e) => [[parrafo(e.enfoque)], vinetas(e.valores), vinetas(e.acciones)]),
-    ),
-    seccion(M.secuencia),
-    subseccion(M.materiales.titulo),
-    tabla(M.materiales.anchos, M.materiales.columnas, [
-      [
-        vinetas(d.materiales.impresos),
-        vinetas(d.materiales.manipulativos),
-        vinetas(d.materiales.digitales),
-      ],
-    ]),
-    subseccion(M.momentos.titulo),
+    separador(),
     tabla(
       M.momentos.anchos,
-      M.momentos.columnas,
-      M.momentos.orden.map((m) => {
-        const x = d.momentos.find((y) => y.momento === m);
-        return [
-          [parrafo(M.momentos.nombres[m], true)],
-          lineas(x?.actividades),
-          [
-            new Paragraph({
-              alignment: AlignmentType.CENTER,
-              children: [texto(`${x?.minutos ?? 0} min`)],
-            }),
-          ],
-        ];
-      }),
+      M.momentos.orden.map((m) => [
+        [parrafo(M.momentos.nombres[m], true)],
+        actividades(d, m),
+        [centrado(`${d.momentos.find((x) => x.momento === m)?.minutos ?? 0} min`)],
+      ]),
+      { titulo: M.momentos.titulo, columnas: M.momentos.columnas },
     ),
-    seccion(M.referencias),
-    ...vinetas(d.referencias),
-    new Paragraph({ text: "", spacing: { before: 800 } }),
-    new Table({
-      width: { size: ANCHO_PAGINA, type: WidthType.DXA },
-      columnWidths: [dxa(50), dxa(50)],
-      layout: TableLayoutType.FIXED,
-      rows: [
-        new TableRow({
-          children: M.firmas.roles.map(
-            (rol) =>
-              new TableCell({
-                width: { size: dxa(50), type: WidthType.DXA },
-                borders: {
-                  top: { style: BorderStyle.NONE },
-                  bottom: { style: BorderStyle.NONE },
-                  left: { style: BorderStyle.NONE },
-                  right: { style: BorderStyle.NONE },
-                },
-                children: [
-                  new Paragraph({
-                    alignment: AlignmentType.CENTER,
-                    children: [texto(M.firmas.linea)],
-                  }),
-                  new Paragraph({ alignment: AlignmentType.CENTER, children: [texto(rol, true)] }),
-                ],
-              }),
-          ),
-        }),
+    separador(),
+    tabla(
+      M.evaluacion.anchos,
+      [
+        [
+          vinetas(d.criterios),
+          vinetas(lineasDe(d.evidencia)),
+          lineasDe(d.producto).map((l) => parrafo(l)),
+          [parrafo(d.instrumento ?? M.vacio)],
+        ],
       ],
-    }),
+      { titulo: M.evaluacion.titulo, columnas: M.evaluacion.columnas },
+    ),
+    separador(),
+    tabla(M.acuerdos.anchos, [[vinetas(d.acuerdos)]], { titulo: M.acuerdos.titulo }),
+    separador(),
+    tabla(
+      M.materiales.anchos,
+      [[vinetas(d.materiales.recursos), vinetas(d.materiales.comunidad)]],
+      { titulo: M.materiales.titulo, columnas: M.materiales.columnas },
+    ),
+    new Paragraph({ spacing: { before: 800 } }),
+    firmas(d),
+    ...anexos(d),
   );
 
   const documento = new Document({

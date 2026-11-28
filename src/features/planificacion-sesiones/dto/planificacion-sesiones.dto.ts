@@ -84,6 +84,26 @@ export class MaterialesPlanDto {
   @IsArray()
   @IsString({ each: true })
   digitales?: string[];
+  @ApiPropertyOptional({ type: [String], description: "Materiales y recursos del MINEDU" })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(30)
+  @IsString({ each: true })
+  recursos?: string[];
+  @ApiPropertyOptional({
+    type: [String],
+    description: "Espacios de interacción con sabios, familias y comunidad",
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(30)
+  @IsString({ each: true })
+  comunidad?: string[];
+}
+
+export class ConceptoMapaDto {
+  @ApiProperty() @IsString() @MaxLength(100) concepto!: string;
+  @ApiProperty() @IsString() @MaxLength(500) definicion!: string;
 }
 
 export class MomentoPlanDto {
@@ -145,6 +165,39 @@ export class GuardarPlanificacionDto {
   @ArrayMaxSize(30)
   @IsString({ each: true })
   referencias?: string[];
+  @ApiPropertyOptional({ description: "Producto de la sesión" })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  producto?: string;
+  @ApiPropertyOptional({ description: "Coordinador(a) que firma el documento" })
+  @IsOptional()
+  @IsString()
+  @MaxLength(150)
+  coordinador?: string;
+  @ApiPropertyOptional({ type: [String], description: "Acuerdos de convivencia" })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(20)
+  @IsString({ each: true })
+  @MaxLength(300, { each: true })
+  acuerdos?: string[];
+  @ApiPropertyOptional({ type: [ConceptoMapaDto], description: "Mapa visual del desarrollo" })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(6)
+  @ValidateNested({ each: true })
+  @Type(() => ConceptoMapaDto)
+  mapaVisual?: ConceptoMapaDto[];
+  @ApiPropertyOptional({
+    type: [String],
+    description: "Otras secciones del mismo curso y grado que usan esta sesión",
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(20)
+  @IsUUID("all", { each: true })
+  seccionesAdicionales?: string[];
   @ApiPropertyOptional({ type: [MomentoPlanDto] })
   @IsOptional()
   @IsArray()

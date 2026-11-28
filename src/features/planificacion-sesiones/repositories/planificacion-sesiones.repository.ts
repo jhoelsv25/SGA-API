@@ -14,6 +14,7 @@ import * as parte1 from "./planificacion/areas";
 import * as parte2 from "./planificacion/bloques-base";
 import * as parte3 from "./planificacion/base";
 import * as parte4 from "./planificacion/planificaciones-del-dia";
+import * as documento from "./planificacion/documento";
 
 @Injectable()
 export class PlanificacionSesionesRepository {
@@ -155,8 +156,23 @@ export class PlanificacionSesionesRepository {
     return parte4.agregarComentario(this.dependencias(), planificacionId, usuarioId, texto);
   }
 
+  // ─── Documento ────────────────────────────────────────────────────────────
+  lemaAnual(): Promise<string> {
+    return documento.lemaAnual(this.dependencias());
+  }
+
+  estudiantesDeCursosSeccion(ids: string[]) {
+    return documento.estudiantesDeCursosSeccion(this.dependencias(), ids);
+  }
+
+  ultimosDatosDeDocente(docenteId: string) {
+    return documento.ultimosDatosDeDocente(this.dependencias(), docenteId);
+  }
+
   // ─── Calendario y sesiones ────────────────────────────────────────────────
-  async periodoDeFecha(fecha: string): Promise<{ id: string; estado: string } | null> {
+  async periodoDeFecha(
+    fecha: string,
+  ): Promise<{ id: string; estado: string; nombre: string } | null> {
     return parte4.periodoDeFecha(this.dependencias(), fecha);
   }
 

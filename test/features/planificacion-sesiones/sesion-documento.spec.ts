@@ -3,50 +3,56 @@ import {
   DOCUMENTO_SESION,
   generarSesionDocx,
   generarSesionPdf,
-  type DatosSesionPdf,
+  type DatosSesion,
 } from "@/features/planificacion-sesiones";
 
-const datos: DatosSesionPdf = {
+const datos: DatosSesion = {
+  lema: "AÑO DE PRUEBA",
   institucion: "I.E. Miguel Grau Seminario",
-  director: "Mag. Lily Veliz Peralta",
   docente: "José Candiotti García",
-  gradoSeccion: "1.° año / Única",
-  area: "Educación Física",
-  fecha: "2026-10-12",
-  numero: 1,
-  unidad: "U7",
-  titulo: "Desenterrando tesoros: juegos ancestrales del Perú",
-  proposito: "Explora y vivencia juegos tradicionales peruanos.",
+  coordinador: "Samuel Anyaipoma",
+  area: "Matemática",
+  bimestre: "IV Bimestre",
+  unidad: "Unidad 04",
+  nivelGrado: "Secundaria - 4to Grado",
+  fechaInicio: "2026-11-23",
+  fechaFin: "2026-11-26",
+  secciones: ["A", "B"],
+  duracionMin: 90,
+  numero: 7,
+  titulo: "Divisibilidad en acción",
+  proposito: "Aplicar la divisibilidad.",
   competencias: [
     {
       orden: 1,
       competenciaId: "c-1",
-      competenciaTexto: "Se desenvuelve de manera autónoma a través de su motricidad",
-      capacidades: ["Comprende su cuerpo", "Se expresa corporalmente"],
-      desempenos: [{ desempenoId: null, base: null, texto: "Adapta sus movimientos" }],
-      campoTematico: "Juegos tradicionales",
+      competenciaTexto: "Resuelve problemas de cantidad",
+      capacidades: ["Traduce cantidades"],
+      desempenos: [{ desempenoId: null, base: null, texto: "Resuelve problemas" }],
+      campoTematico: "Divisibilidad",
     },
   ],
-  evidencia: "Ficha de trabajo",
-  criterios: ["Describe los movimientos"],
-  instrumento: "Rúbrica",
+  enfoques: [{ enfoque: "Enfoque de Derechos", valores: ["Conciencia"], acciones: ["Debate"] }],
   transversales: [
     {
-      competencia: "Gestiona su aprendizaje de manera autónoma",
+      competencia: "Gestiona su aprendizaje",
       capacidades: ["Define metas"],
-      desempeno: null,
+      actividad: "Establece una meta",
     },
   ],
-  enfoques: [
-    { enfoque: "Enfoque Intercultural", valores: ["Justicia"], acciones: ["Acogen con respeto"] },
-  ],
-  materiales: { impresos: ["Fichas"], manipulativos: ["Conos"], digitales: [] },
   momentos: [
-    { momento: "inicio", actividades: "Video y diálogo", minutos: 15 },
-    { momento: "desarrollo", actividades: "Práctica", minutos: 65 },
-    { momento: "cierre", actividades: "Metacognición", minutos: 10 },
+    { momento: "inicio", actividades: "Video", minutos: 15 },
+    { momento: "desarrollo", actividades: "Trabajo en grupos", minutos: 60 },
+    { momento: "cierre", actividades: "Metacognición", minutos: 15 },
   ],
-  referencias: ["MINEDU (2016). Currículo Nacional."],
+  mapaVisual: [{ concepto: "Múltiplo", definicion: "a = k·b" }],
+  criterios: ["Incluye la tabla"],
+  evidencia: "Informe escrito",
+  producto: "Informe grupal",
+  instrumento: "Lista de cotejo",
+  acuerdos: ["Levantar la mano"],
+  materiales: { recursos: ["Cuaderno de trabajo"], comunidad: ["Entrevista"] },
+  listasCotejo: [{ seccion: "A", estudiantes: ["Quispe Rojas, Ana"] }],
   borrador: false,
 };
 
@@ -75,32 +81,40 @@ function textoDelDocx(docx: Buffer): string {
   throw new Error("El .docx no trae word/document.xml");
 }
 
-describe("RF-024 V1: documento de la sesión (HU4)", () => {
+describe("RF-024 V2: documento de la sesión (HU4)", () => {
   it("el Word sigue la estructura compartida con el editor, en su orden", async () => {
     const texto = textoDelDocx(await generarSesionDocx(datos));
     const M = DOCUMENTO_SESION;
     const esperado = [
-      `${M.encabezado} 1`,
+      datos.lema,
+      datos.institucion,
+      `${M.encabezado} 07`,
       M.datosInformativos.titulo,
       ...Object.values(M.datosInformativos.filas),
-      M.acerca,
+      M.tituloSesion.titulo,
       M.propositos.titulo,
-      M.propositos.etiquetaProposito.trim(),
       ...M.propositos.columnas,
-      M.evaluacion.titulo,
-      ...M.evaluacion.columnas,
-      M.transversales.titulo,
-      ...M.transversales.columnas,
       M.enfoques.titulo,
       ...M.enfoques.columnas,
-      M.secuencia,
-      M.materiales.titulo,
-      ...M.materiales.columnas,
+      M.transversales.titulo,
+      ...M.transversales.columnas,
       M.momentos.titulo,
       ...M.momentos.columnas,
-      ...M.momentos.orden.map((m) => M.momentos.nombres[m]),
-      M.referencias,
+      M.momentos.nombres.inicio,
+      M.momentos.etiquetaProposito.trim(),
+      M.momentos.nombres.desarrollo,
+      M.momentos.mapaVisual,
+      M.momentos.nombres.cierre,
+      M.evaluacion.titulo,
+      ...M.evaluacion.columnas,
+      M.acuerdos.titulo,
+      M.materiales.titulo,
+      ...M.materiales.columnas,
       ...M.firmas.roles,
+      M.listaCotejo.titulo,
+      ...M.listaCotejo.columnas,
+      datos.criterios[0],
+      "Quispe Rojas, Ana",
     ];
     let desde = 0;
     for (const t of esperado) {
@@ -108,8 +122,14 @@ describe("RF-024 V1: documento de la sesión (HU4)", () => {
       expect({ t, en: en >= 0 }).toEqual({ t, en: true });
       desde = en + t.length;
     }
-    expect(texto).toContain("12/10/2026");
+    expect(texto).toContain("23/11/2026 - 26/11/2026");
+    expect(texto).toContain("90 minutos");
     expect(texto).not.toContain(M.borrador);
+  });
+
+  it("sin lista de cotejo no agrega anexo", async () => {
+    const texto = textoDelDocx(await generarSesionDocx({ ...datos, listasCotejo: [] }));
+    expect(texto).not.toContain(DOCUMENTO_SESION.listaCotejo.titulo);
   });
 
   it("genera el PDF", async () => {

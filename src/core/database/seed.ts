@@ -303,6 +303,14 @@ async function seed() {
       valorMaximo: 60,
     },
     {
+      codigo: "institucion.lema_anual",
+      descripcion:
+        "Nombre oficial del año que encabeza la sesión de aprendizaje. Vacío no se imprime",
+      modulo: "organizacion",
+      tipo: "texto",
+      valor: "AÑO DE LA ESPERANZA Y EL FORTALECIMIENTO DE LA DEMOCRACIA",
+    },
+    {
       codigo: "sesion.minutos_antes_firma_ingreso",
       descripcion: "Minutos antes del inicio del bloque desde los que se puede firmar el ingreso",
       modulo: "sesiones",
