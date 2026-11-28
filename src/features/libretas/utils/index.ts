@@ -1,5 +1,6 @@
 export {
   clasificarArchivo,
+  clasificarPorDatosOcr,
   estaATiempo,
   fechaEnLima,
   formatearFechaLimite,

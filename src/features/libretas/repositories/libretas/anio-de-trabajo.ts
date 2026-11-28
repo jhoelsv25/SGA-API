@@ -190,6 +190,7 @@ export async function listarDeSeccion(
     .select({
       matriculaId: matriculas.id,
       codigo: estudiantes.codigo,
+      numeroDocumento: personas.numeroDocumento,
       nombres: personas.nombres,
       paterno: personas.apellidoPaterno,
       materno: personas.apellidoMaterno,
@@ -221,6 +222,7 @@ export async function listarCodigosOtrasSecciones(
     .select({
       matriculaId: matriculas.id,
       codigo: estudiantes.codigo,
+      numeroDocumento: personas.numeroDocumento,
       nombres: personas.nombres,
       paterno: personas.apellidoPaterno,
       materno: personas.apellidoMaterno,
@@ -239,6 +241,7 @@ export async function listarCodigosOtrasSecciones(
   return rows.map((row) => ({
     matriculaId: row.matriculaId,
     codigo: row.codigo,
+    numeroDocumento: row.numeroDocumento,
     nombreCompleto: nombrePersona(row.nombres, row.paterno, row.materno),
   }));
 }

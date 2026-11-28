@@ -145,6 +145,7 @@ export class LibretasRepository {
     rows: Array<{
       matriculaId: string;
       codigo: string;
+      numeroDocumento?: string | null;
       nombres: string;
       paterno: string;
       materno: string | null;

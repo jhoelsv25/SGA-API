@@ -76,6 +76,7 @@ function leerAsignaciones(raw?: string): AsignacionManual[] {
         nombreArchivo: fila.nombreArchivo,
         matriculaId: fila.matriculaId,
         motivo: typeof fila.motivo === "string" ? fila.motivo : undefined,
+        origen: fila.origen === "ocr" ? "ocr" : undefined,
       },
     ];
   });

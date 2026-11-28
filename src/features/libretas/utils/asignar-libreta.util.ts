@@ -5,6 +5,8 @@ import type {
   ArchivoSinReconocer,
   CandidatoLibreta,
   ClasificacionArchivo,
+  DatosOcrLibreta,
+  MetodoReconocimientoLibreta,
 } from "../interfaces";
 
 export function formatearFechaLimite(iso: string): string {
@@ -51,6 +53,15 @@ export function clasificarArchivo(
   }
 
   const match = coincidencias[0];
+  return construirClasificacionDesdeCandidato(nombreArchivo, match, match.codigo, "nombre");
+}
+
+function construirClasificacionDesdeCandidato(
+  nombreArchivo: string,
+  match: CandidatoLibreta,
+  codigoLeido: string,
+  metodoReconocimiento: MetodoReconocimientoLibreta,
+): ClasificacionArchivo {
   if (!match.enSeccion || !match.libretaId || !match.estado) {
     return {
       tipo: "otra_seccion",
@@ -68,10 +79,91 @@ export function clasificarArchivo(
     libretaId: match.libretaId,
     estado: match.estado,
     asignacion: "automatica",
-    codigoLeido: match.codigo,
+    metodoReconocimiento,
+    codigoLeido,
     usuarioEstudianteId: match.usuarioEstudianteId,
     usuarioApoderadoId: match.usuarioApoderadoId,
   };
+}
+
+function normalizarClave(valor: string): string {
+  return valor
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+}
+
+function palabrasNombre(valor: string): string[] {
+  return normalizarClave(valor)
+    .split(/[^a-z0-9]+/)
+    .filter((palabra) => palabra.length >= 2)
+    .sort();
+}
+
+function coincidenNombres(a: string, b: string): boolean {
+  const palabrasA = palabrasNombre(a);
+  const palabrasB = palabrasNombre(b);
+  if (palabrasA.length < 2 || palabrasA.length !== palabrasB.length) return false;
+  return palabrasA.every((palabra, indice) => palabra === palabrasB[indice]);
+}
+
+/**
+ * Empareja un archivo no reconocido por nombre usando los datos extraídos por OCR
+ * del contenido del PDF: primero código de estudiante, luego DNI y por último nombre completo.
+ */
+export function clasificarPorDatosOcr(
+  nombreArchivo: string,
+  datos: DatosOcrLibreta | null | undefined,
+  candidatos: CandidatoLibreta[],
+): ClasificacionArchivo {
+  const sinReconocer: ClasificacionArchivo = {
+    tipo: "sin_reconocer",
+    nombreArchivo,
+    mensaje: MENSAJES_LIBRETAS.CODIGO_NO_RECONOCIDO,
+  };
+  if (!datos) return sinReconocer;
+
+  const codigo = datos.codigoEstudiante?.trim();
+  if (codigo && codigo.length >= 3) {
+    const clave = codigo.toLowerCase();
+    const porCodigo = candidatos.filter((c) => c.codigo.toLowerCase() === clave);
+    if (porCodigo.length === 1) {
+      return construirClasificacionDesdeCandidato(
+        nombreArchivo,
+        porCodigo[0],
+        porCodigo[0].codigo,
+        "ocr",
+      );
+    }
+  }
+
+  const dni = datos.dni?.replace(/\D/g, "");
+  if (dni && dni.length >= 6) {
+    const porDni = candidatos.filter(
+      (c) =>
+        (c.numeroDocumento && c.numeroDocumento.replace(/\D/g, "") === dni) ||
+        c.codigo.replace(/\D/g, "") === dni,
+    );
+    if (porDni.length === 1) {
+      return construirClasificacionDesdeCandidato(nombreArchivo, porDni[0], dni, "ocr");
+    }
+  }
+
+  const nombre = datos.nombreCompleto?.trim();
+  if (nombre) {
+    const porNombre = candidatos.filter((c) => coincidenNombres(c.nombreCompleto, nombre));
+    if (porNombre.length === 1) {
+      return construirClasificacionDesdeCandidato(
+        nombreArchivo,
+        porNombre[0],
+        porNombre[0].codigo,
+        "ocr",
+      );
+    }
+  }
+
+  return sinReconocer;
 }
 
 export function resumirClasificacion(items: ClasificacionArchivo[]): {

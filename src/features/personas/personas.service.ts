@@ -1,5 +1,15 @@
-import { ConflictException, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+  Optional,
+  ServiceUnavailableException,
+} from "@nestjs/common";
 import { AuditService } from "../../common/services/audit.service";
+import type { MimeTypeOcr } from "../../core/ocr/constants";
+import { OcrService } from "../../core/ocr/ocr.service";
 import type { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface";
 import { CargosService } from "../cargos/cargos.service";
 import { PERSONA_MESSAGES } from "./constants";
@@ -7,6 +17,7 @@ import type {
   CargoAsignadoResponseDto,
   CreatePersonaDto,
   HistorialCorreccionCriticaDto,
+  OcrDocumentoPersonaResponseDto,
   PaginatedPersonasResponseDto,
   PersonaQueryDto,
   PersonaResponseDto,
@@ -21,6 +32,13 @@ import {
   validarFechaNacimiento,
 } from "./utils";
 
+const INSTRUCCION_OCR_DOCUMENTO_PERSONA =
+  "Extrae los datos de identificación de este DNI o documento oficial peruano. " +
+  "Devuelve EXCLUSIVAMENTE un JSON válido sin texto adicional con las claves exactas: " +
+  '{"dni": string | null, "apellidoPaterno": string | null, "apellidoMaterno": string | null, ' +
+  '"nombres": string | null, "fechaNacimiento": "YYYY-MM-DD" | null, "sexo": "M" | "F" | null}. ' +
+  "Si algún dato no aparece con claridad, devuelve null.";
+
 @Injectable()
 export class PersonasService {
   private readonly logger = new Logger(PersonasService.name);
@@ -29,7 +47,58 @@ export class PersonasService {
     private readonly repository: PersonasRepository,
     private readonly auditService: AuditService,
     private readonly cargosService: CargosService,
+    @Optional() private readonly ocrService?: OcrService,
   ) {}
+
+  async extraerDatosDocumentoOcr(
+    archivo: Express.Multer.File | undefined,
+    actorId?: string,
+    ip?: string,
+  ): Promise<OcrDocumentoPersonaResponseDto> {
+    if (!archivo) {
+      throw new BadRequestException("Debe adjuntar una imagen o PDF del documento.");
+    }
+    if (!this.ocrService) {
+      throw new ServiceUnavailableException("El servicio OCR no está disponible.");
+    }
+
+    const resultado = await this.ocrService.extraerDatos<{
+      dni?: string | null;
+      apellidoPaterno?: string | null;
+      apellidoMaterno?: string | null;
+      nombres?: string | null;
+      fechaNacimiento?: string | null;
+      sexo?: "M" | "F" | null;
+    }>({
+      archivo: {
+        contenido: archivo.buffer,
+        mimeType: archivo.mimetype as MimeTypeOcr,
+      },
+      instruccion: INSTRUCCION_OCR_DOCUMENTO_PERSONA,
+    });
+
+    await this.auditService.log({
+      ...(actorId ? { usuarioId: actorId } : {}),
+      accion: "crear",
+      tabla: "personas_ocr",
+      valorNuevo: {
+        estrategia: resultado.estrategia,
+        mimeType: archivo.mimetype,
+        bytes: archivo.size,
+      },
+      direccionIp: ip,
+    });
+
+    return {
+      dni: resultado.datos.dni ?? null,
+      apellidoPaterno: resultado.datos.apellidoPaterno ?? null,
+      apellidoMaterno: resultado.datos.apellidoMaterno ?? null,
+      nombres: resultado.datos.nombres ?? null,
+      fechaNacimiento: resultado.datos.fechaNacimiento ?? null,
+      sexo: resultado.datos.sexo ?? null,
+      estrategia: resultado.estrategia,
+    };
+  }
 
   async findAll(query?: PersonaQueryDto): Promise<PaginatedPersonasResponseDto> {
     try {

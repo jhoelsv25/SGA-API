@@ -1,6 +1,7 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Optional } from "@nestjs/common";
 import { AnioLectivoCls } from "@/common/anio-lectivo";
 import { AuditService } from "@/common/services/audit.service";
+import { OcrService } from "@/core/ocr/ocr.service";
 import { NotificacionesService } from "@/features/notificaciones/notificaciones.service";
 import type {
   ActorLibreta,
@@ -9,6 +10,7 @@ import type {
   ArchivoCarga,
   AsignacionManual,
   CandidatoLibreta,
+  CodigoOtraSeccionRow,
   LibretaSeccionRow,
 } from "./interfaces";
 import { LibretasRepository } from "./repositories";
@@ -29,6 +31,7 @@ export class LibretasService {
     private readonly auditService: AuditService,
     private readonly anioLectivo: AnioLectivoCls,
     private readonly notificacionesService: NotificacionesService,
+    @Optional() private readonly ocrService?: OcrService,
   ) {}
 
   private dependencias(): LibretasServiceDeps {
@@ -38,6 +41,7 @@ export class LibretasService {
       auditService: this.auditService,
       anioLectivo: this.anioLectivo,
       notificacionesService: this.notificacionesService,
+      ocrService: this.ocrService,
     };
   }
 
@@ -157,14 +161,15 @@ export class LibretasService {
     return parte2.contexto(this.dependencias(), this.llamadas(), actor);
   }
 
-  private armarPublicacion(
+  private async armarPublicacion(
     archivos: ArchivoCarga[],
     candidatos: CandidatoLibreta[],
     porMatricula: Map<string, LibretaSeccionRow>,
     otras: Array<{ matriculaId: string; nombreCompleto: string }>,
     manualPorNombre: Map<string, AsignacionManual>,
-  ): PublicacionLista[] {
+  ): Promise<PublicacionLista[]> {
     return parte3.armarPublicacion(
+      this.dependencias(),
       this.llamadas(),
       archivos,
       candidatos,
@@ -202,7 +207,7 @@ export class LibretasService {
 
   private candidatos(
     deSeccion: LibretaSeccionRow[],
-    otras: Array<{ matriculaId: string; codigo: string; nombreCompleto: string }>,
+    otras: CodigoOtraSeccionRow[],
   ): CandidatoLibreta[] {
     return parte4.candidatos(deSeccion, otras);
   }

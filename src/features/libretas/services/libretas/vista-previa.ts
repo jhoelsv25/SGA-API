@@ -56,6 +56,7 @@ export async function vistaPrevia(
       matriculaId: item.matriculaId,
       nombreCompleto: item.nombreCompleto,
       asignacion: item.asignacion,
+      metodoReconocimiento: item.metodoReconocimiento ?? "nombre",
       estado: item.estado,
     })),
     sinReconocer: resumen.sinReconocer,
@@ -91,7 +92,13 @@ export async function publicar(
   const candidatos = calls.candidatos(deSeccion, otras);
   const porMatricula = new Map(deSeccion.map((item) => [item.matriculaId, item]));
   const manualPorNombre = new Map(asignaciones.map((item) => [item.nombreArchivo, item]));
-  const lista = calls.armarPublicacion(archivos, candidatos, porMatricula, otras, manualPorNombre);
+  const lista = await calls.armarPublicacion(
+    archivos,
+    candidatos,
+    porMatricula,
+    otras,
+    manualPorNombre,
+  );
 
   if (lista.length === 0) {
     throw new BadRequestException(MENSAJES_LIBRETAS.SIN_ASIGNADAS);

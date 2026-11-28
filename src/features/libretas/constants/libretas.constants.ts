@@ -1,6 +1,13 @@
 export const MAX_ARCHIVOS_POR_CARGA = 50;
 export const MAX_BYTES_PDF = 5 * 1024 * 1024;
 export const CARPETA_LIBRETAS = "libretas";
+export const CONCURRENCIA_OCR_LIBRETAS = 4;
+
+export const INSTRUCCION_OCR_LIBRETA =
+  "Extrae los datos de identificación del estudiante de esta libreta o informe de progreso escolar (SIAGIE). " +
+  "Devuelve EXCLUSIVAMENTE un JSON válido sin texto adicional con las claves exactas: " +
+  '{"codigoEstudiante": string | null, "dni": string | null, "nombreCompleto": string | null}. ' +
+  "Si algún dato no aparece con claridad, devuelve null.";
 
 export const ALCANCES_LIBRETA = ["tutoria", "mis_secciones", "colegio"] as const;
 export const ESTADOS_LIBRETA = ["pendiente", "a_tiempo", "fuera_de_plazo"] as const;

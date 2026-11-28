@@ -1,5 +1,6 @@
 import { AnioLectivoCls } from "@/common/anio-lectivo";
 import { AuditService } from "@/common/services/audit.service";
+import { OcrService } from "@/core/ocr/ocr.service";
 import { NotificacionesService } from "@/features/notificaciones/notificaciones.service";
 import type {
   ActorLibreta,
@@ -8,6 +9,7 @@ import type {
   ArchivoCarga,
   AsignacionManual,
   CandidatoLibreta,
+  CodigoOtraSeccionRow,
   LibretaSeccionRow,
   PeriodoLibretaRow,
 } from "../../interfaces";
@@ -21,6 +23,7 @@ export type LibretasServiceDeps = {
   auditService: AuditService;
   anioLectivo: AnioLectivoCls;
   notificacionesService: NotificacionesService;
+  ocrService?: OcrService;
 };
 
 export type LibretasServiceCalls = {
@@ -30,7 +33,7 @@ export type LibretasServiceCalls = {
     porMatricula: Map<string, LibretaSeccionRow>,
     otras: Array<{ matriculaId: string; nombreCompleto: string }>,
     manualPorNombre: Map<string, AsignacionManual>,
-  ) => PublicacionLista[];
+  ) => Promise<PublicacionLista[]>;
   resolverElegido: (
     clasificado: ReturnType<typeof clasificarArchivo>,
     manualPorNombre: Map<string, AsignacionManual>,
@@ -38,10 +41,7 @@ export type LibretasServiceCalls = {
     otras: Array<{ matriculaId: string; nombreCompleto: string }>,
     nombreArchivo: string,
   ) => ArchivoAsignado | null;
-  candidatos: (
-    deSeccion: LibretaSeccionRow[],
-    otras: Array<{ matriculaId: string; codigo: string; nombreCompleto: string }>,
-  ) => CandidatoLibreta[];
+  candidatos: (deSeccion: LibretaSeccionRow[], otras: CodigoOtraSeccionRow[]) => CandidatoLibreta[];
   validarArchivos: (archivos: ArchivoCarga[]) => void;
   periodoDelAnio: (periodoId: string) => Promise<PeriodoLibretaRow>;
   exigirProgramacion: (periodoId: string) => Promise<void>;
