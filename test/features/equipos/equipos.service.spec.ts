@@ -1,3 +1,4 @@
+import { crearKioskoDePrueba } from "../../helpers/kiosko-firma";
 import { BadRequestException, ConflictException, UnauthorizedException } from "@nestjs/common";
 import { AuditService } from "@/common/services/audit.service";
 import { CreateEquipoDto } from "@/features/equipos/dto";
@@ -139,13 +140,21 @@ describe("EquiposService (RF-004 HU3)", () => {
   });
 
   describe("autorizar", () => {
-    it("debe autorizar el equipo, generar token y registrar auditoría (Escenario: Autorizar un equipo)", async () => {
-      const res = await service.autorizar(mockEquipo.id, "user-soporte", "192.168.1.100");
+    it("debe autorizar el equipo con la llave del navegador y registrar auditoría (Escenario: Autorizar un equipo)", async () => {
+      const { llavePublica } = crearKioskoDePrueba();
+      const res = await service.autorizar(
+        mockEquipo.id,
+        llavePublica,
+        "user-soporte",
+        "192.168.1.100",
+      );
 
       expect(res.message).toBe("Equipo autorizado. Ya puede usarse como kiosko.");
-      expect(res.tokenAutorizacion).toBeDefined();
-      expect(res.tokenAutorizacion.length).toBe(64); // 32 bytes hex
-      expect(mockRepository.authorize).toHaveBeenCalled();
+      expect(mockRepository.authorize).toHaveBeenCalledWith(
+        mockEquipo.id,
+        expect.stringMatching(/^[0-9a-f]{64}$/),
+        "user-soporte",
+      );
       expect(mockAuditService.log).toHaveBeenCalledWith(
         expect.objectContaining({
           usuarioId: "user-soporte",
@@ -158,7 +167,7 @@ describe("EquiposService (RF-004 HU3)", () => {
     it("debe rechazar autorizar si el equipo está inactivo", async () => {
       mockRepository.findById = jest.fn().mockResolvedValue({ ...mockEquipo, activo: false });
 
-      await expect(service.autorizar(mockEquipo.id, "user-soporte")).rejects.toThrow(
+      await expect(service.autorizar(mockEquipo.id, "llave", "user-soporte")).rejects.toThrow(
         BadRequestException,
       );
     });
