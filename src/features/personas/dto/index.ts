@@ -6,3 +6,4 @@ export * from "./persona-search.dto";
 export * from "./historial-correccion.dto";
 export * from "./change-cargo.dto";
 export * from "./baja-ficha.dto";
+export * from "./ocr-documento-persona.dto";

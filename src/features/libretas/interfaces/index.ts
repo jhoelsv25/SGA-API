@@ -9,7 +9,9 @@ export type {
   AsignacionManual,
   CandidatoLibreta,
   ClasificacionArchivo,
+  DatosOcrLibreta,
   EstadoLibreta,
+  MetodoReconocimientoLibreta,
 } from "./libretas.types";
 export type {
   AlcanceRolRow,

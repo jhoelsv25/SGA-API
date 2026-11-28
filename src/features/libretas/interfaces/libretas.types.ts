@@ -1,6 +1,7 @@
 export type EstadoLibreta = "pendiente" | "a_tiempo" | "fuera_de_plazo";
 export type AlcanceLibreta = "tutoria" | "mis_secciones" | "colegio";
 export type AsignacionLibreta = "automatica" | "manual";
+export type MetodoReconocimientoLibreta = "nombre" | "ocr";
 
 export interface ActorLibreta {
   id: string;
@@ -20,11 +21,19 @@ export interface AsignacionManual {
   nombreArchivo: string;
   matriculaId: string;
   motivo?: string;
+  origen?: "manual" | "ocr";
+}
+
+export interface DatosOcrLibreta {
+  codigoEstudiante?: string | null;
+  dni?: string | null;
+  nombreCompleto?: string | null;
 }
 
 export interface CandidatoLibreta {
   matriculaId: string;
   codigo: string;
+  numeroDocumento?: string | null;
   nombreCompleto: string;
   enSeccion: boolean;
   libretaId: string | null;
@@ -40,6 +49,7 @@ export interface ArchivoAsignado {
   libretaId: string;
   estado: EstadoLibreta;
   asignacion: AsignacionLibreta;
+  metodoReconocimiento?: MetodoReconocimientoLibreta;
   codigoLeido: string | null;
   usuarioEstudianteId: string | null;
   usuarioApoderadoId: string | null;

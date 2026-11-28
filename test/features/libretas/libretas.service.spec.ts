@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, ForbiddenException } from "@nestjs/common";
 import { AnioLectivoCls } from "@/common/anio-lectivo";
 import { AuditService } from "@/common/services/audit.service";
+import { OcrService } from "@/core/ocr/ocr.service";
 import { NotificacionesService } from "@/features/notificaciones/notificaciones.service";
 import {
   MENSAJES_LIBRETAS,
@@ -433,5 +434,212 @@ describe("LibretasService (RF-014)", () => {
     await expect(service.programar(PERIODO, "2027-07-26", director)).rejects.toThrow(
       ConflictException,
     );
+  });
+
+  describe("respaldo OCR en vista previa y publicación", () => {
+    let ocrMock: jest.Mocked<Pick<OcrService, "estaHabilitado" | "extraerDatos">>;
+    let serviceConOcr: LibretasService;
+
+    beforeEach(() => {
+      ocrMock = {
+        estaHabilitado: jest.fn().mockReturnValue(true),
+        extraerDatos: jest.fn(),
+      };
+      serviceConOcr = new LibretasService(
+        repository,
+        archivos,
+        audit as unknown as AuditService,
+        { id: () => ANIO } as AnioLectivoCls,
+        notificaciones as unknown as NotificacionesService,
+        ocrMock as unknown as OcrService,
+      );
+    });
+
+    it("no invoca OCR cuando el nombre del archivo ya contiene el código", async () => {
+      repository.listarDeSeccion.mockResolvedValue([fila("EST001")]);
+
+      const vista = await serviceConOcr.vistaPrevia(
+        SECCION,
+        PERIODO,
+        [pdf("libreta_EST001.pdf")],
+        docente,
+      );
+
+      expect(vista.asignadas).toHaveLength(1);
+      expect(vista.asignadas[0].metodoReconocimiento).toBe("nombre");
+      expect(ocrMock.extraerDatos).not.toHaveBeenCalled();
+    });
+
+    it("usa OCR cuando el nombre no se reconoce y empareja por DNI", async () => {
+      repository.listarDeSeccion.mockResolvedValue([
+        { ...fila("EST001"), numeroDocumento: "74125896", nombreCompleto: "Pérez García, Ana" },
+      ]);
+      ocrMock.extraerDatos.mockResolvedValue({
+        estrategia: "mistral",
+        modelo: "mistral-ocr-latest",
+        textoCrudo: "{}",
+        datos: { codigoEstudiante: null, dni: "74125896", nombreCompleto: "Ana Pérez García" },
+      });
+
+      const vista = await serviceConOcr.vistaPrevia(
+        SECCION,
+        PERIODO,
+        [pdf("scan_001.pdf")],
+        docente,
+      );
+
+      expect(ocrMock.extraerDatos).toHaveBeenCalledTimes(1);
+      expect(vista.asignadas).toEqual([
+        expect.objectContaining({
+          nombreArchivo: "scan_001.pdf",
+          matriculaId: "mat-EST001",
+          asignacion: "automatica",
+          metodoReconocimiento: "ocr",
+        }),
+      ]);
+      expect(vista.sinReconocer).toHaveLength(0);
+    });
+
+    it("empareja por nombre completo vía OCR sin importar tildes ni orden", async () => {
+      repository.listarDeSeccion.mockResolvedValue([
+        { ...fila("EST002"), nombreCompleto: "Quispe López, María Fernanda" },
+      ]);
+      ocrMock.extraerDatos.mockResolvedValue({
+        estrategia: "mistral",
+        modelo: "mistral-ocr-latest",
+        textoCrudo: "{}",
+        datos: {
+          codigoEstudiante: null,
+          dni: null,
+          nombreCompleto: "MARIA FERNANDA QUISPE LOPEZ",
+        },
+      });
+
+      const vista = await serviceConOcr.vistaPrevia(
+        SECCION,
+        PERIODO,
+        [pdf("documento.pdf")],
+        docente,
+      );
+
+      expect(vista.asignadas).toHaveLength(1);
+      expect(vista.asignadas[0].matriculaId).toBe("mat-EST002");
+    });
+
+    it("clasifica como otra_seccion si OCR identifica a un estudiante de otra sección", async () => {
+      repository.listarDeSeccion.mockResolvedValue([fila("EST001")]);
+      repository.listarCodigosOtrasSecciones.mockResolvedValue([
+        {
+          matriculaId: "mat-EST999",
+          codigo: "EST999",
+          numeroDocumento: "88776655",
+          nombreCompleto: "Rojas Díaz, Lucía",
+        },
+      ]);
+      ocrMock.extraerDatos.mockResolvedValue({
+        estrategia: "mistral",
+        modelo: "mistral-ocr-latest",
+        textoCrudo: "{}",
+        datos: { codigoEstudiante: "EST999", dni: "88776655", nombreCompleto: null },
+      });
+
+      const vista = await serviceConOcr.vistaPrevia(
+        SECCION,
+        PERIODO,
+        [pdf("sin_codigo.pdf")],
+        docente,
+      );
+
+      expect(vista.asignadas).toHaveLength(0);
+      expect(vista.otraSeccion).toHaveLength(1);
+      expect(vista.otraSeccion[0].nombreEstudiante).toBe("Rojas Díaz, Lucía");
+    });
+
+    it("deja el archivo en sinReconocer si el OCR falla, sin romper la carga", async () => {
+      repository.listarDeSeccion.mockResolvedValue([fila("EST001")]);
+      ocrMock.extraerDatos.mockRejectedValue(new Error("timeout OCR"));
+
+      const vista = await serviceConOcr.vistaPrevia(
+        SECCION,
+        PERIODO,
+        [pdf("scan_fallido.pdf")],
+        docente,
+      );
+
+      expect(vista.asignadas).toHaveLength(0);
+      expect(vista.sinReconocer).toHaveLength(1);
+    });
+
+    it("no llama a OCR si está deshabilitado", async () => {
+      ocrMock.estaHabilitado.mockReturnValue(false);
+      repository.listarDeSeccion.mockResolvedValue([fila("EST001")]);
+
+      const vista = await serviceConOcr.vistaPrevia(
+        SECCION,
+        PERIODO,
+        [pdf("scan_002.pdf")],
+        docente,
+      );
+
+      expect(ocrMock.extraerDatos).not.toHaveBeenCalled();
+      expect(vista.sinReconocer).toHaveLength(1);
+    });
+
+    it("publica correctamente un archivo reconocido por OCR sin asignación manual", async () => {
+      repository.listarDeSeccion.mockResolvedValue([
+        { ...fila("EST001"), numeroDocumento: "74125896" },
+      ]);
+      ocrMock.extraerDatos.mockResolvedValue({
+        estrategia: "mistral",
+        modelo: "mistral-ocr-latest",
+        textoCrudo: "{}",
+        datos: { codigoEstudiante: "EST001", dni: "74125896", nombreCompleto: null },
+      });
+
+      const resultado = await serviceConOcr.publicar(
+        SECCION,
+        PERIODO,
+        [pdf("scan_001.pdf")],
+        [],
+        docente,
+      );
+
+      expect(resultado.cantidad).toBe(1);
+      expect(repository.publicar).toHaveBeenCalledWith(
+        [
+          expect.objectContaining({
+            libretaId: "lib-EST001",
+            asignacion: "automatica",
+            codigoLeido: "EST001",
+          }),
+        ],
+        docente.id,
+      );
+    });
+
+    it("no repite OCR al publicar si el cliente reenvía la asignación resuelta con origen ocr", async () => {
+      repository.listarDeSeccion.mockResolvedValue([fila("EST001")]);
+
+      const resultado = await serviceConOcr.publicar(
+        SECCION,
+        PERIODO,
+        [pdf("scan_001.pdf")],
+        [{ nombreArchivo: "scan_001.pdf", matriculaId: "mat-EST001", origen: "ocr" }],
+        docente,
+      );
+
+      expect(resultado.cantidad).toBe(1);
+      expect(ocrMock.extraerDatos).not.toHaveBeenCalled();
+      expect(repository.publicar).toHaveBeenCalledWith(
+        [
+          expect.objectContaining({
+            libretaId: "lib-EST001",
+            asignacion: "automatica",
+            codigoLeido: "EST001",
+          }),
+        ],
+        docente.id,
+      );
+    });
   });
 });

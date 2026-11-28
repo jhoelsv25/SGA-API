@@ -9,22 +9,27 @@ import type {
   LibretaSeccionRow,
 } from "../../interfaces";
 import { clasificarArchivo, estaATiempo } from "../../utils";
-import type { LibretasServiceCalls } from "./deps";
+import { clasificarArchivoConOcr } from "./clasificar";
+import type { LibretasServiceCalls, LibretasServiceDeps } from "./deps";
 import { PublicacionLista } from "./shared";
 
-export function armarPublicacion(
+export async function armarPublicacion(
+  deps: LibretasServiceDeps,
   calls: LibretasServiceCalls,
   archivos: ArchivoCarga[],
   candidatos: CandidatoLibreta[],
   porMatricula: Map<string, LibretaSeccionRow>,
   otras: Array<{ matriculaId: string; nombreCompleto: string }>,
   manualPorNombre: Map<string, AsignacionManual>,
-): PublicacionLista[] {
+): Promise<PublicacionLista[]> {
   const lista: PublicacionLista[] = [];
   const estadoEnLote = new Map<string, EstadoLibreta>();
 
   for (const archivo of archivos) {
-    const clasificado = clasificarArchivo(archivo.nombre, candidatos);
+    let clasificado = clasificarArchivo(archivo.nombre, candidatos);
+    if (clasificado.tipo === "sin_reconocer" && !manualPorNombre.has(archivo.nombre)) {
+      clasificado = await clasificarArchivoConOcr(deps, archivo, candidatos, clasificado);
+    }
     const elegido = calls.resolverElegido(
       clasificado,
       manualPorNombre,
@@ -81,14 +86,16 @@ export function resolverElegido(
       nombre ? mensajeOtraSeccion(nombre) : MENSAJES_LIBRETAS.ASIGNACION_INVALIDA,
     );
   }
+  const esOcr = manual.origen === "ocr";
   return {
     nombreArchivo,
     matriculaId: estudiante.matriculaId,
     nombreCompleto: estudiante.nombreCompleto,
     libretaId: estudiante.libretaId,
     estado: estudiante.estado,
-    asignacion: "manual",
-    codigoLeido: null,
+    asignacion: esOcr ? "automatica" : "manual",
+    metodoReconocimiento: esOcr ? "ocr" : undefined,
+    codigoLeido: esOcr ? estudiante.codigo : null,
     usuarioEstudianteId: estudiante.usuarioEstudianteId,
     usuarioApoderadoId: estudiante.usuarioApoderadoId,
   };

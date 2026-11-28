@@ -11,6 +11,7 @@ export interface PeriodoLibretaRow {
 export interface LibretaSeccionRow {
   matriculaId: string;
   codigo: string;
+  numeroDocumento?: string | null;
   nombreCompleto: string;
   seccionId: string;
   libretaId: string | null;
@@ -23,6 +24,7 @@ export interface LibretaSeccionRow {
 export interface CodigoOtraSeccionRow {
   matriculaId: string;
   codigo: string;
+  numeroDocumento?: string | null;
   nombreCompleto: string;
 }
 

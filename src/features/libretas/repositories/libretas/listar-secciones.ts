@@ -57,6 +57,7 @@ export async function adjuntarUsuariosFamilia(
   rows: Array<{
     matriculaId: string;
     codigo: string;
+    numeroDocumento?: string | null;
     nombres: string;
     paterno: string;
     materno: string | null;
@@ -115,6 +116,7 @@ export async function adjuntarUsuariosFamilia(
     return {
       matriculaId: row.matriculaId,
       codigo: row.codigo,
+      numeroDocumento: row.numeroDocumento ?? null,
       nombreCompleto: nombrePersona(row.nombres, row.paterno, row.materno),
       seccionId: row.seccionId,
       libretaId: row.libretaId,
