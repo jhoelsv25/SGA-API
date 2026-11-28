@@ -25,6 +25,17 @@ async function bootstrap() {
     logger: WinstonModule.createLogger(getWinstonLoggerConfig()),
   });
   const configService = app.get(ConfigService);
+  const esProduccion = configService.get<string>("NODE_ENV") === "production";
+
+  // Confiar en el proxy inverso (Nginx/Cloudflare/Render) para IP real en rate-limit y auditoría
+  const trustProxyRaw = configService.get<string>("TRUST_PROXY")?.trim();
+  if (trustProxyRaw === "false" || trustProxyRaw === "0") {
+    app.set("trust proxy", false);
+  } else if (trustProxyRaw && /^\d+$/.test(trustProxyRaw)) {
+    app.set("trust proxy", Number(trustProxyRaw));
+  } else if (esProduccion) {
+    app.set("trust proxy", 1);
+  }
 
   // Compresión de respuestas HTTP (gzip)
   app.use(compression());
@@ -70,7 +81,6 @@ async function bootstrap() {
   app.enableCors(getCorsConfig(configService));
 
   // Documentación OpenAPI / Swagger: solo fuera de producción, salvo SWAGGER_ENABLED=true
-  const esProduccion = configService.get<string>("NODE_ENV") === "production";
   if (!esProduccion || configService.get<string>("SWAGGER_ENABLED") === "true") {
     setupSwagger(app);
   }

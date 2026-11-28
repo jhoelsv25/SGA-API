@@ -60,4 +60,10 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   async exists(key: string): Promise<number> {
     return this.getClient().exists(key);
   }
+
+  /** Guarda la clave solo si no existe (NX) con expiración en milisegundos (PX). */
+  async setIfNotExistsPx(key: string, value: string, ttlMs: number): Promise<boolean> {
+    const resultado = await this.getClient().set(key, value, "PX", ttlMs, "NX");
+    return resultado === "OK";
+  }
 }

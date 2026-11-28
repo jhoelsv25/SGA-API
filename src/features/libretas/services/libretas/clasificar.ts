@@ -119,6 +119,10 @@ export function candidatos(
   ];
 }
 
+function tieneFirmaPdf(buffer: Buffer): boolean {
+  return buffer.byteLength >= 5 && buffer.subarray(0, 5).toString("ascii") === "%PDF-";
+}
+
 export function validarArchivos(archivos: ArchivoCarga[]): void {
   if (archivos.length === 0) {
     throw new BadRequestException(MENSAJES_LIBRETAS.SIN_ARCHIVOS);
@@ -131,7 +135,8 @@ export function validarArchivos(archivos: ArchivoCarga[]): void {
       archivo.mime !== "application/pdf" ||
       !archivo.nombre.toLowerCase().endsWith(".pdf") ||
       archivo.tamanoBytes > MAX_BYTES_PDF ||
-      archivo.tamanoBytes <= 0,
+      archivo.tamanoBytes <= 0 ||
+      !tieneFirmaPdf(archivo.buffer),
   );
   if (invalido) {
     throw new BadRequestException(MENSAJES_LIBRETAS.ARCHIVO_INVALIDO);

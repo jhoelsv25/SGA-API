@@ -1,5 +1,13 @@
-import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from "@nestjs/common";
+import {
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  Logger,
+  Optional,
+  UnauthorizedException,
+} from "@nestjs/common";
 import type { Request } from "express";
+import { RedisService } from "@/core/redis/redis.service";
 import { firmaValida, TOLERANCIA_FIRMA_KIOSKO_MS } from "../utils/firma-kiosko.util";
 
 export type PeticionKiosko = Request & { llaveKiosko?: string };
@@ -7,12 +15,14 @@ export type PeticionKiosko = Request & { llaveKiosko?: string };
 const NO_AUTORIZADO = "Este equipo no está autorizado. Comuníquese con el área de TI.";
 const HORA_DESFASADA =
   "La fecha u hora de este equipo no es correcta. Corríjala y vuelva a intentar.";
+const PREFIJO_NONCE_REDIS = "kiosko:nonce:";
+const TTL_NONCE_MS = 2 * TOLERANCIA_FIRMA_KIOSKO_MS;
 
-// Nonces ya usados y hasta cuándo recordarlos. Vive en memoria: sirve con una sola instancia de la API.
+// Respaldo en memoria para tests o si Redis no está disponible temporalmente.
 const noncesUsados = new Map<string, number>();
 let proximaLimpieza = 0;
 
-function usarNonce(clave: string, ahora: number): boolean {
+function usarNonceEnMemoria(clave: string, ahora: number): boolean {
   if (ahora >= proximaLimpieza) {
     for (const [nonce, vence] of noncesUsados) {
       if (vence <= ahora) noncesUsados.delete(nonce);
@@ -21,7 +31,7 @@ function usarNonce(clave: string, ahora: number): boolean {
   }
   if ((noncesUsados.get(clave) ?? 0) > ahora) return false;
   // Una fecha puede ir adelantada hasta la tolerancia, así que sigue vigente el doble
-  noncesUsados.set(clave, ahora + 2 * TOLERANCIA_FIRMA_KIOSKO_MS);
+  noncesUsados.set(clave, ahora + TTL_NONCE_MS);
   return true;
 }
 
@@ -32,7 +42,11 @@ function usarNonce(clave: string, ahora: number): boolean {
  */
 @Injectable()
 export class FirmaKioskoGuard implements CanActivate {
-  canActivate(context: ExecutionContext): boolean {
+  private readonly logger = new Logger(FirmaKioskoGuard.name);
+
+  constructor(@Optional() private readonly redisService?: RedisService) {}
+
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const req = context.switchToHttp().getRequest<PeticionKiosko>();
     const cabecera = (nombre: string) => {
       const valor = req.headers[nombre];
@@ -61,10 +75,29 @@ export class FirmaKioskoGuard implements CanActivate {
     if (Math.abs(ahora - Number(fecha)) > TOLERANCIA_FIRMA_KIOSKO_MS) {
       throw new UnauthorizedException(HORA_DESFASADA);
     }
-    if (!usarNonce(`${llave}:${nonce}`, ahora)) {
+    if (!(await this.reservarNonce(`${llave}:${nonce}`, ahora))) {
       throw new UnauthorizedException(NO_AUTORIZADO);
     }
     req.llaveKiosko = llave;
     return true;
+  }
+
+  private async reservarNonce(clave: string, ahora: number): Promise<boolean> {
+    if (!this.redisService) {
+      return usarNonceEnMemoria(clave, ahora);
+    }
+    try {
+      return await this.redisService.setIfNotExistsPx(
+        `${PREFIJO_NONCE_REDIS}${clave}`,
+        "1",
+        TTL_NONCE_MS,
+      );
+    } catch (error) {
+      const detalle = error instanceof Error ? error.message : String(error);
+      this.logger.warn(
+        `No se pudo verificar el nonce del kiosko en Redis (${detalle}); usando respaldo en memoria.`,
+      );
+      return usarNonceEnMemoria(clave, ahora);
+    }
   }
 }
