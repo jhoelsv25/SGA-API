@@ -12,7 +12,7 @@ import type { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface
 import {
   AprobarSolicitudKioskoDto,
   EstadoSolicitudKioskoDto,
-  RegistrarSolicitudKioskoDto,
+  LlaveKioskoDto,
   SolicitudKioskoResponseDto,
 } from "./dto";
 import { SolicitudesKioskoService } from "./solicitudes-kiosko.service";
@@ -29,8 +29,8 @@ export class SolicitudesKioskoController {
   @Throttle({ long: { limit: 40, ttl: 60000 } })
   @ApiOperation({ summary: "Registrar un navegador kiosko y consultar su estado (Público)" })
   @ApiResponse({ status: 200, type: EstadoSolicitudKioskoDto })
-  registrar(@Body() dto: RegistrarSolicitudKioskoDto): Promise<EstadoSolicitudKioskoDto> {
-    return this.solicitudesService.registrar(dto.secreto);
+  registrar(@Body() dto: LlaveKioskoDto): Promise<EstadoSolicitudKioskoDto> {
+    return this.solicitudesService.registrar(dto.llavePublica);
   }
 
   @Get()

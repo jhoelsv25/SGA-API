@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, eq, ilike, isNull, sql } from "drizzle-orm";
+import { and, eq, ilike, isNull, sql, ne } from "drizzle-orm";
 import { Database, DRIZZLE } from "../../../core/database";
 import { equiposAutorizados } from "../../../core/database/schema";
 import { EquipoProposito, EquipoTipo } from "../constants";
@@ -130,6 +130,14 @@ export class EquiposRepository implements IEquiposRepository {
   }
 
   async authorize(id: string, tokenHash: string, usuarioId: string): Promise<EquipoResponseDto> {
+    // Un navegador identifica a un solo equipo: si tenía otro, ese queda sin autorizar
+    await this.db
+      .update(equiposAutorizados)
+      .set({ autorizado: false, tokenAutorizacion: null, actualizadoEn: sql`CURRENT_TIMESTAMP` })
+      .where(
+        and(eq(equiposAutorizados.tokenAutorizacion, tokenHash), ne(equiposAutorizados.id, id)),
+      );
+
     const [row] = await this.db
       .update(equiposAutorizados)
       .set({

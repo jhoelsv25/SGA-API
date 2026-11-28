@@ -14,6 +14,7 @@ import {
   SolicitudKiosko,
   SolicitudesKioskoRepository,
 } from "./repositories/solicitudes-kiosko.repository";
+import { importarLlavePublica } from "./utils/firma-kiosko.util";
 
 const TABLA = "solicitudes_kiosko";
 
@@ -38,8 +39,12 @@ export class SolicitudesKioskoService {
   }
 
   /** Registra el navegador la primera vez y, después, informa el estado de su solicitud. */
-  async registrar(secreto: string): Promise<EstadoSolicitudKioskoDto> {
-    const secretoHash = sha256(secreto);
+  async registrar(llavePublica: string): Promise<EstadoSolicitudKioskoDto> {
+    if (!importarLlavePublica(llavePublica)) {
+      throw new BadRequestException("El identificador del equipo no es válido.");
+    }
+    // En `secreto_hash` va la huella de la llave pública; la privada nunca sale del navegador
+    const secretoHash = sha256(llavePublica);
     const actual = await this.solicitudes.findBySecretoHash(secretoHash);
 
     if (!actual) {
@@ -76,7 +81,7 @@ export class SolicitudesKioskoService {
       throw new BadRequestException("No se puede autorizar un equipo desactivado.");
     }
 
-    // El secreto del navegador pasa a ser la clave del kiosko; reemplaza la clave anterior
+    // La llave del navegador pasa a identificar al kiosko; reemplaza la anterior
     await this.equipos.authorize(equipoId, solicitud.secretoHash, actorId);
     await this.solicitudes.resolver(id, ESTADO_SOLICITUD_KIOSKO.APROBADA, actorId, equipoId);
 
