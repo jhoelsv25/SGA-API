@@ -277,6 +277,59 @@ describe("RF-016: Aula Virtual - Tareas, Entregas y Calificación", () => {
       expect(res.mensaje).toBe("Tarea publicada. Se notificó a los estudiantes.");
       expect(notificaciones.enviar).toHaveBeenCalled();
     });
+
+    it("permite editar borrador con tipo y publicar: true desde actualizarTarea", async () => {
+      repo.findTarea!.mockResolvedValue(
+        tareaEjemplo({
+          estado: "borrador",
+          tipo: "trabajo",
+          fechaLimite: "2027-07-01T23:59:00Z",
+        }),
+      );
+
+      const res = await service.actualizarTarea(docente, "tar-1", {
+        titulo: "Trabajo editado",
+        tipo: "proyecto",
+        publicar: true,
+      });
+
+      expect(res.mensaje).toBe("Tarea publicada. Se notificó a los estudiantes.");
+      expect(repo.actualizarTarea).toHaveBeenCalledWith(
+        "tar-1",
+        expect.objectContaining({
+          titulo: "Trabajo editado",
+          tipo: "proyecto",
+        }),
+      );
+      expect(repo.publicarTarea).toHaveBeenCalledWith("tar-1", expect.any(String));
+      expect(notificaciones.enviar).toHaveBeenCalled();
+    });
+
+    it("ignora cambio de tipo al editar una tarea ya publicada", async () => {
+      repo.findTarea!.mockResolvedValue(
+        tareaEjemplo({
+          estado: "publicada",
+          tipo: "trabajo",
+          fechaLimite: "2027-07-01T23:59:00Z",
+        }),
+      );
+
+      const res = await service.actualizarTarea(docente, "tar-1", {
+        titulo: "Trabajo publicado editado",
+        tipo: "proyecto",
+        publicar: true,
+      });
+
+      expect(res.mensaje).toBe("Tarea actualizada.");
+      expect(repo.actualizarTarea).toHaveBeenCalledWith(
+        "tar-1",
+        expect.objectContaining({
+          titulo: "Trabajo publicado editado",
+          tipo: undefined,
+        }),
+      );
+      expect(repo.publicarTarea).not.toHaveBeenCalled();
+    });
   });
 
   describe("Entregas de Estudiante", () => {
