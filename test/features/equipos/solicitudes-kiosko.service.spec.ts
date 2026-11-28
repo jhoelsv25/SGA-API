@@ -1,3 +1,4 @@
+import { crearKioskoDePrueba } from "../../helpers/kiosko-firma";
 import { BadRequestException, HttpException } from "@nestjs/common";
 import { AuditService } from "@/common/services/audit.service";
 import { EquiposRepository } from "@/features/equipos/repositories/equipos.repository";
@@ -8,7 +9,7 @@ import {
 } from "@/features/equipos/solicitudes-kiosko.service";
 
 describe("SolicitudesKioskoService", () => {
-  const secreto = "a".repeat(64);
+  const { llavePublica } = crearKioskoDePrueba();
   const solicitud = {
     id: "solicitud-id",
     codigo: "KSK-0000-0000",
@@ -43,21 +44,21 @@ describe("SolicitudesKioskoService", () => {
     );
   });
 
-  it("entrega un código estable y no guarda el secreto en claro", async () => {
-    const primera = await service.registrar(secreto);
-    const segunda = await service.registrar(secreto);
+  it("entrega un código estable y guarda solo la huella de la llave", async () => {
+    const primera = await service.registrar(llavePublica);
+    const segunda = await service.registrar(llavePublica);
 
     expect(primera.codigo).toMatch(/^KSK-[0-9A-F]{4}-[0-9A-F]{4}$/);
     expect(segunda.codigo).toBe(primera.codigo);
     const [codigo, hash] = solicitudes.crear.mock.calls[0] as [string, string];
-    expect(hash).not.toBe(secreto);
+    expect(hash).not.toBe(llavePublica);
     expect(codigo).toBe(codigoDeEquipo(hash));
   });
 
   it("frena nuevas solicitudes al llegar al tope de pendientes", async () => {
     solicitudes.contarPendientesActivas.mockResolvedValue(20);
 
-    await expect(service.registrar(secreto)).rejects.toThrow(HttpException);
+    await expect(service.registrar(llavePublica)).rejects.toThrow(HttpException);
     expect(solicitudes.crear).not.toHaveBeenCalled();
   });
 
@@ -90,7 +91,7 @@ describe("SolicitudesKioskoService", () => {
       equipoId: "equipo-id",
     });
 
-    await expect(service.registrar(secreto)).resolves.toMatchObject({ estado: 1 });
+    await expect(service.registrar(llavePublica)).resolves.toMatchObject({ estado: 1 });
     expect(solicitudes.reabrir).toHaveBeenCalledWith("solicitud-id");
   });
 });

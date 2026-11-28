@@ -18,6 +18,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import request from "supertest";
 import { App } from "supertest/types";
 import { AppModule } from "../src/app.module";
+import { crearKioskoDePrueba } from "./helpers/kiosko-firma";
 import { Database, DRIZZLE } from "../src/core/database";
 import {
   bitacoraAuditoria,
@@ -67,7 +68,6 @@ describeSiHabilitado("Vías de marcación (e2e, base real)", () => {
   let biometricasService: MarcacionesBiometricasService;
 
   const tag = randomBytes(3).toString("hex"); // 6 caracteres
-  const tokenKiosko = `e2e-kiosko-${randomBytes(12).toString("hex")}`;
   const serieReloj = `E2E-${tag}`;
 
   let equipoKioskoId: string;
@@ -115,6 +115,8 @@ describeSiHabilitado("Vías de marcación (e2e, base real)", () => {
   const marcasDe = (personaId: string) =>
     db.select().from(marcaciones).where(eq(marcaciones.personaId, personaId));
 
+  const navegadorKiosko = crearKioskoDePrueba();
+
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = moduleRef.createNestApplication();
@@ -142,7 +144,7 @@ describeSiHabilitado("Vías de marcación (e2e, base real)", () => {
         tipo: "kiosko",
         proposito: "marcacion",
         usuariosPermitidos: "docentes",
-        tokenAutorizacion: sha256(tokenKiosko),
+        tokenAutorizacion: sha256(navegadorKiosko.llavePublica),
         autorizado: true,
       })
       .returning({ id: equiposAutorizados.id });
@@ -228,7 +230,12 @@ describeSiHabilitado("Vías de marcación (e2e, base real)", () => {
       const d = docentesCreados.qr;
       const res = await request(app.getHttpServer())
         .post("/api/marcaciones/kiosko")
-        .set("x-kiosk-token", tokenKiosko)
+        .set(
+          navegadorKiosko.cabeceras("POST", "/marcaciones/kiosko", {
+            codigo: d.codigoCredencial,
+            pin: PIN,
+          }),
+        )
         .send({ codigo: d.codigoCredencial, pin: PIN })
         .expect(200);
 
@@ -243,7 +250,12 @@ describeSiHabilitado("Vías de marcación (e2e, base real)", () => {
       const marcar = () =>
         request(app.getHttpServer())
           .post("/api/marcaciones/kiosko")
-          .set("x-kiosk-token", tokenKiosko)
+          .set(
+            navegadorKiosko.cabeceras("POST", "/marcaciones/kiosko", {
+              codigo: d.documento,
+              pin: PIN,
+            }),
+          )
           .send({ codigo: d.documento, pin: PIN })
           .expect(200);
 
@@ -270,7 +282,12 @@ describeSiHabilitado("Vías de marcación (e2e, base real)", () => {
       const d = docentesCreados.manual;
       await request(app.getHttpServer())
         .post("/api/marcaciones/kiosko")
-        .set("x-kiosk-token", tokenKiosko)
+        .set(
+          navegadorKiosko.cabeceras("POST", "/marcaciones/kiosko", {
+            codigo: d.codigoCredencial,
+            pin: "0000",
+          }),
+        )
         .send({ codigo: d.codigoCredencial, pin: "0000" })
         .expect(400);
       expect(await marcasDe(d.personaId)).toHaveLength(0);
@@ -279,7 +296,12 @@ describeSiHabilitado("Vías de marcación (e2e, base real)", () => {
     it("rechaza un equipo sin autorización", async () => {
       await request(app.getHttpServer())
         .post("/api/marcaciones/kiosko")
-        .set("x-kiosk-token", "token-que-no-existe")
+        .set(
+          crearKioskoDePrueba().cabeceras("POST", "/marcaciones/kiosko", {
+            codigo: docentesCreados.manual.codigoCredencial,
+            pin: PIN,
+          }),
+        )
         .send({ codigo: docentesCreados.manual.codigoCredencial, pin: PIN })
         .expect(401);
     });
@@ -395,7 +417,12 @@ describeSiHabilitado("Vías de marcación (e2e, base real)", () => {
       const d = docentesCreados.kioskoLuegoReloj;
       await request(app.getHttpServer())
         .post("/api/marcaciones/kiosko")
-        .set("x-kiosk-token", tokenKiosko)
+        .set(
+          navegadorKiosko.cabeceras("POST", "/marcaciones/kiosko", {
+            codigo: d.codigoCredencial,
+            pin: PIN,
+          }),
+        )
         .send({ codigo: d.codigoCredencial, pin: PIN })
         .expect(200);
       const [entrada] = await marcasDe(d.personaId);
@@ -415,7 +442,12 @@ describeSiHabilitado("Vías de marcación (e2e, base real)", () => {
 
       const res = await request(app.getHttpServer())
         .post("/api/marcaciones/kiosko")
-        .set("x-kiosk-token", tokenKiosko)
+        .set(
+          navegadorKiosko.cabeceras("POST", "/marcaciones/kiosko", {
+            codigo: d.codigoCredencial,
+            pin: PIN,
+          }),
+        )
         .send({ codigo: d.codigoCredencial, pin: PIN })
         .expect(200);
 
@@ -431,7 +463,12 @@ describeSiHabilitado("Vías de marcación (e2e, base real)", () => {
       const d = docentesCreados.atrasado;
       await request(app.getHttpServer())
         .post("/api/marcaciones/kiosko")
-        .set("x-kiosk-token", tokenKiosko)
+        .set(
+          navegadorKiosko.cabeceras("POST", "/marcaciones/kiosko", {
+            codigo: d.codigoCredencial,
+            pin: PIN,
+          }),
+        )
         .send({ codigo: d.codigoCredencial, pin: PIN })
         .expect(200);
       const [delKiosko] = await marcasDe(d.personaId);
@@ -489,7 +526,12 @@ describeSiHabilitado("Vías de marcación (e2e, base real)", () => {
 
     const res = await request(app.getHttpServer())
       .post("/api/marcaciones/kiosko")
-      .set("x-kiosk-token", tokenKiosko)
+      .set(
+        navegadorKiosko.cabeceras("POST", "/marcaciones/kiosko", {
+          codigo: d.codigoCredencial,
+          pin: PIN,
+        }),
+      )
       .send({ codigo: d.codigoCredencial, pin: PIN });
 
     expect([res.status, cuerpo<{ message?: string }>(res).message]).toEqual([200, undefined]);

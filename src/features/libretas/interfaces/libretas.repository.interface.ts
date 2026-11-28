@@ -4,6 +4,8 @@ export interface PeriodoLibretaRow {
   id: string;
   nombre: string;
   anioAcademicoId: string;
+  fechaInicio?: string;
+  fechaFin?: string;
 }
 
 export interface LibretaSeccionRow {
