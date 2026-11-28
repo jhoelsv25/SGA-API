@@ -37,6 +37,7 @@ export const MENSAJES_PLANIFICACION = {
   COMPETENCIA_OTRA_AREA: "Una competencia elegida no pertenece al área del curso.",
   DESEMPENO_NO_ENCONTRADO: "Uno de los desempeños elegidos no existe en el catálogo.",
   MOMENTOS_REPETIDOS: "Cada momento (inicio, desarrollo, cierre) solo puede aparecer una vez.",
+  SECCION_NO_VALIDA: "Solo puede agregar otras secciones suyas del mismo curso y grado.",
   COPIA_SIN_DESTINOS: "Indique al menos un destino para la copia.",
   COPIA_HECHA: (n: number) => `Planificación copiada a ${n} ${n === 1 ? "bloque" : "bloques"}.`,
   COMENTARIO_ENVIADO: "Comentario enviado al docente.",

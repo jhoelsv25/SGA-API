@@ -27,6 +27,7 @@ import {
   hayMomentosRepetidos,
   lunesDe,
   sumarDiasFecha,
+  type DatosSesion,
 } from "../utils";
 
 /** Planificación de la sesión de aprendizaje a cargo del docente (RF-024, HU2 a HU5). */
@@ -87,6 +88,13 @@ export class PlanificacionSesionesService {
           a.fecha.localeCompare(b.fecha) || a.bloque.horaInicio.localeCompare(b.bloque.horaInicio),
       );
     return { desde: lunes, hasta: viernes, bloques: dias };
+  }
+
+  /** Lo que se propone en una sesión nueva: coordinador y acuerdos de la anterior. */
+  async predeterminados(actor: ActorPlanificacion) {
+    const docenteId = await this.docenteDe(actor);
+    const ultimos = await this.repository.ultimosDatosDeDocente(docenteId);
+    return ultimos ?? { coordinador: null, acuerdos: [] };
   }
 
   /** Todas mis planificaciones, pasadas y futuras, en un rango de fechas. */
@@ -217,6 +225,13 @@ export class PlanificacionSesionesService {
         enfoques: origen.enfoques,
         materiales: origen.materiales,
         referencias: origen.referencias,
+        producto: origen.producto,
+        coordinador: origen.coordinador,
+        acuerdos: origen.acuerdos,
+        mapaVisual: origen.mapaVisual,
+        seccionesAdicionales: (origen.seccionesAdicionales ?? []).filter(
+          (s) => s !== bloque.cursoSeccionId,
+        ),
         estado: "borrador",
         copiadaDeId: id,
         competencias: competencias.map(({ orden: _orden, ...c }) => c),
@@ -228,7 +243,7 @@ export class PlanificacionSesionesService {
     return { mensaje: MENSAJES_PLANIFICACION.COPIA_HECHA(dto.destinos.length) };
   }
 
-  /** Vista previa del documento con el modelo estándar (HU4). */
+  /** Vista previa del documento con el modelo del colegio (HU4). */
   async documento(id: string, actor: ActorPlanificacion) {
     const completa = await this.obtener(id, actor);
     return await this.armarDocumento(completa);
@@ -245,32 +260,60 @@ export class PlanificacionSesionesService {
     return await generarSesionDocx(doc);
   }
 
-  async armarDocumento(p: PlanificacionCompleta) {
-    const [colegio, opciones, transversales, enfoques] = await Promise.all([
+  async armarDocumento(p: PlanificacionCompleta): Promise<DatosSesion> {
+    const [colegio, lema, periodo, propios, opciones, transversales, enfoques] = await Promise.all([
       this.institucion.get().catch(() => null),
+      this.repository.lemaAnual(),
+      this.repository.periodoDeFecha(p.fecha),
+      this.repository.bloquesDeDocente(p.docenteId),
       this.repository.opciones("instrumento_evaluacion"),
       this.repository.competenciasPorIds(
         (p.competenciasTransversales as { competenciaId: string }[]).map((t) => t.competenciaId),
       ),
       this.repository.enfoques(),
     ]);
+    // La sección del bloque y las adicionales, con la fecha en que cada una tiene clase esa semana
+    const adicionales = propios.filter(
+      (b) => p.seccionesAdicionales.includes(b.cursoSeccionId) && mismoCurso(b, p.bloque),
+    );
+    const secciones = [
+      ...new Map(
+        [p.bloque, ...adicionales].map((b) => [b.cursoSeccionId, b.seccionNombre]),
+      ).entries(),
+    ].sort((a, b) => a[1].localeCompare(b[1]));
+    const lunes = lunesDe(p.fecha);
+    const fechas = [p.fecha, ...adicionales.map((b) => sumarDiasFecha(lunes, b.diaSemana - 1))];
+    fechas.sort();
+    const instrumento =
+      opciones.find((o) => o.codigo === p.instrumentoCodigo)?.nombre ?? p.instrumentoCodigo;
+    const alumnos = esListaDeCotejo(instrumento)
+      ? await this.repository.estudiantesDeCursosSeccion(secciones.map(([id]) => id))
+      : [];
     const materiales = p.materiales as Record<string, string[] | undefined>;
     return {
+      lema,
       institucion: colegio?.nombre ?? "I.E.",
-      director: colegio?.director ?? "—",
       docente: p.docenteNombre,
-      gradoSeccion: `${p.bloque.gradoNombre} / ${p.bloque.seccionNombre}`,
+      coordinador: p.coordinador,
       area: p.bloque.cursoNombre,
-      fecha: p.fecha,
-      numero: p.numero,
+      bimestre: periodo ? nombreBimestre(periodo.nombre) : null,
       unidad: p.unidad,
+      nivelGrado: nivelGrado(p.bloque.gradoNombre),
+      fechaInicio: fechas[0],
+      fechaFin: fechas[fechas.length - 1],
+      secciones: secciones.map(([, nombre]) => nombre),
+      duracionMin: duracionBloqueMin(p.bloque.horaInicio, p.bloque.horaFin),
+      numero: p.numero,
       titulo: p.titulo,
       proposito: p.proposito,
       competencias: p.competencias,
-      evidencia: p.evidencia,
-      criterios: p.criterios,
-      instrumento:
-        opciones.find((o) => o.codigo === p.instrumentoCodigo)?.nombre ?? p.instrumentoCodigo,
+      enfoques: (p.enfoques as { enfoqueId: string; valores: string[]; acciones: string[] }[]).map(
+        (e) => ({
+          enfoque: enfoques.find((x) => x.id === e.enfoqueId)?.nombre ?? "—",
+          valores: e.valores,
+          acciones: e.acciones,
+        }),
+      ),
       transversales: (
         p.competenciasTransversales as {
           competenciaId: string;
@@ -280,22 +323,32 @@ export class PlanificacionSesionesService {
       ).map((t) => ({
         competencia: transversales.find((x) => x.id === t.competenciaId)?.nombre ?? "—",
         capacidades: t.capacidades,
-        desempeno: t.desempeno ?? null,
+        actividad: t.desempeno ?? null,
       })),
-      enfoques: (p.enfoques as { enfoqueId: string; valores: string[]; acciones: string[] }[]).map(
-        (e) => ({
-          enfoque: enfoques.find((x) => x.id === e.enfoqueId)?.nombre ?? "—",
-          valores: e.valores,
-          acciones: e.acciones,
-        }),
-      ),
-      materiales: {
-        impresos: materiales.impresos ?? [],
-        manipulativos: materiales.manipulativos ?? [],
-        digitales: materiales.digitales ?? [],
-      },
       momentos: p.momentos,
-      referencias: p.referencias,
+      mapaVisual: p.mapaVisual,
+      criterios: p.criterios,
+      evidencia: p.evidencia,
+      producto: p.producto,
+      instrumento,
+      acuerdos: p.acuerdos,
+      materiales: {
+        // Lo escrito con el formato anterior (impresos, manipulativos, digitales) se conserva aquí
+        recursos: [
+          ...(materiales.impresos ?? []),
+          ...(materiales.manipulativos ?? []),
+          ...(materiales.digitales ?? []),
+          ...(materiales.recursos ?? []),
+        ],
+        comunidad: materiales.comunidad ?? [],
+      },
+      listasCotejo:
+        esListaDeCotejo(instrumento) && p.criterios.length > 0
+          ? secciones.map(([id, seccion]) => ({
+              seccion,
+              estudiantes: alumnos.filter((a) => a.cursoSeccionId === id).map((a) => a.nombre),
+            }))
+          : [],
       borrador: p.estado === "borrador",
     };
   }
@@ -335,6 +388,24 @@ export class PlanificacionSesionesService {
       throw new BadRequestException(MENSAJES_PLANIFICACION.DIA_NO_COINCIDE);
     }
     return bloque;
+  }
+
+  /** Solo valen otras secciones que el docente tenga en el mismo curso y grado. */
+  private async validarSecciones(
+    ids: string[],
+    docenteId: string,
+    bloque: BloqueDocente,
+  ): Promise<string[]> {
+    const pedidas = [...new Set(ids)].filter((id) => id !== bloque.cursoSeccionId);
+    if (pedidas.length === 0) return [];
+    const propios = await this.repository.bloquesDeDocente(docenteId);
+    const validas = new Set(
+      propios.filter((b) => mismoCurso(b, bloque)).map((b) => b.cursoSeccionId),
+    );
+    if (pedidas.some((id) => !validas.has(id))) {
+      throw new BadRequestException(MENSAJES_PLANIFICACION.SECCION_NO_VALIDA);
+    }
+    return pedidas;
   }
 
   private async exigirBimestreAbierto(fecha: string): Promise<void> {
@@ -389,6 +460,12 @@ export class PlanificacionSesionesService {
       }
     }
 
+    const seccionesAdicionales = await this.validarSecciones(
+      dto.seccionesAdicionales ?? [],
+      docenteId,
+      bloque,
+    );
+
     return {
       docenteId,
       cursoSeccionId: bloque.cursoSeccionId,
@@ -405,6 +482,13 @@ export class PlanificacionSesionesService {
       enfoques: dto.enfoques ?? [],
       materiales: { ...(dto.materiales ?? {}) },
       referencias: (dto.referencias ?? []).map((r) => r.trim()).filter(Boolean),
+      producto: dto.producto?.trim() || null,
+      coordinador: dto.coordinador?.trim() || null,
+      acuerdos: (dto.acuerdos ?? []).map((a) => a.trim()).filter(Boolean),
+      mapaVisual: (dto.mapaVisual ?? [])
+        .map((c) => ({ concepto: c.concepto.trim(), definicion: c.definicion.trim() }))
+        .filter((c) => c.concepto || c.definicion),
+      seccionesAdicionales,
       estado,
       copiadaDeId,
       competencias: compDto.map((c) => ({
@@ -426,6 +510,18 @@ export class PlanificacionSesionesService {
     };
   }
 }
+
+const mismoCurso = (a: BloqueDocente, b: BloqueDocente) =>
+  a.cursoNombre === b.cursoNombre && a.gradoNumero === b.gradoNumero;
+
+const esListaDeCotejo = (instrumento: string | null) => /lista de cotejo/i.test(instrumento ?? "");
+
+/** El periodo puede llamarse solo «IV»: el documento dice «IV Bimestre». */
+const nombreBimestre = (nombre: string) =>
+  /bimestre/i.test(nombre) ? nombre : `${nombre} Bimestre`;
+
+/** «1.° de secundaria» ya dice el nivel: no se repite. */
+const nivelGrado = (grado: string) => `Secundaria - ${grado.replace(/\s*de secundaria$/i, "")}`;
 
 /** Rango por defecto: 60 días atrás a 30 días adelante. */
 export function rangoDe(query: { desde?: string; hasta?: string }): {

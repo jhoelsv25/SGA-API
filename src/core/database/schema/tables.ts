@@ -3282,6 +3282,11 @@ export const planificacionesSesion = pgTable(
     enfoques: jsonb().default([]).notNull(),
     materiales: jsonb().default({}).notNull(),
     referencias: jsonb().default([]).notNull(),
+    producto: text(),
+    coordinador: varchar({ length: 150 }),
+    acuerdos: jsonb().default([]).notNull(),
+    mapaVisual: jsonb("mapa_visual").default([]).notNull(),
+    seccionesAdicionales: jsonb("secciones_adicionales").default([]).notNull(),
     estado: varchar({ length: 12 }).default("borrador").notNull(),
     copiadaDeId: uuid("copiada_de_id"),
     creadoEn: timestamp("creado_en", { precision: 0, mode: "string" })
