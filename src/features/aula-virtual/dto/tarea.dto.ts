@@ -185,6 +185,11 @@ export class ActualizarTareaDto {
   @MaxLength(2000)
   instrucciones?: string;
 
+  @ApiPropertyOptional({ enum: TIPOS_TAREA })
+  @IsOptional()
+  @IsIn(TIPOS_TAREA, { message: "Seleccione un tipo de tarea válido." })
+  tipo?: TipoTarea;
+
   @ApiPropertyOptional({ description: "Unidad de aprendizaje a la que pertenece." })
   @IsOptional()
   @IsUUID("4", { message: "La unidad no es válida." })
@@ -228,6 +233,11 @@ export class ActualizarTareaDto {
   @IsString()
   @MaxLength(100)
   tiposArchivo?: string;
+
+  @ApiPropertyOptional({ description: "Publicar inmediatamente al guardar cambios." })
+  @IsOptional()
+  @IsBoolean()
+  publicar?: boolean;
 
   @ApiPropertyOptional({ type: () => [CrearPreguntaDto] })
   @IsOptional()

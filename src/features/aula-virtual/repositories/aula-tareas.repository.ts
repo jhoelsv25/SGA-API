@@ -28,7 +28,9 @@ export class AulaTareasRepository {
     opciones: { soloPublicadas?: boolean; unidadId?: string; periodoId?: string },
   ): Promise<TareaFila[]> {
     const condiciones = [eq(tareas.cursoSeccionId, cursoSeccionId)];
-    if (opciones.soloPublicadas) condiciones.push(eq(tareas.estado, "publicada"));
+    if (opciones.soloPublicadas) {
+      condiciones.push(inArray(tareas.estado, ["publicada", "cerrada"]));
+    }
     if (opciones.unidadId) condiciones.push(eq(tareas.unidadId, opciones.unidadId));
     if (opciones.periodoId) condiciones.push(eq(tareas.periodoId, opciones.periodoId));
 
@@ -133,6 +135,7 @@ export class AulaTareasRepository {
     const updates: Record<string, unknown> = { actualizadoEn: sql`CURRENT_TIMESTAMP` };
     if (datos.titulo !== undefined) updates.titulo = datos.titulo;
     if (datos.instrucciones !== undefined) updates.instrucciones = datos.instrucciones;
+    if (datos.tipo !== undefined) updates.tipo = datos.tipo;
     if (datos.fechaLimite !== undefined) updates.fechaLimite = datos.fechaLimite;
     if (datos.permiteEntregaTardia !== undefined) {
       updates.permiteEntregaTardia = datos.permiteEntregaTardia;

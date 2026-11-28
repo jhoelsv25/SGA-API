@@ -43,6 +43,9 @@ async function bootstrap() {
   // Seguridad HTTP Headers
   app.use(helmet());
 
+  // Configuración modular de CORS (debe registrarse antes de CSRF y middlewares que puedan rechazar)
+  app.enableCors(getCorsConfig(configService));
+
   // Parser de cookies (para HttpOnly cookies de autenticación)
   app.use(cookieParser());
 
@@ -76,9 +79,6 @@ async function bootstrap() {
 
   // Interceptor global para trazabilidad y auditoría de peticiones HTTP
   app.useGlobalInterceptors(new LoggingInterceptor());
-
-  // Configuración modular de CORS
-  app.enableCors(getCorsConfig(configService));
 
   // Documentación OpenAPI / Swagger: solo fuera de producción, salvo SWAGGER_ENABLED=true
   if (!esProduccion || configService.get<string>("SWAGGER_ENABLED") === "true") {

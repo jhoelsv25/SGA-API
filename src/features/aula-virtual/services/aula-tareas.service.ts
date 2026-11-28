@@ -168,9 +168,36 @@ export class AulaTareasService {
       throw new BadRequestException("La tarea está cerrada y no se puede modificar.");
     }
 
+    const tipoEfectivo = tarea.estado === "borrador" && dto.tipo ? dto.tipo : tarea.tipo;
+    const fechaLimiteEfectiva = dto.fechaLimite ?? tarea.fechaLimite;
+    const debePublicar = Boolean(dto.publicar && tarea.estado === "borrador");
+
+    if (debePublicar) {
+      const preguntasValidar = dto.preguntas
+        ? dto.preguntas.map((p, idx) => ({
+            id: p.id ?? `temp-${idx}`,
+            tipo: p.tipo,
+            puntaje: p.puntaje,
+            enunciado: p.enunciado,
+            orden: p.orden,
+            opciones: p.opciones,
+          }))
+        : tarea.preguntas;
+      const val = validarPublicacionTarea(
+        {
+          tipo: tipoEfectivo,
+          fechaLimite: fechaLimiteEfectiva,
+          preguntas: preguntasValidar,
+        },
+        new Date().toISOString(),
+      );
+      if (!val.valida) throw new BadRequestException(val.error);
+    }
+
     const actualizada = await this.repository.actualizarTarea(tareaId, {
       titulo: dto.titulo?.trim(),
       instrucciones: dto.instrucciones?.trim(),
+      tipo: tarea.estado === "borrador" ? dto.tipo : undefined,
       unidadId: dto.unidadId,
       fechaLimite: dto.fechaLimite,
       permiteEntregaTardia: dto.permiteEntregaTardia,
@@ -183,6 +210,23 @@ export class AulaTareasService {
 
     if (dto.preguntas) {
       await this.repository.guardarPreguntasTarea(tareaId, this.mapearPreguntas(dto.preguntas));
+    }
+
+    if (debePublicar) {
+      const publicada = await this.repository.publicarTarea(tareaId, new Date().toISOString());
+      await this.avisarAEstudiantesTarea(curso, publicada);
+      await this.ctx.auditar(
+        "actualizar",
+        "tareas",
+        tareaId,
+        usuario.id,
+        { estado: tarea.estado },
+        { estado: "publicada", titulo: publicada.titulo },
+      );
+      return {
+        mensaje: MENSAJES_TAREA.PUBLICADA,
+        tarea: await this.armarTarea(publicada, usuario),
+      };
     }
 
     await this.ctx.auditar("actualizar", "tareas", tareaId, usuario.id, null, {
