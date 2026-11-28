@@ -53,11 +53,12 @@ describe("LibretasService (RF-014)", () => {
   const pdf = (
     nombre: string,
     bytes = 100,
+    buffer: Buffer = Buffer.from("%PDF-1.4\n"),
   ): { nombre: string; mime: string; tamanoBytes: number; buffer: Buffer } => ({
     nombre,
     mime: "application/pdf",
     tamanoBytes: bytes,
-    buffer: Buffer.from("pdf"),
+    buffer,
   });
 
   const fila = (
@@ -229,6 +230,14 @@ describe("LibretasService (RF-014)", () => {
     ).rejects.toThrow(new BadRequestException(MENSAJES_LIBRETAS.ARCHIVO_INVALIDO));
     await expect(
       service.vistaPrevia(SECCION, PERIODO, [pdf("grande.pdf", 8 * 1024 * 1024)], docente),
+    ).rejects.toThrow(MENSAJES_LIBRETAS.ARCHIVO_INVALIDO);
+    await expect(
+      service.vistaPrevia(
+        SECCION,
+        PERIODO,
+        [pdf("falso.pdf", 100, Buffer.from("<html>no es pdf</html>"))],
+        docente,
+      ),
     ).rejects.toThrow(MENSAJES_LIBRETAS.ARCHIVO_INVALIDO);
   });
 
