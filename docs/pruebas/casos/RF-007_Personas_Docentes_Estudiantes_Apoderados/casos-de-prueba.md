@@ -1,6 +1,6 @@
 # Casos de prueba — RF-007: Personas — Docentes, Estudiantes y Apoderados
 
-**Fuente:** [`RF-007` V4](../../../requerimientos/RF-007_Personas_Docentes_Estudiantes_Apoderados/V6/RF-007_Personas_Docentes_Estudiantes_Apoderados.md) · **Total de casos:** 50 · **Nuevos en V4:** 9 · **Nuevos en V3:** 11
+**Fuente:** [`RF-007` V7](../../../requerimientos/RF-007_Personas_Docentes_Estudiantes_Apoderados/V7/RF-007_Personas_Docentes_Estudiantes_Apoderados.md) · **Total de casos:** 56 · **Nuevos en V4:** 9 · **Nuevos en V3:** 11
 
 > Generados desde los escenarios Gherkin de la V3.0 (acuerdos con el colegio 2026-10-08). Los IDs de la V1 y V2 se conservan; los casos marcados `(v3.0)` son nuevos o adaptados a la nueva versión (rol, persona provisional, cruce por documento, cargo vigente automático y corrección de datos críticos con justificación).
 
@@ -57,6 +57,12 @@
 | CP-RF007-49 | HU3 | Plantilla estándar con listas y datos completos (v4.0) | que estoy en "Importar" de cualquier ficha                                                                                                                             | descargo y abro la plantilla                                                                                           | veo las hojas Datos, Instrucciones y Listas, obligatorios con *, listas desplegables, fechas con formato y los mismos datos de la persona en las 4 plantillas.                                                                                    | Back + Front |
 | CP-RF007-50 | HU3 | Fila con un valor fuera de lo permitido (v4.0)         | que subo una fila sin sexo, con contrato inválido o sin fecha de ingreso                                                                                               | el sistema arma la vista previa                                                                                        | marca la fila con error y el motivo, sin corregirla ni importarla.                                                                                                                                                                                | Back + Front |
 | CP-RF007-51 | HU3 | Reporte Excel estándar del padrón (v4.0)               | que filtré el listado de personas, estudiantes, docentes, apoderados o usuarios                                                                                        | pulso «Exportar Excel»                                                                                                 | descargo `sga_<módulo>_<fecha>.xlsx` con TODAS las filas del filtro (no solo la página), hoja «Reporte» con las columnas de la plantilla y hoja «Información» con institución, filtros, quién y cuándo lo generó                                  | Back + Front |
+| CP-RF007-52 | HU8 | Buscar en todos los grupos (v7.0) | que soy Soporte TI o Administrador | escribo al menos 3 caracteres del documento o de los nombres, con o sin tildes | veo hasta 20 personas de cualquier grupo, con su documento y sus grupos. | — |
+| CP-RF007-53 | HU8 | Ver los accesos de una persona (v7.0) | que elijo una persona en la búsqueda | se abre su ficha | veo si tiene PIN, carné activo, código biométrico y cuenta web. | — |
+| CP-RF007-54 | HU8 | Emitir carné desde Soporte TI (v7.0) | que soy Soporte TI | emito un carné nuevo indicando el motivo | se anula el anterior y veo una sola vez el código y el PIN nuevos. | — |
+| CP-RF007-55 | HU8 | Restablecer una contraseña (v7.0) | que soy Soporte TI y la cuenta no es de un Administrador | restablezco su contraseña | se genera la clave, se cierran sus sesiones y queda en la bitácora. | — |
+| CP-RF007-56 | HU8 | Contraseña de un Administrador (v7.0) | que soy Soporte TI y la cuenta es de un Administrador | intento restablecer su contraseña | el sistema muestra "Solo un Administrador puede cambiar la contraseña de un Administrador." y no la cambia. | — |
+| CP-RF007-57 | HU8 | Acceso restringido (v7.0) | que mi rol no es Administrador ni Soporte TI | intento usar la búsqueda de accesos | el sistema lo rechaza. | — |
 
 ## Casos de la versión 6.0 (2026-11-26)
 

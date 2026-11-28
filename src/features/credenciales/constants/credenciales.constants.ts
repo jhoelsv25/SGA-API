@@ -17,5 +17,10 @@ export const ROLES_EMISION_CARNES = [
   "Subdirector",
 ] as const;
 
+/** RF-007 V7: pantalla «Accesos y credenciales». */
+export const ROLES_ACCESOS = ["Administrador", "Soporte TI"] as const;
+
+export const ROLES_REEMISION = ["Administrador", "Secretaria", "Soporte TI"] as const;
+
 /** RF-007: solo TI cambia el PIN de marcación; nadie cambia el suyo desde su cuenta. */
 export const ROLES_CAMBIO_PIN = ["Soporte TI"] as const;
