@@ -15,7 +15,7 @@ import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagg
 import { ClientInfo, type ClientInfoData, CurrentUser, Roles } from "../../common/decorators";
 import type { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface";
 import { CambiarPinDto, CarneDatosDto, CredencialResponseDto, ReemitirCredencialDto } from "./dto";
-import { ROLES_CAMBIO_PIN, ROLES_EMISION_CARNES } from "./constants";
+import { ROLES_CAMBIO_PIN, ROLES_EMISION_CARNES, ROLES_REEMISION } from "./constants";
 import { CredencialesService } from "./credenciales.service";
 import { exigirAccesoACredencial } from "./utils/acceso-credencial.util";
 
@@ -26,7 +26,7 @@ export class CredencialesController {
   constructor(private readonly credencialesService: CredencialesService) {}
 
   @Post("reemitir")
-  @Roles("Administrador", "Secretaria")
+  @Roles(...ROLES_REEMISION)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: "Anular credencial anterior por pérdida/deterioro y emitir una nueva",

@@ -1,6 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
+import { and, eq, exists, or } from "drizzle-orm";
 import { Database, DRIZZLE } from "../../../core/database";
-import { personas, roles, usuarios } from "../../../core/database/schema";
+import { personas, roles, usuarioRoles, usuarios } from "../../../core/database/schema";
 import {
   PaginatedUsersResponseDto,
   UserPersonaDto,
@@ -117,6 +118,34 @@ export class UsersRepository implements IUsersRepository {
 
   async findEligiblePersonas(search?: string): Promise<UserPersonaDto[]> {
     return parte2.findEligiblePersonas(this.dependencias(), search);
+  }
+
+  /** Tiene el rol Administrador, como principal o adicional vigente. */
+  async esAdministrador(userId: string): Promise<boolean> {
+    const filas = await this.db
+      .select({ id: usuarios.id })
+      .from(usuarios)
+      .innerJoin(
+        roles,
+        or(
+          eq(roles.id, usuarios.rolId),
+          exists(
+            this.db
+              .select({ id: usuarioRoles.id })
+              .from(usuarioRoles)
+              .where(
+                and(
+                  eq(usuarioRoles.usuarioId, usuarios.id),
+                  eq(usuarioRoles.rolId, roles.id),
+                  eq(usuarioRoles.vigente, true),
+                ),
+              ),
+          ),
+        ),
+      )
+      .where(and(eq(usuarios.id, userId), eq(roles.nombre, "Administrador")))
+      .limit(1);
+    return filas.length > 0;
   }
 
   async closeAllUserSessions(userId: string): Promise<void> {

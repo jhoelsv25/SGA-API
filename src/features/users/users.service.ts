@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -292,8 +293,15 @@ export class UsersService {
     actorId: string,
     ip?: string,
     dto: ResetPasswordDto = {},
+    actorEsAdministrador = false,
   ): Promise<TempPasswordResetResponseDto> {
     await this.findUserById(id);
+    // RF-007 V7: Soporte TI restablece cualquier cuenta, menos las de un Administrador
+    if (!actorEsAdministrador && (await this.usersRepository.esAdministrador(id))) {
+      throw new ForbiddenException(
+        "Solo un Administrador puede cambiar la contraseña de un Administrador.",
+      );
+    }
 
     // Contraseña escrita por el administrador (validada con la política) o generada
     const manual = dto.contrasena !== undefined && dto.contrasena !== "";

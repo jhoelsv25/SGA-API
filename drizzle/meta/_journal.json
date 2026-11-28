@@ -281,6 +281,13 @@
       "when": 1795660257916,
       "tag": "0040_rf024_v2_formato_sesion",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1795660257917,
+      "tag": "0041_rf007_v7_menu_accesos",
+      "breakpoints": true
     }
   ]
 }

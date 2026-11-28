@@ -1,4 +1,9 @@
-import { BadRequestException, ConflictException, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ForbiddenException,
+  ConflictException,
+  NotFoundException,
+} from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { AuditService } from "@/common/services/audit.service";
 import { DRIZZLE } from "@/core/database";
@@ -71,6 +76,7 @@ describe("UsersService (RF-002: HU 1)", () => {
       retireRole: jest.fn(),
       findUsers: jest.fn(),
       closeAllUserSessions: jest.fn().mockResolvedValue(undefined),
+      esAdministrador: jest.fn().mockResolvedValue(false),
     };
 
     const mockRolesRepo = {
@@ -448,6 +454,26 @@ describe("UsersService (RF-002: HU 1)", () => {
   });
 
   describe("resetPassword()", () => {
+    it("quien no es Administrador no cambia la clave de un Administrador (RF-007 V7)", async () => {
+      usersRepository.findUserById.mockResolvedValue(dummyUser);
+      usersRepository.esAdministrador.mockResolvedValue(true);
+
+      await expect(service.resetPassword(dummyUser.id, currentAdmin.id)).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(usersRepository.update).not.toHaveBeenCalled();
+    });
+
+    it("un Administrador sí puede cambiar la de otro Administrador", async () => {
+      usersRepository.findUserById.mockResolvedValue(dummyUser);
+      usersRepository.update.mockResolvedValue(dummyUser);
+      usersRepository.esAdministrador.mockResolvedValue(true);
+
+      await expect(
+        service.resetPassword(dummyUser.id, currentAdmin.id, undefined, {}, true),
+      ).resolves.toHaveProperty("tempPassword");
+    });
+
     it("should generate new temp password, set mustChangePassword and close sessions (Escenario: Restablecer la contraseña)", async () => {
       // Arrange
       usersRepository.findUserById.mockResolvedValue(dummyUser);

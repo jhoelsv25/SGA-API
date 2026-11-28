@@ -192,6 +192,7 @@ export class UsersController {
   }
 
   @Post(":id/reset-password")
+  @Roles("Administrador", "Soporte TI")
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary:
@@ -204,6 +205,7 @@ export class UsersController {
     @CurrentUser() user: AuthenticatedUser,
     @ClientInfo() client: ClientInfoData,
   ): Promise<TempPasswordResetResponseDto> {
-    return this.usersService.resetPassword(id, user.id, client.ip, dto);
+    const esAdministrador = user.role === "Administrador";
+    return this.usersService.resetPassword(id, user.id, client.ip, dto, esAdministrador);
   }
 }
