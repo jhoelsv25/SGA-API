@@ -65,13 +65,13 @@
 
 ### Resumen de avance
 
-| Concepto              | Valor                                                                                       |
-| --------------------- | ------------------------------------------------------------------------------------------- |
-| RF redactados | 25 / 25 |
-| RF con pendientes | 12 (RF-002, RF-004, RF-010, RF-011, RF-013, RF-014, RF-019, RF-020, RF-021, RF-022, RF-023, RF-025) |
-| RF completados | 15 / 25 |
-| Avance promedio Back | 98 % |
-| Avance promedio Front | 86 % (ahora incluye RF-024, en 0 %; sin él, 90 %) |
+| Concepto              | Valor                                                                                               |
+| --------------------- | --------------------------------------------------------------------------------------------------- |
+| RF redactados         | 25 / 25                                                                                             |
+| RF con pendientes     | 12 (RF-002, RF-004, RF-010, RF-011, RF-013, RF-014, RF-019, RF-020, RF-021, RF-022, RF-023, RF-025) |
+| RF completados        | 15 / 25                                                                                             |
+| Avance promedio Back  | 98 %                                                                                                |
+| Avance promedio Front | 86 % (ahora incluye RF-024, en 0 %; sin él, 90 %)                                                   |
 
 ---
 

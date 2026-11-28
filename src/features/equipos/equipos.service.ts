@@ -15,6 +15,7 @@ import {
   ValidarEquipoResponseDto,
 } from "./dto";
 import { EquiposRepository } from "./repositories/equipos.repository";
+import { importarLlavePublica } from "./utils/firma-kiosko.util";
 
 @Injectable()
 export class EquiposService {
@@ -155,16 +156,23 @@ export class EquiposService {
     return updated;
   }
 
-  async autorizar(id: string, actorId: string, ip?: string): Promise<AutorizarEquipoResponseDto> {
+  async autorizar(
+    id: string,
+    llavePublica: string,
+    actorId: string,
+    ip?: string,
+  ): Promise<AutorizarEquipoResponseDto> {
     const current = await this.findById(id);
 
     if (!current.activo) {
       throw new BadRequestException("No se puede autorizar un equipo desactivado.");
     }
 
-    // Generar clave secreta criptográfica para la terminal
-    const rawToken = crypto.randomBytes(32).toString("hex");
-    const tokenHash = this.hashToken(rawToken);
+    if (!importarLlavePublica(llavePublica)) {
+      throw new BadRequestException("El identificador del equipo no es válido.");
+    }
+    // Solo se guarda la huella de la llave pública
+    const tokenHash = this.hashToken(llavePublica);
 
     const updated = await this.equiposRepository.authorize(id, tokenHash, actorId);
 
@@ -183,7 +191,6 @@ export class EquiposService {
 
     return {
       message: "Equipo autorizado. Ya puede usarse como kiosko.",
-      tokenAutorizacion: rawToken,
       equipo: updated,
     };
   }

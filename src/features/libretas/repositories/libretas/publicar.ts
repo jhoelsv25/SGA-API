@@ -305,6 +305,8 @@ export async function listarPeriodos(
       id: periodosAcademicos.id,
       nombre: periodosAcademicos.nombre,
       anioAcademicoId: periodosAcademicos.anioAcademicoId,
+      fechaInicio: periodosAcademicos.fechaInicio,
+      fechaFin: periodosAcademicos.fechaFin,
     })
     .from(periodosAcademicos)
     .where(eq(periodosAcademicos.anioAcademicoId, anioId))

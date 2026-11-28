@@ -2,7 +2,6 @@ import {
   Body,
   Controller,
   Get,
-  Headers,
   HttpCode,
   Param,
   ParseUUIDPipe,
@@ -10,14 +9,7 @@ import {
   Post,
   Query,
 } from "@nestjs/common";
-import {
-  ApiBearerAuth,
-  ApiHeader,
-  ApiOperation,
-  ApiParam,
-  ApiResponse,
-  ApiTags,
-} from "@nestjs/swagger";
+import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { Throttle } from "@nestjs/throttler";
 import {
   MENU_JUSTIFICACIONES_SESION,
@@ -56,9 +48,8 @@ import {
   SugerirTemaResponseDto,
   TemaSesionDto,
 } from "./dto";
+import { FirmadoPorKiosko, LlaveKiosko } from "../equipos/decorators/llave-kiosko.decorator";
 import { SesionesClaseService } from "./sesiones-clase.service";
-
-const TOKEN_KIOSKO = "x-kiosk-token";
 
 /** El Director consulta la bandeja pero no aprueba ni rechaza (P-49). */
 const ROLES_RESUELVEN_JUSTIFICACION = ["Subdirector", "Administrador"] as const;
@@ -68,52 +59,52 @@ const ROLES_RESUELVEN_JUSTIFICACION = ["Subdirector", "Administrador"] as const;
 export class SesionesClaseController {
   constructor(private readonly service: SesionesClaseService) {}
 
-  // --- Kiosko de Sesiones (sin sesión de usuario; el equipo se identifica por su token)
+  // --- Kiosko de Sesiones (sin sesión de usuario; el equipo firma cada pedido)
 
   @Public()
   @Post("kiosko/sesiones")
   @HttpCode(200)
   @Throttle({ long: { limit: 60, ttl: 60000 } })
-  @ApiHeader({ name: TOKEN_KIOSKO, required: true })
+  @FirmadoPorKiosko()
   @ApiOperation({ summary: "Sesiones de hoy del docente (código + PIN)" })
   @ApiResponse({ status: 200, type: SesionesKioskoResponseDto })
   async sesionesEnKiosko(
-    @Headers(TOKEN_KIOSKO) token: string | undefined,
+    @LlaveKiosko() llave: string | undefined,
     @Body() dto: CredencialesKioskoDto,
   ): Promise<SesionesKioskoResponseDto> {
-    return this.service.sesionesEnKiosko(token, dto);
+    return this.service.sesionesEnKiosko(llave, dto);
   }
 
   @Public()
   @Post("kiosko/:id/ingreso")
   @HttpCode(200)
   @Throttle({ long: { limit: 60, ttl: 60000 } })
-  @ApiHeader({ name: TOKEN_KIOSKO, required: true })
+  @FirmadoPorKiosko()
   @ApiOperation({ summary: "Firmar el ingreso de una sesión con su tema" })
   @ApiResponse({ status: 200, type: FirmaSesionResponseDto })
   async firmarIngreso(
-    @Headers(TOKEN_KIOSKO) token: string | undefined,
+    @LlaveKiosko() llave: string | undefined,
     @Param("id", ParseUUIDPipe) id: string,
     @Body() dto: FirmarIngresoDto,
     @ClientInfo() clientInfo: ClientInfoData,
   ): Promise<FirmaSesionResponseDto> {
-    return this.service.firmarIngreso(token, id, dto, clientInfo.ip);
+    return this.service.firmarIngreso(llave, id, dto, clientInfo.ip);
   }
 
   @Public()
   @Post("kiosko/:id/salida")
   @HttpCode(200)
   @Throttle({ long: { limit: 60, ttl: 60000 } })
-  @ApiHeader({ name: TOKEN_KIOSKO, required: true })
+  @FirmadoPorKiosko()
   @ApiOperation({ summary: "Firmar la salida de una sesión" })
   @ApiResponse({ status: 200, type: FirmaSesionResponseDto })
   async firmarSalida(
-    @Headers(TOKEN_KIOSKO) token: string | undefined,
+    @LlaveKiosko() llave: string | undefined,
     @Param("id", ParseUUIDPipe) id: string,
     @Body() dto: CredencialesKioskoDto,
     @ClientInfo() clientInfo: ClientInfoData,
   ): Promise<FirmaSesionResponseDto> {
-    return this.service.firmarSalida(token, id, dto, clientInfo.ip);
+    return this.service.firmarSalida(llave, id, dto, clientInfo.ip);
   }
 
   // --- Subdirección

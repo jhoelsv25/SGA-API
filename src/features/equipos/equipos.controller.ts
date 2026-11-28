@@ -1,16 +1,5 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Headers,
-  Param,
-  ParseUUIDPipe,
-  Patch,
-  Post,
-  Put,
-  Query,
-} from "@nestjs/common";
-import { ApiBearerAuth, ApiHeader, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
+import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Put } from "@nestjs/common";
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import {
   ClientInfo,
   type ClientInfoData,
@@ -23,9 +12,11 @@ import {
   AutorizarEquipoResponseDto,
   CreateEquipoDto,
   EquipoResponseDto,
+  LlaveKioskoDto,
   UpdateEquipoDto,
   ValidarEquipoResponseDto,
 } from "./dto";
+import { FirmadoPorKiosko, LlaveKiosko } from "./decorators/llave-kiosko.decorator";
 import { EquiposService } from "./equipos.service";
 
 @ApiTags("Equipos Autorizados")
@@ -44,23 +35,11 @@ export class EquiposController {
 
   @Public()
   @Get("validar-kiosko")
-  @ApiOperation({
-    summary: "Validar si una terminal física de kiosko está autorizada (Público)",
-    description:
-      "Recibe el token de autorización mediante el header 'x-kiosk-token' o query param 'token'",
-  })
-  @ApiHeader({
-    name: "x-kiosk-token",
-    required: false,
-    description: "Token secreto de autorización del kiosko",
-  })
+  @FirmadoPorKiosko()
+  @ApiOperation({ summary: "Validar si una terminal física de kiosko está autorizada (Público)" })
   @ApiResponse({ status: 200, type: ValidarEquipoResponseDto })
-  async validarKiosko(
-    @Headers("x-kiosk-token") headerToken: string | undefined,
-    @Query("token") queryToken: string | undefined,
-  ): Promise<ValidarEquipoResponseDto> {
-    const token = headerToken || queryToken;
-    return this.equiposService.validarKiosko(token);
+  async validarKiosko(@LlaveKiosko() llave: string | undefined): Promise<ValidarEquipoResponseDto> {
+    return this.equiposService.validarKiosko(llave);
   }
 
   @Get(":id")
@@ -118,14 +97,15 @@ export class EquiposController {
   @Roles("Administrador", "Soporte TI")
   @ApiOperation({
     summary:
-      "Autorizar terminal física desde la que se ejecuta la petición y generar clave secreta",
+      "Autorizar la terminal física desde la que se ejecuta la petición con su llave pública",
   })
   @ApiResponse({ status: 200, type: AutorizarEquipoResponseDto })
   async autorizar(
     @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: LlaveKioskoDto,
     @CurrentUser() user: AuthenticatedUser,
     @ClientInfo() clientInfo: ClientInfoData,
   ): Promise<AutorizarEquipoResponseDto> {
-    return this.equiposService.autorizar(id, user.id, clientInfo.ip);
+    return this.equiposService.autorizar(id, dto.llavePublica, user.id, clientInfo.ip);
   }
 }

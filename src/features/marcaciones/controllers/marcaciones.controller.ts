@@ -1,8 +1,8 @@
+import { FirmadoPorKiosko, LlaveKiosko } from "../../equipos/decorators/llave-kiosko.decorator";
 import {
   Body,
   Controller,
   Get,
-  Headers,
   HttpCode,
   Param,
   ParseUUIDPipe,
@@ -11,14 +11,7 @@ import {
   Query,
 } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
-import {
-  ApiBearerAuth,
-  ApiHeader,
-  ApiOperation,
-  ApiParam,
-  ApiResponse,
-  ApiTags,
-} from "@nestjs/swagger";
+import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from "@nestjs/swagger";
 import {
   ClientInfo,
   type ClientInfoData,
@@ -60,15 +53,15 @@ export class MarcacionesController {
   @Throttle({ long: { limit: 60, ttl: 60000 } })
   @ApiOperation({
     summary: "Marcar entrada o salida en un kiosko autorizado (código + PIN)",
-    description: "El equipo se identifica con el header 'x-kiosk-token'. Usa la hora del servidor.",
+    description: "El equipo firma el pedido con su llave. Usa la hora del servidor.",
   })
-  @ApiHeader({ name: "x-kiosk-token", required: true, description: "Token del kiosko autorizado" })
+  @FirmadoPorKiosko()
   @ApiResponse({ status: 200, type: MarcacionKioskoResponseDto })
   async marcarEnKiosko(
-    @Headers("x-kiosk-token") tokenEquipo: string | undefined,
+    @LlaveKiosko() llaveEquipo: string | undefined,
     @Body() dto: MarcarKioskoDto,
   ): Promise<MarcacionKioskoResponseDto> {
-    return this.service.marcarEnKiosko(tokenEquipo, dto);
+    return this.service.marcarEnKiosko(llaveEquipo, dto);
   }
 
   @Post("manual")

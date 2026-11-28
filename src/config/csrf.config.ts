@@ -41,7 +41,7 @@ export function crearCsrfUtils(configService?: ConfigService) {
       const tieneCookieSesion = Boolean(cookies?.access_token || cookies?.refresh_token);
       const usaBearer = req.headers.authorization?.startsWith("Bearer ");
       const esKioskoOBiometrico = Boolean(
-        req.headers["x-kiosk-token"] || req.headers["x-biometric-token"],
+        req.headers["x-kiosk-signature"] || req.headers["x-biometric-token"],
       );
       return !tieneCookieSesion || Boolean(usaBearer) || esKioskoOBiometrico;
     },

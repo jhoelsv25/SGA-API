@@ -1,15 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { IsString, IsUUID, Matches } from "class-validator";
+import { IsUUID } from "class-validator";
 import { EstadoSolicitudKiosko } from "../constants";
-
-export class RegistrarSolicitudKioskoDto {
-  @ApiProperty({
-    description: "Secreto generado y guardado por el navegador (64 caracteres hexadecimales)",
-  })
-  @IsString()
-  @Matches(/^[0-9a-f]{64}$/, { message: "El identificador del equipo no es válido." })
-  secreto!: string;
-}
 
 export class AprobarSolicitudKioskoDto {
   @ApiProperty({ description: "Kiosko al que se vincula el navegador" })
