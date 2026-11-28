@@ -1,4 +1,5 @@
 import { BadRequestException, ForbiddenException, NotFoundException } from "@nestjs/common";
+import { fechaHoyLima } from "../../../../common/utils/fecha-lima.util";
 import {
   MENSAJES_LIBRETAS,
   ROLES_HISTORIAL,
@@ -306,6 +307,8 @@ export async function contexto(
       ? null
       : new Set(await deps.repository.seccionesDePersona(actor.personaId, alcance ?? "tutoria"));
 
+  const hoy = fechaHoyLima();
+
   return {
     puedeProgramar: calls.puedeProgramar(actor),
     esAdministrador: actor.role.toLowerCase() === "administrador",
@@ -314,7 +317,14 @@ export async function contexto(
       id: periodo.id,
       nombre: periodo.nombre,
       fechaLimite: periodo.fechaLimite,
+      fechaInicio: periodo.fechaInicio ?? null,
+      fechaFin: periodo.fechaFin ?? null,
       programada: periodo.fechaLimite !== null,
+      vigente:
+        periodo.fechaInicio != null &&
+        periodo.fechaFin != null &&
+        hoy >= periodo.fechaInicio &&
+        hoy <= periodo.fechaFin,
     })),
     secciones: secciones.filter((seccion) => !permitidas || permitidas.has(seccion.id)),
   };
